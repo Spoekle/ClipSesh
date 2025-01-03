@@ -1,0 +1,13 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# production
+/downloads
+/__pycache__
+
+# misc
+config.py
+*.log.old
+*.log
+/logs
+
+

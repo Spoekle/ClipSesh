@@ -1,0 +1,62 @@
+name: clipsesh
+
+services:
+  mongo:
+    image: mongo:latest
+    container_name: clipsesh-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+        - mongo-data:/data/db
+        - type: bind
+          source: ./mongo
+          target: /dump
+
+  api:
+    build:
+      context: ./backend
+    container_name: clipsesh-api
+    ports:
+      - "86:80"
+    volumes:
+      - type: bind
+        source: ./backend/src/uploads
+        target: /var/www/backend/src/uploads
+      - type: bind
+        source: ./backend/src/profilePictures
+        target: /var/www/backend/src/profilePictures
+      - type: bind
+        source: ./backend/src/download
+        target: /var/www/backend/src/download
+      - type: bind
+        source: ./backend/src/scripts
+        target: /var/www/backend/src/scripts
+    depends_on:
+      - mongo
+    environment:
+      - VIRTUAL_HOST=api.spoekle.com
+      - MONGO_URI=mongodb://mongo:27017/clipsDB
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: clipsesh-frontend
+    ports:
+      - "8080:80"
+    environment:
+      - VIRTUAL_HOST=clipsesh.spoekle.com
+
+  discord-bot:
+    build:
+      context: ./discord-bot
+    container_name: clipsesh-discord-bot
+    environment:
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
+      - BACKEND_URL=https://api.spoekle.com
+    volumes:
+      - ./discord-bot:/app
+    depends_on:
+      - api
+
+volumes:
+  mongo-data:
