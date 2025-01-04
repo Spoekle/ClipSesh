@@ -17,5 +17,5 @@ If you decide you want to help with the development with ClipSesh, feel free to 
 - Build the containers using `docker compose up --build -d`
 
 
-### Clipsesh is built using React.js, TailwindCSS and Docker
-[![My Skills](https://skillicons.dev/icons?i=react,tailwind,docker)](https://clipsesh.cube.community)
+### Clipsesh is built using React.js, TailwindCSS, Docker, Express.js and MongoDB
+[![My Skills](https://skillicons.dev/icons?i=react,tailwind,docker,express,mongodb)](https://clipsesh.cube.community)
