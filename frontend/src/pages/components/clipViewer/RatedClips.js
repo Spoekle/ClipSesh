@@ -214,6 +214,7 @@ const RatedClips = ({ ratingsData, clipsData }) => {
                                                     <video
                                                         className="w-full rounded-lg border-white dark:border-neutral-800 transition duration-200 opacity-50 hover:opacity-100"
                                                         src={`${clip.url}`}
+                                                        muted
                                                         onMouseEnter={(e) => e.target.play()}
                                                         onMouseLeave={(e) => e.target.pause()}
                                                     >
