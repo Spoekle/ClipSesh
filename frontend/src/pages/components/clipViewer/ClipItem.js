@@ -15,6 +15,7 @@ const ClipItem = ({ clip, hasUserRated, setExpandedClip, index }) => {
   const handleMouseLeave = () => {
     if (videoRef.current) {
       videoRef.current.pause();
+      videoRef.current.currentTime = 0;
     }
   };
 
@@ -25,7 +26,7 @@ const ClipItem = ({ clip, hasUserRated, setExpandedClip, index }) => {
       onClick={() => setExpandedClip(clip._id)}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className={`relative w-[80vw] md:w-[30vw] lg:w-[25vw] max-w-[450px] aspect-video animate-fade hover:scale-105 transition duration-200 rounded-lg overflow-hidden ${hasUserRated ? 'border-4 border-blue-500' : 'border-4 border-neutral-950'
+      className={`group relative w-[80vw] md:w-[30vw] lg:w-[25vw] max-w-[450px] aspect-video animate-fade hover:scale-105 transition duration-200 rounded-lg overflow-hidden ${hasUserRated ? 'border-4 border-blue-500' : 'border-4 border-neutral-950'
         }`}
       style={{ animationDelay: `${index * 70}ms` }}
     >
@@ -43,11 +44,21 @@ const ClipItem = ({ clip, hasUserRated, setExpandedClip, index }) => {
         </a>
       </div>
 
-      {/* Video Element */}
+      {/* If there's a thumbnail, show it by default */}
+      {clip.thumbnail && (
+        <img
+          src={clip.thumbnail}
+          alt={`${clip.streamer} thumbnail`}
+          className="absolute top-0 left-0 w-full h-full object-cover transition duration-200 z-10 group-hover:opacity-0"
+        />
+      )}
+
+      {/* Video Element (hidden behind thumbnail unless hovered) */}
       <video
         ref={videoRef}
-        className="w-full h-full object-cover transition duration-200 opacity-50 hover:opacity-100 aspect-video"
-        src={clip.url + '#t=0.001'} 
+        className={`absolute top-0 left-0 w-full h-full object-cover transition duration-200 z-20
+        ${clip.thumbnail ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}`}
+        src={clip.url + '#t=0.001'}
         muted
         preload="metadata"
       >
