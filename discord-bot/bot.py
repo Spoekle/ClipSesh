@@ -142,8 +142,8 @@ async def on_message(message):
         files = {'clip': f}
         data = {'streamer': streamer, 'title': title, 'link': link, 'submitter': submitter}
         headers = {'Authorization': f'Bearer {BACKEND_TOKEN}'}
-        logging.debug(f'Sending POST request to {BACKEND_URL}/api/clips/upload with streamer: {streamer}')
-        response = requests.post(f'{BACKEND_URL}/api/clips/upload', files=files, data=data, headers=headers)
+        logging.debug(f'Sending POST request to {BACKEND_URL}/api/clips with streamer: {streamer}')
+        response = requests.post(f'{BACKEND_URL}/api/clips', files=files, data=data, headers=headers)
         logging.debug(f'Response from server: {response.text}')
         # await message.clear_reaction('🔄')
 

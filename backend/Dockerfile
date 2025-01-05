@@ -2,7 +2,7 @@
 FROM node:18
 
 # Install Nginx and Certbot
-RUN apt-get update && apt-get install -y nginx certbot python3-certbot-nginx
+RUN apt-get update && apt-get install -y nginx certbot python3-certbot-nginx ffmpeg
 
 # Create and set the working directory for the application
 WORKDIR /var/www/backend

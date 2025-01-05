@@ -18,9 +18,12 @@ function EditorDash() {
   const [progress, setProgress] = useState(0);
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [seasonInfo, setSeasonInfo] = useState({});
+  const [zips, setZips] = useState([]);
+  const [zipsLoading, setZipsLoading] = useState(true);
 
   useEffect(() => {
     fetchInitialData();
+    fetchZips();
   }, []);
 
   const fetchInitialData = async () => {
@@ -40,7 +43,7 @@ function EditorDash() {
 
   const fetchConfig = async () => {
     try {
-      const response = await axios.get(`${apiUrl}/api/admin/config`,);
+      const response = await axios.get(`${apiUrl}/api/admin/config`);
 
       if (response) {
         setConfig(response.data[0]);
@@ -79,22 +82,26 @@ function EditorDash() {
     }
   };
 
-  //get the count of denied clips
+  const fetchZips = async () => {
+    try {
+      const response = await axios.get(`${apiUrl}/api/zips`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      setZips(response.data);
+      setZipsLoading(false);
+    } catch (error) {
+      console.error('Error fetching zips:', error);
+      setZipsLoading(false);
+    }
+  };
+
   const deniedClips = clips.filter(clip => {
     const ratingData = ratings[clip._id];
     return ratingData && ratingData.ratingCounts.some(rateData => rateData.rating === 'deny' && rateData.count >= config.denyThreshold);
   }).length;
 
-  const getCurrentDate = () => {
-    const date = new Date();
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  const downloadClips = async () => {
-    if (!window.confirm("Are you sure you want to download the clips? This might take a while so please stay on this page.")) {
+  const processClips = async () => {
+    if (!window.confirm("Are you sure you want to process these clips?")) {
       return;
     }
   
@@ -112,7 +119,7 @@ function EditorDash() {
     });
   
     try {
-      const response = await axios.post(`${apiUrl}/zips/download`, {
+      const response = await axios.post(`${apiUrl}/api/zips/process`, {
         clips: filteredClips.map((clip) => {
           const ratingData = ratings[clip._id];
           const mostChosenRating = ratingData.ratingCounts.reduce(
@@ -121,57 +128,75 @@ function EditorDash() {
           );
           return { ...clip, rating: mostChosenRating.rating };
         }),
-      }, {
-        responseType: 'blob', // Download as binary data (zip)
-        onDownloadProgress: (progressEvent) => {
-          if (progressEvent.total) {
-            setDownloadProgress(Math.round((progressEvent.loaded / progressEvent.total) * 100));
-          } else {
-            setDownloadProgress(0);
-          }
-        },
+        season: seasonInfo.season,
       });
   
       if (response.status !== 200) {
-        throw new Error('Failed to download clips');
+        throw new Error('Failed to process clips');
       }
   
-      const blob = new Blob([response.data], { type: 'application/zip' });
-      const currentDate = getCurrentDate();
-      saveAs(blob, `clips-${currentDate}.zip`);
+      alert('Zipped clips stored in DB successfully!');
+      fetchZips();
     } catch (error) {
-      console.error('Error downloading clips:', error);
+      console.error('Error processing clips:', error);
     } finally {
       setDownloading(false);
+      setDownloadProgress(0);
     }
   };
 
-  const getSeason = () => {
-    const currentDate = new Date().toLocaleDateString();
-    let season = '';
+   const getSeason = () => {
+      const now = new Date();
+      const month = now.getMonth() + 1;
+      const day = now.getDate();
+      let season = '';
+  
+      if (
+          (month === 3 && day >= 20) ||
+          (month > 3 && month < 6) ||
+          (month === 6 && day <= 20)
+      ) {
+          season = 'Spring';
+      } else if (
+          (month === 6 && day >= 21) ||
+          (month > 6 && month < 9) ||
+          (month === 9 && day <= 20)
+      ) {
+          season = 'Summer';
+      } else if (
+          (month === 9 && day >= 21) ||
+          (month > 9 && month < 12) ||
+          (month === 12 && day <= 20)
+      ) {
+          season = 'Fall';
+      } else {
+          season = 'Winter';
+      }
+  
+      setSeasonInfo(prevSeasonInfo => ({
+          ...prevSeasonInfo,
+          season
+      }));
+  };
 
-    if (currentDate >= '12-21' || currentDate <= '03-19') {
-      season = 'Winter';
-    } else if (currentDate >= '03-20' && currentDate <= '06-20') {
-      season = 'Spring';
-    } else if (currentDate >= '06-21' && currentDate <= '09-21') {
-      season = 'Summer';
-    } else {
-      season = 'Fall';
-    }
-
-    setSeasonInfo(prevSeasonInfo => ({
-      ...prevSeasonInfo,
-      season
-    }));
+  const downloadZip = (zipId, zipName) => {
+    axios({
+      url: `${apiUrl}/api/zips/${zipId}/download`,
+      method: 'GET',
+      responseType: 'blob',
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+    }).then((response) => {
+      saveAs(response.data, `${zipName}.zip`);
+    }).catch((error) => {
+      console.error('Error downloading zip:', error);
+    });
   };
 
   return (
     <div className="min-h-screen text-white flex flex-col items-center bg-neutral-200 dark:bg-neutral-900 transition duration-200">
       <Helmet>
         <title>Editor Dash</title>
-        <meta name="description" description="ClipSesh! is a site for Beat Saber players by Beat Saber players. On this site you will be able to view all submitted clips"
-        />
+        <meta name="description" description="ClipSesh! is a site for Beat Saber players by Beat Saber players. On this site you will be able to view all submitted clips" />
       </Helmet>
       <div className='w-full'>
         <LoadingBar color='#f11946' progress={progress} onLoaderFinished={() => setProgress(0)} />
@@ -215,17 +240,41 @@ function EditorDash() {
                 </div>
               )}
               <button
-                onClick={downloadClips}
+                onClick={processClips}
                 className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 rounded-md focus:outline-none focus:bg-green-600"
               >
                 Download All Clips
               </button>
             </div>
+
+            <div className="col-span-1 w-full bg-neutral-300 dark:bg-neutral-800 text-neutral-900 dark:text-white transition duration-200 p-8 rounded-md shadow-md animate-fade animate-delay-[200ms]">
+              <h2 className="text-3xl font-bold mb-4">Available Zips</h2>
+              {zipsLoading ? (
+                <div className="flex justify-center items-center">
+                  <BiLoaderCircle className="animate-spin text-4xl" />
+                </div>
+              ) : zips.length === 0 ? (
+                <p>No zips available.</p>
+              ) : (
+                <ul className="space-y-4">
+                  {zips.map(zip => (
+                    <li key={zip._id} className="flex justify-between items-center bg-neutral-400 dark:bg-neutral-700 p-4 rounded-md">
+                      <span>{zip.name}</span>
+                      <button
+                        onClick={() => downloadZip(zip._id, zip.name)}
+                        className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md"
+                      >
+                        Download
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
         </div>
       )}
     </div>
-
   );
 }
 

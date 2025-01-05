@@ -5,7 +5,7 @@ const seasonZipSchema = new mongoose.Schema({
     season: { type: String, required: true },
     name: { type: String, required: true },
     size: { type: Number, required: true },
-    clips: { type: Number, required: true },
+    clipAmount: { type: Number, required: true },
 }, { timestamps: true });
 
 const SeasonZip = mongoose.model('SeasonZip', seasonZipSchema);

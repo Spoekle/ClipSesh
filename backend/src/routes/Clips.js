@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const Fuse = require('fuse.js');
 const bcrypt = require('bcrypt');
+const ffmpeg = require('fluent-ffmpeg');
 
 const Clip = require('../models/clipModel');
 const IpVote = require('../models/ipVoteModel');
@@ -11,7 +12,26 @@ const authorizeRoles = require('./middleware/AuthorizeRoles');
 const searchLimiter = require('./middleware/SearchLimiter');
 const clipUpload = require('./storage/ClipUpload');
 
+/**
+ * @swagger
+ * tags:
+ *   name: clips
+ *   description: API for managing clips
+ */
 
+/**
+ * @swagger
+ * /api/clips:
+ *   get:
+ *     tags:
+ *       - clips
+ *     summary: Get all clips
+ *     responses:
+ *       200:
+ *         description: OK
+ *       500:
+ *         description: Internal Server Error
+ */
 router.get('/', async (req, res) => {
     try {
         const clips = await Clip.find();
@@ -22,6 +42,37 @@ router.get('/', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/clips/search:
+ *   get:
+ *     tags:
+ *       - clips
+ *     summary: Search clips
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         schema:
+ *           type: string
+ *         required: true
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: OK
+ *       400:
+ *         description: Missing parameter
+ *       404:
+ *         description: Not found
+ *       500:
+ *         description: Internal Server Error
+ */
 router.get('/search', searchLimiter, async (req, res) => {
     let { q, page = 1, limit = 10 } = req.query;
 
@@ -63,6 +114,27 @@ router.get('/search', searchLimiter, async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/clips/{id}:
+ *   get:
+ *     tags:
+ *       - clips
+ *     summary: Get a clip by ID
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: OK
+ *       404:
+ *         description: Clip not found
+ *       500:
+ *         description: Internal Server Error
+ */
 router.get('/:id', async (req, res) => {
     const { id } = req.params;
     try {
@@ -77,23 +149,53 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-router.post('/upload', authorizeRoles(['uploader', 'admin']), clipUpload.single('clip'), async (req, res) => {
+router.post('/', authorizeRoles(['uploader', 'admin']), clipUpload.single('clip'), async (req, res) => {
+    console.log("=== Handling new clip upload ===");
     try {
         const { streamer, submitter, title, url, link } = req.body;
+        console.log("Request body:", { streamer, submitter, title, url, link });
 
         let fileUrl;
+        let thumbnailUrl;
         if (url) {
             fileUrl = url;
+            thumbnailUrl = null;
+            console.log("Using provided URL:", fileUrl);
         } else if (req.file) {
             fileUrl = `https://api.spoekle.com/uploads/${req.file.filename}`;
+            console.log("File uploaded with filename:", req.file.filename);
+
+            // Generate thumbnail
+            const thumbnailFilename = `${path.parse(req.file.filename).name}_thumbnail.png`;
+            console.log("Generating thumbnail:", thumbnailFilename);
+
+            const uploadPath = path.join(__dirname, '..', 'uploads', req.file.filename);
+            await new Promise((resolve, reject) => {
+                ffmpeg(uploadPath)
+                    .screenshots({
+                        timestamps: ['00:00:01.000'],
+                        filename: thumbnailFilename,
+                        folder: path.join(__dirname, '..', 'uploads'),
+                        size: '640x360',
+                    })
+                    .on('end', resolve)
+                    .on('error', reject);
+            });
+
+            thumbnailUrl = `https://api.spoekle.com/uploads/${thumbnailFilename}`;
+            console.log("Thumbnail URL:", thumbnailUrl);
         } else {
+            console.log("No file or link provided.");
             return res.status(400).json({ error: 'No file or link provided' });
         }
 
-        const newClip = new Clip({ url: fileUrl, streamer, submitter, title, link });
+        const newClip = new Clip({ url: fileUrl, thumbnail: thumbnailUrl, streamer, submitter, title, link });
         await newClip.save();
+
+        console.log("New clip saved:", newClip);
         res.json({ success: true, clip: newClip });
     } catch (error) {
+        console.error("Error processing clip upload:", error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
@@ -161,29 +263,40 @@ router.delete('/', authorizeRoles(['admin']), async (req, res) => {
     }
 });
 
-router.post('/:id/upvote', async (req, res) => {
-    const clientIp = req.ip;
-    const clipId = req.params.id;
-
+router.post('/:id/vote/:voteType', async (req, res) => {
     try {
-        const clip = await Clip.findById(clipId);
+        const clientIp = req.ip;
+        const { id, voteType } = req.params;
+
+        const clip = await Clip.findById(id);
         if (!clip) {
             return res.status(404).send('Clip not found');
         }
 
-        const existingVotes = await IpVote.find({ clipId });
+        const existingVotes = await IpVote.find({ clipId: id });
 
-        for (let vote of existingVotes) {
+        for (const vote of existingVotes) {
             if (await bcrypt.compare(clientIp, vote.ip)) {
-                if (vote.vote === 'upvote') {
-                    clip.upvotes -= 1;
+                if (vote.vote === voteType) {
+                    // Same vote => remove vote
+                    if (voteType === 'upvote') {
+                        clip.upvotes -= 1;
+                    } else {
+                        clip.downvotes -= 1;
+                    }
                     await vote.remove();
                     await clip.save();
                     return res.send(clip);
                 } else {
-                    clip.downvotes -= 1;
-                    clip.upvotes += 1;
-                    vote.vote = 'upvote';
+                    // Switching vote
+                    if (voteType === 'upvote') {
+                        clip.upvotes += 1;
+                        clip.downvotes -= 1;
+                    } else {
+                        clip.downvotes += 1;
+                        clip.upvotes -= 1;
+                    }
+                    vote.vote = voteType;
                     await vote.save();
                     await clip.save();
                     return res.send(clip);
@@ -192,55 +305,17 @@ router.post('/:id/upvote', async (req, res) => {
         }
 
         const hashedIp = await bcrypt.hash(clientIp, 10);
-        clip.upvotes += 1;
-        const newVote = new IpVote({ clipId, ip: hashedIp, vote: 'upvote' });
+        if (voteType === 'upvote') {
+            clip.upvotes += 1;
+        } else {
+            clip.downvotes += 1;
+        }
+        const newVote = new IpVote({ clipId: id, ip: hashedIp, vote: voteType });
         await newVote.save();
         await clip.save();
         res.send(clip);
     } catch (error) {
-        console.error('Error upvoting clip:', error.message);
-        res.status(500).send('Internal server error');
-    }
-});
-
-router.post('/:id/downvote', async (req, res) => {
-    const clientIp = req.ip;
-    const clipId = req.params.id;
-
-    try {
-        const clip = await Clip.findById(clipId);
-        if (!clip) {
-            return res.status(404).send('Clip not found');
-        }
-
-        const existingVotes = await IpVote.find({ clipId });
-
-        for (let vote of existingVotes) {
-            if (await bcrypt.compare(clientIp, vote.ip)) {
-                if (vote.vote === 'downvote') {
-                    clip.downvotes -= 1;
-                    await vote.remove();
-                    await clip.save();
-                    return res.send(clip);
-                } else {
-                    clip.upvotes -= 1;
-                    clip.downvotes += 1;
-                    vote.vote = 'downvote';
-                    await vote.save();
-                    await clip.save();
-                    return res.send(clip);
-                }
-            }
-        }
-
-        const hashedIp = await bcrypt.hash(clientIp, 10);
-        clip.downvotes += 1;
-        const newVote = new IpVote({ clipId, ip: hashedIp, vote: 'downvote' });
-        await newVote.save();
-        await clip.save();
-        res.send(clip);
-    } catch (error) {
-        console.error('Error downvoting clip:', error.message);
+        console.error('Error voting clip:', error.message);
         res.status(500).send('Internal server error');
     }
 });

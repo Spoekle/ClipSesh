@@ -257,19 +257,23 @@ function AdminDash() {
     if (!zipFile) {
       return;
     }
-
+  
     const formData = new FormData();
-    formData.append('zip', zipFile);
-
+    // Must be named 'clipsZip' to match the multer field in the backend
+    formData.append('clipsZip', zipFile);
+    formData.append('clips', clips);
+    formData.append('season', seasonInfo.season);
+  
     try {
       const token = localStorage.getItem('token');
       await axios.post(`${apiUrl}/api/zips/upload`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
-          Authorization: `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+          'Cross-Origin-Opener-Policy': 'same-origin',
+        },
       });
-      alert('Clips uploaded successfully');
+      alert('Zip file uploaded successfully');
       fetchClipsAndRatings();
     } catch (error) {
       console.error('Error uploading clips:', error);
@@ -340,24 +344,38 @@ function AdminDash() {
   };
 
   const getSeason = () => {
-    const currentDate = new Date().toLocaleDateString();
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const day = now.getDate();
     let season = '';
 
-    if (currentDate >= '12-21' || currentDate <= '03-19') {
-      season = 'Winter';
-    } else if (currentDate >= '03-20' && currentDate <= '06-20') {
-      season = 'Spring';
-    } else if (currentDate >= '06-21' && currentDate <= '09-21') {
-      season = 'Summer';
+    if (
+        (month === 3 && day >= 20) ||
+        (month > 3 && month < 6) ||
+        (month === 6 && day <= 20)
+    ) {
+        season = 'Spring';
+    } else if (
+        (month === 6 && day >= 21) ||
+        (month > 6 && month < 9) ||
+        (month === 9 && day <= 20)
+    ) {
+        season = 'Summer';
+    } else if (
+        (month === 9 && day >= 21) ||
+        (month > 9 && month < 12) ||
+        (month === 12 && day <= 20)
+    ) {
+        season = 'Fall';
     } else {
-      season = 'Fall';
+        season = 'Winter';
     }
 
     setSeasonInfo(prevSeasonInfo => ({
-      ...prevSeasonInfo,
-      season
+        ...prevSeasonInfo,
+        season
     }));
-  };
+};
 
   return (
     <div className="min-h-screen text-white flex flex-col items-center bg-neutral-200 dark:bg-neutral-900 transition duration-200">

@@ -47,33 +47,22 @@ const ClipContent = ({ clip, setExpandedClip, isLoggedIn, user, token, fetchClip
     }
   };
 
-  const handleUpvote = async () => {
+  const handleVote = async (voteType) => {
     const token = localStorage.getItem('token');
     try {
       const response = await axios.post(
-        `${apiUrl}/api/clips/${currentClip._id}/upvote`,
+        `${apiUrl}/api/clips/${currentClip._id}/vote/${voteType}`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setCurrentClip(response.data);
     } catch (error) {
-      console.error('Error upvoting clip:', error);
+      console.error(`Error ${voteType}ing clip:`, error);
     }
   };
 
-  const handleDownvote = async () => {
-    const token = localStorage.getItem('token');
-    try {
-      const response = await axios.post(
-        `${apiUrl}/api/clips/${currentClip._id}/downvote`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setCurrentClip(response.data);
-    } catch (error) {
-      console.error('Error downvoting clip:', error);
-    }
-  };
+  const handleUpvote = () => handleVote('upvote');
+  const handleDownvote = () => handleVote('downvote');
 
   const handleAddComment = async (e) => {
     e.preventDefault();
