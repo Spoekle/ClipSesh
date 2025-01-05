@@ -173,7 +173,7 @@ router.post('/', authorizeRoles(['uploader', 'admin']), clipUpload.single('clip'
             await new Promise((resolve, reject) => {
                 ffmpeg(uploadPath)
                     .screenshots({
-                        timestamps: ['00:00:01.000'],
+                        timestamps: ['00:00:00.001'],
                         filename: thumbnailFilename,
                         folder: path.join(__dirname, '..', 'uploads'),
                         size: '640x360',
