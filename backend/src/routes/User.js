@@ -4,7 +4,11 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const secretKey = process.env.SECRET_KEY;
 const adminUsername = process.env.ADMIN_USERNAME;
+const mailEmail = process.env.MAIL_EMAIL;
+const mailPassword = process.env.MAIL_PASSWORD;
 const fs = require('fs');
+const crypto = require('crypto');
+const nodemailer = require('nodemailer');
 const path = require('path');
 
 const User = require('../models/userModel');
@@ -67,6 +71,57 @@ router.post('/register', async (req, res) => {
     }
 });
 
+router.post('/resetPassword', async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ error: 'Email is required' });
+
+        const user = await User.findOne({ email });
+        if (!user) return res.status(404).json({ error: 'User not found or no email linked' });
+
+        // Generate new random password
+        const newPassword = crypto.randomBytes(9).toString('base64').replace(/\+/g, '0').replace(/\//g, '1').slice(0, 15).match(/.{1,5}/g).join('-');
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        user.password = hashedPassword;
+        await user.save();
+
+        // Send email with new password
+        let transporter = nodemailer.createTransport({
+            host: 'smtp.mail.me.com',
+            port: 587, 
+            secure: false, 
+            auth: {
+              user: mailEmail,
+              pass: mailPassword
+            },
+            tls: {
+              rejectUnauthorized: false
+            }
+          });
+
+          await transporter.sendMail({
+            from: 'noreply@spoekle.com',
+            to: email,
+            subject: 'New password for ClipSesh requested',
+            text: `Hi ${user.username}!
+          
+You have requested to reset your password on ClipSesh, so the elves that keep this site running got straight to work.
+
+This is your new password: ${newPassword}
+
+Happy rating! 🎉🎉🎉
+
+- ClipSesh Team`
+          });
+
+        return res.json({ success: true, message: 'Password reset. Check your email.' });
+    } catch (error) {
+        console.error('Error resetting password:', error);
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
 router.post('/uploadProfilePicture', authorizeRoles(['user', 'clipteam', 'editor', 'uploader', 'admin']), profilePictureUpload.single('profilePicture'), async (req, res) => {
     try {
         const profilePictureUrl = `https://api.spoekle.com/profilePictures/${req.file.filename}`;
@@ -94,7 +149,7 @@ router.post('/uploadProfilePicture', authorizeRoles(['user', 'clipteam', 'editor
 });
 
 router.put('/:id', authorizeRoles(['user', 'clipteam', 'editor', 'uploader', 'admin']), async (req, res) => {
-    const { username, password, discordId, discordUsername } = req.body;
+    const { username, password, discordId, discordUsername, email } = req.body;
     const userId = req.user.id;
 
     if (userId !== req.params.id && !req.user.roles.includes('admin')) {
@@ -107,6 +162,7 @@ router.put('/:id', authorizeRoles(['user', 'clipteam', 'editor', 'uploader', 'ad
         if (password) updateData.password = await bcrypt.hash(password, 10);
         if (discordId !== undefined) updateData.discordId = discordId;
         if (discordUsername !== undefined) updateData.discordUsername = discordUsername;
+        if (email) updateData.email = email;
 
         await User.findByIdAndUpdate(req.params.id, updateData);
         res.json({ message: 'User updated successfully' });
