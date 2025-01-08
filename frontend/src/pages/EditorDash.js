@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
 import apiUrl from '../config/config';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import axios from 'axios';
 import { saveAs } from 'file-saver';
 import { BiLoaderCircle } from 'react-icons/bi';
 import LoadingBar from 'react-top-loading-bar';
 import background from '../media/editor.webp';
-import { FaDiscord } from "react-icons/fa";
+import { FaDownload } from "react-icons/fa";
 
 function EditorDash() {
   const [config, setConfig] = useState({ denyThreshold: 0, latestVideoLink: '' });
@@ -104,10 +103,10 @@ function EditorDash() {
     if (!window.confirm("Are you sure you want to process these clips?")) {
       return;
     }
-  
+
     setDownloading(true);
     setDownloadProgress(0);
-  
+
     const filteredClips = clips.filter((clip) => {
       const ratingData = ratings[clip._id];
       return (
@@ -117,24 +116,31 @@ function EditorDash() {
         )
       );
     });
-  
+
     try {
-      const response = await axios.post(`${apiUrl}/api/zips/process`, {
-        clips: filteredClips.map((clip) => {
-          const ratingData = ratings[clip._id];
-          const mostChosenRating = ratingData.ratingCounts.reduce(
-            (max, rateData) => (rateData.count > max.count ? rateData : max),
-            ratingData.ratingCounts[0]
-          );
-          return { ...clip, rating: mostChosenRating.rating };
-        }),
-        season: seasonInfo.season,
-      });
-  
+      const response = await axios.post(
+        `${apiUrl}/api/zips/process`,
+        {
+          clips: filteredClips.map((clip) => {
+            const ratingData = ratings[clip._id];
+            const mostChosenRating = ratingData.ratingCounts.reduce(
+              (max, rateData) => (rateData.count > max.count ? rateData : max),
+              ratingData.ratingCounts[0]
+            );
+            return { ...clip, rating: mostChosenRating.rating };
+          }),
+          season: seasonInfo.season,
+        },
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+          withCredentials: true
+        }
+      );
+
       if (response.status !== 200) {
         throw new Error('Failed to process clips');
       }
-  
+
       alert('Zipped clips stored in DB successfully!');
       fetchZips();
     } catch (error) {
@@ -145,51 +151,38 @@ function EditorDash() {
     }
   };
 
-   const getSeason = () => {
-      const now = new Date();
-      const month = now.getMonth() + 1;
-      const day = now.getDate();
-      let season = '';
-  
-      if (
-          (month === 3 && day >= 20) ||
-          (month > 3 && month < 6) ||
-          (month === 6 && day <= 20)
-      ) {
-          season = 'Spring';
-      } else if (
-          (month === 6 && day >= 21) ||
-          (month > 6 && month < 9) ||
-          (month === 9 && day <= 20)
-      ) {
-          season = 'Summer';
-      } else if (
-          (month === 9 && day >= 21) ||
-          (month > 9 && month < 12) ||
-          (month === 12 && day <= 20)
-      ) {
-          season = 'Fall';
-      } else {
-          season = 'Winter';
-      }
-  
-      setSeasonInfo(prevSeasonInfo => ({
-          ...prevSeasonInfo,
-          season
-      }));
-  };
+  const getSeason = () => {
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const day = now.getDate();
+    let season = '';
 
-  const downloadZip = (zipId, zipName) => {
-    axios({
-      url: `${apiUrl}/api/zips/${zipId}/download`,
-      method: 'GET',
-      responseType: 'blob',
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-    }).then((response) => {
-      saveAs(response.data, `${zipName}.zip`);
-    }).catch((error) => {
-      console.error('Error downloading zip:', error);
-    });
+    if (
+      (month === 3 && day >= 20) ||
+      (month > 3 && month < 6) ||
+      (month === 6 && day <= 20)
+    ) {
+      season = 'Spring';
+    } else if (
+      (month === 6 && day >= 21) ||
+      (month > 6 && month < 9) ||
+      (month === 9 && day <= 20)
+    ) {
+      season = 'Summer';
+    } else if (
+      (month === 9 && day >= 21) ||
+      (month > 9 && month < 12) ||
+      (month === 12 && day <= 20)
+    ) {
+      season = 'Fall';
+    } else {
+      season = 'Winter';
+    }
+
+    setSeasonInfo(prevSeasonInfo => ({
+      ...prevSeasonInfo,
+      season
+    }));
   };
 
   return (
@@ -230,22 +223,6 @@ function EditorDash() {
           </div>
 
           <div className="grid mt-8 lg:grid-cols-3 md:grid-cols-2 grid-cols-1 gap-4 w-full">
-            <div className="col-span-1 w-full bg-neutral-300 dark:bg-neutral-800 text-neutral-900 dark:text-white transition duration-200 p-8 rounded-md shadow-md animate-fade animate-delay-[200ms]">
-              <h2 className="text-3xl font-bold mb-4">Download Clips</h2>
-              {downloading && (
-                <div className="flex flex-col justify-center items-center space-y-2">
-                  <BiLoaderCircle className="animate-spin h-5 w-5 text-white" />
-                  <span>Downloading Clips...</span>
-                  <progress value={downloadProgress} max="100" className="w-full"></progress>
-                </div>
-              )}
-              <button
-                onClick={processClips}
-                className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 rounded-md focus:outline-none focus:bg-green-600"
-              >
-                Download All Clips
-              </button>
-            </div>
 
             <div className="col-span-1 w-full bg-neutral-300 dark:bg-neutral-800 text-neutral-900 dark:text-white transition duration-200 p-8 rounded-md shadow-md animate-fade animate-delay-[200ms]">
               <h2 className="text-3xl font-bold mb-4">Available Zips</h2>
@@ -259,13 +236,22 @@ function EditorDash() {
                 <ul className="space-y-4">
                   {zips.map(zip => (
                     <li key={zip._id} className="flex justify-between items-center bg-neutral-400 dark:bg-neutral-700 p-4 rounded-md">
-                      <span>{zip.name}</span>
-                      <button
-                        onClick={() => downloadZip(zip._id, zip.name)}
-                        className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md"
-                      >
-                        Download
-                      </button>
+                      <div className="flex flex-col gap-2">
+                        <h2>{zip.season}</h2>
+                        <p className='text-neutral-300'>{zip.name}</p>
+                        <div className="flex gap-2">
+                          <p className='text-neutral-300'>{zip.clipAmount} clips</p>
+                          <p className='text-neutral-300'>{(zip.size / 1000000).toFixed(2)} MB</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => { saveAs(zip.url); }}
+                          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md"
+                        >
+                          <FaDownload />
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>
