@@ -5,6 +5,7 @@ import axios from 'axios';
 
 function ProfilePage({ user, setUser }) {
   const [username, setUsername] = useState(user.username);
+  const [email, setEmail] = useState(user.email);
   const [password, setPassword] = useState('');
   const [profilePicture, setProfilePicture] = useState(null);
   const [message, setMessage] = useState('');
@@ -38,7 +39,7 @@ function ProfilePage({ user, setUser }) {
 
   const handleProfileUpdate = async (e) => {
     e.preventDefault();
-    const updateData = { username };
+    const updateData = { username, email };
     if (password) updateData.password = password;
 
     try {
@@ -49,7 +50,7 @@ function ProfilePage({ user, setUser }) {
       });
 
       if (response.data.message) {
-        setUser({ ...user, username });
+        setUser({ ...user, username, email });
         setMessage('Profile updated successfully');
       }
     } catch (error) {
@@ -62,15 +63,21 @@ function ProfilePage({ user, setUser }) {
     window.location.href = `${apiUrl}/api/discord/auth?siteUserId=${user._id}`;
   };
 
-  const unlinkDiscordAccount = () => {
-    const response = axios.put(`${apiUrl}/api/users/${user._id}`, { discordId: "", discordUsername: "" }, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
-      },
-    });
-    if (response.data.message) {
-      setUser({ ...user, discordId: response.data.discordId, discordUsername: response.data.discordUsername });
-      setMessage('Discord account unlinked successfully');
+  const unlinkDiscordAccount = async () => {
+    try {
+      const response = await axios.put(`${apiUrl}/api/users/${user._id}`, { discordId: "", discordUsername: "" }, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      if (response.data.message) {
+        setUser({ ...user, discordId: response.data.discordId, discordUsername: response.data.discordUsername });
+        setMessage('Discord account unlinked successfully');
+      }
+    } catch (error) {
+      console.error('Error unlinking Discord account:', error);
+      setMessage('Error unlinking Discord account');
     }
   };
 
@@ -78,8 +85,7 @@ function ProfilePage({ user, setUser }) {
     <div className="min-h-screen text-white relative bg-neutral-200 dark:bg-neutral-900 transition duration-200">
       <Helmet>
         <title>{user && user.username + "'s profile"}</title>
-        <meta name="description" description={user && user.username + "'s profile page"}
-        />
+        <meta name="description" content={user && user.username + "'s profile page"} />
       </Helmet>
       <div className="flex h-96 justify-center items-center animate-fade" style={{ backgroundImage: `url(${user.profilePicture})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
         <div className="flex bg-gradient-to-b from-neutral-900 to-bg-black/20 backdrop-blur-lg justify-center items-center w-full h-full">
@@ -101,6 +107,15 @@ function ProfilePage({ user, setUser }) {
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
+                  className="mt-1 block w-full text-neutral-900 rounded-md p-1"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-neutral-800 dark:text-gray-200">New Email</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="mt-1 block w-full text-neutral-900 rounded-md p-1"
                 />
               </div>
