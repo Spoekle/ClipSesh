@@ -6,7 +6,7 @@ import { saveAs } from 'file-saver';
 import { BiLoaderCircle } from 'react-icons/bi';
 import LoadingBar from 'react-top-loading-bar';
 import background from '../media/admin.jpg';
-import { FaDiscord } from "react-icons/fa";
+import { FaDiscord, FaDownload, FaTrash } from "react-icons/fa";
 import { useLocation } from 'react-router-dom';
 import DeniedClips from './components/adminDash/DeniedClips';
 import UserList from './components/adminDash/UserList';
@@ -32,6 +32,8 @@ function AdminDash() {
   const [progress, setProgress] = useState(0);
   const [userRatings, setUserRatings] = useState([]);
   const [seasonInfo, setSeasonInfo] = useState({});
+  const [zips, setZips] = useState([]);
+  const [zipsLoading, setZipsLoading] = useState(true);
   const AVAILABLE_ROLES = ['user', 'admin', 'clipteam', 'editor', 'uploader'];
 
   const location = useLocation();
@@ -48,11 +50,44 @@ function AdminDash() {
       setProgress(30);
       getSeason();
       setProgress(50);
+      fetchZips();
+      setProgress(60);
       await fetchClipsAndRatings();
       setProgress(100);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching initial data:', error);
+    }
+  };
+
+  const fetchZips = async () => {
+    try {
+      const response = await axios.get(`${apiUrl}/api/zips`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
+      setZips(response.data);
+      setZipsLoading(false);
+    } catch (error) {
+      console.error('Error fetching zips:', error);
+      setZipsLoading(false);
+    }
+  };
+
+  const deleteZip = async (zipId) => {
+    if (!window.confirm("Are you sure you want to delete this zip?")) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${apiUrl}/api/zips/${zipId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setZips(zips.filter(zip => zip._id !== zipId));
+      alert('Zip deleted successfully');
+    } catch (error) {
+      console.error('Error deleting zip:', error);
+      alert('Failed to delete zip. Please try again.');
     }
   };
 
@@ -238,18 +273,18 @@ function AdminDash() {
     }
   };
 
-  const getCurrentDate = () => {
-    const date = new Date();
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
   const [zipFile, setZipFile] = useState(null);
+  const [clipAmount, setClipAmount] = useState(0);
 
   const handleZipChange = (e) => {
     setZipFile(e.target.files[0]);
+  };
+
+  const handleClipAmountChange = (e) => {
+    const clipAmount = Number(e.target.value);
+    if (clipAmount >= 0) {
+      setClipAmount(clipAmount);
+    }
   };
 
   const handleZipSubmit = async (e) => {
@@ -257,13 +292,13 @@ function AdminDash() {
     if (!zipFile) {
       return;
     }
-  
+
     const formData = new FormData();
-    // Must be named 'clipsZip' to match the multer field in the backend
+
     formData.append('clipsZip', zipFile);
-    formData.append('clips', clips);
+    formData.append('clipAmount', clipAmount);
     formData.append('season', seasonInfo.season);
-  
+
     try {
       const token = localStorage.getItem('token');
       await axios.post(`${apiUrl}/api/zips/upload`, formData, {
@@ -274,15 +309,15 @@ function AdminDash() {
         },
       });
       alert('Zip file uploaded successfully');
-      fetchClipsAndRatings();
+      fetchZips();
     } catch (error) {
       console.error('Error uploading clips:', error);
       alert('Failed to upload clips. Please try again.');
     }
   };
 
-  const downloadClips = async () => {
-    if (!window.confirm("Are you sure you want to download the clips? This might take a while so please stay on this page.")) {
+  const processClips = async () => {
+    if (!window.confirm("Are you sure you want to process these clips?")) {
       return;
     }
 
@@ -299,29 +334,33 @@ function AdminDash() {
     });
 
     try {
-      const response = await axios.post(`${apiUrl}/zips/download`, {
-        clips: filteredClips.map(clip => {
-          const ratingData = ratings[clip._id];
-          const mostChosenRating = ratingData.ratingCounts.reduce((max, rateData) =>
-            rateData.count > max.count ? rateData : max, ratingData.ratingCounts[0]
-          );
-          return { ...clip, rating: mostChosenRating.rating };
-        }),
-      }, {
-        responseType: 'blob',
-      });
+      const response = await axios.post(
+        `${apiUrl}/api/zips/process`,
+        {
+          clips: filteredClips.map((clip) => {
+            const ratingData = ratings[clip._id];
+            const mostChosenRating = ratingData.ratingCounts.reduce(
+              (max, rateData) => (rateData.count > max.count ? rateData : max),
+              ratingData.ratingCounts[0]
+            );
+            return { ...clip, rating: mostChosenRating.rating };
+          }),
+          season: seasonInfo.season,
+        },
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        }
+      );
 
       if (response.status !== 200) {
-        throw new Error('Failed to download clips');
+        throw new Error('Failed to process clips');
       }
 
-      const blob = new Blob([response.data], { type: 'application/zip' });
-      const currentDate = getCurrentDate();
-      saveAs(blob, `clips-${currentDate}.zip`);
+      alert('Zipped clips stored in DB successfully!');
+      fetchZips();
     } catch (error) {
-      console.error('Error downloading clips:', error);
-    }
-    finally {
+      console.error('Error processing clips:', error);
+    } finally {
       setDownloading(false);
     }
   };
@@ -350,32 +389,32 @@ function AdminDash() {
     let season = '';
 
     if (
-        (month === 3 && day >= 20) ||
-        (month > 3 && month < 6) ||
-        (month === 6 && day <= 20)
+      (month === 3 && day >= 20) ||
+      (month > 3 && month < 6) ||
+      (month === 6 && day <= 20)
     ) {
-        season = 'Spring';
+      season = 'Spring';
     } else if (
-        (month === 6 && day >= 21) ||
-        (month > 6 && month < 9) ||
-        (month === 9 && day <= 20)
+      (month === 6 && day >= 21) ||
+      (month > 6 && month < 9) ||
+      (month === 9 && day <= 20)
     ) {
-        season = 'Summer';
+      season = 'Summer';
     } else if (
-        (month === 9 && day >= 21) ||
-        (month > 9 && month < 12) ||
-        (month === 12 && day <= 20)
+      (month === 9 && day >= 21) ||
+      (month > 9 && month < 12) ||
+      (month === 12 && day <= 20)
     ) {
-        season = 'Fall';
+      season = 'Fall';
     } else {
-        season = 'Winter';
+      season = 'Winter';
     }
 
     setSeasonInfo(prevSeasonInfo => ({
-        ...prevSeasonInfo,
-        season
+      ...prevSeasonInfo,
+      season
     }));
-};
+  };
 
   return (
     <div className="min-h-screen text-white flex flex-col items-center bg-neutral-200 dark:bg-neutral-900 transition duration-200">
@@ -483,6 +522,7 @@ function AdminDash() {
               disabledUsers={disabledUsers}
               setDisabledUsers={setDisabledUsers}
               AVAILABLE_ROLES={AVAILABLE_ROLES}
+              apiUrl={apiUrl}
             />
 
             <div className="col-span-1 w-full bg-neutral-300 dark:bg-neutral-800 text-neutral-900 dark:text-white transition duration-200 p-8 rounded-md shadow-md animate-fade animate-delay-500">
@@ -526,50 +566,102 @@ function AdminDash() {
             </div>
 
             <div className="col-span-1 w-full bg-neutral-300 dark:bg-neutral-800 text-neutral-900 dark:text-white transition duration-200 p-8 rounded-md shadow-md animate-fade animate-delay-[600ms]">
-              <h2 className="text-3xl font-bold mb-4">Download Clips</h2>
+              <h2 className="text-3xl font-bold mb-4">Admin Actions</h2>
+              <div className="flex flex-col gap-4">
+                <button
+                  onClick={processClips}
+                  className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 rounded-md focus:outline-none focus:bg-green-600"
+                >
+                  Process Clips
+                </button>
+
+                <button
+                  className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 rounded-md focus:outline-none focus:bg-red-600"
+                  onClick={handleDeleteAllClips}
+                >
+                  Reset Database
+                </button>
+              </div>
               {downloading && (
                 <div className="flex flex-col justify-center items-center space-y-2">
                   <BiLoaderCircle className="animate-spin h-5 w-5 text-white" />
-                  <span>Downloading Clips...</span>
-                  <progress value={progress} max="100" className="w-full"></progress>
+                  <span>Processing Clips...</span>
                 </div>
               )}
-              <button
-                onClick={downloadClips}
-                className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 rounded-md focus:outline-none focus:bg-green-600"
-              >
-                Download All Clips
-              </button>
-              <h2 className="text-3xl font-bold my-4">Reset Database</h2>
-              <button
-                className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 rounded-md focus:outline-none focus:bg-red-600"
-                onClick={handleDeleteAllClips}
-              >
-                Reset Database
-              </button>
             </div>
 
             <div className="col-span-1 w-full bg-neutral-300 dark:bg-neutral-800 text-neutral-900 dark:text-white transition duration-200 p-8 rounded-md shadow-md animate-fade animate-delay-[700ms]">
               <h2 className="text-3xl font-bold mb-4">Upload Zip</h2>
               <form onSubmit={handleZipSubmit}>
-                <div className="mb-4">
-                  <label htmlFor="zip" className="block text-neutral-900 dark:text-gray-300">Zip File:</label>
+                <div className="space-y-2">
+                  <label htmlFor="zip" className='flex items-center justify-center w-full px-4 py-2 bg-blue-500 text-white rounded-md cursor-pointer hover:bg-blue-600 transition duration-200'>
+                    <span>Select Zip</span>
+                    <input
+                      type="file"
+                      id="zip"
+                      name="zip"
+                      onChange={handleZipChange}
+                      className="hidden"
+                      required
+                    />
+                  </label>
                   <input
-                    type="file"
-                    id="zip"
-                    name="zip"
-                    onChange={handleZipChange}
+                    type="number"
+                    id="clipAmount"
+                    name="clipAmount"
+                    placeholder='Clip Amount'
                     className="w-full px-3 py-2 bg-white dark:bg-neutral-900 dark:text-white text-neutral-900 rounded-md focus:outline-none focus:bg-neutral-200 dark:focus:bg-neutral-700"
                     required
+                    onChange={handleClipAmountChange}
                   />
+                  <button
+                    type="submit"
+                    className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-md focus:outline-none focus:bg-blue-600"
+                  >
+                    Upload Zip
+                  </button>
                 </div>
-                <button
-                  type="submit"
-                  className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-md focus:outline-none focus:bg-blue-600"
-                >
-                  Upload Zip
-                </button>
               </form>
+            </div>
+
+            <div className="col-span-1 w-full bg-neutral-300 dark:bg-neutral-800 text-neutral-900 dark:text-white transition duration-200 p-8 rounded-md shadow-md animate-fade animate-delay-[200ms]">
+              <h2 className="text-3xl font-bold mb-4">Available Zips</h2>
+              {zipsLoading ? (
+                <div className="flex justify-center items-center">
+                  <BiLoaderCircle className="animate-spin text-4xl" />
+                </div>
+              ) : zips.length === 0 ? (
+                <p>No zips available.</p>
+              ) : (
+                <ul className="space-y-4">
+                  {zips.map(zip => (
+                    <li key={zip._id} className="flex justify-between items-center bg-neutral-400 dark:bg-neutral-700 p-4 rounded-md">
+                      <div className="flex flex-col gap-2">
+                        <h2>{zip.season}</h2>
+                        <p className='text-neutral-300'>{zip.name}</p>
+                        <div className="flex gap-2">
+                          <p className='text-neutral-300'>{zip.clipAmount} clips</p>
+                          <p className='text-neutral-300'>{(zip.size / 1000000).toFixed(2)} MB</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => { saveAs(zip.url); }}
+                          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md"
+                        >
+                          <FaDownload />
+                        </button>
+                        <button
+                          onClick={() => deleteZip(zip._id)}
+                          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md"
+                        >
+                          <FaTrash />
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             <DeniedClips
