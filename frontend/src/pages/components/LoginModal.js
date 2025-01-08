@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import apiUrl from '../../config/config';
-import { FaDiscord } from "react-icons/fa";
+import { FaDiscord, FaTimes } from "react-icons/fa";
 
 const LoginModal = ({ setIsLoginModalOpen, isLoginModalOpen, fetchUser }) => {
-  const [formMode, setFormMode] = useState('login'); // 'login' | 'register' | 'reset'
+  const [formMode, setFormMode] = useState('login');
   const [formData, setFormData] = useState({ username: '', password: '' });
   const [email, setEmail] = useState('');
   const [resetMessage, setResetMessage] = useState('');
 
   const handleChange = (e) => {
-    setFormData({...formData, [e.target.name]: e.target.value});
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleEmailChange = (e) => {
@@ -77,164 +77,165 @@ const LoginModal = ({ setIsLoginModalOpen, isLoginModalOpen, fetchUser }) => {
     <>
       {isLoginModalOpen && (
         <div
-          className="login-modal-overlay fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50 ml-0"
+          className="login-modal-overlay fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50 ml-0"
           onClick={handleLoginClickOutside}
         >
-          <div className="modal-content rounded-lg relative flex">
-            <div className="text-white flex items-center justify-center">
-              <div className="max-w-md w-full bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white backdrop-blur-lg p-8 rounded-md shadow-md">
-                {formMode === 'login' && (
-                  <>
-                    <h2 className="text-3xl font-bold mb-4">Login</h2>
-                    <form onSubmit={handleSubmit}>
-                      <div className="mb-4">
-                        <input
-                          type="text"
-                          name="username"
-                          placeholder="Username"
-                          value={formData.username}
-                          onChange={handleChange}
-                          className="w-full px-3 py-2 bg-neutral-200 dark:bg-neutral-900 dark:text-white text-neutral-900 rounded-md focus:outline-none focus:bg-neutral-300 dark:focus:bg-neutral-700"
-                          required
-                        />
-                      </div>
-                      <div className="mb-4">
-                        <input
-                          type="password"
-                          name="password"
-                          placeholder="Password"
-                          value={formData.password}
-                          onChange={handleChange}
-                          className="w-full px-3 py-2 bg-neutral-200 dark:bg-neutral-900 dark:text-white text-neutral-900 rounded-md focus:outline-none focus:bg-neutral-300 dark:focus:bg-neutral-700"
-                          required
-                        />
-                      </div>
-                      <button
-                        type="submit"
-                        className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-md"
-                      >
-                        Login
-                      </button>
-                    </form>
+          <div className="modal-content relative md:rounded-3xl justify-center items-center animate-jump-in bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white">
+            <div className="min-w-[100vw] h-[100vh] md:h-auto md:min-w-px backdrop-blur-lg p-10 md:rounded-3xl shadow-md flex flex-col items-center justify-center md:block transition-transform duration-200">
+              <button
+                onClick={() => setIsLoginModalOpen(false)}
+                className="absolute top-4 right-4 text-3xl text-neutral-900 dark:text-white hover:text-red-500 transition duration-200"
+              >
+                <FaTimes />
+              </button>
+              {formMode === 'login' && (
+                <>
+                  <h2 className="text-5xl md:text-3xl font-bold mb-4">Login</h2>
+                  <form onSubmit={handleSubmit} className="w-full">
+                    <div className="mb-4">
+                      <input
+                        type="text"
+                        name="username"
+                        placeholder="Username"
+                        value={formData.username}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 bg-neutral-200 dark:bg-neutral-900 dark:text-white text-neutral-900 rounded-md focus:outline-none focus:bg-neutral-300 dark:focus:bg-neutral-700"
+                        required
+                      />
+                    </div>
+                    <div className="mb-4">
+                      <input
+                        type="password"
+                        name="password"
+                        placeholder="Password"
+                        value={formData.password}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 bg-neutral-200 dark:bg-neutral-900 dark:text-white text-neutral-900 rounded-md focus:outline-none focus:bg-neutral-300 dark:focus:bg-neutral-700"
+                        required
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-md transition duration-200"
+                    >
+                      Login
+                    </button>
                     <div className="mt-4 text-center">
                       <button
                         onClick={handleDiscordLogin}
-                        className="flex items-center justify-center w-full bg-blurple hover:bg-blurple-dark text-white py-2 rounded-md"
+                        className="flex items-center justify-center w-full bg-blurple hover:bg-blurple-dark text-white py-2 rounded-md transition duration-200"
                       >
                         <FaDiscord className="mr-1" /> Login with Discord
                       </button>
                     </div>
-                    <div className="mt-4 text-center">
-                      <button
-                        onClick={() => setFormMode('register')}
-                        className="text-blue-500 hover:underline"
-                      >
-                        Don’t have an account? Register
-                      </button>
-                    </div>
-                    <div className="mt-4 text-center">
-                      <button
-                        onClick={() => setFormMode('reset')}
-                        className="text-red-500 hover:underline"
-                      >
-                        Forgot your password?
-                      </button>
-                    </div>
-                  </>
-                )}
+                  </form>
+                  <div className="mt-4 flex flex-col md:flex-row md:space-x-16 text-center justify-center items-center">
+                    <button
+                      onClick={() => setFormMode('register')}
+                      className="text-blue-500 hover:underline"
+                    >
+                      Don’t have an account? Register
+                    </button>
+                    <button
+                      onClick={() => setFormMode('reset')}
+                      className="text-red-500 hover:underline"
+                    >
+                      Forgot your password?
+                    </button>
+                  </div>
+                </>
+              )}
 
-                {formMode === 'register' && (
-                  <>
-                    <h2 className="text-3xl font-bold mb-4">Register</h2>
-                    <form onSubmit={handleSubmit}>
-                      <div className="relative mb-4">
-                        <input
-                          type="text"
-                          name="username"
-                          placeholder="Username"
-                          value={formData.username}
-                          onChange={handleChange}
-                          maxLength={30}
-                          className="w-full px-3 py-2 bg-neutral-200 dark:bg-neutral-900 dark:text-white text-neutral-900 rounded-md"
-                          required
-                        />
-                        {formData.username.length > 0 && (
-                          <p
-                            className={`absolute bottom-1 right-1 bg-white/10 rounded-md backdrop-blur-md p-1 ${
-                              formData.username.length === 30
-                                ? 'text-red-500'
-                                : 'text-neutral-800'
+              {formMode === 'register' && (
+                <>
+                  <h2 className="text-3xl font-bold mb-4">Register</h2>
+                  <form onSubmit={handleSubmit}>
+                    <div className="relative mb-4">
+                      <input
+                        type="text"
+                        name="username"
+                        placeholder="Username"
+                        value={formData.username}
+                        onChange={handleChange}
+                        maxLength={30}
+                        className="w-full px-3 py-2 bg-neutral-200 dark:bg-neutral-900 dark:text-white text-neutral-900 rounded-md"
+                        required
+                      />
+                      {formData.username.length > 0 && (
+                        <p
+                          className={`absolute bottom-1 right-1 bg-white/10 rounded-md backdrop-blur-md p-1 ${formData.username.length === 30
+                              ? 'text-red-500'
+                              : 'text-neutral-300'
                             }`}
-                          >
-                            {formData.username.length}/30
-                          </p>
-                        )}
-                      </div>
-                      <div className="mb-4">
-                        <input
-                          type="password"
-                          name="password"
-                          placeholder="Password"
-                          value={formData.password}
-                          onChange={handleChange}
-                          className="w-full px-3 py-2 bg-neutral-200 dark:bg-neutral-900 dark:text-white text-neutral-900 rounded-md"
-                          required
-                        />
-                      </div>
-                      <button
-                        type="submit"
-                        className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-md"
-                      >
-                        Register
-                      </button>
-                      <div className="mt-4 text-center">
+                        >
+                          {formData.username.length}/30
+                        </p>
+                      )}
+                    </div>
+                    <div className="mb-4">
+                      <input
+                        type="password"
+                        name="password"
+                        placeholder="Password"
+                        value={formData.password}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 bg-neutral-200 dark:bg-neutral-900 dark:text-white text-neutral-900 rounded-md transition duration-200"
+                        required
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-md"
+                    >
+                      Register
+                    </button>
+                    <div className="mt-4 text-center">
                       <button
                         onClick={handleDiscordLogin}
-                        className="flex items-center justify-center w-full bg-blurple hover:bg-blurple-dark text-white py-2 rounded-md"
+                        className="flex items-center justify-center w-full bg-blurple hover:bg-blurple-dark text-white py-2 rounded-md transition duration-200"
                       >
                         <FaDiscord className="mr-1" /> Register with Discord
                       </button>
                     </div>
-                    </form>
-                    <div className="mt-4 text-center">
-                      <button
-                        onClick={() => setFormMode('login')}
-                        className="text-blue-500 hover:underline"
-                      >
-                        Already have an account? Login
-                      </button>
-                    </div>
-                  </>
-                )}
-
-                {formMode === 'reset' && (
-                  <>
-                    <h2 className="text-3xl font-bold mb-4">Reset Password</h2>
-                    <input
-                      type="email"
-                      placeholder="Enter your email"
-                      value={email}
-                      onChange={handleEmailChange}
-                      className="w-full px-3 py-2 bg-neutral-200 dark:bg-neutral-900 dark:text-white text-neutral-900 rounded-md"
-                    />
+                  </form>
+                  <div className="mt-4 text-center">
                     <button
-                      onClick={handlePasswordReset}
-                      className="w-full bg-red-500 hover:bg-red-600 text-white py-2 rounded-md mt-4"
+                      onClick={() => setFormMode('login')}
+                      className="text-blue-500 hover:underline"
                     >
-                      Reset Password
+                      Already have an account? Login
                     </button>
-                    {resetMessage && <p className="mt-2 text-green-500">{resetMessage}</p>}
-                    <div className="mt-4 text-center">
-                      <button
-                        onClick={() => setFormMode('login')}
-                        className="text-blue-500 hover:underline"
-                      >
-                        Back to Login
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
+                  </div>
+                </>
+              )}
+
+              {formMode === 'reset' && (
+                <>
+                  <h2 className="text-3xl font-bold mb-4">Reset Password</h2>
+                  <input
+                    type="email"
+                    placeholder="Enter your email"
+                    value={email}
+                    onChange={handleEmailChange}
+                    className="w-full px-3 py-2 bg-neutral-200 dark:bg-neutral-900 dark:text-white text-neutral-900 rounded-md"
+                  />
+                  <button
+                    onClick={handlePasswordReset}
+                    className="w-full bg-red-500 hover:bg-red-600 text-white py-2 rounded-md mt-4 transition duration-200"
+                  >
+                    Reset Password
+                  </button>
+                  {resetMessage && <p className="mt-2 text-green-500">{resetMessage}</p>}
+                  <div className="mt-4 text-center">
+                    <button
+                      onClick={() => setFormMode('login')}
+                      className="text-blue-500 hover:underline"
+                    >
+                      Back to Login
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
