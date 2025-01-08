@@ -11,6 +11,10 @@ const mongoose = require('mongoose');
  *           type: string
  *           description: The username of the user
  *           required: true
+ *         email:
+ *           type: string
+ *           description: The email of the user
+ *           required: false
  *         password:
  *           type: string
  *           description: The password of the user
@@ -48,6 +52,7 @@ const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
+  email: { type: String, unique: true, sparse: true },
   password: { type: String, required: true },
   profilePicture: { type: String, default: 'https://api.spoekle.com/profilePictures/profile_placeholder.png' },
   roles: { type: [String], enum: ['admin', 'user', 'clipteam', 'editor', 'uploader'], default: ['user'], required: true },
