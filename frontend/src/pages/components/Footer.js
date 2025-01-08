@@ -43,17 +43,31 @@ function Footer() {
     }; 
 
     const getSeason = () => {
-        const currentDate = new Date().toLocaleDateString();
+        const now = new Date();
+        const month = now.getMonth() + 1;
+        const day = now.getDate();
         let season = '';
     
-        if (currentDate >= '12-21' || currentDate <= '03-19') {
-          season = 'Winter';
-        } else if (currentDate >= '03-20' && currentDate <= '06-20') {
+        if (
+          (month === 3 && day >= 20) ||
+          (month > 3 && month < 6) ||
+          (month === 6 && day <= 20)
+        ) {
           season = 'Spring';
-        } else if (currentDate >= '06-21' && currentDate <= '09-21') {
+        } else if (
+          (month === 6 && day >= 21) ||
+          (month > 6 && month < 9) ||
+          (month === 9 && day <= 20)
+        ) {
           season = 'Summer';
-        } else {
+        } else if (
+          (month === 9 && day >= 21) ||
+          (month > 9 && month < 12) ||
+          (month === 12 && day <= 20)
+        ) {
           season = 'Fall';
+        } else {
+          season = 'Winter';
         }
     
         setSeasonInfo(prevSeasonInfo => ({

@@ -110,7 +110,7 @@ const ClipContent = ({ clip, setExpandedClip, isLoggedIn, user, token, fetchClip
   };
 
   return (
-    <div className="p-4 animate-fade">
+    <div className="animate-fade">
       {clip && (
         <Helmet>
           <title>{currentClip && currentClip.streamer + " | " + currentClip.title}</title>

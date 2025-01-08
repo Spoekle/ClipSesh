@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { apiUrl } from '../../../config/config';
 import { FaDiscord } from 'react-icons/fa';
 import axios from 'axios';
 
-const UserList = ({ users, admins, clipTeam, editors, uploader, fetchUsers, disabledUsers, setDisabledUsers, AVAILABLE_ROLES }) => {
+const UserList = ({ users, admins, clipTeam, editors, uploader, fetchUsers, disabledUsers, setDisabledUsers, AVAILABLE_ROLES, apiUrl }) => {
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
