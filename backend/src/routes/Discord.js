@@ -11,7 +11,7 @@ const CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
 
 router.get('/auth', (req, res) => {
   const state = encodeURIComponent(req.query.siteUserId);
-  const discordAuthUrl = `https://discord.com/oauth2/authorize?client_id=1265824671224561766&response_type=code&redirect_uri=${encodeURIComponent('https://api.spoekle.com/api/discord/callback')}&scope=identify+guilds.members.read&state=${state}`;
+  const discordAuthUrl = `https://discord.com/oauth2/authorize?client_id=1265824671224561766&response_type=code&redirect_uri=${encodeURIComponent('https://api.spoekle.com/api/discord/callback')}&scope=identify+guilds.members.read+email&state=${state}`;
   res.redirect(discordAuthUrl);
 });
 
@@ -48,16 +48,21 @@ router.get('/callback', async (req, res) => {
 
     const userGuildInfo = guildsResponse.data;
 
-    // Define the role priority for the Discord roles
     const ROLE_PRIORITY = [
       { id: '564614999855595520', role: 'admin' },
       { id: '506190660412375040', role: 'admin' },
       { id: '528492877932658693', role: 'editor' },
-      { id: '889451337182502942', role: 'clipteam' }
+      { id: '889451337182502942', role: 'clipteam' },
     ];
 
     const determineUserRoles = (userRoles) => {
-      return ROLE_PRIORITY.filter(role => userRoles.includes(role.id)).map(role => role.role);
+      const roles = ['user']; // Default role
+      ROLE_PRIORITY.forEach(({ id, role }) => {
+        if (userRoles.includes(id)) {
+          roles.push(role);
+        }
+      });
+      return roles;
     };
 
     // Check if the Discord account is already linked to an existing user
@@ -76,6 +81,7 @@ router.get('/callback', async (req, res) => {
       if (user) {
         user.discordId = discordUser.id;
         user.discordUsername = discordUser.global_name;
+        user.email = discordUser.email;
         user.profilePicture = `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}`;
         user.roles = determineUserRoles(userGuildInfo.roles);
         await user.save();
@@ -88,6 +94,7 @@ router.get('/callback', async (req, res) => {
     // Create a new user based on the Discord account
     const newUser = new User({
       username: discordUser.global_name,
+      email: discordUser.email,
       password: await bcrypt.hash(discordUser.global_name + discordUser.id, 10),
       discordId: discordUser.id,
       discordUsername: discordUser.global_name,
