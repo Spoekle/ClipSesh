@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import apiUrl from '../../config/config';
+import { TbLoader2 } from "react-icons/tb";
 import { FaDiscord, FaTimes } from "react-icons/fa";
 
 const LoginModal = ({ setIsLoginModalOpen, isLoginModalOpen, fetchUser }) => {
   const [formMode, setFormMode] = useState('login');
   const [formData, setFormData] = useState({ username: '', password: '' });
   const [email, setEmail] = useState('');
-  const [resetMessage, setResetMessage] = useState('');
+  const [resetMessage, setResetMessage] = useState({type : '', message : ''});
+  const [awaitingReset, setAwaitingReset] = useState(false);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -61,11 +63,19 @@ const LoginModal = ({ setIsLoginModalOpen, isLoginModalOpen, fetchUser }) => {
 
   const handlePasswordReset = async () => {
     try {
+      setAwaitingReset(true);
       await axios.post(`${apiUrl}/api/users/resetPassword`, { email });
-      setResetMessage(`Password reset. Check your email at ${email}.`);
+      setResetMessage({ type: 'success', message: `Password reset. Check your email at ${email}.` });
+      setAwaitingReset(false);
     } catch (error) {
-      console.error('Error resetting password:', error);
-      setResetMessage('Failed to reset password. Please try again.');
+      if (error.response && error.response.status === 404) {
+        setResetMessage({ type: 'error', message: 'Email not found. Please try again.' });
+      } else if (error.response && error.response.status === 400) {
+        setResetMessage({ type: 'error', message: 'Please fill in your email.' });
+      } else {
+        setResetMessage({ type: 'error', message: 'Failed to reset password. Please try again.' });
+      }
+      setAwaitingReset(false);
     }
   };
 
@@ -225,7 +235,12 @@ const LoginModal = ({ setIsLoginModalOpen, isLoginModalOpen, fetchUser }) => {
                   >
                     Reset Password
                   </button>
-                  {resetMessage && <p className="mt-2 text-green-500">{resetMessage}</p>}
+                  {awaitingReset && (
+                    <div className="flex justify-center items-center mt-4">
+                      <TbLoader2 className="animate-spin text-4xl" />
+                    </div>
+                  )}
+                  {resetMessage && <p className={`mt-2 ${resetMessage.type === "error" ? "text-red-400" : resetMessage.type === "success" ? "text-green-400" : "text-neutral-300"} `}>{resetMessage.message}</p>}
                   <div className="mt-4 text-center">
                     <button
                       onClick={() => setFormMode('login')}

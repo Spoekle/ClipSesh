@@ -47,7 +47,7 @@ router.post('/login', async (req, res) => {
         if (!isPasswordValid) return res.status(400).json({ error: 'Invalid username or password' });
 
         const token = jwt.sign({ id: user._id, username: user.username, roles: user.roles }, secretKey, { expiresIn: '1 day' });
-        res.json({ token, username: user.username });
+        res.json({ token });
     } catch (error) {
         res.status(500).json({ error: 'Internal Server Error' });
     }
@@ -65,7 +65,8 @@ router.post('/register', async (req, res) => {
         const newUser = new User({ username, password: hashedPassword });
         await newUser.save();
 
-        res.status(201).json({ message: 'Registration successful. Awaiting admin approval.' });
+        const token = jwt.sign({ id: newUser._id, username: newUser.username, roles: newUser.roles }, secretKey, { expiresIn: '1 day' });
+        res.json({ token });
     } catch (error) {
         res.status(500).json({ error: 'Internal Server Error' });
     }
@@ -79,14 +80,9 @@ router.post('/resetPassword', async (req, res) => {
         const user = await User.findOne({ email });
         if (!user) return res.status(404).json({ error: 'User not found or no email linked' });
 
-        // Generate new random password
-        const newPassword = crypto.randomBytes(9).toString('base64').replace(/\+/g, '0').replace(/\//g, '1').slice(0, 15).match(/.{1,5}/g).join('-');
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        const resetToken = jwt.sign({ id: user._id }, secretKey, { expiresIn: '1h' });
+        const resetLink = `https://clipsesh.cube.community/reset-password?token=${resetToken}`;
 
-        user.password = hashedPassword;
-        await user.save();
-
-        // Send email with new password
         let transporter = nodemailer.createTransport({
             host: 'smtp.mail.me.com',
             port: 587, 
@@ -100,22 +96,54 @@ router.post('/resetPassword', async (req, res) => {
             }
           });
 
-          await transporter.sendMail({
+        await transporter.sendMail({
             from: 'noreply@spoekle.com',
             to: email,
-            subject: 'New password for ClipSesh requested',
-            text: `Hi ${user.username}!
-          
-You have requested to reset your password on ClipSesh, so the elves that keep this site running got straight to work.
+            subject: 'Reset Your ClipSesh Password',
+            text: `Hi ${user.username},
 
-This is your new password: ${newPassword}
+You have requested to reset your password on ClipSesh. Please click the link below to set a new password:
 
-Happy rating! 🎉🎉🎉
+${resetLink}
+
+If you did not request this, please ignore this email.
 
 - ClipSesh Team`
-          });
+        });
 
-        return res.json({ success: true, message: 'Password reset. Check your email.' });
+        return res.json({ success: true, message: 'Password reset link sent to your email.' });
+    } catch (error) {
+        console.error('Error sending reset password email:', error);
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+router.post('/resetPassword/confirm', async (req, res) => {
+    try {
+        const { token, password } = req.body;
+
+        if (!token || !password) {
+            return res.status(400).json({ error: 'Token and new password are required.' });
+        }
+
+        let decoded;
+        try {
+            decoded = jwt.verify(token, secretKey);
+        } catch (err) {
+            return res.status(400).json({ error: 'Invalid or expired token.' });
+        }
+
+        const user = await User.findById(decoded.id);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found.' });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        user.password = hashedPassword;
+        await user.save();
+
+        return res.json({ success: true, message: 'Password has been reset successfully. Redirecting...' });
     } catch (error) {
         console.error('Error resetting password:', error);
         return res.status(500).json({ error: 'Internal Server Error' });

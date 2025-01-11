@@ -8,6 +8,7 @@ import ClipViewer from './pages/ClipViewer'
 import ClipSearch from './pages/ClipSearch';
 import Home from './pages/Home';
 import AdminDash from './pages/AdminDash';
+import ResetPassword from './pages/ResetPassword';
 import PrivacyStatement from './pages/PrivacyStatement';
 import ProfilePage from './pages/ProfilePage';
 import Stats from './pages/Stats';
@@ -111,6 +112,7 @@ function ClipSesh() {
         <Route path="/admin" element={<RequireAuth isAdminRequired={true}><AdminDash /></RequireAuth>} />
         <Route path="/profile" element={<RequireAuth><ProfilePage user={user} setUser={setUser} /></RequireAuth>} />
         <Route path="/stats" element={<RequireAuth isVerifiedRequired={true}><Stats user={user} setUser={setUser} /></RequireAuth>} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/privacystatement" element={<PrivacyStatement />} />
       </Routes>
       <Footer />
