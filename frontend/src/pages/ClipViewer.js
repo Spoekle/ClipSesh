@@ -525,6 +525,7 @@ function ClipViewer() {
                 : fallBg})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
+          clipPath: 'polygon(0 0, 100% 0, 100% 80%, 0 100%)',
         }}
       >
         <div className="flex bg-gradient-to-b from-neutral-900 to-bg-black/20 backdrop-blur-lg justify-center items-center w-full h-full">

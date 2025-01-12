@@ -87,7 +87,7 @@ function DesktopNavbar({
                             />
                         </div>
                         {showRecentSearched && (
-                            <div className="absolute top-8 mt-2 w-full bg-white/60 dark:bg-neutral-900 rounded-md shadow-lg py-2 z-10 recent-searches">
+                            <div className="absolute top-8 mt-2 w-full bg-white/70 dark:bg-neutral-900/70 border-neutral-200 dark:border-neutral-800 border rounded-md shadow-lg py-2 z-10 recent-searches">
                                 <button
                                     type="button"
                                     onClick={() => setShowRecentSearched(false)}
@@ -142,40 +142,43 @@ function DesktopNavbar({
                                 />
                             </button>
                             {isDropdownOpen && (
-                                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-neutral-900 rounded-md shadow-lg py-2">
+                                <div className="absolute right-0 mt-2 w-48 bg-white/70 dark:bg-neutral-900/70 border-neutral-200 dark:border-neutral-800 border rounded-md shadow-lg py-2">
                                     <div className="flex items-center justify-between">
                                         <NavLink
                                             to="/profile"
-                                            className="flex px-4 py-2 text-sm text-neutral-900 dark:text-white hover:bg-black/20"
+                                            className="flex px-4 py-2 text-sm items-center text-neutral-900 dark:text-white hover:bg-black/20"
                                             onClick={toggleDropdown}
                                         >
                                             <img
                                                 src={user.profilePicture}
                                                 alt={user.username}
-                                                className="h-8 w-8 rounded-full"
+                                                className="h-10 w-10 rounded-full"
                                             />
                                             <div className="ml-4">
                                                 <p className="font-semibold">{user.username}</p>
                                                 <p className="text-sm text-neutral-500 dark:text-neutral-400">{user.roles.map(role => role.charAt(0).toUpperCase() + role.slice(1)).join(', ')}</p>
                                             </div>
-
                                         </NavLink>
-                                        <button
-                                            onClick={handleLogout}
-                                            className="flex items-center justify-end p-4 pl-6 text-sm text-neutral-900 dark:text-white hover:bg-black/20"
-                                        >
-                                            <MdLogout size={16} className='mr-2' />
-                                        </button>
                                     </div>
                                     {(user.roles.includes('admin') || user.roles.includes('clipteam')) && (
-                                        <NavLink
-                                            to="/stats"
-                                            className="relative block px-4 py-2 text-sm text-neutral-900 dark:text-white hover:bg-black/20"
-                                            onClick={toggleDropdown}
-                                        >
-                                            Stats
-                                        </NavLink>
+                                        <>
+                                            <div className="border-t border-neutral-200 dark:border-neutral-800 my-2" />
+                                            <NavLink
+                                                to="/stats"
+                                                className="relative block px-4 py-2 text-sm text-neutral-900 dark:text-white hover:bg-black/20"
+                                                onClick={toggleDropdown}
+                                            >
+                                                Stats
+                                            </NavLink>
+                                        </>
                                     )}
+                                    <div className="border-t border-neutral-200 dark:border-neutral-800 my-2" />
+                                    <button
+                                        onClick={handleLogout}
+                                        className="flex w-full items-center text-left px-4 py-2 text-sm text-neutral-900 dark:text-white hover:bg-black/20"
+                                    >
+                                        Logout <MdLogout size={16} className='ml-2' />
+                                    </button>
                                 </div>
                             )}
                         </div>

@@ -70,7 +70,7 @@ function ClipSesh() {
     if (showLoadingScreen) {
       return (
         <div className="absolute z-70 w-full h-full bg-neutral-200 dark:bg-neutral-900 ">
-          <div className="flex h-96 justify-center items-center" style={{ backgroundImage: `url(${background})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+          <div className="flex h-96 justify-center items-center" style={{ backgroundImage: `url(${background})`, backgroundSize: 'cover', backgroundPosition: 'center', clipPath: 'polygon(0 0, 100% 0, 100% 80%, 0 100%)' }}>
             <div className="flex bg-gradient-to-b from-neutral-900 to-bg-black/20 backdrop-blur-lg justify-center items-center w-full h-full">
               <div className="flex flex-col justify-center items-center">
                 <h1 className="text-4xl font-bold mb-4 text-white text-center animate-pulse animate-duration-[800ms]">Checking Authentication...</h1>

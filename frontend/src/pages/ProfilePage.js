@@ -87,7 +87,15 @@ function ProfilePage({ user, setUser }) {
         <title>{user && user.username + "'s profile"}</title>
         <meta name="description" content={user && user.username + "'s profile page"} />
       </Helmet>
-      <div className="flex h-96 justify-center items-center animate-fade" style={{ backgroundImage: `url(${user.profilePicture})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+      <div
+        className="flex h-96 justify-center items-center animate-fade"
+        style={{
+          backgroundImage: `url(${user.profilePicture})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          clipPath: 'polygon(0 0, 100% 0, 100% 80%, 0 100%)',
+        }}
+      >
         <div className="flex bg-gradient-to-b from-neutral-900 to-bg-black/20 backdrop-blur-lg justify-center items-center w-full h-full">
           <div className="flex flex-col justify-center items-center">
             <h1 className="text-4xl font-bold mb-4 text-center">Profile Page</h1>

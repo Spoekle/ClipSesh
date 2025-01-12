@@ -73,7 +73,7 @@ function MobileNavbar({
                             />
                         </button>
                         {isDropdownOpen && (
-                            <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-neutral-900 rounded-md shadow-lg py-2">
+                            <div className="absolute right-0 mt-2 w-48 bg-white/70 dark:bg-neutral-900/70 border-neutral-200 dark:border-neutral-800 border rounded-md shadow-lg py-2">
                                 <NavLink
                                     to="/profile"
                                     className="flex px-4 py-2 text-sm items-center text-neutral-900 dark:text-white hover:bg-black/20"
