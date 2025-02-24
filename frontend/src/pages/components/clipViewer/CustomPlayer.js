@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MdFullscreen, MdPause, MdPlayArrow, MdVolumeUp } from "react-icons/md";
+import { MdFullscreen, MdFullscreenExit, MdPause, MdPlayArrow, MdVolumeUp } from "react-icons/md";
 import Slider from '@mui/material/Slider';
 
 const CustomPlayer = ({ currentClip }) => {
@@ -7,7 +7,9 @@ const CustomPlayer = ({ currentClip }) => {
     const [currentTime, setCurrentTime] = useState(0);
     const [volume, setVolume] = useState(0.5);
     const [showVolume, setShowVolume] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
+    const divRef = useRef(null);
     const videoRef = useRef(null);
 
     useEffect(() => {
@@ -20,6 +22,20 @@ const CustomPlayer = ({ currentClip }) => {
     }, []);
 
     useEffect(() => {
+        const handlePause = () => setIsPlaying(false);
+        const handlePlay = () => setIsPlaying(true);
+        const ref = videoRef.current; // create new ref variable because react throws a fit if "videoRef.current" is called during cleanup lol
+        if(ref) {
+            ref.addEventListener(`pause`, handlePause);
+            ref.addEventListener(`play`, handlePlay);
+            return () => {
+                ref.removeEventListener(`pause`, handlePause);
+                ref.removeEventListener(`play`, handlePlay);
+            }
+        }
+    }, [videoRef.current])
+
+    useEffect(() => {
         if (videoRef.current) {
             videoRef.current.volume = volume;
         }
@@ -29,10 +45,8 @@ const CustomPlayer = ({ currentClip }) => {
         if (!videoRef.current) return;
         if (videoRef.current.paused) {
             videoRef.current.play();
-            setIsPlaying(true);
         } else {
             videoRef.current.pause();
-            setIsPlaying(false);
         }
     };
 
@@ -54,23 +68,28 @@ const CustomPlayer = ({ currentClip }) => {
     };
 
     const handleFullscreen = () => {
-        if (!videoRef.current) return;
-        if (videoRef.current.requestFullscreen) {
-            videoRef.current.requestFullscreen();
+        if (!divRef.current) return;
+        if (divRef.current.requestFullscreen) {
+            if(isFullscreen) {
+                document.exitFullscreen();
+                setIsFullscreen(false);
+            } else {
+                divRef.current.requestFullscreen();
+                setIsFullscreen(true);
+            }
         }
     };
 
     return (
-        <div className="relative flex flex-col items-center justify-center">
+        <div ref={divRef} className="relative flex flex-col items-center justify-center">
             <video
                 ref={videoRef}
                 onTimeUpdate={handleTimeUpdate}
                 className="w-full rounded-2xl bg-black object-cover"
                 src={currentClip.url + '#t=0.001'}
-                controls={isMobile}
+                controls={false}
             />
-            {!isMobile && (
-                <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex items-center space-x-3 p-2 bg-white/20 backdrop-blur-md rounded-lg">
+                <div className={`absolute bottom-2 ${isMobile ? `w-[calc(100%-1rem)] left-2` : `left-1/2 transform -translate-x-1/2`} flex items-center space-x-3 p-2 bg-white/20 backdrop-blur-md rounded-lg`}>
                     <button onClick={togglePlay} className="text-white text-xl p-1">
                         {isPlaying ? <MdPause /> : <MdPlayArrow />}
                     </button>
@@ -80,7 +99,7 @@ const CustomPlayer = ({ currentClip }) => {
                         max={videoRef.current?.duration || 0}
                         value={currentTime}
                         onChange={handleSeek}
-                        className="w-48 h-1 accent-blue-600 cursor-pointer transition-all"
+                        className="w-full h-1 accent-blue-600 cursor-pointer transition-all"
                     />
                     <div className="relative">
                         <button
@@ -103,10 +122,9 @@ const CustomPlayer = ({ currentClip }) => {
                         )}
                     </div>
                     <button onClick={handleFullscreen} className="text-white text-xl p-1" title='Fullscreen'>
-                        <MdFullscreen />
+                        {isFullscreen ? (<MdFullscreenExit />) : (<MdFullscreen />)}
                     </button>
                 </div>
-            )}
         </div>
     );
 };
