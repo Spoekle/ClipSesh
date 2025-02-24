@@ -22,6 +22,19 @@ const CustomPlayer = ({ currentClip }) => {
     }, []);
 
     useEffect(() => {
+        const handleFullscreen = (e) => {
+            if(document.fullscreenElement == divRef?.current) {
+                setIsFullscreen(true);
+            } else {
+                setIsFullscreen(false);
+            }
+        }
+        handleFullscreen();
+        window.addEventListener('fullscreenchange', handleFullscreen);
+        return () => window.removeEventListener('fullscreenchange', handleFullscreen);
+    }, []);
+
+    useEffect(() => {
         const handlePause = () => setIsPlaying(false);
         const handlePlay = () => setIsPlaying(true);
         const ref = videoRef.current; // create new ref variable because react throws a fit if "videoRef.current" is called during cleanup lol
@@ -72,10 +85,8 @@ const CustomPlayer = ({ currentClip }) => {
         if (divRef.current.requestFullscreen) {
             if(isFullscreen) {
                 document.exitFullscreen();
-                setIsFullscreen(false);
             } else {
                 divRef.current.requestFullscreen();
-                setIsFullscreen(true);
             }
         }
     };
