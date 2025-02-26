@@ -63,7 +63,6 @@ const ClipItem = ({ clip, hasUserRated, setExpandedClip, index }) => {
         onPlaying={(e) => {
           if(clip.thumbnail && !e.target.classList.contains(`group-hover:opacity-100`)) {
             e.target.classList.add(`group-hover:opacity-100`)
-            console.log(`added opacity`);
 
             if(!thumbnailRef?.current?.classList.contains(`group-hover:opacity-0`)) {
               thumbnailRef.current.classList.add(`group-hover:opacity-0`)
