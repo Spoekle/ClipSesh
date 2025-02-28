@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Helmet } from 'react-helmet';
 import apiUrl from '../config/config';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
@@ -82,13 +82,18 @@ const ClipSearch = () => {
         limit: 12 // Consistent page size
       };
 
+      console.log("Sending search request with params:", params);
+
       const response = await axios.get(`${apiUrl}/api/clips/search`, { params });
       setProgress(70);
       
+      // Trust the backend sort, don't re-sort in frontend
       setClips(response.data.clips || []);
-      // Make sure we get the total count from the API response
-      setTotalClips(response.data.totalResults || response.data.total || 0);
+      setTotalClips(response.data.totalClips || 0);
       setTotalPages(response.data.totalPages || 1);
+      
+      // Log the response structure for debugging
+      console.log(`Received ${response.data.clips?.length} clips, page ${response.data.currentPage}/${response.data.totalPages}, sort: ${response.data.appliedFilters?.sort}`);
       
       if (!streamers.length || !submitters.length) {
         fetchFilterOptions();
@@ -119,7 +124,12 @@ const ClipSearch = () => {
     if (sortOption !== 'newest') params.set('sort', sortOption);
     
     navigate(`/search?${params.toString()}`, { replace: true });
-  }, [searchTerm, currentPage, streamerFilter, submitterFilter, sortOption, navigate]);
+    
+    // Only fetch if searchTerm exists
+    if (searchTerm) {
+      fetchClips();
+    }
+  }, [searchTerm, currentPage, streamerFilter, submitterFilter, sortOption, navigate, fetchClips]);
 
   // Debounced search handler
   const debouncedSearch = useCallback(
@@ -153,10 +163,17 @@ const ClipSearch = () => {
     setSortOption('newest');
   };
 
-  // Handle filter changes
+  // Fix the applyFilters function to actually trigger a search
   const applyFilters = () => {
     setCurrentPage(1); // Reset to page 1 when filters change
     setFilterOpen(false);
+  };
+
+  // Fix the sort option change handler to immediately apply the sorting
+  const handleSortChange = (e) => {
+    const newSortOption = e.target.value;
+    setSortOption(newSortOption);
+    setCurrentPage(1); // Important: reset to page 1 when sorting changes
   };
 
   // Generate title highlighting for search matches
@@ -226,11 +243,11 @@ const ClipSearch = () => {
               )}
               
               <div className="flex items-center space-x-2">
-                {/* Sort dropdown */}
+                {/* Fixed sort dropdown */}
                 <div className="relative inline-block">
                   <select
                     value={sortOption}
-                    onChange={(e) => setSortOption(e.target.value)}
+                    onChange={handleSortChange}
                     className="appearance-none bg-white/20 hover:bg-white/30 text-white rounded px-4 py-2 pr-8 cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/50"
                   >
                     <option value="newest">Newest First</option>
@@ -357,7 +374,7 @@ const ClipSearch = () => {
           </div>
         ) : clips.length > 0 ? (
           <>
-            {/* Grid of Clips */}
+            {/* Grid of Clips - Use clips directly, not sortedClips */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {clips.map((clip, index) => (
                 <motion.div

@@ -94,6 +94,19 @@ router.get('/filter-options', async (req, res) => {
  *         name: limit
  *         schema:
  *           type: integer
+ *       - in: query
+ *         name: sort
+ *         schema:
+ *           type: string
+ *         description: Sorting option (newest, oldest, upvotes, downvotes)
+ *       - in: query
+ *         name: streamer
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: submitter
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
  *         description: OK
@@ -105,7 +118,7 @@ router.get('/filter-options', async (req, res) => {
  *         description: Internal Server Error
  */
 router.get('/search', searchLimiter, async (req, res) => {
-    let { q, page = 1, limit = 10 } = req.query;
+    let { q, page = 1, limit = 10, sort = 'newest', streamer, submitter } = req.query;
 
     if (!q || q.trim() === '') {
         return res.status(400).json({ error: 'Missing search query parameter `q`.' });
@@ -116,28 +129,87 @@ router.get('/search', searchLimiter, async (req, res) => {
     const skip = (page - 1) * limit;
 
     try {
-        const allClips = await Clip.find().sort({ createdAt: -1 });
+        console.log(`Search request: q=${q}, page=${page}, limit=${limit}, sort=${sort}, streamer=${streamer || 'all'}, submitter=${submitter || 'all'}`);
+        
+        // First get all clips from the database with potential filters
+        let query = {};
+        if (streamer) query.streamer = streamer;
+        if (submitter) query.submitter = submitter;
+        
+        // Use lean() for better performance with large result sets
+        const allClips = await Clip.find(query).lean();
+        console.log(`Found ${allClips.length} clips matching base filters`);
 
+        // Perform search with Fuse.js
         const options = {
             keys: ['title', 'streamer', 'submitter'],
             threshold: 0.3,
+            includeScore: true, // Include match score for potential relevance sorting
         };
+        
         const fuse = new Fuse(allClips, options);
-
-        const results = fuse.search(q);
-        const clips = results.slice(skip, skip + limit).map(result => result.item);
-
-        if (clips.length === 0) {
-            return res.status(404).json({ message: `No clips found matching "${q}".` });
+        const searchResults = fuse.search(q);
+        console.log(`Search found ${searchResults.length} matching clips`);
+        
+        if (searchResults.length === 0) {
+            return res.status(404).json({ 
+                message: `No clips found matching "${q}"${streamer ? ` for streamer "${streamer}"` : ''}${submitter ? ` by submitter "${submitter}"` : ''}.` 
+            });
         }
+        
+        // Apply global sorting to all search results
+        let sortedResults;
+        switch (sort) {
+            case 'oldest':
+                sortedResults = searchResults.sort((a, b) => new Date(a.item.createdAt) - new Date(b.item.createdAt));
+                console.log('Sorting by oldest first');
+                break;
+            case 'upvotes':
+                sortedResults = searchResults.sort((a, b) => b.item.upvotes - a.item.upvotes);
+                console.log('Sorting by most upvotes');
+                break;
+            case 'downvotes':
+                sortedResults = searchResults.sort((a, b) => b.item.downvotes - a.item.downvotes);
+                console.log('Sorting by most downvotes');
+                break;
+            case 'newest':
+            default:
+                sortedResults = searchResults.sort((a, b) => new Date(b.item.createdAt) - new Date(a.item.createdAt));
+                console.log('Sorting by newest first (default)');
+                break;
+        }
+        
+        // Calculate pagination values
+        const totalResults = sortedResults.length;
+        const totalPages = Math.ceil(totalResults / limit);
+        
+        // Ensure page number is valid
+        if (page > totalPages && totalPages > 0) {
+            page = totalPages;
+        }
+        
+        // Get the current page of results
+        const startIndex = (page - 1) * limit;
+        const endIndex = startIndex + limit;
+        const paginatedResults = sortedResults.slice(startIndex, endIndex);
+        
+        // Extract just the clip data from the search results
+        const pageClips = paginatedResults.map(result => result.item);
+        
+        console.log(`Returning page ${page}/${totalPages} with ${pageClips.length} clips`);
 
-        const totalClips = results.length;
-
+        // Send the response with comprehensive metadata
         res.json({
-            clips,
+            clips: pageClips,
             currentPage: page,
-            totalPages: Math.ceil(totalClips / limit),
-            totalClips,
+            totalPages,
+            totalClips: totalResults,
+            appliedFilters: {
+                query: q,
+                streamer: streamer || null,
+                submitter: submitter || null,
+                sort
+            }
         });
     } catch (error) {
         console.error('Error searching clips:', error);
