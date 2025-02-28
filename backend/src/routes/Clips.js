@@ -376,4 +376,35 @@ router.delete('/:clipId/comment/:commentId', authorizeRoles(['user', 'clipteam',
     }
 });
 
+/**
+ * @swagger
+ * /api/clips/filter-options:
+ *   get:
+ *     tags:
+ *       - clips
+ *     summary: Get unique streamers and submitters for filtering
+ *     responses:
+ *       200:
+ *         description: OK
+ *       500:
+ *         description: Internal Server Error
+ */
+router.get('/filter-options', async (req, res) => {
+    try {
+        const clips = await Clip.find({}, 'streamer submitter');
+        
+        // Extract unique streamers and submitters
+        const streamers = [...new Set(clips.map(clip => clip.streamer).filter(Boolean))].sort();
+        const submitters = [...new Set(clips.map(clip => clip.submitter).filter(Boolean))].sort();
+        
+        res.json({
+            streamers,
+            submitters
+        });
+    } catch (error) {
+        console.error('Error fetching filter options:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
 module.exports = router;
