@@ -110,7 +110,7 @@ function Footer() {
               </li>
               <li>
                 <a 
-                  href="https://github.com/Spoekle/clipsesh-frontend" 
+                  href="https://github.com/Spoekle/ClipSesh" 
                   target="_blank" 
                   rel="noreferrer"
                   className="text-neutral-600 dark:text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 transition duration-200"

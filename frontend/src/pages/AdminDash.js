@@ -6,12 +6,16 @@ import { saveAs } from 'file-saver';
 import { BiLoaderCircle } from 'react-icons/bi';
 import LoadingBar from 'react-top-loading-bar';
 import background from '../media/admin.jpg';
-import { FaDiscord, FaDownload, FaTrash } from "react-icons/fa";
+import { FaDiscord, FaDownload, FaTrash, FaUserClock } from "react-icons/fa";
 import { useLocation } from 'react-router-dom';
 import DeniedClips from './components/adminDash/DeniedClips';
 import UserList from './components/adminDash/UserList';
 import Statistics from './components/adminDash/Statistics';
 import CreateUser from './components/adminDash/CreateUser';
+import ConfigPanel from './components/adminDash/ConfigPanel';
+import AdminActions from './components/adminDash/AdminActions';
+import ZipManager from './components/adminDash/ZipManager';
+import SeasonInfo from './components/adminDash/SeasonInfo';
 
 function AdminDash() {
   const [allUsers, setAllUsers] = useState([]);
@@ -35,6 +39,13 @@ function AdminDash() {
   const [zips, setZips] = useState([]);
   const [zipsLoading, setZipsLoading] = useState(true);
   const AVAILABLE_ROLES = ['user', 'admin', 'clipteam', 'editor', 'uploader'];
+  const [adminStats, setAdminStats] = useState({
+    userCount: 0,
+    activeUserCount: 0,
+    clipCount: 0,
+    ratedClipsCount: 0,
+    deniedClipsCount: 0
+  });
 
   const location = useLocation();
 
@@ -47,6 +58,8 @@ function AdminDash() {
       await fetchUsers();
       setProgress(10);
       await fetchConfig();
+      setProgress(20);
+      await fetchAdminStats();
       setProgress(30);
       getSeason();
       setProgress(50);
@@ -144,6 +157,18 @@ function AdminDash() {
       }
     } catch (error) {
       console.error('Error fetching config:', error);
+    }
+  };
+
+  const fetchAdminStats = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${apiUrl}/api/admin/stats`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setAdminStats(response.data);
+    } catch (error) {
+      console.error('Error fetching admin stats:', error);
     }
   };
 
@@ -419,251 +444,177 @@ function AdminDash() {
   return (
     <div className="min-h-screen text-white flex flex-col items-center bg-neutral-200 dark:bg-neutral-900 transition duration-200">
       <Helmet>
-        <title>Admin Dash</title>
-        <meta name="description" description="ClipSesh! is a site for Beat Saber players by Beat Saber players. On this site you will be able to view all submitted clips"
+        <title>Admin Dashboard | ClipSesh</title>
+        <meta 
+          name="description" 
+          content="Admin dashboard for ClipSesh - manage users, clips, and system configuration."
         />
       </Helmet>
+      
+      {/* Progress bar */}
       <div className='w-full'>
         <LoadingBar color='#f11946' progress={progress} onLoaderFinished={() => setProgress(0)} />
       </div>
-      <div className="w-full flex h-96 justify-center items-center animate-fade" style={{ backgroundImage: `url(${background})`, backgroundSize: 'cover', backgroundPosition: 'center', clipPath: 'polygon(0 0, 100% 0, 100% 80%, 0 100%)' }}>
-        <div className="flex bg-gradient-to-b from-neutral-900 to-bg-black/20 backdrop-blur-lg justify-center items-center w-full h-full">
+      
+      {/* Header banner */}
+      <div className="w-full flex h-96 justify-center items-center animate-fade" 
+        style={{ 
+          backgroundImage: `url(${background})`, 
+          backgroundSize: 'cover', 
+          backgroundPosition: 'center', 
+          clipPath: 'polygon(0 0, 100% 0, 100% 80%, 0 100%)' 
+        }}>
+        <div className="flex bg-gradient-to-b from-neutral-900 to-black/20 backdrop-blur-lg justify-center items-center w-full h-full">
           <div className="flex flex-col justify-center items-center">
             <h1 className="text-4xl font-bold mb-4 text-center">Admin Dashboard</h1>
-            <h1 className="text-3xl mb-4 text-center">Manage the unmanaged...</h1>
+            <h2 className="text-3xl mb-4 text-center">Manage the unmanaged...</h2>
           </div>
         </div>
       </div>
 
+      {/* Loading state */}
       {loading ? (
-        <div className="container pt-20 mb-4 text-neutral-900 dark:text-white bg-neutral-200 dark:bg-neutral-900 flex flex-col items-center justify-center animate-fade">
-          <h1 className="text-5xl font-bold mb-8 text-center">Loading...</h1>
+        <div className="container max-w-7xl px-4 pt-20 pb-20 text-neutral-900 dark:text-white bg-neutral-200 dark:bg-neutral-900 flex flex-col items-center justify-center animate-fade">
+          <h1 className="text-5xl font-bold mb-8 text-center">Loading Dashboard</h1>
           <BiLoaderCircle className="animate-spin text-7xl" />
         </div>
       ) : (
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-20 text-neutral-900 dark:text-white bg-neutral-200 dark:bg-neutral-900 transition duration-200 animate-fade">
+          {/* Season Info */}
+          <SeasonInfo 
+            seasonInfo={seasonInfo} 
+            deniedClips={deniedClips} 
+          />
 
-        <div className="container pt-20 mb-4 text-neutral-900 dark:text-white bg-neutral-200 dark:bg-neutral-900 transition duration-200 justify-center justify-items-center animate-fade">
-          <div className="w-full p-8 bg-neutral-300 dark:bg-neutral-800 text-neutral-900 dark:text-white transition duration-200 rounded-md shadow-md">
-            <h2 className="text-3xl font-bold mb-4">Season info</h2>
-            <div className="grid grid-cols-2 text-center justify-center">
-              <h2 className="text-2xl font-bold mb-4">Season: {seasonInfo.season}</h2>
-              <div>
-                <h2 className="text-2xl font-bold mb-4">Clip Amount: {seasonInfo.clipAmount}</h2>
-                <h2 className="text-xl font-semibold mb-4 text-red-600">Denied Clips: {deniedClips}</h2>
-              </div>
-            </div>
-          </div>
-
+          {/* Statistics */}
           <Statistics
             clipTeam={clipTeam}
             userRatings={userRatings}
             seasonInfo={seasonInfo}
+            adminStats={adminStats}
           />
 
-          <div className="grid mt-8 lg:grid-cols-3 md:grid-cols-2 grid-cols-1 gap-4 w-full">
+          {/* Main grid layout with improved spacing */}
+          <div className="mt-10 space-y-10">
+            {/* Admin Config and Actions Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+              <ConfigPanel
+                config={config}
+                handleConfigChange={handleConfigChange}
+                handleConfigSubmit={handleConfigSubmit}
+              />
 
-            <CreateUser
-              fetchUsers={fetchUsers}
-              AVAILABLE_ROLES={AVAILABLE_ROLES}
-              apiUrl={apiUrl}
-            />
+              <AdminActions
+                processClips={processClips}
+                handleDeleteAllClips={handleDeleteAllClips}
+                downloading={downloading}
+              />
+            </div>
 
-            <div className="col-span-1 min-w-full w-full bg-neutral-300 dark:bg-neutral-800 text-neutral-900 dark:text-white transition duration-200 p-8 rounded-md shadow-md animate-fade animate-delay-300">
-              <h2 className="text-3xl font-bold mb-4">Disabled users</h2>
-              {!disabledUsers.length ? (
-                <p className="text-gray-300">No disabled users.</p>
-              ) : (
-                disabledUsers.map(user => (
-                  <div
-                    key={user._id}
-                    className={`relative bg-neutral-900 p-4 w-full min-h-16 rounded-lg hover:bg-neutral-950 transition-all duration-300 overflow-hidden ${editUser && editUser._id === user._id ? 'max-h-screen' : 'max-h-32'}`}
-                    style={{ transition: 'max-height 0.3s ease-in-out' }}
-                  >
-                    <div
-                      className="absolute inset-0 bg-cover bg-center filter blur-sm"
-                      style={{
-                        backgroundImage: `url(${user.profilePicture})`,
-                      }}
-                    ></div>
-                    <div className="absolute inset-0 bg-black opacity-50 rounded-lg"></div>
-                    <div className="relative z-10 flex justify-between items-center">
-                      <div className='flex-col justify-between items-center'>
-                        <p className="flex justify-between items-center text-white">{user.username}
-                          <FaDiscord className="ml-2" style={{ color: user.discordId ? '#7289da' : '#747f8d' }} />
-                        </p>
-                      </div>
-                      <div>
-                        <button
-                          onClick={() => handleApproveUser(user._id)}
-                          className="bg-blue-500/50 hover:bg-blue-600 backdrop-blur-2xl text-white font-bold py-1 px-2 rounded-md mr-2 transition duration-200"
-                        >
-                          Enable
-                        </button>
-                        <button
-                          onClick={() => handleDelete(user._id)}
-                          className="bg-red-500/50 hover:bg-red-600 backdrop-blur-2xl text-white font-bold py-1 px-2 rounded-md transition duration-200"
-                        >
-                          Delete
-                        </button>
-                      </div>
+            {/* User Management Section */}
+            <div className="space-y-10">
+              {/* User List */}
+              <UserList
+                users={users}
+                admins={admins}
+                clipTeam={clipTeam}
+                editors={editors}
+                uploader={uploader}
+                fetchUsers={fetchUsers}
+                disabledUsers={disabledUsers}
+                setDisabledUsers={setDisabledUsers}
+                AVAILABLE_ROLES={AVAILABLE_ROLES}
+                apiUrl={apiUrl}
+              />
+
+              {/* Create User and Disabled Users Row */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+                <CreateUser
+                  fetchUsers={fetchUsers}
+                  AVAILABLE_ROLES={AVAILABLE_ROLES}
+                  apiUrl={apiUrl}
+                />
+
+                <div className="w-full bg-neutral-300 dark:bg-neutral-800 text-neutral-900 dark:text-white transition duration-200 p-6 md:p-8 rounded-xl shadow-lg hover:shadow-xl">
+                  <h2 className="text-2xl md:text-3xl font-bold mb-6 border-b pb-3 border-neutral-400 dark:border-neutral-700 flex items-center">
+                    <FaUserClock className="mr-3 text-yellow-500" />
+                    Disabled Users
+                  </h2>
+                  
+                  {!disabledUsers.length ? (
+                    <div className="flex flex-col items-center justify-center p-8 bg-neutral-200 dark:bg-neutral-700 rounded-lg">
+                      <p className="text-lg text-neutral-600 dark:text-neutral-300">
+                        No disabled users at this time
+                      </p>
                     </div>
-                  </div>
-                ))
-              )}
+                  ) : (
+                    <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+                      {disabledUsers.map(user => (
+                        <div
+                          key={user._id}
+                          className="bg-neutral-200 dark:bg-neutral-700 p-4 rounded-lg flex justify-between items-center"
+                        >
+                          <div className="flex items-center">
+                            <div className="w-10 h-10 rounded-full overflow-hidden mr-3 bg-neutral-300 dark:bg-neutral-600">
+                              {user.profilePicture ? (
+                                <img 
+                                  src={user.profilePicture} 
+                                  alt={user.username} 
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-lg font-bold">
+                                  {user.username.charAt(0).toUpperCase()}
+                                </div>
+                              )}
+                            </div>
+                            <div>
+                              <p className="font-semibold">{user.username}</p>
+                              <div className="flex items-center text-xs text-neutral-500 dark:text-neutral-400">
+                                <FaDiscord 
+                                  className="mr-1" 
+                                  style={{ color: user.discordId ? '#7289da' : 'currentColor' }} 
+                                />
+                                <span>{user.discordUsername || 'Not connected'}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleApproveUser(user._id)}
+                              className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-md text-sm font-medium transition-colors"
+                            >
+                              Enable
+                            </button>
+                            <button
+                              onClick={() => handleDelete(user._id)}
+                              className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm font-medium transition-colors"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
-            <UserList
-              users={users}
-              admins={admins}
-              clipTeam={clipTeam}
-              editors={editors}
-              uploader={uploader}
-              fetchUsers={fetchUsers}
-              disabledUsers={disabledUsers}
-              setDisabledUsers={setDisabledUsers}
-              AVAILABLE_ROLES={AVAILABLE_ROLES}
-              apiUrl={apiUrl}
+            {/* Zip Manager - Full Width */}
+            <ZipManager
+              zips={zips}
+              zipsLoading={zipsLoading}
+              deleteZip={deleteZip}
+              zipFile={zipFile}
+              handleZipChange={handleZipChange}
+              clipAmount={clipAmount}
+              handleClipAmountChange={handleClipAmountChange}
+              handleZipSubmit={handleZipSubmit}
+              seasonInfo={seasonInfo}
             />
 
-            <div className="col-span-1 w-full bg-neutral-300 dark:bg-neutral-800 text-neutral-900 dark:text-white transition duration-200 p-8 rounded-md shadow-md animate-fade animate-delay-500">
-              <h2 className="text-3xl font-bold mb-4">Admin Config</h2>
-              <div className="flex gap-4">
-                <form onSubmit={handleConfigSubmit}>
-                  <div className="mb-4">
-                    <label htmlFor="denyThreshold" className="block text-neutral-900 dark:text-gray-300">Deny Threshold:</label>
-                    <input
-                      type="number"
-                      id="denyThreshold"
-                      name="denyThreshold"
-                      value={config.denyThreshold}
-                      onChange={handleConfigChange}
-                      className="w-full px-3 py-2 bg-white dark:bg-neutral-900 dark:text-white text-neutral-900 rounded-md focus:outline-none focus:bg-neutral-200 dark:focus:bg-neutral-700"
-                      required
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-md focus:outline-none focus:bg-blue-600"
-                  >
-                    Update Config
-                  </button>
-                </form>
-                <form onSubmit={handleConfigSubmit}>
-                  <div className="mb-4">
-                    <label htmlFor="latestVideoLink" className="block text-neutral-900 dark:text-gray-300">Latest Video Link:</label>
-                    <input
-                      type="text"
-                      id="latestVideoLink"
-                      name="latestVideoLink"
-                      value={config.latestVideoLink}
-                      onChange={handleConfigChange}
-                      className="w-full px-3 py-2 bg-white dark:bg-neutral-900 dark:text-white text-neutral-900 rounded-md focus:outline-none focus:bg-neutral-200 dark:focus:bg-neutral-700"
-                      required
-                    />
-                  </div>
-                </form>
-              </div>
-            </div>
-
-            <div className="col-span-1 w-full bg-neutral-300 dark:bg-neutral-800 text-neutral-900 dark:text-white transition duration-200 p-8 rounded-md shadow-md animate-fade animate-delay-[600ms]">
-              <h2 className="text-3xl font-bold mb-4">Admin Actions</h2>
-              <div className="flex flex-col gap-4">
-                <button
-                  onClick={processClips}
-                  className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 rounded-md focus:outline-none focus:bg-green-600"
-                >
-                  Process Clips
-                </button>
-
-                <button
-                  className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 rounded-md focus:outline-none focus:bg-red-600"
-                  onClick={handleDeleteAllClips}
-                >
-                  Reset Database
-                </button>
-              </div>
-              {downloading && (
-                <div className="flex flex-col justify-center items-center space-y-2">
-                  <BiLoaderCircle className="animate-spin h-5 w-5 text-white" />
-                  <span>Processing Clips...</span>
-                </div>
-              )}
-            </div>
-
-            <div className="col-span-1 w-full bg-neutral-300 dark:bg-neutral-800 text-neutral-900 dark:text-white transition duration-200 p-8 rounded-md shadow-md animate-fade animate-delay-[700ms]">
-              <h2 className="text-3xl font-bold mb-4">Upload Zip</h2>
-              <form onSubmit={handleZipSubmit}>
-                <div className="space-y-2">
-                  <label htmlFor="zip" className='flex items-center justify-center w-full px-4 py-2 bg-blue-500 text-white rounded-md cursor-pointer hover:bg-blue-600 transition duration-200'>
-                    <span>Select Zip</span>
-                    <input
-                      type="file"
-                      id="zip"
-                      name="zip"
-                      onChange={handleZipChange}
-                      className="hidden"
-                      required
-                    />
-                  </label>
-                  <input
-                    type="number"
-                    id="clipAmount"
-                    name="clipAmount"
-                    placeholder='Clip Amount'
-                    className="w-full px-3 py-2 bg-white dark:bg-neutral-900 dark:text-white text-neutral-900 rounded-md focus:outline-none focus:bg-neutral-200 dark:focus:bg-neutral-700"
-                    required
-                    onChange={handleClipAmountChange}
-                  />
-                  <button
-                    type="submit"
-                    className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-md focus:outline-none focus:bg-blue-600"
-                  >
-                    Upload Zip
-                  </button>
-                </div>
-              </form>
-            </div>
-
-            <div className="col-span-1 w-full bg-neutral-300 dark:bg-neutral-800 text-neutral-900 dark:text-white transition duration-200 p-8 rounded-md shadow-md animate-fade animate-delay-[200ms]">
-              <h2 className="text-3xl font-bold mb-4">Available Zips</h2>
-              {zipsLoading ? (
-                <div className="flex justify-center items-center">
-                  <BiLoaderCircle className="animate-spin text-4xl" />
-                </div>
-              ) : zips.length === 0 ? (
-                <p>No zips available.</p>
-              ) : (
-                <ul className="space-y-4">
-                  {zips.map(zip => (
-                    <li key={zip._id} className="flex justify-between items-center bg-neutral-400 dark:bg-neutral-700 p-4 rounded-md">
-                      <div className="flex flex-col gap-2">
-                        <h2>{zip.season}</h2>
-                        <p className='text-neutral-300'>{zip.name}</p>
-                        <div className="flex gap-2">
-                          <p className='text-neutral-300'>{zip.clipAmount} clips</p>
-                          <p className='text-neutral-300'>{(zip.size / 1000000).toFixed(2)} MB</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => { saveAs(zip.url); }}
-                          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md"
-                        >
-                          <FaDownload />
-                        </button>
-                        <button
-                          onClick={() => deleteZip(zip._id)}
-                          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md"
-                        >
-                          <FaTrash />
-                        </button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
+            {/* Denied Clips - Full Width */}
             <DeniedClips
               clips={clips}
               ratings={ratings}
@@ -674,7 +625,6 @@ function AdminDash() {
         </div>
       )}
     </div>
-
   );
 }
 
