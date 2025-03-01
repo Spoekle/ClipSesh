@@ -515,11 +515,6 @@ function AdminDash() {
             <div className="space-y-10">
               {/* User List */}
               <UserList
-                users={users}
-                admins={admins}
-                clipTeam={clipTeam}
-                editors={editors}
-                uploader={uploader}
                 fetchUsers={fetchUsers}
                 disabledUsers={disabledUsers}
                 setDisabledUsers={setDisabledUsers}

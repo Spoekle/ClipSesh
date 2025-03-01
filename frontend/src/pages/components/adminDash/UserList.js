@@ -31,6 +31,7 @@ const UserList = ({ fetchUsers, disabledUsers, setDisabledUsers, AVAILABLE_ROLES
   const [allRoles, setAllRoles] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const usersPerPage = 12;
   
   useEffect(() => {
@@ -43,18 +44,23 @@ const UserList = ({ fetchUsers, disabledUsers, setDisabledUsers, AVAILABLE_ROLES
       const token = localStorage.getItem('token');
       let queryParams = '?status=active';
       
-      // Add role filtering if applied
+      // Only add role filter if it's not 'all'
       if (filter !== 'all') {
         queryParams += `&role=${filter}`;
       }
       
-      const response = await axios.get(`${apiUrl}/api/admin/users${queryParams}`, {
+      const response = await axios.get(`${apiUrl}/api/users`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      setUsers(response.data);
+      // Filter users client-side based on active status
+      const activeUsers = response.data.filter(user => user.status === 'active');
+      setUsers(activeUsers);
+      setError(null);
     } catch (error) {
-      console.error('Error fetching filtered users:', error);
+      console.error('Error fetching users:', error);
+      setError('Failed to load users');
+      toast.error('Error loading users');
     } finally {
       setLoading(false);
     }
@@ -172,13 +178,18 @@ const UserList = ({ fetchUsers, disabledUsers, setDisabledUsers, AVAILABLE_ROLES
   
   // Apply client-side filtering for search and additional role filters
   const filteredUsers = users.filter(user => {
-    // Filter by search term
-    if (search && !user.username.toLowerCase().includes(search.toLowerCase())) {
+    // Apply role dropdown filter - show only if user has the selected role
+    if (filter !== 'all' && !user.roles.includes(filter)) {
       return false;
     }
     
-    // Filter by selected role chips
+    // Apply role chip filters - show only if user has ALL selected roles
     if (roleFilter.length > 0 && !roleFilter.some(role => user.roles.includes(role))) {
+      return false;
+    }
+    
+    // Apply search filter
+    if (search && !user.username.toLowerCase().includes(search.toLowerCase())) {
       return false;
     }
     
@@ -312,164 +323,183 @@ const UserList = ({ fetchUsers, disabledUsers, setDisabledUsers, AVAILABLE_ROLES
         )}
       </div>
       
-      {/* User Grid */}
-      {currentUsers.length === 0 ? (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="flex flex-col items-center justify-center p-8 bg-neutral-200 dark:bg-neutral-700 rounded-lg"
-        >
-          <FaExclamationTriangle className="text-4xl text-yellow-500 mb-3" />
-          <h3 className="text-xl font-bold mb-2">No Users Found</h3>
-          <p className="text-neutral-600 dark:text-neutral-400 text-center">
-            No users match your current filters. Try adjusting your search criteria.
-          </p>
-        </motion.div>
-      ) : (
-        <motion.div 
-          layout
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-        >
-          {currentUsers.map((user, index) => {
-            // Generate avatar if user doesn't have a profile picture
-            const profileImage = user.profilePicture || generateAvatar(user.username);
-            
-            return (
-              <motion.div
-                key={user._id}
-                layout="position"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ 
-                  duration: 0.3, 
-                  delay: index * 0.05,
-                  layout: { type: "spring", stiffness: 200, damping: 25 }
-                }}
-              >
-                <div className="relative bg-neutral-200 dark:bg-neutral-700 rounded-lg shadow-md overflow-hidden h-full">
-                  {/* User card with background image */}
-                  <div className="relative h-full">
-                    {/* Profile Image Background */}
-                    <div
-                      className="absolute inset-0 bg-cover bg-center opacity-10"
-                      style={{
-                        backgroundImage: `url(${profileImage})`,
-                      }}
-                    />
-                    
-                    {/* Content */}
-                    <div className="relative p-5 flex flex-col min-h-[180px]">
-                      <div className="flex items-start justify-between mb-4">
-                        {/* User avatar and name */}
-                        <div className="flex items-center">
-                          <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-neutral-300 dark:border-neutral-600 mr-3">
-                            <img 
-                              src={profileImage} 
-                              alt={user.username}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                          <div>
-                            <h3 className="font-bold text-lg">{user.username}</h3>
-                            <div className="flex items-center">
-                              <FaDiscord 
-                                className="mr-1.5"
-                                style={{ color: user.discordId ? '#7289da' : 'rgba(114, 137, 218, 0.3)' }}
-                              />
-                              <span className="text-sm text-neutral-600 dark:text-neutral-400">
-                                {user.discordUsername || 'Not connected'}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Action buttons */}
-                        <div className="flex flex-col gap-2">
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => toggleEditUser(user)}
-                            className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md flex items-center justify-center"
-                            disabled={isLoading}
-                          >
-                            <FaEdit size={16} />
-                          </motion.button>
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => handleDisableUser(user._id)}
-                            className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-md flex items-center justify-center"
-                            disabled={isLoading}
-                          >
-                            <FaBan size={16} />
-                          </motion.button>
-                        </div>
-                      </div>
-                      
-                      {/* Email section - make it always take up space */}
-                      <div className="text-sm text-neutral-600 dark:text-neutral-400 mb-4 min-h-[1.5rem]">
-                        {user.email || ''}
-                      </div>
-                      
-                      {/* Roles - push to bottom with flex */}
-                      <div className="flex flex-wrap gap-2 mt-auto">
-                        {user.roles && user.roles.sort().map(role => (
-                          <span 
-                            key={role} 
-                            className={`px-2 py-0.5 rounded-md text-xs font-medium text-white ${getRoleColor(role)}`}
-                          >
-                            {role}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
-        </motion.div>
-      )}
-      
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="mt-8 flex flex-wrap justify-center items-center gap-2">
-          <button
-            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-            className="p-2 rounded-md bg-neutral-200 dark:bg-neutral-700 disabled:opacity-50 hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors"
-            aria-label="Previous page"
+      {/* Show loading state */}
+      {loading ? (
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        </div>
+      ) : error ? (
+        <div className="bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200 p-4 rounded-lg flex items-center justify-center">
+          <FaExclamationTriangle className="mr-2" /> {error}
+          <button 
+            onClick={fetchFilteredUsers}
+            className="ml-4 px-3 py-1 bg-red-200 dark:bg-red-800 rounded-md hover:bg-red-300 dark:hover:bg-red-700"
           >
-            <FaChevronLeft />
-          </button>
-          
-          {getPaginationButtons().map((btn, i) => (
-            btn === '...' ? (
-              <span key={`ellipsis-${i}`} className="px-2">...</span>
-            ) : (
-              <button
-                key={`page-${btn}`}
-                onClick={() => setCurrentPage(btn)}
-                className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${
-                  currentPage === btn
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600'
-                }`}
-              >
-                {btn}
-              </button>
-            )
-          ))}
-          
-          <button
-            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-            disabled={currentPage === totalPages}
-            className="p-2 rounded-md bg-neutral-200 dark:bg-neutral-700 disabled:opacity-50 hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors"
-            aria-label="Next page"
-          >
-            <FaChevronRight />
+            Retry
           </button>
         </div>
+      ) : (
+        <>
+          {/* User Grid */}
+          {currentUsers.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex flex-col items-center justify-center p-8 bg-neutral-200 dark:bg-neutral-700 rounded-lg"
+            >
+              <FaExclamationTriangle className="text-4xl text-yellow-500 mb-3" />
+              <h3 className="text-xl font-bold mb-2">No Users Found</h3>
+              <p className="text-neutral-600 dark:text-neutral-400 text-center">
+                No users match your current filters. Try adjusting your search criteria.
+              </p>
+            </motion.div>
+          ) : (
+            <motion.div 
+              layout
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+            >
+              {currentUsers.map((user, index) => {
+                // Generate avatar if user doesn't have a profile picture
+                const profileImage = user.profilePicture || generateAvatar(user.username);
+                
+                return (
+                  <motion.div
+                    key={user._id}
+                    layout="position"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ 
+                      duration: 0.3, 
+                      delay: index * 0.05,
+                      layout: { type: "spring", stiffness: 200, damping: 25 }
+                    }}
+                  >
+                    <div className="relative bg-neutral-200 dark:bg-neutral-700 rounded-lg shadow-md overflow-hidden h-full">
+                      {/* User card with background image */}
+                      <div className="relative h-full">
+                        {/* Profile Image Background */}
+                        <div
+                          className="absolute inset-0 bg-cover bg-center opacity-10"
+                          style={{
+                            backgroundImage: `url(${profileImage})`,
+                          }}
+                        />
+                        
+                        {/* Content */}
+                        <div className="relative p-5 flex flex-col min-h-[180px]">
+                          <div className="flex items-start justify-between mb-4">
+                            {/* User avatar and name */}
+                            <div className="flex items-center">
+                              <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-neutral-300 dark:border-neutral-600 mr-3">
+                                <img 
+                                  src={profileImage} 
+                                  alt={user.username}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <div>
+                                <h3 className="font-bold text-lg">{user.username}</h3>
+                                <div className="flex items-center">
+                                  <FaDiscord 
+                                    className="mr-1.5"
+                                    style={{ color: user.discordId ? '#7289da' : 'rgba(114, 137, 218, 0.3)' }}
+                                  />
+                                  <span className="text-sm text-neutral-600 dark:text-neutral-400">
+                                    {user.discordUsername || 'Not connected'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Action buttons */}
+                            <div className="flex flex-col gap-2">
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => toggleEditUser(user)}
+                                className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md flex items-center justify-center"
+                                disabled={isLoading}
+                              >
+                                <FaEdit size={16} />
+                              </motion.button>
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => handleDisableUser(user._id)}
+                                className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-md flex items-center justify-center"
+                                disabled={isLoading}
+                              >
+                                <FaBan size={16} />
+                              </motion.button>
+                            </div>
+                          </div>
+                          
+                          {/* Email section - make it always take up space */}
+                          <div className="text-sm text-neutral-600 dark:text-neutral-400 mb-4 min-h-[1.5rem]">
+                            {user.email || ''}
+                          </div>
+                          
+                          {/* Roles - push to bottom with flex */}
+                          <div className="flex flex-wrap gap-2 mt-auto">
+                            {user.roles && user.roles.sort().map(role => (
+                              <span 
+                                key={role} 
+                                className={`px-2 py-0.5 rounded-md text-xs font-medium text-white ${getRoleColor(role)}`}
+                              >
+                                {role}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+          )}
+          
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="mt-8 flex flex-wrap justify-center items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="p-2 rounded-md bg-neutral-200 dark:bg-neutral-700 disabled:opacity-50 hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors"
+                aria-label="Previous page"
+              >
+                <FaChevronLeft />
+              </button>
+              
+              {getPaginationButtons().map((btn, i) => (
+                btn === '...' ? (
+                  <span key={`ellipsis-${i}`} className="px-2">...</span>
+                ) : (
+                  <button
+                    key={`page-${btn}`}
+                    onClick={() => setCurrentPage(btn)}
+                    className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${
+                      currentPage === btn
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600'
+                    }`}
+                  >
+                    {btn}
+                  </button>
+                )
+              ))}
+              
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="p-2 rounded-md bg-neutral-200 dark:bg-neutral-700 disabled:opacity-50 hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors"
+                aria-label="Next page"
+              >
+                <FaChevronRight />
+              </button>
+            </div>
+          )}
+        </>
       )}
       
       {/* User Edit Modal */}

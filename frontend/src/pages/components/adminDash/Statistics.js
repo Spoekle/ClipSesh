@@ -482,11 +482,21 @@ const Statistics = ({ clipTeam, userRatings, seasonInfo }) => {
                                     remaining: seasonInfo.clipAmount - user.total
                                 }))}
                                 margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
-                                stackOffset="expand"
                                 layout="vertical"
                             >
                                 <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-                                <XAxis type="number" domain={[0, 100]} tickCount={6} tick={{ fill: '#888' }} />
+                                <XAxis 
+                                    type="number" 
+                                    domain={[0, seasonInfo.clipAmount]} 
+                                    tickCount={Math.min(6, seasonInfo.clipAmount)} 
+                                    tick={{ fill: '#888' }}
+                                    label={{ 
+                                        value: 'Clips', 
+                                        position: 'insideBottom',
+                                        offset: -10,
+                                        fill: '#888' 
+                                    }}
+                                />
                                 <YAxis 
                                     dataKey="username" 
                                     type="category" 
@@ -494,18 +504,52 @@ const Statistics = ({ clipTeam, userRatings, seasonInfo }) => {
                                     width={100}
                                 />
                                 <Tooltip 
-                                    formatter={(value, name) => [
-                                        name === 'Completed' 
-                                        ? `${value} clips (${((value / seasonInfo.clipAmount) * 100).toFixed(1)}%)` 
-                                        : `${value} clips remaining`, 
-                                        name
-                                    ]}
+                                    formatter={(value, name, entry) => {
+                                        if (name === 'Completed') {
+                                            return [`${value} clips rated`, name];
+                                        } else {
+                                            return [`${value} clips remaining`, name];
+                                        }
+                                    }}
+                                    labelFormatter={(value) => `${value}'s Progress`}
                                 />
                                 <Legend />
-                                <Bar name="Completed" dataKey="total" stackId="a" fill="#4ade80" />
-                                <Bar name="Remaining" dataKey="remaining" stackId="a" fill="#d1d5db" />
+                                <Bar 
+                                    name="Completed" 
+                                    dataKey="total" 
+                                    stackId="a" 
+                                    fill="#4ade80"
+                                />
+                                <Bar 
+                                    name="Remaining" 
+                                    dataKey="remaining" 
+                                    stackId="a" 
+                                    fill="#d1d5db"
+                                />
                             </BarChart>
                         </ResponsiveContainer>
+                    </div>
+                    
+                    {/* Add summary below the chart */}
+                    <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="bg-neutral-300 dark:bg-neutral-600 p-3 rounded-lg">
+                            <div className="font-medium text-center">Total Clips</div>
+                            <div className="text-2xl font-bold text-center">{seasonInfo.clipAmount}</div>
+                        </div>
+                        <div className="bg-green-100 dark:bg-green-900/30 p-3 rounded-lg">
+                            <div className="font-medium text-center text-green-700 dark:text-green-300">Team Coverage</div>
+                            <div className="text-2xl font-bold text-center text-green-700 dark:text-green-300">
+                                {((totalRatings / (sortedUsers.length * seasonInfo.clipAmount)) * 100).toFixed(1)}%
+                            </div>
+                        </div>
+                        <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-lg">
+                            <div className="font-medium text-center text-blue-700 dark:text-blue-300">Average Completion</div>
+                            <div className="text-2xl font-bold text-center text-blue-700 dark:text-blue-300">
+                                {sortedUsers.length > 0 
+                                    ? ((sortedUsers.reduce((acc, user) => acc + user.percentageRated, 0) / sortedUsers.length)).toFixed(1) 
+                                    : 0}%
+                            </div>
+                        </div>
                     </div>
                 </div>
             </motion.div>
