@@ -104,7 +104,8 @@ router.delete('/:id', authorizeRoles(['user', 'clipteam', 'editor', 'uploader', 
       return res.status(403).json({ error: 'Not authorized to delete this notification' });
     }
     
-    await notification.remove();
+    // Use deleteOne() instead of remove()
+    await notification.deleteOne();
     
     res.json({ success: true, message: 'Notification deleted' });
   } catch (error) {

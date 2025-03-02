@@ -368,6 +368,7 @@ router.delete('/', authorizeRoles(['admin']), async (req, res) => {
     }
 });
 
+// Fix the vote handling code
 router.post('/:id/vote/:voteType', async (req, res) => {
     try {
         const clientIp = req.ip;
@@ -389,7 +390,8 @@ router.post('/:id/vote/:voteType', async (req, res) => {
                     } else {
                         clip.downvotes -= 1;
                     }
-                    await vote.remove();
+                    // Use deleteOne() instead of remove()
+                    await vote.deleteOne();
                     await clip.save();
                     return res.send(clip);
                 } else {
@@ -453,7 +455,7 @@ router.post('/:id/comment', authorizeRoles(['user', 'clipteam', 'editor', 'uploa
     }
 });
 
-// Delete a comment from a post
+// Fix the delete comment function
 router.delete('/:clipId/comment/:commentId', authorizeRoles(['user', 'clipteam', 'editor', 'uploader', 'admin']), async (req, res) => {
     const { clipId, commentId } = req.params;
     const username = req.user.username;
@@ -470,13 +472,13 @@ router.delete('/:clipId/comment/:commentId', authorizeRoles(['user', 'clipteam',
         }
 
         if (comment.username == username || req.user.roles.includes('admin')) {
-            comment.remove();
+            // Use pull() instead of remove() for subdocuments
+            clip.comments.pull({ _id: commentId });
             await clip.save();
             return res.json(clip);
         } else {
             return res.status(403).json({ error: 'Forbidden: You do not have the required permissions' });
         }
-
     } catch (error) {
         console.error('Error deleting comment:', error);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -553,9 +555,7 @@ router.post('/:clipId/comment/:commentId/reply', authorizeRoles(['user', 'clipte
   }
 });
 
-/**
- * Delete a reply
- */
+// Fix the delete reply function
 router.delete('/:clipId/comment/:commentId/reply/:replyId', authorizeRoles(['user', 'clipteam', 'editor', 'uploader', 'admin']), async (req, res) => {
   const { clipId, commentId, replyId } = req.params;
   const userId = req.user.id;
@@ -579,7 +579,8 @@ router.delete('/:clipId/comment/:commentId/reply/:replyId', authorizeRoles(['use
 
     // Check if the user is the author of the reply or an admin
     if (reply.userId.toString() === userId || isAdmin) {
-      reply.remove();
+      // Use pull() instead of remove() for subdocuments
+      comment.replies.pull({ _id: replyId });
       await clip.save();
       return res.json(clip);
     } else {
