@@ -65,7 +65,7 @@ router.post('/', authorizeRoles(['admin', 'clipteam', 'editor', 'uploader']), as
 // DELETE a message
 router.delete('/:id', authorizeRoles(['clipteam', 'admin']), async (req, res) => {
     const { id } = req.params;
-    const { userId } = req.body;
+    const { userId, roles } = req.body;
 
     try {
         const message = await Message.findById(id);
@@ -74,13 +74,23 @@ router.delete('/:id', authorizeRoles(['clipteam', 'admin']), async (req, res) =>
             return res.status(404).json({ error: 'Message not found' });
         }
 
-        if (req.user.roles.includes('admin') || message.userId.toString() === userId) {
-            await message.remove();
+        // Fix: Check if user is admin from req.body.roles instead of req.user.roles
+        let isAdmin = false;
+        if (Array.isArray(roles)) {
+            isAdmin = roles.includes('admin');
+        } else if (typeof roles === 'string') {
+            isAdmin = roles === 'admin';
+        }
+
+        if (isAdmin || message.userId.toString() === userId) {
+            // Fix: Use deleteOne() instead of remove()
+            await message.deleteOne();
             return res.status(200).json({ message: 'Message deleted' });
         }
 
         res.status(403).json({ error: 'Unauthorized to delete this message' });
     } catch (error) {
+        console.error('Error deleting message:', error);
         res.status(500).json({ error: 'Failed to delete message' });
     }
 });

@@ -21,7 +21,7 @@ const mongoose = require('mongoose');
  *           required: true
  *         type:
  *           type: string
- *           enum: ['comment_reply', 'mention', 'rating', 'system']
+ *           enum: ['comment_reply', 'mention', 'rating', 'system', 'team_message']
  *           description: The type of notification
  *           required: true
  *         entityId:
@@ -69,7 +69,7 @@ const notificationSchema = new mongoose.Schema({
   },
   type: { 
     type: String, 
-    enum: ['comment_reply', 'mention', 'rating', 'system'], 
+    enum: ['comment_reply', 'mention', 'rating', 'system', 'team_message'], 
     required: true 
   },
   entityId: { 
