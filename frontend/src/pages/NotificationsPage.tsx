@@ -3,15 +3,17 @@ import { Helmet } from 'react-helmet';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaBell, FaCheck, FaTrash, FaAngleRight, FaRegBell } from 'react-icons/fa';
+import { FaBell, FaCheck, FaTrash, FaAngleRight, FaRegBell, FaUsers, FaComments } from 'react-icons/fa';
 import apiUrl from '../config/config';
 import { UserNotification, UserNotificationResponse } from '../types/notificationTypes';
 import { useNotification } from '../context/NotificationContext';
 import LoadingBar from 'react-top-loading-bar';
 import { format } from 'timeago.js';
+import { Tabs, Tab } from '../components/UI/Tabs'; // You'll need to create this component
 
 const NotificationsPage: React.FC = () => {
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
+  const [activeTab, setActiveTab] = useState<'all' | 'personal' | 'team'>('all');
   const [loading, setLoading] = useState<boolean>(true);
   const [progress, setProgress] = useState<number>(0);
   const { showSuccess, showError } = useNotification();
@@ -44,6 +46,25 @@ const NotificationsPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Filter notifications based on active tab
+  const filteredNotifications = notifications.filter(notification => {
+    if (activeTab === 'all') return true;
+    if (activeTab === 'team') return notification.type === 'team_message';
+    return notification.type !== 'team_message'; // personal notifications
+  });
+  
+  // Group team messages by clipId
+  const teamMessagesByClip = notifications
+    .filter(n => n.type === 'team_message')
+    .reduce((acc, notification) => {
+      const clipId = notification.clipId;
+      if (!acc[clipId]) {
+        acc[clipId] = [];
+      }
+      acc[clipId].push(notification);
+      return acc;
+    }, {} as Record<string, UserNotification[]>);
 
   const markAsRead = async (notificationId: string): Promise<void> => {
     const token = localStorage.getItem('token');
@@ -116,8 +137,15 @@ const NotificationsPage: React.FC = () => {
       markAsRead(notification._id);
     }
     
-    // Check if this is a comment_reply type notification
-    if (notification.type === 'comment_reply') {
+    // For team messages, scroll to message component
+    if (notification.type === 'team_message') {
+      navigate(`/clips/${notification.clipId}`, { 
+        state: { 
+          openTeamChat: true,
+          messageId: notification.entityId
+        }
+      });
+    } else if (notification.type === 'comment_reply') {
       // Navigate to the clip with both the comment and reply highlighted
       navigate(`/clips/${notification.clipId}`, { 
         state: { 
@@ -135,8 +163,10 @@ const NotificationsPage: React.FC = () => {
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
+      case 'team_message':
+        return <FaUsers className="text-indigo-500" />;
       case 'comment_reply':
-        return <FaBell className="text-blue-500" />;
+        return <FaComments className="text-blue-500" />;
       case 'mention':
         return <FaBell className="text-green-500" />;
       case 'rating':
@@ -146,6 +176,12 @@ const NotificationsPage: React.FC = () => {
       default:
         return <FaBell className="text-gray-500" />;
     }
+  };
+
+  const unreadCount = {
+    all: notifications.filter(n => !n.read).length,
+    team: notifications.filter(n => !n.read && n.type === 'team_message').length,
+    personal: notifications.filter(n => !n.read && n.type !== 'team_message').length
   };
 
   return (
@@ -164,6 +200,11 @@ const NotificationsPage: React.FC = () => {
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center">
               <FaBell className="mr-3 text-blue-500" />
               Notifications
+              {unreadCount.all > 0 && (
+                <span className="ml-2 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 text-sm rounded-full">
+                  {unreadCount.all} unread
+                </span>
+              )}
             </h1>
             
             {notifications.some(n => !n.read) && (
@@ -177,23 +218,144 @@ const NotificationsPage: React.FC = () => {
             )}
           </div>
           
+          {/* Tabs */}
+          <div className="border-b border-gray-200 dark:border-neutral-700">
+            <div className="px-4">
+              <nav className="-mb-px flex space-x-6">
+                <button
+                  onClick={() => setActiveTab('all')}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'all'
+                      ? 'border-blue-500 text-blue-600 dark:border-blue-400 dark:text-blue-400' 
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                  }`}
+                >
+                  All
+                  {unreadCount.all > 0 && (
+                    <span className="ml-2 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 text-xs rounded-full">
+                      {unreadCount.all}
+                    </span>
+                  )}
+                </button>
+                
+                <button
+                  onClick={() => setActiveTab('personal')}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'personal'
+                      ? 'border-blue-500 text-blue-600 dark:border-blue-400 dark:text-blue-400' 
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                  }`}
+                >
+                  Personal
+                  {unreadCount.personal > 0 && (
+                    <span className="ml-2 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 text-xs rounded-full">
+                      {unreadCount.personal}
+                    </span>
+                  )}
+                </button>
+                
+                <button
+                  onClick={() => setActiveTab('team')}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'team'
+                      ? 'border-blue-500 text-blue-600 dark:border-blue-400 dark:text-blue-400' 
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                  }`}
+                >
+                  Team Messages
+                  {unreadCount.team > 0 && (
+                    <span className="ml-2 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 text-xs rounded-full">
+                      {unreadCount.team}
+                    </span>
+                  )}
+                </button>
+              </nav>
+            </div>
+          </div>
+          
           {/* Notifications list */}
           <div className="divide-y divide-gray-200 dark:divide-neutral-700 max-h-[70vh] overflow-y-auto">
             {loading ? (
               <div className="flex justify-center items-center py-16">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
               </div>
-            ) : notifications.length === 0 ? (
+            ) : filteredNotifications.length === 0 ? (
               <div className="py-16 text-center">
                 <FaRegBell className="mx-auto text-gray-400 dark:text-gray-600 text-6xl mb-6" />
                 <h2 className="text-xl font-medium text-gray-600 dark:text-gray-400">No notifications yet</h2>
                 <p className="text-gray-500 dark:text-gray-500 mt-1">
-                  You'll see notifications about replies to your comments here.
+                  {activeTab === 'team' 
+                    ? "Team messages will appear here when team members chat on clips."
+                    : activeTab === 'personal' 
+                      ? "You'll see notifications about replies to your comments here." 
+                      : "You'll see all your notifications here."}
                 </p>
               </div>
             ) : (
               <AnimatePresence initial={false}>
-                {notifications.map((notification) => (
+                {/* If we're in team view, group by clip */}
+                {activeTab === 'team' && Object.entries(teamMessagesByClip).map(([clipId, clipNotifications]) => {
+                  // Get the most recent notification for this clip to display clip details
+                  const latestNotification = clipNotifications.sort(
+                    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                  )[0];
+                  
+                  const unreadMessagesCount = clipNotifications.filter(n => !n.read).length;
+                  
+                  return (
+                    <motion.div
+                      key={clipId}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="p-4 border-b border-gray-200 dark:border-neutral-700 hover:bg-gray-50 dark:hover:bg-neutral-700/30"
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className="p-2 rounded-full bg-indigo-100 dark:bg-indigo-900/30">
+                          <FaUsers className="text-indigo-500" size={20} />
+                        </div>
+                        
+                        <div className="flex-grow cursor-pointer" onClick={() => navigateToClip(latestNotification)}>
+                          <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                            Team messages for clip
+                          </h3>
+                          
+                          <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                            {latestNotification.message.split('"')[1]}
+                          </p>
+                          
+                          <div className="flex items-center mt-2 text-xs text-gray-500">
+                            <span className="font-medium text-indigo-600 dark:text-indigo-400">
+                              {clipNotifications.length} messages
+                            </span>
+                            
+                            {unreadMessagesCount > 0 && (
+                              <span className="ml-2 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 text-xs rounded-full">
+                                {unreadMessagesCount} unread
+                              </span>
+                            )}
+                            
+                            <span className="ml-2">
+                              Last message {format(new Date(latestNotification.createdAt))}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <button
+                            onClick={() => navigateToClip(latestNotification)}
+                            className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                          >
+                            <FaAngleRight size={20} />
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+                
+                {/* Regular notification list for non-team views */}
+                {activeTab !== 'team' && filteredNotifications.map((notification) => (
                   <motion.div
                     key={notification._id}
                     initial={{ opacity: 0, height: 0 }}

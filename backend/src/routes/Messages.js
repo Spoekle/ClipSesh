@@ -3,6 +3,8 @@ const router = express.Router();
 
 const Message = require('../models/messageModel');
 const authorizeRoles = require('./middleware/AuthorizeRoles');
+const Notification = require('../models/notificationModel');
+const User = require('../models/userModel');
 
 // GET messages for a specific clip
 router.get('/', authorizeRoles(['clipteam', 'editor', 'uploader', 'admin']), async (req, res) => {
@@ -17,15 +19,45 @@ router.get('/', authorizeRoles(['clipteam', 'editor', 'uploader', 'admin']), asy
 });
 
 // POST a new message
-router.post('/', authorizeRoles(['clipteam', 'admin']), async (req, res) => {
+router.post('/', authorizeRoles(['admin', 'clipteam', 'editor', 'uploader']), async (req, res) => {
     const { clipId, userId, user, message, profilePicture } = req.body;
 
     try {
-        const newMessage = new Message({ clipId, userId, user, message, profilePicture });
+        const newMessage = new Message({ clipId, userId, user, message, profilePicture, timestamp: new Date() });
         await newMessage.save();
+
+        // Create notifications for all clipteam members
+        // Find all clip team members and admins to notify them
+        const clipTeamMembers = await User.find({
+            roles: { $in: ['clipteam', 'admin'] },
+            _id: { $ne: userId } // Don't notify the sender
+        }).select('_id');
+
+        // Prepare the notification message
+        const clipInfo = await Clip.findById(clipId).select('title streamer');
+        const clipTitle = clipInfo ? clipInfo.title : 'a clip';
+        const clipStreamer = clipInfo ? clipInfo.streamer : '';
+        const notificationMessage = `${user} posted a team message on ${clipStreamer}'s clip: "${clipTitle}"`;
+
+        // Create a notification for each team member
+        const notifications = clipTeamMembers.map(member => ({
+            recipientId: member._id,
+            senderId: userId,
+            senderUsername: user,
+            type: 'team_message',
+            entityId: newMessage._id,
+            clipId,
+            message: notificationMessage
+        }));
+
+        if (notifications.length > 0) {
+            await Notification.insertMany(notifications);
+        }
+
         res.status(201).json(newMessage);
     } catch (error) {
-        res.status(500).json({ error: 'Failed to send message' });
+        console.error('Error creating message:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 

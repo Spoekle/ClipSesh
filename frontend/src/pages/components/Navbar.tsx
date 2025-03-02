@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useNotification } from '../../context/NotificationContext';
 import logo from '../../media/CC_Logo_250px.png';
 import MobileNavbar from './navbar/MobileNav';
@@ -179,12 +179,12 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
           transition={{ delay: 0.3 }}
           className="flex items-center"
         >
-          {/* Insert notification badge here for logged in users */}
-          {user && (
+          {/* Remove this NotificationBadge section */}
+          {/* {user && (
             <div className="mr-2">
-              <NotificationBadge onClick={handleNotificationsClick} />
+              <NotificationBadge />
             </div>
-          )}
+          )} */}
           
           {isMobile ? (
             <MobileNavbar

@@ -57,6 +57,16 @@ const ClipContent: React.FC<ClipContentProps> = ({
 
   const from = (location.state as LocationState)?.from || { pathname: '/clips', search: '' };
   const highlightCommentId = location.state?.highlightComment;
+  const highlightReplyId = location.state?.highlightReply;
+  const openTeamChat = location.state?.openTeamChat;
+  const highlightedMessageId = location.state?.messageId;
+
+  // Set popout to 'chat' if navigating from team message notification
+  useEffect(() => {
+    if (openTeamChat && user && (user.roles.includes('admin') || user.roles.includes('clipteam'))) {
+      setPopout('chat');
+    }
+  }, [openTeamChat, user]);
 
   useEffect(() => {
     setShareUrl(`${window.location.origin}/clips/${clip._id}`);
@@ -558,7 +568,12 @@ const ClipContent: React.FC<ClipContentProps> = ({
       
       {/* Popouts */}
       {popout === 'chat' ? (
-        <MessageComponent clipId={clip._id} setPopout={setPopout} user={user} />
+        <MessageComponent 
+          clipId={clip._id} 
+          setPopout={setPopout} 
+          user={user} 
+          highlightedMessageId={highlightedMessageId}
+        />
       ) : popout === 'ratings' ? (
         <RatingsComponent clip={clip} ratings={ratings} setPopout={setPopout} />
       ) : null}

@@ -8,6 +8,7 @@ import { User } from '../../../types/adminTypes';
 import axios from 'axios';
 import apiUrl from '../../../config/config';
 import { UnreadCountResponse } from '../../../types/notificationTypes';
+import NotificationBadge from '../../../components/Notification/NotificationBadge'; // Add this import
 
 interface DesktopNavbarProps {
   toggleLoginModal: () => void;
@@ -48,34 +49,7 @@ function DesktopNavbar({
 }: DesktopNavbarProps) {
   const searchRef = useRef<HTMLDivElement>(null);
   const [searchFocused, setSearchFocused] = useState(false);
-  const [unreadCount, setUnreadCount] = useState<number>(0);
   const navigate = useNavigate();
-
-  // Fetch unread notifications count
-  useEffect(() => {
-    if (user) {
-      fetchUnreadCount();
-
-      // Poll for new notifications every 60 seconds
-      const interval = setInterval(fetchUnreadCount, 60000);
-      return () => clearInterval(interval);
-    }
-  }, [user]);
-
-  const fetchUnreadCount = async (): Promise<void> => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
-    try {
-      const response = await axios.get<UnreadCountResponse>(
-        `${apiUrl}/api/notifications/unread-count`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setUnreadCount(response.data.unreadCount);
-    } catch (error) {
-      console.error('Error fetching unread notifications count', error);
-    }
-  };
 
   // Close recent searches dropdown when clicking outside
   useEffect(() => {
@@ -207,18 +181,8 @@ function DesktopNavbar({
         {user ? (
           <div className="relative" ref={dropdownRef}>
             <div className="flex items-center space-x-2">
-              {/* Notifications button */}
-              <NavLink
-                to="/notifications"
-                className="relative flex items-center p-2 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-              >
-                <FaBell className="text-neutral-600 dark:text-neutral-300" size={20} />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
-              </NavLink>
+              {/* Add NotificationBadge here, next to the profile picture */}
+              <NotificationBadge />
               
               <button
                 onClick={toggleDropdown}
@@ -276,12 +240,7 @@ function DesktopNavbar({
                       className="flex items-center px-4 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700"
                     >
                       <MdNotifications className="mr-3 text-neutral-500" />
-                      <span>Notifications</span>
-                      {unreadCount > 0 && (
-                        <span className="ml-2 bg-red-500 text-xs text-white px-1.5 py-0.5 rounded-full">
-                          {unreadCount > 9 ? '9+' : unreadCount}
-                        </span>
-                      )}
+                      <span>All Notifications</span>
                     </NavLink>
                     
                     {user.roles.includes('admin') && (

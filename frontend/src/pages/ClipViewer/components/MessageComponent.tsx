@@ -8,13 +8,15 @@ import { format } from 'timeago.js';
 import axios from 'axios';
 import { useNotification } from '../../../context/NotificationContext'; // Add this import
 
-const MessageComponent = ({ clipId, setPopout, user }) => {
+// Add highlightedMessageId prop
+const MessageComponent = ({ clipId, setPopout, user, highlightedMessageId = null }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
+  const [highlightedMessage, setHighlightedMessage] = useState(highlightedMessageId);
   
   // Use the notification system for any error handling
   const { showError } = useNotification();
@@ -54,6 +56,24 @@ const MessageComponent = ({ clipId, setPopout, user }) => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    // When highlighted message ID changes, scroll to that message
+    if (highlightedMessage) {
+      const messageElement = document.getElementById(`message-${highlightedMessage}`);
+      if (messageElement) {
+        setTimeout(() => {
+          messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Add a highlight animation class
+          messageElement.classList.add('highlight-animation');
+          // Remove it after animation completes
+          setTimeout(() => {
+            messageElement.classList.remove('highlight-animation');
+          }, 2000);
+        }, 500);
+      }
+    }
+  }, [highlightedMessage, messages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -155,14 +175,18 @@ const MessageComponent = ({ clipId, setPopout, user }) => {
           <AnimatePresence>
             {messages.map((msg) => {
               const isOwnMessage = user && msg.userId === user._id;
+              const isHighlighted = msg._id === highlightedMessage;
               
               return (
                 <motion.div
                   key={msg._id}
+                  id={`message-${msg._id}`} // Add an ID for scrolling
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.2 }}
-                  className={`mb-6 w-full flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
+                  className={`mb-6 w-full flex ${isOwnMessage ? 'justify-end' : 'justify-start'} ${
+                    isHighlighted ? 'highlight-message' : ''
+                  }`}
                 >
                   <div className={`max-w-[85%] flex gap-2 ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'}`}>
                     <div className="flex-shrink-0">
@@ -270,6 +294,30 @@ const MessageComponent = ({ clipId, setPopout, user }) => {
         .custom-scrollbar {
           scrollbar-width: thin;
           scrollbar-color: rgba(107, 114, 128, 0.5) transparent;
+        }
+        
+        .highlight-animation {
+          animation: highlight 2s ease-out;
+        }
+        
+        @keyframes highlight {
+          0% { background-color: rgba(79, 70, 229, 0.4); }
+          100% { background-color: transparent; }
+        }
+        
+        .highlight-message {
+          position: relative;
+        }
+        
+        .highlight-message::before {
+          content: '';
+          position: absolute;
+          left: -8px;
+          top: 0;
+          height: 100%;
+          width: 4px;
+          background-color: #6366f1;
+          border-radius: 2px;
         }
       `}</style>
     </motion.div>

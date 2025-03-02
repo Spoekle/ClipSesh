@@ -18,7 +18,8 @@ export interface NotificationContextType {
 }
 
 // Backend user notification types
-export type UserNotificationType = 'comment_reply' | 'mention' | 'rating' | 'system';
+// Update to include team_message type
+export type UserNotificationType = 'comment_reply' | 'mention' | 'rating' | 'system' | 'team_message';
 
 export interface UserNotification {
   _id: string;
@@ -26,7 +27,7 @@ export interface UserNotification {
   senderId: string;
   senderUsername: string;
   type: UserNotificationType;
-  entityId?: string;  // Usually a commentId
+  entityId?: string;  // commentId for replies, messageId for team messages
   replyId?: string;   // Used for comment_reply type notifications
   clipId: string;
   read: boolean;

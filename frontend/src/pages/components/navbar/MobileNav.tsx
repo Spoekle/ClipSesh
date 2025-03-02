@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { FaSearch, FaBars, FaTimes, FaUserCircle, FaRegChartBar, FaBell } from 'react-icons/fa';
+import { FaSearch, FaBars, FaTimes, FaUserCircle, FaRegChartBar } from 'react-icons/fa';
 import { MdLogin, MdLogout, MdDashboard, MdHome, MdNotifications } from "react-icons/md";
 import LoginModal from '../LoginModal';
 import { User } from '../../../types/adminTypes';
+import NotificationBadge from '../../../components/Notification/NotificationBadge';
 import axios from 'axios';
 import apiUrl from '../../../config/config';
 import { UnreadCountResponse } from '../../../types/notificationTypes';
@@ -39,30 +40,7 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
 }) => {
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
   const [showSearch, setShowSearch] = useState<boolean>(false);
-  const [unreadCount, setUnreadCount] = useState<number>(0);
   const navigate = useNavigate();
-
-  // Fetch unread notifications count
-  useEffect(() => {
-    if (user) {
-      fetchUnreadCount();
-    }
-  }, [user]);
-
-  const fetchUnreadCount = async (): Promise<void> => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
-    try {
-      const response = await axios.get<UnreadCountResponse>(
-        `${apiUrl}/api/notifications/unread-count`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setUnreadCount(response.data.unreadCount);
-    } catch (error) {
-      console.error('Error fetching unread notifications count', error);
-    }
-  };
 
   // Prevent body scrolling when menu is open
   useEffect(() => {
@@ -109,20 +87,8 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
           <FaSearch size={18} />
         </button>
         
-        {user && (
-          <button
-            onClick={goToNotifications}
-            className="relative p-2 rounded-full bg-neutral-100/50 dark:bg-neutral-800/50 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700"
-            aria-label="Notifications"
-          >
-            <MdNotifications size={20} />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
-            )}
-          </button>
-        )}
+        {/* Add NotificationBadge here if user is logged in */}
+        {user && <NotificationBadge />}
         
         <button
           onClick={toggleMenu}
@@ -302,6 +268,20 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
                     </NavLink>
                   </li>
                 )}
+                <li>
+                  <NavLink
+                    to="/notifications"
+                    className={({isActive}) => `flex items-center p-2 rounded-lg ${
+                      isActive 
+                        ? 'bg-blue-500 text-white' 
+                        : 'text-neutral-800 dark:text-white hover:bg-neutral-200 dark:hover:bg-neutral-700'
+                    }`}
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <MdNotifications size={18} className="mr-3" />
+                    <span>All Notifications</span>
+                  </NavLink>
+                </li>
               </ul>
             </nav>
             
