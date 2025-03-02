@@ -1,3 +1,8 @@
-@import 'tailwindcss/base';
-@import 'tailwindcss/components';
-@import 'tailwindcss/utilities';
+@import "tailwindcss";
+
+@theme {
+  --color-cc-red: oklch(61.3% 0.2279 23.32);
+  --color-cc-blue: oklch(70.8% 0.14888 234.3628);
+  --blurple: oklch(47.4% 0.2127 283.43);
+  --blurple-dark: oklch(36.08% 0.1638 283.12);
+}

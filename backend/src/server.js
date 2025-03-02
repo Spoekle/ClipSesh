@@ -47,6 +47,7 @@ app.use('/api/messages', messagesRoute);
 app.use('/api/ratings', ratingsRoute);
 app.use('/api/zips', zipsRoute);
 app.use('/api/discord', discordRoute);
+app.use('/api/notifications', require('./routes/Notifications'));
 
 const swaggerOptions = {
   swaggerDefinition: {

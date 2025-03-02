@@ -11,6 +11,8 @@ const IpVote = require('../models/ipVoteModel');
 const authorizeRoles = require('./middleware/AuthorizeRoles');
 const searchLimiter = require('./middleware/SearchLimiter');
 const clipUpload = require('./storage/ClipUpload');
+const Notification = require('../models/notificationModel');
+const User = require('../models/userModel');
 
 /**
  * @swagger
@@ -477,6 +479,107 @@ router.delete('/:clipId/comment/:commentId', authorizeRoles(['user', 'clipteam',
         console.error('Error deleting comment:', error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
+});
+
+/**
+ * Reply to a comment
+ */
+router.post('/:clipId/comment/:commentId/reply', authorizeRoles(['user', 'clipteam', 'editor', 'uploader', 'admin']), async (req, res) => {
+  const { clipId, commentId } = req.params;
+  const { replyText } = req.body;
+  const userId = req.user.id;
+  const username = req.user.username;
+
+  if (!replyText || replyText.trim() === '') {
+    return res.status(400).json({ error: 'Reply text is required' });
+  }
+
+  try {
+    const clip = await Clip.findById(clipId);
+    if (!clip) {
+      return res.status(404).json({ error: 'Clip not found' });
+    }
+
+    // Find the comment to reply to
+    const comment = clip.comments.id(commentId);
+    if (!comment) {
+      return res.status(404).json({ error: 'Comment not found' });
+    }
+
+    // Add the reply to the comment
+    const reply = {
+      userId,
+      username,
+      replyText,
+      createdAt: new Date()
+    };
+    
+    comment.replies.push(reply);
+    await clip.save();
+    
+    // Get the newly created reply's ID
+    const newReply = comment.replies[comment.replies.length - 1];
+
+    // Create notification for the original commenter if it's not the same user
+    if (comment.userId && comment.userId.toString() !== userId.toString()) {
+      const notification = new Notification({
+        recipientId: comment.userId,
+        senderId: userId,
+        senderUsername: username,
+        type: 'comment_reply',
+        entityId: commentId, // The comment ID
+        replyId: newReply._id, // The new reply ID
+        clipId: clipId,
+        message: `${username} replied to your comment: "${replyText.substring(0, 50)}${replyText.length > 50 ? '...' : ''}"`,
+      });
+
+      await notification.save();
+    }
+
+    res.json(clip);
+  } catch (error) {
+    console.error('Error adding reply:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+/**
+ * Delete a reply
+ */
+router.delete('/:clipId/comment/:commentId/reply/:replyId', authorizeRoles(['user', 'clipteam', 'editor', 'uploader', 'admin']), async (req, res) => {
+  const { clipId, commentId, replyId } = req.params;
+  const userId = req.user.id;
+  const username = req.user.username;
+  const isAdmin = req.user.roles.includes('admin');
+
+  try {
+    const clip = await Clip.findById(clipId);
+    if (!clip) {
+      return res.status(404).json({ error: 'Clip not found' });
+    }
+
+    const comment = clip.comments.id(commentId);
+    if (!comment) {
+      return res.status(404).json({ error: 'Comment not found' });
+    }
+
+    const reply = comment.replies.id(replyId);
+    if (!reply) {
+      return res.status(404).json({ error: 'Reply not found' });
+    }
+
+    // Check if the user is the author of the reply or an admin
+    if (reply.userId.toString() === userId || isAdmin) {
+      reply.remove();
+      await clip.save();
+      return res.json(clip);
+    } else {
+      return res.status(403).json({ error: 'You are not authorized to delete this reply' });
+    }
+  } catch (error) {
+    console.error('Error deleting reply:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
 });
 
 module.exports = router;
