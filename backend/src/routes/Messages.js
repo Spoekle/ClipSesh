@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const Message = require('../models/messageModel');
+const Clip = require('../models/clipModel'); // Add this import
 const authorizeRoles = require('./middleware/AuthorizeRoles');
 const Notification = require('../models/notificationModel');
 const User = require('../models/userModel');
