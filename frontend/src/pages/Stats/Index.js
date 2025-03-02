@@ -1,21 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Helmet } from 'react-helmet';
+import { useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import LoadingBar from 'react-top-loading-bar';
-import RatedClips from './components/clipViewer/RatedClips';
-import apiUrl from '../config/config';
+import RatedClips from './components/RatedClips';
+import apiUrl from '../../config/config';
 import { motion } from 'framer-motion';
 import { 
   FaStar, 
   FaPercentage, 
-  FaCalendarAlt, 
   FaClipboard,
   FaChartPie,
   FaTrophy,
   FaRegLightbulb
 } from 'react-icons/fa';
-import PageLayout from './components/layouts/PageLayout';
+import PageLayout from '../components/layouts/PageLayout';
 
 function Stats({ user }) {
   const [progress, setProgress] = useState(0);
@@ -23,6 +22,8 @@ function Stats({ user }) {
   const [userRatings, setUserRatings] = useState([]);
   const [seasonInfo, setSeasonInfo] = useState({});
   const [clips, setClips] = useState([]);
+
+  const location = useLocation();
 
   useEffect(() => {
     fetchInitialData();
@@ -279,7 +280,10 @@ function Stats({ user }) {
                     <div>
                       <p className="text-sm uppercase tracking-wider text-neutral-600 dark:text-neutral-400 mb-1">Most Given Rating</p>
                       <h3 className="text-3xl font-bold">
-                        {['1', '2', '3', '4', 'deny'].reduce((a, b) => userData[a] > userData[b] ? a : b)}
+                        {(() => {
+                          const mostCommon = ['1', '2', '3', '4', 'deny'].reduce((a, b) => userData[a] > userData[b] ? a : b);
+                          return mostCommon === 'deny' ? 'Deny' : mostCommon;
+                        })()}
                       </h3>
                       <div className="mt-2 flex items-center">
                         <FaChartPie className="text-purple-600 mr-1" size={14} />
@@ -497,6 +501,7 @@ function Stats({ user }) {
             <RatedClips
               ratingsData={ratings}
               clipsData={clips}
+              location={location}
             />
           )}
         </motion.div>

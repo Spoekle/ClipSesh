@@ -3,7 +3,7 @@ import apiUrl from '../../../config/config';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaSave, FaTimes, FaUser, FaVideo, FaLink } from 'react-icons/fa';
-import { toast } from 'react-toastify';
+import { useNotification } from '../../../context/NotificationContext';
 
 const EditClipModal = ({ clip, setCurrentClip, setIsEditModalOpen, isEditModalOpen, token }) => {
   const [streamer, setStreamer] = useState(clip.streamer);
@@ -12,6 +12,8 @@ const EditClipModal = ({ clip, setCurrentClip, setIsEditModalOpen, isEditModalOp
   const [link, setLink] = useState(clip.link || '');
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  
+  const { showSuccess, showError } = useNotification();
 
   useEffect(() => {
     if (isEditModalOpen) {
@@ -67,15 +69,15 @@ const EditClipModal = ({ clip, setCurrentClip, setIsEditModalOpen, isEditModalOp
       
       if (response.data) {
         setCurrentClip(response.data.clip || response.data);
-        toast.success('Clip updated successfully!');
+        showSuccess('Clip updated successfully!');
       } else {
-        toast.error('No data received from the update.');
+        showError('No data received from the update.');
       }
       
       handleClose();
     } catch (error) {
       console.error('Error updating clip:', error);
-      toast.error(error.response?.data?.message || 'Error updating clip');
+      showError(error.response?.data?.message || 'Error updating clip');
     } finally {
       setIsLoading(false);
     }

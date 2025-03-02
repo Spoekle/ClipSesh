@@ -14,6 +14,7 @@ const CustomPlayer = ({ currentClip }) => {
     const [error, setError] = useState(null);
     const [hasInteracted, setHasInteracted] = useState(false);
     const [isBuffering, setIsBuffering] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
 
     // Timer for hiding controls
     const controlsTimer = useRef(null);
@@ -54,6 +55,18 @@ const CustomPlayer = ({ currentClip }) => {
             video.removeEventListener('error', onError);
             video.removeEventListener('waiting', onWaiting);
             video.removeEventListener('canplay', onCanPlay);
+        };
+    }, []);
+
+    // Track fullscreen changes
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => {
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
         };
     }, []);
 
@@ -158,12 +171,24 @@ const CustomPlayer = ({ currentClip }) => {
         }
     };
 
+    // Format date for fullscreen display
+    const formatDate = (dateString) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+    };
+
     return (
         <div
             ref={playerRef}
             className="relative aspect-video bg-black rounded-t-xl overflow-hidden group"
             onMouseMove={handleMouseMove}
             onClick={handlePlayPause}
+            onContextMenu={e => e.preventDefault()}
         >
             {error ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-neutral-900 text-white p-4 text-center">
@@ -190,7 +215,35 @@ const CustomPlayer = ({ currentClip }) => {
                         poster={currentClip.thumbnail}
                         preload="metadata"
                         playsInline
+                        onContextMenu={e => e.preventDefault()}
                     />
+
+                    {/* Fullscreen Info Overlay */}
+                    {isFullscreen && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -20 }}
+                            animate={{ opacity: showControls ? 1 : 0, y: showControls ? 0 : -20 }}
+                            transition={{ duration: 0.2 }}
+                            className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/70 to-transparent p-4 pt-6 pb-10 pointer-events-none"
+                        >
+                            <h2 className="text-white text-xl font-bold mb-2">{currentClip.title}</h2>
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-white/80">
+                                <div className="flex items-center">
+                                    <span className="font-semibold mr-1">Streamer:</span> {currentClip.streamer}
+                                </div>
+                                {currentClip.submitter && (
+                                    <div className="flex items-center">
+                                        <span className="font-semibold mr-1">Submitted by:</span> {currentClip.submitter}
+                                    </div>
+                                )}
+                                {currentClip.createdAt && (
+                                    <div className="flex items-center">
+                                        <span className="font-semibold mr-1">Date:</span> {formatDate(currentClip.createdAt)}
+                                    </div>
+                                )}
+                            </div>
+                        </motion.div>
+                    )}
 
                     {/* Buffering Indicator */}
                     {isBuffering && (
@@ -199,7 +252,7 @@ const CustomPlayer = ({ currentClip }) => {
                         </div>
                     )}
 
-                    {/* Play Overlay (for initial state) */}
+                    {/* Play Overlay */}
                     {!hasInteracted && !isPlaying && (
                         <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                             <motion.button
@@ -224,7 +277,7 @@ const CustomPlayer = ({ currentClip }) => {
                         className={`absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-3 pt-12 pointer-events-none ${showControls || !isPlaying ? 'opacity-100' : 'opacity-0'}`}
                     >
                         {/* Progress Bar */}
-                        <div className="mb-3 pointer-events-auto">
+                        <div className="mb-2 pointer-events-auto">
                             <input
                                 type="range"
                                 min="0"
@@ -233,9 +286,20 @@ const CustomPlayer = ({ currentClip }) => {
                                 onChange={handleSeek}
                                 onClick={e => e.stopPropagation()}
                                 className="w-full h-1.5 bg-neutral-600 rounded-lg appearance-none cursor-pointer 
-                         [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 
-                         [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-runnable-track]:h-1.5"
+                                [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:bg-white
+                                [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 
+                                [&::-webkit-slider-thumb]:rounded-full
+                                [&::-webkit-slider-thumb]:mt-[-3px]
+                                [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:w-3
+                                [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-none
+                                [&::-moz-range-thumb]:mt-[-3px]"
                             />
+                        </div>
+                        
+                        {/* Time display */}
+                        <div className="flex justify-between text-white text-xs mb-2 px-1">
+                            <span>{formatTime(currentTime)}</span>
+                            <span>{formatTime(duration || 0)}</span>
                         </div>
 
                         <div className="flex items-center justify-between">
@@ -272,28 +336,30 @@ const CustomPlayer = ({ currentClip }) => {
                                             onChange={handleVolumeChange}
                                             onClick={e => e.stopPropagation()}
                                             className="h-1 bg-neutral-600 rounded-lg appearance-none cursor-pointer 
-                               [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 
-                               [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-runnable-track]:h-1"
+                                            [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:bg-white
+                                            [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3
+                                            [&::-webkit-slider-thumb]:rounded-full
+                                            [&::-webkit-slider-thumb]:mt-[-3px]
+                                            [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:w-3
+                                            [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-none
+                                            [&::-moz-range-thumb]:mt-[-3px]"
                                         />
                                     </div>
                                 </div>
-
-                                <div className="text-white text-sm"></div>
-                                {formatTime(currentTime)} / {formatTime(duration || 0)}
                             </div>
-                        </div>
 
-                        {/* Right Controls */}
-                        <div className="pointer-events-auto">
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    toggleFullScreen();
-                                }}
-                                className="text-white hover:text-blue-400 transition-colors p-1"
-                            >
-                                <FaExpand />
-                            </button>
+                            {/* Right Controls */}
+                            <div className="pointer-events-auto">
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleFullScreen();
+                                    }}
+                                    className="text-white hover:text-blue-400 transition-colors p-1"
+                                >
+                                    <FaExpand />
+                                </button>
+                            </div>
                         </div>
                     </motion.div>
                 </>

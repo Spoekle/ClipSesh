@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { toast } from 'react-toastify';
+import { useNotification } from '../../context/NotificationContext'; // Updated import
 import logo from '../../media/CC_Logo_250px.png';
 import MobileNavbar from './navbar/MobileNav';
 import DesktopNavbar from './navbar/DefaultNav';
@@ -12,6 +12,9 @@ import apiUrl from '../../config/config';
 function Navbar({ setUser, user }) {
   const windowWidth = useWindowWidth();
   const isMobile = windowWidth < 768;
+  
+  // Use the new notification system
+  const { showSuccess } = useNotification();
   
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -90,7 +93,7 @@ function Navbar({ setUser, user }) {
   const handleLogout = () => {
     localStorage.removeItem('token');
     setUser(null);
-    toast.success('Logged out successfully');
+    showSuccess('Logged out successfully');
     navigate('/');
   };
 
@@ -125,9 +128,6 @@ function Navbar({ setUser, user }) {
 
   return (
     <motion.nav
-      initial={{ y: -100 }}
-      animate={{ y: 0 }}
-      transition={{ duration: 0.3 }}
       className={`p-2 z-50 sticky top-0 transition-all duration-300 ${
         isScrolled 
           ? 'bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md shadow-md' 

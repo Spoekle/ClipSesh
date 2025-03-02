@@ -4,19 +4,20 @@ import axios from 'axios';
 import Navbar from './pages/components/Navbar';
 import Footer from './pages/components/Footer';
 import EditorDash from './pages/EditorDash';
-import ClipViewer from './pages/ClipViewer'
+import ClipViewer from './pages/ClipViewer/Index'
 import ClipSearch from './pages/ClipSearch';
 import Home from './pages/Home';
-import AdminDash from './pages/AdminDash';
+import AdminDash from './pages/AdminDash/Index';
 import ResetPassword from './pages/ResetPassword';
 import PrivacyStatement from './pages/PrivacyStatement';
 import ProfilePage from './pages/ProfilePage';
-import Stats from './pages/Stats';
+import Stats from './pages/Stats/Index';
 import background from './media/background.jpg';
 import apiUrl from './config/config';
 import { motion } from 'framer-motion';
 import { FaLock, FaShieldAlt, FaUserCheck } from 'react-icons/fa';
-
+import { NotificationProvider } from './context/NotificationContext';
+import NotificationContainer from './components/Notification/NotificationContainer';
 
 function ClipSesh() {
   const [user, setUser] = useState(null);
@@ -61,11 +62,11 @@ function ClipSesh() {
     useEffect(() => {
       // Set up different messages for different auth checks
       if (isAdminRequired) {
-        setLoadingMessage('Verifying admin privileges...');
+        setLoadingMessage('Verifying Admin privileges...');
       } else if (isEditorRequired) {
-        setLoadingMessage('Verifying editor access...');
+        setLoadingMessage('Verifying Editor privileges...');
       } else if (isVerifiedRequired) {
-        setLoadingMessage('Verifying team membership...');
+        setLoadingMessage('Verifying ClipTeam privileges...');
       }
       
       // Hide loading screen after a short delay to allow animations to play
@@ -73,7 +74,7 @@ function ClipSesh() {
         setAuthCheckComplete(true);
         setTimeout(() => {
           setShowLoadingScreen(false);
-        }, 300); // Small fade out delay
+        }, 300);
       }, 800);
 
       return () => clearTimeout(timer);
@@ -214,26 +215,29 @@ function ClipSesh() {
   };
 
   return (
-    <Router>
-      <div className="flex flex-col min-h-screen">
-        <Navbar user={user} setUser={setUser} />
-        <main className="flex-grow">
-          <Routes>
-            <Route exact path="/" element={<Home />} />
-            <Route path="/editor" element={<RequireAuth isEditorRequired={true}><EditorDash /></RequireAuth>} />
-            <Route path="/clips" element={<ClipViewer />} />
-            <Route path="/clips/:clipId" element={<ClipViewer />} />
-            <Route path="/search" element={<ClipSearch />} />
-            <Route path="/admin" element={<RequireAuth isAdminRequired={true}><AdminDash /></RequireAuth>} />
-            <Route path="/profile" element={<RequireAuth><ProfilePage user={user} setUser={setUser} /></RequireAuth>} />
-            <Route path="/stats" element={<RequireAuth isVerifiedRequired={true}><Stats user={user} setUser={setUser} /></RequireAuth>} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/privacystatement" element={<PrivacyStatement />} />
-          </Routes>
-        </main>
-        <Footer />
-      </div>
-    </Router>
+    <NotificationProvider>
+      <Router>
+        <div className="flex flex-col min-h-screen">
+          <Navbar user={user} setUser={setUser} />
+          <main className="flex-grow">
+            <Routes>
+              <Route exact path="/" element={<Home />} />
+              <Route path="/editor" element={<RequireAuth isEditorRequired={true}><EditorDash /></RequireAuth>} />
+              <Route path="/clips" element={<ClipViewer />} />
+              <Route path="/clips/:clipId" element={<ClipViewer />} />
+              <Route path="/search" element={<ClipSearch />} />
+              <Route path="/admin" element={<RequireAuth isAdminRequired={true}><AdminDash /></RequireAuth>} />
+              <Route path="/profile" element={<RequireAuth><ProfilePage user={user} setUser={setUser} /></RequireAuth>} />
+              <Route path="/stats" element={<RequireAuth isVerifiedRequired={true}><Stats user={user} setUser={setUser} /></RequireAuth>} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/privacystatement" element={<PrivacyStatement />} />
+            </Routes>
+          </main>
+          <Footer />
+        </div>
+      </Router>
+      <NotificationContainer />
+    </NotificationProvider>
   );
 }
 

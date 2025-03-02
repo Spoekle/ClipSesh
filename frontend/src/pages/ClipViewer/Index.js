@@ -1,16 +1,15 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Helmet } from 'react-helmet';
-import apiUrl from '../config/config';
+import apiUrl from '../../config/config';
 import { useParams, useSearchParams, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { useNotification } from '../../context/NotificationContext';  // Updated import
 import LoadingBar from 'react-top-loading-bar';
 
 // Component imports
-import ClipViewerHeader from './components/clipViewer/ClipViewerHeader';
-import ClipViewerContent from './components/clipViewer/ClipViewerContent';
+import ClipViewerHeader from './components/ClipViewerHeader';
+import ClipViewerContent from './components/ClipViewerContent';
 
 function ClipViewer() {
   const { clipId } = useParams();
@@ -19,6 +18,9 @@ function ClipViewer() {
   const page = parseInt(searchParams.get('page')) || 1;
   const location = useLocation();
   const token = localStorage.getItem('token');
+  
+  // Use the new notification system
+  const { showError } = useNotification();
 
   // State management
   const [unratedClips, setUnratedClips] = useState([]);
@@ -119,12 +121,12 @@ function ClipViewer() {
       setProgress(100);
     } catch (error) {
       console.error('Error in fetchClipsAndRatings function while fetching clips and ratings:', error);
-      toast.error("Could not load clips. Please try again later.");
+      showError("Could not load clips. Please try again later.");
       setProgress(100);
     } finally {
       setIsLoading(false);
     }
-  }, [token, sortOption]);
+  }, [token, sortOption, showError]);
 
   // Fetch user data
   const fetchUser = useCallback(async () => {
@@ -162,10 +164,10 @@ function ClipViewer() {
       setProgress(100);
     } catch (error) {
       console.error('Error fetching initial data:', error);
-      toast.error("Failed to load initial data. Please try again later.");
+      showError("Failed to load initial data. Please try again later.");
       setProgress(100);
     }
-  }, [fetchUser, fetchClipsAndRatings, filterRatedClips]);
+  }, [fetchUser, fetchClipsAndRatings, filterRatedClips, showError]);
 
   useEffect(() => {
     fetchInitialData();
@@ -183,12 +185,12 @@ function ClipViewer() {
         })
         .catch((error) => {
           console.error('Error fetching clip:', error);
-          toast.error("Could not load clip. It may have been deleted or is unavailable.");
+          showError("Could not load clip. It may have been deleted or is unavailable.");
           setIsClipLoading(false);
           setExpandedClip(null);
         });
     }
-  }, [expandedClip]);
+  }, [expandedClip, showError]);
 
   const filterDeniedClips = (clipsData, ratingsData) => {
     if (config.denyThreshold) {
@@ -228,7 +230,7 @@ function ClipViewer() {
       }
     } catch (error) {
       console.error('Error fetching config:', error);
-      toast.error("Could not load configuration settings");
+      showError("Could not load configuration settings");
     }
   };
 
@@ -351,8 +353,6 @@ function ClipViewer() {
           content="Discover, watch, and rate the best gaming clips on ClipSesh."
         />
       </Helmet>
-      
-      <ToastContainer position="top-right" theme="colored" />
       
       <div className="w-full">
         <LoadingBar

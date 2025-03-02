@@ -1,0 +1,215 @@
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FaUserAlt, FaAngleDown, FaAngleUp, FaCheck, FaTimes } from 'react-icons/fa';
+import { PieChart, Pie, ResponsiveContainer, Cell, Tooltip } from 'recharts';
+import { UserDistributionTooltip } from './CustomTooltips';
+
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#FF0000'];
+
+const IndividualPerformance = ({ sortedUsers, seasonInfo }) => {
+  const [isPerformanceExpanded, setIsPerformanceExpanded] = useState(false);
+  const [expandedUsers, setExpandedUsers] = useState({});
+
+  // Function to toggle user details expansion
+  const toggleUserExpand = (username) => {
+    setExpandedUsers(prev => ({
+      ...prev,
+      [username]: !prev[username]
+    }));
+  };
+
+  return (
+    <>
+      <div 
+        onClick={() => setIsPerformanceExpanded(!isPerformanceExpanded)}
+        className="flex justify-between items-center mt-10 mb-4 cursor-pointer group"
+      >
+        <h3 className="text-xl font-bold flex items-center">
+          <FaUserAlt className="mr-2 text-blue-500" /> 
+          Individual Performance Stats
+        </h3>
+        <div className="bg-neutral-200 dark:bg-neutral-700 p-2 rounded-full transform transition-transform duration-200 group-hover:bg-neutral-300 dark:group-hover:bg-neutral-600">
+          {isPerformanceExpanded ? (
+            <FaAngleUp className="text-neutral-600 dark:text-neutral-300" />
+          ) : (
+            <FaAngleDown className="text-neutral-600 dark:text-neutral-300" />
+          )}
+        </div>
+      </div>
+      
+      <motion.div 
+        initial={false}
+        animate={{ 
+          height: isPerformanceExpanded ? "auto" : 0,
+          opacity: isPerformanceExpanded ? 1 : 0
+        }}
+        transition={{ duration: 0.3 }}
+        className="overflow-hidden"
+      >
+        <div className="space-y-3">
+          {sortedUsers.map(user => {
+            const isExpanded = expandedUsers[user.username] || false;
+            const userRatingPercentage = user.percentageRated;
+            let barColor;
+            
+            if (userRatingPercentage >= 90) barColor = "bg-green-500";
+            else if (userRatingPercentage >= 75) barColor = "bg-blue-500";
+            else if (userRatingPercentage >= 50) barColor = "bg-yellow-500";
+            else if (userRatingPercentage >= 25) barColor = "bg-orange-500";
+            else barColor = "bg-red-500";
+            
+            // Create data for user's mini pie chart
+            const userPieData = [
+              { name: 'Rated 1', value: user['1'] },
+              { name: 'Rated 2', value: user['2'] },
+              { name: 'Rated 3', value: user['3'] },
+              { name: 'Rated 4', value: user['4'] },
+              { name: 'Denied', value: user['deny'] }
+            ];
+            
+            return (
+              <motion.div
+                key={user.username}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-neutral-200 dark:bg-neutral-700 rounded-lg overflow-hidden"
+              >
+                <div 
+                  className="flex justify-between items-center p-4 cursor-pointer hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors"
+                  onClick={() => toggleUserExpand(user.username)}
+                >
+                  <div className="flex items-center">
+                    <div className="mr-3 w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold">
+                      {user.username.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <h4 className="font-semibold">{user.username}</h4>
+                      <div className="text-sm text-neutral-600 dark:text-neutral-400">
+                        {user.total} ratings ({userRatingPercentage.toFixed(1)}%)
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    <span className={`flex items-center text-sm px-2 py-0.5 rounded ${
+                      userRatingPercentage > 20 ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200' 
+                                            : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'
+                    }`}>
+                      {userRatingPercentage > 20 ? <FaCheck className="mr-1" /> : <FaTimes className="mr-1" />}
+                      {userRatingPercentage > 20 ? 'Compliant' : 'Non-compliant'}
+                    </span>
+                    {isExpanded ? <FaAngleUp /> : <FaAngleDown />}
+                  </div>
+                </div>
+                
+                <AnimatePresence>
+                  {isExpanded && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="px-4 pb-4"
+                    >
+                      <div className="p-4 rounded-lg bg-neutral-300 dark:bg-neutral-800">
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+                          {[
+                            { label: 'Rated 1', value: user['1'], color: COLORS[0] },
+                            { label: 'Rated 2', value: user['2'], color: COLORS[1] },
+                            { label: 'Rated 3', value: user['3'], color: COLORS[2] },
+                            { label: 'Rated 4', value: user['4'], color: COLORS[3] },
+                            { label: 'Denied', value: user['deny'], color: COLORS[4] }
+                          ].map((item, index) => (
+                            <div key={index} className="bg-neutral-400 dark:bg-neutral-700 text-neutral-900 dark:text-white transition duration-200 rounded-md p-3">
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm font-medium">{item.label}:</span>
+                                <span className="font-bold" style={{ color: item.color }}>{item.value}</span>
+                              </div>
+                              <div className="mt-1 w-full bg-neutral-500 dark:bg-neutral-800 h-1.5 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full" 
+                                  style={{ 
+                                    width: `${(item.value / user.total) * 100 || 0}%`,
+                                    backgroundColor: item.color 
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Rating distribution mini pie chart with custom tooltip */}
+                        <div className="mt-6 mb-2">
+                          <h4 className="font-medium mb-2 text-sm uppercase tracking-wide">Rating Distribution</h4>
+                          <div className="flex items-center">
+                            <div className="w-1/2 h-32">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                  <Pie
+                                    data={userPieData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={25}
+                                    outerRadius={45}
+                                    fill="#8884d8"
+                                    dataKey="value"
+                                    paddingAngle={3}
+                                  >
+                                    {userPieData.map((entry, index) => (
+                                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    ))}
+                                  </Pie>
+                                  <Tooltip content={<UserDistributionTooltip />} />
+                                </PieChart>
+                              </ResponsiveContainer>
+                            </div>
+
+                            <div className="w-1/2">
+                              <div className="flex flex-col gap-1 text-sm">
+                                <div className="flex justify-between">
+                                  <span>Completion:</span>
+                                  <span className="font-semibold">{userRatingPercentage.toFixed(1)}%</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Total Clips Rated:</span>
+                                  <span className="font-semibold">{user.total} of {seasonInfo.clipAmount}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Remaining:</span>
+                                  <span className="font-semibold">{seasonInfo.clipAmount - user.total} clips</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Progress bar */}
+                        <div className="mt-4">
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-sm font-medium">Rating Progress</span>
+                            <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
+                              {user.total}/{seasonInfo.clipAmount} clips
+                            </span>
+                          </div>
+                          <div className="w-full h-2 bg-neutral-400 dark:bg-neutral-600 rounded-full overflow-hidden">
+                            <motion.div 
+                              initial={{ width: 0 }}
+                              animate={{ width: `${(user.total / seasonInfo.clipAmount) * 100 || 0}%` }}
+                              transition={{ duration: 0.8, delay: 0.2 }}
+                              className={`h-full ${barColor}`}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            );
+          })}
+        </div>
+      </motion.div>
+    </>
+  );
+};
+
+export default IndividualPerformance;

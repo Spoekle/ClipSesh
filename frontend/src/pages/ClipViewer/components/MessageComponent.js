@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import EmojiPicker from 'emoji-picker-react';
 import { format } from 'timeago.js';
 import axios from 'axios';
+import { useNotification } from '../../../context/NotificationContext'; // Add this import
 
 const MessageComponent = ({ clipId, setPopout, user }) => {
   const [messages, setMessages] = useState([]);
@@ -13,8 +14,10 @@ const MessageComponent = ({ clipId, setPopout, user }) => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef(null);
-  
   const messagesContainerRef = useRef(null);
+  
+  // Use the notification system for any error handling
+  const { showError } = useNotification();
 
   useEffect(() => {
     const fetchMessages = async () => {
@@ -35,6 +38,7 @@ const MessageComponent = ({ clipId, setPopout, user }) => {
           }, 300);
         } catch (error) {
           console.error('Failed to fetch messages:', error);
+          showError('Failed to load team chat messages');
           setLoading(false);
         }
       }
@@ -45,7 +49,7 @@ const MessageComponent = ({ clipId, setPopout, user }) => {
     const intervalId = setInterval(fetchMessages, 10000);
     
     return () => clearInterval(intervalId);
-  }, [clipId]);
+  }, [clipId, showError]);
 
   useEffect(() => {
     scrollToBottom();
@@ -81,6 +85,7 @@ const MessageComponent = ({ clipId, setPopout, user }) => {
       setNewMessage('');
     } catch (error) {
       console.error('Failed to send message:', error);
+      showError('Failed to send message. Please try again.');
     }
   };
 
@@ -112,6 +117,7 @@ const MessageComponent = ({ clipId, setPopout, user }) => {
       );
     } catch (error) {
       console.error('Failed to delete message:', error);
+      showError('Failed to delete message. Please try again.');
     }
   };
 

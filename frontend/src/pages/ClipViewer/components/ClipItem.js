@@ -42,11 +42,16 @@ const ClipItem = ({ clip, hasUserRated, setExpandedClip, index }) => {
             .then(() => {
               // Video started playing successfully
               setIsVideoLoaded(true);
+              
+              // Add hover classes for transitions
+              if (clip.thumbnail && thumbnailRef.current) {
+                videoRef.current.classList.add('group-hover:opacity-100');
+                thumbnailRef.current.classList.add('group-hover:opacity-0');
+              }
             })
             .catch(error => {
               // Auto-play was prevented (common in many browsers)
               console.log("Autoplay prevented:", error);
-              // We'll show a play button overlay instead
             });
         }
       } catch (err) {
@@ -93,7 +98,9 @@ const ClipItem = ({ clip, hasUserRated, setExpandedClip, index }) => {
       {(clip.thumbnail || isVideoError) && (
         <div 
           ref={thumbnailRef}
-          className={`absolute inset-0 w-full h-full bg-neutral-900 ${isHovering && !isVideoError ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
+          className={`absolute inset-0 w-full h-full bg-neutral-900 transition-opacity duration-300 ${
+            isHovering && !isVideoError ? 'group-hover:opacity-0' : 'opacity-100'
+          }`}
         >
           {clip.thumbnail ? (
             <img
@@ -114,14 +121,22 @@ const ClipItem = ({ clip, hasUserRated, setExpandedClip, index }) => {
       <video
         ref={videoRef}
         className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
-          isVideoLoaded && isHovering && !isVideoError ? 'opacity-100' : 'opacity-0'
-        }`}
+          clip.thumbnail ? 'opacity-0' : 'opacity-100'
+        } ${isVideoLoaded && isHovering && !isVideoError ? 'group-hover:opacity-100' : ''}`}
         src={getVideoUrl(clip.url)}
         muted
         playsInline
-        preload="metadata"
+        preload={clip.thumbnail ? "none" : "metadata"}
         onLoadedData={() => setIsVideoLoaded(true)}
         onError={() => setIsVideoError(true)}
+        onPlaying={(e) => {
+          if(clip.thumbnail && !e.target.classList.contains('group-hover:opacity-100')) {
+            e.target.classList.add('group-hover:opacity-100');
+            if(thumbnailRef.current && !thumbnailRef.current.classList.contains('group-hover:opacity-0')) {
+              thumbnailRef.current.classList.add('group-hover:opacity-0');
+            }
+          }
+        }}
       />
 
       {/* Title overlay at bottom */}

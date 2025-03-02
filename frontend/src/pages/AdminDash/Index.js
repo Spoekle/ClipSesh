@@ -1,21 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
-import apiUrl from '../config/config';
+import apiUrl from '../../config/config';
 import axios from 'axios';
-import { saveAs } from 'file-saver';
 import { BiLoaderCircle } from 'react-icons/bi';
 import LoadingBar from 'react-top-loading-bar';
-import background from '../media/admin.jpg';
-import { FaDiscord, FaDownload, FaTrash, FaUserClock } from "react-icons/fa";
+import background from '../../media/admin.jpg';
+import { FaDiscord, FaUserClock } from "react-icons/fa";
 import { useLocation } from 'react-router-dom';
-import DeniedClips from './components/adminDash/DeniedClips';
-import UserList from './components/adminDash/UserList';
-import Statistics from './components/adminDash/Statistics';
-import CreateUser from './components/adminDash/CreateUser';
-import ConfigPanel from './components/adminDash/ConfigPanel';
-import AdminActions from './components/adminDash/AdminActions';
-import ZipManager from './components/adminDash/ZipManager';
-import SeasonInfo from './components/adminDash/SeasonInfo';
+import DeniedClips from './components/DeniedClips';
+import UserList from './components/UserList';
+import Statistics from './components/Statistics';
+import CreateUser from './components/CreateUser';
+import ConfigPanel from './components/ConfigPanel';
+import AdminActions from './components/AdminActions';
+import ZipManager from './components/ZipManager';
+import SeasonInfo from './components/SeasonInfo';
 
 function AdminDash() {
   const [allUsers, setAllUsers] = useState([]);
@@ -26,7 +25,6 @@ function AdminDash() {
   const [clipTeam, setClipTeam] = useState([]);
   const [editors, setEditors] = useState([]);
   const [uploader, setUploader] = useState([]);
-  const [editUser, setEditUser] = useState(null);
   const [disabledUsers, setDisabledUsers] = useState([]);
   const [config, setConfig] = useState({ denyThreshold: 5, latestVideoLink: '' });
   const [clips, setClips] = useState([]);

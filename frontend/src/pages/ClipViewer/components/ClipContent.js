@@ -12,8 +12,7 @@ import RatingsComponent from './RatingsComponent';
 import EditModal from './EditClipModal';
 import CustomPlayer from './CustomPlayer';
 import { format } from 'timeago.js';
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { useNotification } from '../../../context/NotificationContext';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 
 const ClipContent = ({ clip, setExpandedClip, isLoggedIn, user, token, fetchClipsAndRatings, ratings }) => {
@@ -23,6 +22,9 @@ const ClipContent = ({ clip, setExpandedClip, isLoggedIn, user, token, fetchClip
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
+  
+  // Use our custom notification hook instead of toast
+  const { showSuccess, showError, showInfo } = useNotification();
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -63,12 +65,11 @@ const ClipContent = ({ clip, setExpandedClip, isLoggedIn, user, token, fetchClip
       });
       await fetchClipsAndRatings(user);
       
-      toast.success(rating !== null 
+      showSuccess(rating !== null 
         ? `Clip rated ${rating}/4 successfully!` 
-        : 'Clip has been denied',
-        { position: "top-right", autoClose: 3000 });
+        : 'Clip has been denied');
     } catch (error) {
-      toast.error('Error rating clip: ' + (error.response?.data?.message || 'Unknown error'));
+      showError('Error rating clip: ' + (error.response?.data?.message || 'Unknown error'));
     } finally {
       setIsLoading(false);
     }
@@ -76,7 +77,7 @@ const ClipContent = ({ clip, setExpandedClip, isLoggedIn, user, token, fetchClip
 
   const handleVote = async (voteType) => {
     if (!isLoggedIn) {
-      toast.info('You must be logged in to vote', { position: "top-right" });
+      showInfo('You must be logged in to vote');
       return;
     }
     
@@ -88,9 +89,9 @@ const ClipContent = ({ clip, setExpandedClip, isLoggedIn, user, token, fetchClip
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setCurrentClip(response.data);
-      toast.success(`${voteType === 'upvote' ? 'Upvoted' : 'Downvoted'} successfully!`);
+      showSuccess(`${voteType === 'upvote' ? 'Upvoted' : 'Downvoted'} successfully!`);
     } catch (error) {
-      toast.error(`Error ${voteType}ing clip: ${error.response?.data?.message || 'Unknown error'}`);
+      showError(`Error ${voteType}ing clip: ${error.response?.data?.message || 'Unknown error'}`);
     }
   };
 
@@ -111,9 +112,9 @@ const ClipContent = ({ clip, setExpandedClip, isLoggedIn, user, token, fetchClip
       );
       setCurrentClip(response.data);
       setNewComment('');
-      toast.success('Comment added successfully!');
+      showSuccess('Comment added successfully!');
     } catch (error) {
-      toast.error('Failed to add comment: ' + (error.response?.data?.message || 'Unknown error'));
+      showError('Failed to add comment: ' + (error.response?.data?.message || 'Unknown error'));
     } finally {
       setIsLoading(false);
     }
@@ -130,9 +131,9 @@ const ClipContent = ({ clip, setExpandedClip, isLoggedIn, user, token, fetchClip
       const response = await axios.get(`${apiUrl}/api/clips/${currentClip._id}`);
       setCurrentClip(response.data);
       
-      toast.success('Comment deleted successfully!');
+      showSuccess('Comment deleted successfully!');
     } catch (error) {
-      toast.error('Error deleting comment: ' + (error.response?.data?.message || 'Unknown error'));
+      showError('Error deleting comment: ' + (error.response?.data?.message || 'Unknown error'));
     }
   };
 
@@ -144,17 +145,17 @@ const ClipContent = ({ clip, setExpandedClip, isLoggedIn, user, token, fetchClip
         await axios.delete(`${apiUrl}/api/clips/${currentClip._id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        toast.success('Clip deleted successfully!');
+        showSuccess('Clip deleted successfully!');
         closeExpandedClip();
       } catch (error) {
-        toast.error('Error deleting clip: ' + (error.response?.data?.message || 'Unknown error'));
+        showError('Error deleting clip: ' + (error.response?.data?.message || 'Unknown error'));
         setIsLoading(false);
       }
     }
   };
 
   const handleCopyShareLink = () => {
-    toast.success('Share link copied to clipboard!');
+    showSuccess('Share link copied to clipboard!');
   };
 
   const userRatingData = ratings[clip._id]?.ratingCounts.find(
@@ -174,14 +175,14 @@ const ClipContent = ({ clip, setExpandedClip, isLoggedIn, user, token, fetchClip
       transition={{ duration: 0.3 }}
       className="flex flex-col min-h-screen bg-gray-50 dark:bg-neutral-900"
     >
-      <ToastContainer />
+      {/* Remove ToastContainer since we're using our custom notifications */}
       
       {clip && (
         <Helmet>
           <title>{currentClip && `${currentClip.streamer} | ${currentClip.title}`}</title>
           <meta
             name="description"
-            content={`${currentClip.title} by ${currentClip.streamer} on ${new Date(currentClip.createdAt).toLocaleString()}. Watch the clip and rate it on ClipSesh! ${currentClip.upvotes} upvotes and ${currentClip.downvotes} downvotes. ${currentClip.comments.length} comments. ${currentClip.link}`}
+            content={`${currentClip.title} by ${currentClip.streamer} on ${new Date(currentClip.createdAt).toLocaleString()}. Watch the clip and rate it on ClipSesh! ${currentClip.upvotes} upvotes and ${currentClip.downvotes}. ${currentClip.comments.length} comments. ${currentClip.link}`}
           />
         </Helmet>
       )}
