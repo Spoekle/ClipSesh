@@ -425,11 +425,12 @@ router.post('/:id/vote/:voteType', async (req, res) => {
     }
 });
 
-//Comment on post
+//Comment on post - Store userId correctly
 router.post('/:id/comment', authorizeRoles(['user', 'clipteam', 'editor', 'uploader', 'admin']), async (req, res) => {
     const { id } = req.params;
     const { comment } = req.body;
     const username = req.user.username;
+    const userId = req.user.id;  // Get the user ID from the request
 
     if (!comment) {
         return res.status(400).json({ error: 'Comment is required' });
@@ -441,7 +442,8 @@ router.post('/:id/comment', authorizeRoles(['user', 'clipteam', 'editor', 'uploa
             return res.status(404).json({ error: 'Post not found' });
         }
 
-        clip.comments.push({ username, comment });
+        // Store both username and userId
+        clip.comments.push({ userId, username, comment });
         await clip.save();
 
         res.json(clip);
@@ -506,6 +508,10 @@ router.post('/:clipId/comment/:commentId/reply', authorizeRoles(['user', 'clipte
       return res.status(404).json({ error: 'Comment not found' });
     }
 
+    // Add debug logs for the notification
+    console.log('Comment user ID:', comment.userId);
+    console.log('Current user ID:', userId);
+
     // Add the reply to the comment
     const reply = {
       userId,
@@ -534,6 +540,10 @@ router.post('/:clipId/comment/:commentId/reply', authorizeRoles(['user', 'clipte
       });
 
       await notification.save();
+      console.log('Notification created successfully for user:', comment.userId);
+    } else {
+      console.log('Notification not created because:',
+        !comment.userId ? 'comment.userId is missing' : 'user is replying to their own comment');
     }
 
     res.json(clip);
@@ -549,7 +559,6 @@ router.post('/:clipId/comment/:commentId/reply', authorizeRoles(['user', 'clipte
 router.delete('/:clipId/comment/:commentId/reply/:replyId', authorizeRoles(['user', 'clipteam', 'editor', 'uploader', 'admin']), async (req, res) => {
   const { clipId, commentId, replyId } = req.params;
   const userId = req.user.id;
-  const username = req.user.username;
   const isAdmin = req.user.roles.includes('admin');
 
   try {

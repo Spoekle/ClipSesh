@@ -91,7 +91,8 @@ const replySchema = new mongoose.Schema({
 const commentSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
+    ref: 'User',
+    required: true  // Make this field required
   },
   username: {
     type: String,
