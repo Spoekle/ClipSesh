@@ -9,6 +9,7 @@ const ClipItem = ({ clip, hasUserRated, setExpandedClip, index }) => {
   const [isVideoError, setIsVideoError] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
+  const [isVideoBuffering, setIsVideoBuffering] = useState(false);
 
   // Add proper URL formatting to ensure video loads correctly
   const getVideoUrl = (url) => {
@@ -19,34 +20,48 @@ const ClipItem = ({ clip, hasUserRated, setExpandedClip, index }) => {
 
   // Log errors for debugging
   useEffect(() => {
-    if (videoRef.current) {
+    if (videoRef?.current && clip._id) {
+      // the element can change during cleanup, making it so some events never actually get removed
+      // store it here and point to this to avoid errors
+      const video = videoRef.current;
+
       const handleVideoError = () => {
-        console.error(`Error loading video for clip: ${clip._id}`, videoRef.current.error);
+        console.error(`Error loading video for clip: ${clip._id}`, video.error);
         setIsVideoError(true);
       };
 
-      videoRef.current.addEventListener('error', handleVideoError);
+      video.addEventListener('error', handleVideoError);
       return () => {
-        videoRef.current?.removeEventListener('error', handleVideoError);
+        video.removeEventListener('error', handleVideoError);
       };
     }
   }, [clip._id]);
 
   const handleMouseEnter = () => {
     setIsHovering(true);
-    if (videoRef.current && !isVideoError) {
+    if (videoRef?.current && !isVideoError) {
       try {
         const playPromise = videoRef.current.play();
         if (playPromise !== undefined) {
           playPromise
             .then(() => {
               // Video started playing successfully
-              setIsVideoLoaded(true);
-              
-              // Add hover classes for transitions
-              if (clip.thumbnail && thumbnailRef.current) {
-                videoRef.current.classList.add('group-hover:opacity-100');
-                thumbnailRef.current.classList.add('group-hover:opacity-0');
+              if(!isVideoLoaded) {
+                // playPromise resolves when a video is supposed to start playing, not exactly when it has any usable data
+                // if the video hasn't previously been loaded, wait for it to be playable before swapping the thumbnail and the video
+
+                if(videoRef.current.readyState >= 3) {
+                  // readyState: https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/readyState
+                  // >= 3 means it *is* playable, so don't use the callback
+                  setIsVideoLoaded(true);
+                } else {
+                  // if it wasn't playable, it just waits for the callback instead
+                  videoRef.current.onplaying = () => {
+                    setIsVideoLoaded(true);
+                    // (since the video was already loaded, no need to have it be called again - remove listener)
+                    videoRef.current.onplaying = null;
+                  };
+                }
               }
             })
             .catch(error => {
@@ -66,6 +81,7 @@ const ClipItem = ({ clip, hasUserRated, setExpandedClip, index }) => {
       try {
         videoRef.current.pause();
         videoRef.current.currentTime = 0;
+        videoRef.current.onplaying = null;
       } catch (err) {
         console.error("Video pause error:", err);
       }
@@ -79,7 +95,7 @@ const ClipItem = ({ clip, hasUserRated, setExpandedClip, index }) => {
       onClick={() => setExpandedClip(clip._id)}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className={`group relative block w-full aspect-video rounded-xl overflow-hidden animate-fade shadow-lg hover:shadow-xl transition duration-200 transform hover:scale-[1.03]`}
+      className={`group flex items-center justify-center relative w-full aspect-video rounded-xl overflow-hidden animate-fade shadow-lg hover:shadow-xl transition duration-200 transform hover:scale-[1.03]`}
       style={{ animationDelay: `${index * 70}ms` }}
     >
       {/* Rating badge */}
@@ -99,14 +115,14 @@ const ClipItem = ({ clip, hasUserRated, setExpandedClip, index }) => {
         <div 
           ref={thumbnailRef}
           className={`absolute inset-0 w-full h-full bg-neutral-900 transition-opacity duration-300 ${
-            isHovering && !isVideoError ? 'group-hover:opacity-0' : 'opacity-100'
+            (isHovering && !isVideoError && isVideoLoaded) ? 'group-hover:opacity-0' : 'opacity-100'
           }`}
         >
           {clip.thumbnail ? (
             <img
               src={clip.thumbnail}
               alt={`${clip.streamer} thumbnail`}
-              className="w-full h-full object-cover"
+              className="absolute w-full h-full object-cover transition-opacity duration-300 group-hover:opacity-65"
               onError={() => console.log("Thumbnail failed to load")}
             />
           ) : (
@@ -122,27 +138,27 @@ const ClipItem = ({ clip, hasUserRated, setExpandedClip, index }) => {
         ref={videoRef}
         className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
           clip.thumbnail ? 'opacity-0' : 'opacity-100'
-        } ${isVideoLoaded && isHovering && !isVideoError ? 'group-hover:opacity-100' : ''}`}
+        } ${isVideoLoaded && isHovering && !isVideoError ? `${isVideoBuffering ? `group-hover:opacity-65` : `group-hover:opacity-100`} ` : ''}`}
         src={getVideoUrl(clip.url)}
         muted
         playsInline
+        loop
         preload={clip.thumbnail ? "none" : "metadata"}
-        onLoadedData={() => setIsVideoLoaded(true)}
         onError={() => setIsVideoError(true)}
-        onPlaying={(e) => {
-          if(clip.thumbnail && !e.target.classList.contains('group-hover:opacity-100')) {
-            e.target.classList.add('group-hover:opacity-100');
-            if(thumbnailRef.current && !thumbnailRef.current.classList.contains('group-hover:opacity-0')) {
-              thumbnailRef.current.classList.add('group-hover:opacity-0');
-            }
-          }
-        }}
+        onWaiting={() => setIsVideoBuffering(true)}
+        onPlaying={() => setIsVideoBuffering(false)}
       />
 
       {/* Title overlay at bottom */}
       <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
         <h3 className="text-white text-sm font-medium line-clamp-2">{clip.title}</h3>
       </div>
+
+      <div 
+        className={`absolute z-500 animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 ${
+          (isHovering && (isVideoBuffering || (!isVideoError && !isVideoLoaded)) ? `group-hover:opacity-100` : `opacity-0`)
+        }`}
+      />
       
       {/* Border styling */}
       <div className={`absolute inset-0 rounded-xl pointer-events-none border-2 ${
