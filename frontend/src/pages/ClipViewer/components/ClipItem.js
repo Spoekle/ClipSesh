@@ -49,12 +49,19 @@ const ClipItem = ({ clip, hasUserRated, setExpandedClip, index }) => {
               if(!isVideoLoaded) {
                 // playPromise resolves when a video is supposed to start playing, not exactly when it has any usable data
                 // if the video hasn't previously been loaded, wait for it to be playable before swapping the thumbnail and the video
-                const playing = () => {
+
+                if(videoRef.current.readyState >= 3) {
+                  // readyState: https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/readyState
+                  // >= 3 means it *is* playable, so don't use the callback
                   setIsVideoLoaded(true);
-                  // (since the video was already loaded, no need to have it be called again - remove listener)
-                  videoRef.current.removeEventListener(`playing`, playing)
-                };
-                videoRef.current.addEventListener(`playing`, playing)
+                } else {
+                  // if it wasn't playable, it just waits for the callback instead
+                  videoRef.current.onplaying = () => {
+                    setIsVideoLoaded(true);
+                    // (since the video was already loaded, no need to have it be called again - remove listener)
+                    videoRef.current.onplaying = null;
+                  };
+                }
               }
             })
             .catch(error => {
@@ -74,6 +81,7 @@ const ClipItem = ({ clip, hasUserRated, setExpandedClip, index }) => {
       try {
         videoRef.current.pause();
         videoRef.current.currentTime = 0;
+        videoRef.current.onplaying = null;
       } catch (err) {
         console.error("Video pause error:", err);
       }
