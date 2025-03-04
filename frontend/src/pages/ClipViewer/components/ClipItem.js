@@ -21,17 +21,21 @@ const ClipItem = ({ clip, hasUserRated, setExpandedClip, index }) => {
   // Log errors for debugging
   useEffect(() => {
     if (videoRef?.current && clip._id) {
+      // the element can change during cleanup, making it so some events never actually get removed
+      // store it here and point to this to avoid errors
+      const video = videoRef.current;
+
       const handleVideoError = () => {
-        console.error(`Error loading video for clip: ${clip._id}`, videoRef.current.error);
+        console.error(`Error loading video for clip: ${clip._id}`, video.error);
         setIsVideoError(true);
       };
 
-      videoRef.current.addEventListener('error', handleVideoError);
+      video.addEventListener('error', handleVideoError);
       return () => {
-        videoRef.current?.removeEventListener('error', handleVideoError);
+        video.removeEventListener('error', handleVideoError);
       };
     }
-  }, [clip._id, videoRef.current]);
+  }, [clip._id]);
 
   const handleMouseEnter = () => {
     setIsHovering(true);
@@ -144,7 +148,7 @@ const ClipItem = ({ clip, hasUserRated, setExpandedClip, index }) => {
 
       <div 
         className={`absolute z-500 animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 ${
-          ((isHovering && (isVideoBuffering || !isVideoError && !isVideoLoaded)) ? `group-hover:opacity-100` : `opacity-0`)
+          (isHovering && (isVideoBuffering || (!isVideoError && !isVideoLoaded)) ? `group-hover:opacity-100` : `opacity-0`)
         }`}
       />
       
