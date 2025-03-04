@@ -41,13 +41,13 @@ const ClipItem = ({ clip, hasUserRated, setExpandedClip, index }) => {
           playPromise
             .then(() => {
               // Video started playing successfully
-              setIsVideoLoaded(true);
-              
-              // Add hover classes for transitions
-              if (clip.thumbnail && thumbnailRef.current) {
-                videoRef.current.classList.add('group-hover:opacity-100');
-                thumbnailRef.current.classList.add('group-hover:opacity-0');
+              const onplaying = () => {
+                console.log(`plkaying`)
+                setIsVideoLoaded(true);
+                videoRef.current.removeEventListener(`playing`, onplaying);
               }
+
+              videoRef.current.addEventListener(`playing`, onplaying);
             })
             .catch(error => {
               // Auto-play was prevented (common in many browsers)
@@ -99,7 +99,7 @@ const ClipItem = ({ clip, hasUserRated, setExpandedClip, index }) => {
         <div 
           ref={thumbnailRef}
           className={`absolute inset-0 w-full h-full bg-neutral-900 transition-opacity duration-300 ${
-            isHovering && !isVideoError ? 'group-hover:opacity-0' : 'opacity-100'
+            (isHovering && !isVideoError && isVideoLoaded) ? 'group-hover:opacity-0' : 'opacity-100'
           }`}
         >
           {clip.thumbnail ? (
@@ -127,16 +127,7 @@ const ClipItem = ({ clip, hasUserRated, setExpandedClip, index }) => {
         muted
         playsInline
         preload={clip.thumbnail ? "none" : "metadata"}
-        onLoadedData={() => setIsVideoLoaded(true)}
         onError={() => setIsVideoError(true)}
-        onPlaying={(e) => {
-          if(clip.thumbnail && !e.target.classList.contains('group-hover:opacity-100')) {
-            e.target.classList.add('group-hover:opacity-100');
-            if(thumbnailRef.current && !thumbnailRef.current.classList.contains('group-hover:opacity-0')) {
-              thumbnailRef.current.classList.add('group-hover:opacity-0');
-            }
-          }
-        }}
       />
 
       {/* Title overlay at bottom */}
