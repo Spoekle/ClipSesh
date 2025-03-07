@@ -1,129 +1,126 @@
 const express = require('express');
 const router = express.Router();
-const axios = require('axios');
-const archiver = require('archiver');
-const fs = require('fs');
+const multer = require('multer');
 const path = require('path');
-
+const fs = require('fs');
+const Zip = require('../models/zipModel');
 const authorizeRoles = require('./middleware/AuthorizeRoles');
-const clipsZipUpload = require('./storage/ClipsZipUpload');
-const SeasonZip = require('../models/seasonZipModel');
 
-router.post('/upload', clipsZipUpload.single('clipsZip'), authorizeRoles(['clipteam', 'admin']), async (req, res) => {
-    console.log("=== Handling new zip upload ===");
-    try {
-        const { clipAmount, season } = req.body;
-        const zip = req.file;
-
-        if (!clipAmount || !zip || !season) {
-            return res.status(400).json({ error: 'Missing clips, zip file, or season' });
+// Set storage engine
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const uploadDir = path.join(__dirname, '../../uploads/zips');
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
         }
-
-        console.log("Request body:", { clipAmount, season });
-        console.log("File uploaded with filename:", zip.filename);
-
-        const stats = fs.statSync(zip.path); // Use zip.path to get the file path
-
-        // Only store the path and metadata in the database
-        const seasonZip = new SeasonZip({
-            url: `https://api.spoekle.com/download/${zip.filename}`,
-            season,
-            name: zip.filename,
-            size: stats.size,
-            clipAmount,
-        });
-
-        await seasonZip.save();
-        console.log("Zip file saved to database:", seasonZip);
-        return res.json({ success: true, message: 'Zip file uploaded successfully' });
-
-    } catch (error) {
-        console.error('Error in /zips/upload:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
+        cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+        cb(null, `${Date.now()}-${file.originalname}`);
     }
 });
 
-router.post('/process', authorizeRoles(['clipteam', 'admin']), async (req, res) => {
-    try {
-        const { clips, season } = req.body;
-        const zipFilename = `processed-${Date.now()}.zip`;
-        const zipPath = path.join(__dirname, '..', 'download', zipFilename);
-        const zipStream = fs.createWriteStream(zipPath);
-        const archive = archiver('zip', { zlib: { level: 6 } });
+// Set file size limit to 2GB
+const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024; // 2GB
 
-        archive.pipe(zipStream);
+// Function to check file type
+const checkFileType = (file, cb) => {
+    // Allowed extensions
+    const filetypes = /zip/;
+    // Check extension
+    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+    // Check mime
+    const mimetype = filetypes.test(file.mimetype);
 
-        const allowedClips = clips.filter(clip => clip.rating !== 'denied');
-
-        for (const clip of allowedClips) {
-            try {
-                const { url, streamer, rating, title } = clip;
-                const response = await axios.get(url, { responseType: 'stream' });
-                archive.append(response.data, { name: `${rating}-${streamer}-${title}.mp4` });
-            } catch (clipError) {
-                console.error(`Error fetching clip ${clip._id}:`, clipError.message);
-            }
-        }
-
-        await archive.finalize();
-
-        zipStream.on('close', async () => {
-            const stats = fs.statSync(zipPath);
-            const size = stats.size;
-
-            const seasonZip = new SeasonZip({
-                url: `https://api.spoekle.com/download/${zipFilename}`, 
-                season: season,
-                name: zipFilename,
-                size: size,
-                clipAmount: allowedClips.length,
-            });
-
-            await seasonZip.save();
-
-            res.json({ success: true, message: 'Zip file processed and stored successfully' });
-        });
-
-        zipStream.on('error', (err) => {
-            console.error('Error writing zip file:', err.message);
-            res.status(500).json({ error: 'Internal Server Error' });
-        });
-    } catch (error) {
-        console.error('Error processing zip:', error.message);
-        res.status(500).json({ error: 'Internal Server Error' });
+    if (mimetype && extname) {
+        return cb(null, true);
+    } else {
+        cb(new Error('Only zip files are allowed!'));
     }
-});
+};
 
-router.get('/', authorizeRoles(['clipteam', 'editor', 'admin']), async (req, res) => {
+// Init upload
+const upload = multer({
+    storage: storage,
+    limits: { fileSize: MAX_FILE_SIZE },
+    fileFilter: (req, file, cb) => {
+        checkFileType(file, cb);
+    }
+}).single('zipFile');
+
+// GET all zips
+router.get('/', authorizeRoles(['admin', 'clipteam', 'editor']), async (req, res) => {
     try {
-        const zips = await SeasonZip.find();
+        const zips = await Zip.find().sort({ createdAt: -1 });
         res.json(zips);
     } catch (error) {
-        console.error('Error fetching zips:', error.message);
-        res.status(500).json({ error: 'Internal Server Error' });
+        console.error('Error fetching zips:', error);
+        res.status(500).json({ message: 'Server Error' });
     }
 });
 
-router.delete('/:id', authorizeRoles(['admin']), async (req, res) => {
-    try {
-        const { id } = req.params;
-        const zip = await SeasonZip.findById(id);
+// POST upload a zip
+router.post('/upload', authorizeRoles(['admin']), (req, res) => {
+    upload(req, res, async (err) => {
+        if (err) {
+            if (err instanceof multer.MulterError) {
+                if (err.code === 'LIMIT_FILE_SIZE') {
+                    return res.status(400).json({ message: 'File size too large. Maximum is 2GB.' });
+                }
+                return res.status(400).json({ message: err.message });
+            }
+            return res.status(400).json({ message: err.message });
+        }
 
-        if (!zip) {
-            return res.status(404).json({ error: 'Zip not found' });
+        if (!req.file) {
+            return res.status(400).json({ message: 'No file selected' });
+        }
+
+        // Check that season is provided
+        if (!req.body.season) {
+            // Remove uploaded file if season is missing
+            fs.unlink(req.file.path, () => {});
+            return res.status(400).json({ message: 'Season is required' });
         }
 
         try {
-            fs.unlinkSync(zip.url);
+            const newZip = new Zip({
+                name: req.file.originalname,
+                url: `/uploads/zips/${req.file.filename}`,
+                size: req.file.size,
+                season: req.body.season, // Save the selected season
+                clipAmount: 0, // You may want to determine this dynamically if possible
+            });
+
+            await newZip.save();
+            res.status(201).json(newZip);
         } catch (error) {
-            console.error('Error deleting zip file:', error.message);
+            console.error('Error saving zip info:', error);
+            // Clean up file on error
+            fs.unlink(req.file.path, () => {});
+            res.status(500).json({ message: 'Error saving zip info' });
+        }
+    });
+});
+
+// DELETE a zip
+router.delete('/:id', authorizeRoles(['admin']), async (req, res) => {
+    try {
+        const zip = await Zip.findById(req.params.id);
+        if (!zip) {
+            return res.status(404).json({ message: 'Zip not found' });
         }
 
-        await zip.remove();
-        res.json({ success: true, message: 'Zip file deleted successfully' });
+        const filePath = path.join(__dirname, '../..', zip.url);
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+        }
+
+        await zip.deleteOne();
+        res.json({ message: 'Zip deleted successfully' });
     } catch (error) {
-        console.error('Error deleting zip:', error.message);
-        res.status(500).json({ error: 'Internal Server Error' });
+        console.error('Error deleting zip:', error);
+        res.status(500).json({ message: 'Server Error' });
     }
 });
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FaDiscord, FaGithub, FaYoutube, FaSun, FaMoon, FaSnowflake, FaHeart } from 'react-icons/fa';
 import { motion } from 'framer-motion';
@@ -41,7 +41,7 @@ function Footer() {
 
   const toggleSnow = () => {
     setSnow(!snow);
-    localStorage.setItem('snow', !snow);
+    localStorage.setItem('snow', snow ? 'true' : 'false');
   }; 
 
   const getSeason = () => {

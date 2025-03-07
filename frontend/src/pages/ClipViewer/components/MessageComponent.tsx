@@ -3,22 +3,42 @@ import apiUrl from '../../../config/config';
 import { AiOutlineSend, AiOutlineDelete, AiOutlineClose } from 'react-icons/ai';
 import { BiSmile } from 'react-icons/bi';
 import { motion, AnimatePresence } from 'framer-motion';
-import EmojiPicker from 'emoji-picker-react';
+import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
 import { format } from 'timeago.js';
 import axios from 'axios';
-import { useNotification } from '../../../context/NotificationContext'; // Add this import
+import { useNotification } from '../../../context/NotificationContext';
+import { User } from '../../../types/adminTypes';
 
-// Add highlightedMessageId prop
-const MessageComponent = ({ clipId, setPopout, user, highlightedMessageId = null }) => {
-  const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState('');
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const messagesEndRef = useRef(null);
-  const messagesContainerRef = useRef(null);
-  const [highlightedMessage, setHighlightedMessage] = useState(highlightedMessageId);
+interface Message {
+  _id: string;
+  userId: string;
+  user: string;
+  message: string;
+  profilePicture?: string;
+  timestamp: string;
+}
+
+interface MessageComponentProps {
+  clipId: string;
+  setPopout: (value: string) => void;
+  user: User | null;
+  highlightedMessageId?: string | null;
+}
+
+const MessageComponent: React.FC<MessageComponentProps> = ({ 
+  clipId, 
+  setPopout, 
+  user, 
+  highlightedMessageId = null 
+}) => {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [newMessage, setNewMessage] = useState<string>('');
+  const [showEmojiPicker, setShowEmojiPicker] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const [highlightedMessage, setHighlightedMessage] = useState<string | null>(highlightedMessageId);
   
-  // Use the notification system for any error handling
   const { showError } = useNotification();
 
   useEffect(() => {
@@ -80,7 +100,7 @@ const MessageComponent = ({ clipId, setPopout, user, highlightedMessageId = null
   };
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || !user) return;
     
     const token = localStorage.getItem('token');
     try {
@@ -109,19 +129,21 @@ const MessageComponent = ({ clipId, setPopout, user, highlightedMessageId = null
     }
   };
 
-  const handleKeyDown = (event) => {
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault(); // Prevent default to avoid new line
       handleSendMessage();
     }
   };
 
-  const handleEmojiClick = (emojiObj) => {
-    setNewMessage((prev) => prev + emojiObj.emoji);
+  const handleEmojiClick = (emojiData: EmojiClickData) => {
+    setNewMessage((prev) => prev + emojiData.emoji);
     setShowEmojiPicker(false);
   };
 
-  const handleDeleteMessage = async (id) => {
+  const handleDeleteMessage = async (id: string) => {
+    if (!user) return;
+    
     const token = localStorage.getItem('token');
     try {
       await axios.delete(
@@ -141,6 +163,7 @@ const MessageComponent = ({ clipId, setPopout, user, highlightedMessageId = null
     }
   };
 
+  // Check if user has permission to post messages
   const hasPermission = user && (
     (Array.isArray(user.roles) && (user.roles.includes('admin') || user.roles.includes('clipteam'))) ||
     (typeof user.roles === 'string' && (user.roles === 'admin' || user.roles === 'clipteam'))
@@ -240,7 +263,7 @@ const MessageComponent = ({ clipId, setPopout, user, highlightedMessageId = null
               onKeyDown={handleKeyDown}
               className="w-full p-3 pr-20 bg-neutral-700 text-white rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Type your message..."
-              rows="2"
+              rows={2}
             />
             <div className="absolute bottom-2 right-2 flex items-center space-x-2">
               <button

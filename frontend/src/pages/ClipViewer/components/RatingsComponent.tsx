@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaAngleDown, FaRegThumbsUp, FaRegThumbsDown, FaTimes } from 'react-icons/fa';
+import { FaAngleDown, FaTimes } from 'react-icons/fa';
 import { AiOutlineClose } from 'react-icons/ai';
 
 const RatingsComponent = ({ clip, ratings, setPopout }) => {

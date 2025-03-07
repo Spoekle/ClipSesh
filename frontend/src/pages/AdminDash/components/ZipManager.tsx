@@ -1,215 +1,219 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FaDownload, FaTrash, FaUpload, FaFile, FaSpinner } from 'react-icons/fa';
-import { saveAs } from 'file-saver';
-import { Zip, SeasonInfo } from '../../../types/adminTypes';
+import { FaUpload, FaExclamationTriangle, FaFileArchive } from 'react-icons/fa';
+import axios from 'axios';
+import apiUrl from '../../../config/config';
+import { useNotification } from '../../../context/NotificationContext';
+
+// New constants for file size limit (2GB)
+const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024; // 2GB in bytes
+const MAX_FILE_SIZE_DISPLAY = '2GB';
 
 interface ZipManagerProps {
-  zips: Zip[];
-  zipsLoading: boolean;
-  deleteZip: (id: string) => void;
-  zipFile: File | null;
-  handleZipChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  clipAmount: string;
-  handleClipAmountChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  handleZipSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
-  seasonInfo: SeasonInfo;
+  fetchZips: () => void;
 }
 
-const ZipManager: React.FC<ZipManagerProps> = ({ 
-  zips, 
-  zipsLoading, 
-  deleteZip, 
-  zipFile, 
-  handleZipChange, 
-  clipAmount, 
-  handleClipAmountChange, 
-  handleZipSubmit, 
-  seasonInfo 
-}) => {
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
+const ZipManager: React.FC<ZipManagerProps> = ({ fetchZips }) => {
+    const [file, setFile] = useState<File | null>(null);
+    const [loading, setLoading] = useState<boolean>(false);
+    const [uploadProgress, setUploadProgress] = useState<number>(0);
+    // New state for season selection
+    const [selectedSeason, setSelectedSeason] = useState<string>('');
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const { showSuccess, showError, showWarning } = useNotification();
 
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      {/* Upload Zip Form */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.4 }}
-        className="w-full bg-neutral-300 dark:bg-neutral-800 text-neutral-900 dark:text-white transition duration-200 p-6 md:p-8 rounded-xl shadow-lg hover:shadow-xl"
-      >
-        <h2 className="text-2xl md:text-3xl font-bold mb-6 border-b pb-3 border-neutral-400 dark:border-neutral-700 flex items-center">
-          <FaUpload className="mr-3 text-green-500" /> 
-          Upload Clips
-        </h2>
-        <form onSubmit={handleZipSubmit} className="space-y-5">
-          <div className="bg-neutral-200 dark:bg-neutral-700 p-5 rounded-lg">
-            <label htmlFor="zip" className="flex flex-col items-center justify-center w-full h-32 px-4 transition border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-neutral-100 dark:bg-neutral-600 hover:bg-neutral-200 dark:hover:bg-neutral-500">
-              <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                <FaUpload className="w-8 h-8 mb-4 text-gray-500 dark:text-gray-400" />
-                <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
-                  <span className="font-semibold">Click to upload</span> or drag and drop
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  ZIP file containing clips (MAX 500MB)
-                </p>
-              </div>
-              <input
-                type="file"
-                id="zip"
-                name="zip"
-                onChange={handleZipChange}
-                accept=".zip"
-                className="hidden"
-              />
-            </label>
-            {zipFile && (
-              <div className="mt-3 p-3 bg-neutral-100 dark:bg-neutral-600 rounded flex items-center">
-                <FaFile className="mr-2 text-blue-500" />
-                <span className="text-sm">{zipFile.name}</span>
-                <span className="ml-auto text-xs text-neutral-500 dark:text-neutral-400">
-                  {formatFileSize(zipFile.size)}
-                </span>
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <label htmlFor="clipAmount" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
-              Number of Clips:
-            </label>
-            <input
-              type="number"
-              id="clipAmount"
-              name="clipAmount"
-              value={clipAmount}
-              onChange={handleClipAmountChange}
-              className="w-full px-3 py-2 bg-white dark:bg-neutral-700 border border-neutral-400 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter the number of clips"
-              min="1"
-              required
-            />
-            <p className="text-xs text-neutral-500 dark:text-neutral-400">
-              Current Season: <span className="font-medium">{seasonInfo.season}</span>
-            </p>
-          </div>
-
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            type="submit"
-            disabled={!zipFile}
-            className={`w-full py-3 px-4 rounded-lg font-medium flex items-center justify-center transition duration-200 ${
-              !zipFile 
-                ? 'bg-neutral-500 cursor-not-allowed' 
-                : 'bg-blue-600 hover:bg-blue-700 text-white'
-            }`}
-          >
-            <FaUpload className="mr-2" /> Upload Zip
-          </motion.button>
-        </form>
-      </motion.div>
-
-      {/* Available Zips */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.5 }}
-        className="w-full bg-neutral-300 dark:bg-neutral-800 text-neutral-900 dark:text-white transition duration-200 p-6 md:p-8 rounded-xl shadow-lg hover:shadow-xl"
-      >
-        <h2 className="text-2xl md:text-3xl font-bold mb-6 border-b pb-3 border-neutral-400 dark:border-neutral-700 flex items-center">
-          <FaDownload className="mr-3 text-blue-500" /> 
-          Available Packages
-        </h2>
+    // Determine current season for default value
+    const getCurrentSeason = () => {
+        const now = new Date();
+        const month = now.getMonth() + 1;
+        const day = now.getDate();
         
-        {zipsLoading ? (
-          <div className="flex flex-col items-center justify-center py-12">
-            <FaSpinner className="animate-spin text-4xl text-blue-500 mb-3" />
-            <p className="text-neutral-600 dark:text-neutral-400">Loading zip archives...</p>
-          </div>
-        ) : zips.length === 0 ? (
-          <div className="text-center py-12 bg-neutral-200 dark:bg-neutral-700 rounded-lg">
-            <FaFile className="mx-auto text-4xl text-neutral-500 mb-3" />
-            <p className="text-neutral-600 dark:text-neutral-400 text-lg font-medium">No packages available</p>
-            <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">
-              Processed zip files will appear here
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
-            {zips.map((zip, index) => (
-              <motion.div 
-                key={zip._id} 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="bg-neutral-200 dark:bg-neutral-700 rounded-lg overflow-hidden shadow"
-              >
-                <div className="p-4">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <h3 className="font-medium text-lg mb-1 flex items-center">
-                        <span className="capitalize">{zip.season}</span>
-                        <span className="ml-2 px-2 py-0.5 bg-blue-500 text-white text-xs rounded">
-                          {zip.clipAmount} clips
-                        </span>
-                      </h3>
-                      <p className="text-sm text-neutral-600 dark:text-neutral-400 truncate">
-                        {zip.name}
-                      </p>
-                      <div className="mt-1 flex items-center text-xs text-neutral-500 dark:text-neutral-400">
-                        <span className="mr-3">{formatFileSize(zip.size)}</span>
-                        <span>{formatDate(zip.createdAt)}</span>
-                      </div>
-                    </div>
-                    
-                    <div className="flex gap-2">
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => saveAs(zip.url, zip.name)}
-                        className="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-md transition duration-200"
-                        title="Download"
-                      >
-                        <FaDownload />
-                      </motion.button>
-                      
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => deleteZip(zip._id)}
-                        className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-md transition duration-200"
-                        title="Delete"
-                      >
-                        <FaTrash />
-                      </motion.button>
-                    </div>
-                  </div>
+        if ((month === 3 && day >= 20) || (month > 3 && month < 6) || (month === 6 && day <= 20)) {
+            return 'Spring';
+        } else if ((month === 6 && day >= 21) || (month > 6 && month < 9) || (month === 9 && day <= 20)) {
+            return 'Summer';
+        } else if ((month === 9 && day >= 21) || (month > 9 && month < 12) || (month === 12 && day <= 20)) {
+            return 'Fall';
+        } else {
+            return 'Winter';
+        }
+    };
+
+    // Set default season when component mounts
+    useEffect(() => {
+        setSelectedSeason(getCurrentSeason());
+    }, []);
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const selectedFile = e.target.files?.[0];
+        
+        if (!selectedFile) return;
+        
+        // Validate file size (2GB limit)
+        if (selectedFile.size > MAX_FILE_SIZE) {
+            showError(`File is too large. Maximum size is ${MAX_FILE_SIZE_DISPLAY}.`);
+            e.target.value = '';
+            return;
+        }
+        
+        setFile(selectedFile);
+    };
+
+    const handleUpload = async () => {
+        if (!file) {
+            showWarning('Please select a file to upload.');
+            return;
+        }
+
+        if (!selectedSeason) {
+            showWarning('Please select a season.');
+            return;
+        }
+
+        // Double-check file size before uploading
+        if (file.size > MAX_FILE_SIZE) {
+            showError(`File is too large. Maximum size is ${MAX_FILE_SIZE_DISPLAY}.`);
+            return;
+        }
+
+        setLoading(true);
+        setUploadProgress(0);
+
+        const formData = new FormData();
+        formData.append('zipFile', file);
+        // Add the season to the form data
+        formData.append('season', selectedSeason);
+
+        try {
+            await axios.post(`${apiUrl}/api/zips/upload`, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    Authorization: `Bearer ${localStorage.getItem('token')}`,
+                },
+                onUploadProgress: (progressEvent) => {
+                    const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                    setUploadProgress(percentCompleted);
+                },
+            });
+
+            showSuccess('Zip file uploaded successfully!');
+            setFile(null);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+            fetchZips();
+        } catch (error: any) {
+            console.error('Error uploading zip:', error);
+            showError(error.response?.data?.message || 'Failed to upload zip file');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="w-full p-6 md:p-8 bg-neutral-300 dark:bg-neutral-800 text-neutral-900 dark:text-white transition duration-200 rounded-xl shadow-lg hover:shadow-xl mt-6"
+        >
+            <h2 className="text-2xl md:text-3xl font-bold mb-6 border-b pb-3 border-neutral-400 dark:border-neutral-700 flex items-center">
+                <FaFileArchive className="mr-3 text-blue-500" />
+                Upload Zip Archive
+            </h2>
+
+            <div className="space-y-6">
+                {/* Season selection dropdown */}
+                <div>
+                    <label className="block text-sm font-medium mb-2">Select Season:</label>
+                    <select
+                        value={selectedSeason}
+                        onChange={(e) => setSelectedSeason(e.target.value)}
+                        className="w-full p-3 bg-neutral-200 dark:bg-neutral-700 border border-neutral-400 dark:border-neutral-600 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        disabled={loading}
+                    >
+                        <option value="">-- Select Season --</option>
+                        <option value="Spring">Spring</option>
+                        <option value="Summer">Summer</option>
+                        <option value="Fall">Fall</option>
+                        <option value="Winter">Winter</option>
+                    </select>
                 </div>
-              </motion.div>
-            ))}
-          </div>
-        )}
-      </motion.div>
-    </div>
-  );
+
+                <div className="flex flex-col">
+                    <label className="block text-sm font-medium mb-2">
+                        Upload Zip File <span className="text-gray-500 dark:text-gray-400">(Max {MAX_FILE_SIZE_DISPLAY})</span>:
+                    </label>
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileChange}
+                        accept=".zip"
+                        className="hidden"
+                        id="zip-file-input"
+                        disabled={loading}
+                    />
+                    <label
+                        htmlFor="zip-file-input"
+                        className={`cursor-pointer p-4 border-2 border-dashed border-neutral-400 dark:border-neutral-600 rounded-lg flex flex-col items-center justify-center transition-colors ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:border-blue-500 dark:hover:border-blue-400'}`}
+                    >
+                        <FaUpload size={32} className="mb-2 text-neutral-500 dark:text-neutral-400" />
+                        <span className="text-neutral-600 dark:text-neutral-300">
+                            {file ? file.name : 'Click to select a zip file'}
+                        </span>
+                        {file && (
+                            <span className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                                {(file.size / (1024 * 1024)).toFixed(2)} MB
+                            </span>
+                        )}
+                    </label>
+                </div>
+
+                {/* File size warning */}
+                <div className="text-sm text-yellow-600 dark:text-yellow-400 flex items-start gap-2">
+                    <FaExclamationTriangle className="flex-shrink-0 mt-1" />
+                    <p>
+                        Maximum upload size is {MAX_FILE_SIZE_DISPLAY}. Larger files will be rejected.
+                        Make sure your zip file contains only clip files that have been processed.
+                    </p>
+                </div>
+
+                {loading && (
+                    <div className="mt-4">
+                        <div className="w-full h-2 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
+                            <div
+                                className="h-full bg-blue-500"
+                                style={{ width: `${uploadProgress}%` }}
+                            ></div>
+                        </div>
+                        <p className="text-center mt-2 text-sm text-neutral-500 dark:text-neutral-400">
+                            Uploading: {uploadProgress}%
+                        </p>
+                    </div>
+                )}
+
+                <button
+                    onClick={handleUpload}
+                    disabled={!file || loading || !selectedSeason}
+                    className={`w-full py-3 px-4 rounded-lg font-medium flex items-center justify-center ${!file || !selectedSeason ? 'bg-neutral-400 dark:bg-neutral-600 text-neutral-100 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
+                >
+                    {loading ? (
+                        <>
+                            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Uploading...
+                        </>
+                    ) : (
+                        <>
+                            <FaUpload className="mr-2" /> Upload Zip Archive
+                        </>
+                    )}
+                </button>
+            </div>
+        </motion.div>
+    );
 };
 
 export default ZipManager;

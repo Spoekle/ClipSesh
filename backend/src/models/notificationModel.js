@@ -73,11 +73,13 @@ const notificationSchema = new mongoose.Schema({
     required: true 
   },
   entityId: { 
-    type: mongoose.Schema.Types.ObjectId 
+    type: String 
+  },
+  replyId: { 
+    type: String 
   },
   clipId: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'Clip', 
+    type: String, 
     required: true 
   },
   read: { 

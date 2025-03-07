@@ -7,8 +7,8 @@ export interface User {
   profilePicture?: string;
   discordId?: string;
   discordUsername?: string;
-  status: string;
-  password?: string;
+  status?: string;
+  createdAt?: string;
 }
 
 export interface CreateUserFormData {
@@ -16,6 +16,7 @@ export interface CreateUserFormData {
   password: string;
   email: string;
   roles: string[];
+  status?: string;
 }
 
 export interface FormErrors {
@@ -34,17 +35,18 @@ export interface Clip {
   streamer: string;
   submitter: string;
   link?: string;
+  status?: string;
   upvotes: number;
   downvotes: number;
   comments: Comment[];
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface Reply {
   _id: string;
-  userId: string;
   username: string;
-  replyText: string;
+  content: string;
   createdAt: string;
 }
 
@@ -54,18 +56,25 @@ export interface Comment {
   username: string;
   comment: string;
   createdAt: string;
-  replies: Reply[];
+  replies?: Reply[];
 }
 
 // Rating-related types
 export interface RatingCount {
   rating: string;
   count: number;
-  users: { userId: string; username: string }[];
+  users: RatingUser[];
 }
 
 export interface Rating {
+  clipId: string;
   ratingCounts: RatingCount[];
+  totalRatings: number;
+}
+
+export interface RatingUser {
+  userId: string;
+  username: string;
 }
 
 export interface UserRating {
@@ -81,7 +90,7 @@ export interface UserRating {
 
 // Other admin dashboard types
 export interface SeasonInfo {
-  season: string;
+  season?: string;
   clipAmount: number;
 }
 
