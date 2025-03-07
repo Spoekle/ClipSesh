@@ -2,6 +2,16 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet';
 
+interface PageLayoutProps {
+  children: React.ReactNode;
+  title: string;
+  subtitle?: string;
+  backgroundImage?: string;
+  metaDescription?: string;
+  headerComponent?: React.ReactNode;
+  contentAnimationDelay?: number;
+}
+
 const PageLayout = ({ 
   children, 
   title, 
@@ -10,7 +20,7 @@ const PageLayout = ({
   metaDescription,
   headerComponent,
   contentAnimationDelay = 0.3
-}) => {
+}: PageLayoutProps) => {
   return (
     <div className="min-h-screen text-white flex flex-col items-center bg-neutral-200 dark:bg-neutral-900 transition duration-200">
       <Helmet>
