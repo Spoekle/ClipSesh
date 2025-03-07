@@ -185,7 +185,7 @@ const EditorDash: React.FC = () => {
           />
         </Helmet>
         <div className='w-full'>
-          <LoadingBar color='#3b82f6' height="4px" progress={progress} onLoaderFinished={() => setProgress(0)} />
+          <LoadingBar color='#3b82f6' height={4} progress={progress} onLoaderFinished={() => setProgress(0)} />
         </div>
         <div 
           className="w-full flex h-96 justify-center items-center animate-fade"

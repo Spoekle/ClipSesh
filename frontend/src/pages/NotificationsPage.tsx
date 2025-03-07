@@ -9,7 +9,6 @@ import { UserNotification, UserNotificationResponse } from '../types/notificatio
 import { useNotification } from '../context/NotificationContext';
 import LoadingBar from 'react-top-loading-bar';
 import { format } from 'timeago.js';
-import { Tabs, Tab } from '../components/UI/Tabs'; // You'll need to create this component
 
 const NotificationsPage: React.FC = () => {
   const [notifications, setNotifications] = useState<UserNotification[]>([]);

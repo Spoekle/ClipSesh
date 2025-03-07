@@ -17,8 +17,13 @@ import {
 import { motion } from 'framer-motion';
 import banner1 from '../media/banner1.png';
 
+interface Config {
+  denyThreshold: number;
+  latestVideoLink: string;
+}
+
 function HomePage() {
-  const [config, setConfig] = useState({});
+  const [config, setConfig] = useState({} as Config);
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
@@ -59,7 +64,7 @@ function HomePage() {
     setIsVideoPlaying(true);
   };
 
-  const getYoutubeId = (url) => {
+  const getYoutubeId = (url: string | undefined): string | null => {
     if (!url) return null;
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
     const match = url.match(regExp);
@@ -73,7 +78,7 @@ function HomePage() {
   // Animation variants
   const fadeIn = {
     hidden: { opacity: 0, y: 20 },
-    visible: (custom) => ({
+    visible: (custom: any) => ({
       opacity: 1,
       y: 0,
       transition: { delay: custom * 0.2, duration: 0.6 }
@@ -121,7 +126,7 @@ function HomePage() {
   // Scroll to next section helper
   const scrollToNextSection = () => {
     const featuresSection = document.getElementById('features');
-    featuresSection.scrollIntoView({ behavior: 'smooth' });
+    featuresSection?.scrollIntoView({ behavior: 'smooth' });
   };
 
   // How it Works steps animation
