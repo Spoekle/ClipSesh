@@ -55,6 +55,31 @@ const uploadChunk = multer({
     limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit per chunk
 }).single('chunk');
 
+// Configure simplified storage for direct uploads
+const directStorage = multer.diskStorage({
+    destination: function(req, file, cb) {
+        const downloadDir = path.join(__dirname, '..', 'download');
+        // Create directory if it doesn't exist
+        if (!fs.existsSync(downloadDir)) {
+            fs.mkdirSync(downloadDir, { recursive: true });
+            console.log(`Created download directory: ${downloadDir}`);
+        }
+        cb(null, downloadDir);
+    },
+    filename: function(req, file, cb) {
+        const uniquePrefix = Date.now();
+        cb(null, `${uniquePrefix}-${file.originalname}`);
+    }
+});
+
+// Setup simpler upload with larger file size limit
+const uploadSimple = multer({
+    storage: directStorage,
+    limits: {
+        fileSize: 3 * 1024 * 1024 * 1024, // 3GB
+    },
+}).single('clipsZip');
+
 // Initialize a new upload session
 router.post('/upload-init', authorizeRoles(['clipteam', 'admin']), async (req, res) => {
     try {
@@ -353,6 +378,67 @@ router.get('/upload-status/:uploadId', authorizeRoles(['clipteam', 'admin']), (r
     });
 });
 
+// New simplified upload endpoint
+router.post('/upload-simple', authorizeRoles(['clipteam', 'admin']), (req, res) => {
+    console.log("=== Handling new zip upload (simplified) ===");
+    
+    uploadSimple(req, res, async function(err) {
+        if (err) {
+            console.error("Upload error:", err);
+            return res.status(400).json({ error: 'File upload error: ' + err.message });
+        }
+        
+        try {
+            const { clipAmount, season, year } = req.body;
+            const zip = req.file;
+            
+            if (!clipAmount || !zip || !season || !year) {
+                console.error("Missing required fields:", { clipAmount, season, year, file: !!zip });
+                return res.status(400).json({ error: 'Missing clips, zip file, season, or year' });
+            }
+            
+            console.log("Request body:", { clipAmount, season, year });
+            console.log("File uploaded successfully:", {
+                filename: zip.filename,
+                path: zip.path,
+                mimetype: zip.mimetype,
+                size: zip.size
+            });
+            
+            // Verify the file exists and has content
+            try {
+                const stats = fs.statSync(zip.path);
+                console.log(`File verified: ${zip.path}, size: ${stats.size} bytes`);
+                
+                if (stats.size === 0) {
+                    console.error("Uploaded file has zero bytes");
+                    return res.status(400).json({ error: 'Uploaded file is empty' });
+                }
+                
+                // Save to database
+                const seasonZip = new Zip({
+                    url: `https://api.spoekle.com/download/${zip.filename}`,
+                    season,
+                    year: parseInt(year),
+                    name: zip.filename,
+                    size: stats.size,
+                    clipAmount,
+                });
+                
+                await seasonZip.save();
+                console.log("Zip file saved to database:", seasonZip);
+                return res.json({ success: true, message: 'Zip file uploaded successfully' });
+            } catch (verifyError) {
+                console.error("Error verifying file:", verifyError);
+                return res.status(500).json({ error: 'Failed to verify uploaded file: ' + verifyError.message });
+            }
+        } catch (error) {
+            console.error('Error processing upload:', error);
+            res.status(500).json({ error: 'Internal Server Error: ' + error.message });
+        }
+    });
+});
+
 router.post('/upload', authorizeRoles(['clipteam', 'admin']), async (req, res) => {
     console.log("=== Handling new zip upload ===");
     
@@ -482,6 +568,7 @@ router.get('/', authorizeRoles(['clipteam', 'editor', 'admin']), async (req, res
     }
 });
 
+// Update the delete route to properly handle file paths
 router.delete('/:id', authorizeRoles(['admin']), async (req, res) => {
     try {
         const { id } = req.params;
@@ -492,12 +579,22 @@ router.delete('/:id', authorizeRoles(['admin']), async (req, res) => {
         }
 
         try {
-            fs.unlinkSync(zip.url);
-        } catch (error) {
-            console.error('Error deleting zip file:', error.message);
+            // Extract filename from URL for deletion
+            const urlParts = zip.url.split('/');
+            const filename = urlParts[urlParts.length - 1];
+            const filePath = path.join(__dirname, '..', 'download', filename);
+            
+            if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
+                console.log(`Deleted file: ${filePath}`);
+            } else {
+                console.warn(`File not found for deletion: ${filePath}`);
+            }
+        } catch (fileError) {
+            console.error('Error deleting zip file:', fileError.message);
         }
 
-        await zip.remove();
+        await zip.deleteOne();
         res.json({ success: true, message: 'Zip file deleted successfully' });
     } catch (error) {
         console.error('Error deleting zip:', error.message);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { FaDownload, FaTrash, FaUpload, FaFile, FaSpinner } from 'react-icons/fa';
 import { saveAs } from 'file-saver';
@@ -9,10 +9,8 @@ const ZipManager = ({ zips, zipsLoading, deleteZip, zipFile, handleZipChange, cl
   const [isUploading, setIsUploading] = useState(false);
   const [yearInput, setYearInput] = useState(new Date().getFullYear());
   const [selectedSeason, setSelectedSeason] = useState(seasonInfo.season || "Spring");
-  const [currentChunk, setCurrentChunk] = useState(0);
-  const [totalChunks, setTotalChunks] = useState(0);
-  const [uploadId, setUploadId] = useState('');
-  
+  const [uploadError, setUploadError] = useState("");
+
   const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -21,147 +19,66 @@ const ZipManager = ({ zips, zipsLoading, deleteZip, zipFile, handleZipChange, cl
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // Define chunk size (5MB)
-  const CHUNK_SIZE = 5 * 1024 * 1024;
+  // Direct upload with progress tracking
+  const uploadFile = async (file) => {
+    const formData = new FormData();
+    formData.append('clipsZip', file);
+    formData.append('clipAmount', clipAmount);
+    formData.append('season', selectedSeason);
+    formData.append('year', yearInput.toString());
 
-  // Function to handle chunked upload
-  const uploadFileInChunks = async (file) => {
-    // Generate a unique ID for this upload session
-    const uniqueId = Date.now().toString();
-    setUploadId(uniqueId);
-    
-    // Calculate total chunks
-    const chunks = Math.ceil(file.size / CHUNK_SIZE);
-    setTotalChunks(chunks);
-    setCurrentChunk(0);
-    
-    // Initialize metadata on the server
     try {
-      console.log('Initializing upload session...');
-      console.log(`File name: ${file.name}, size: ${file.size}, chunks: ${chunks}`);
+      const token = localStorage.getItem('token');
+      console.log(`Starting upload of file: ${file.name} (${formatFileSize(file.size)})`);
       
-      const initResponse = await axios.post(`${apiUrl}/api/zips/upload-init`, {
-        filename: file.name,
-        totalChunks: chunks,
-        uploadId: uniqueId,
-        season: selectedSeason,
-        year: yearInput,
-        clipAmount,
-        fileSize: file.size
-      }, {
+      await axios.post(`${apiUrl}/api/zips/upload-simple`, formData, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      console.log('Upload session initialized:', initResponse.data);
-      
-      // Start uploading chunks
-      let uploadedChunks = 0;
-      const failedChunks = [];
-      
-      for (let chunkIndex = 0; chunkIndex < chunks; chunkIndex++) {
-        setCurrentChunk(chunkIndex + 1);
-        
-        const start = chunkIndex * CHUNK_SIZE;
-        const end = Math.min(file.size, start + CHUNK_SIZE);
-        const chunk = file.slice(start, end);
-        
-        const formData = new FormData();
-        formData.append('chunk', chunk);
-        formData.append('chunkIndex', chunkIndex.toString());
-        formData.append('uploadId', uniqueId);
-        
-        try {
-          console.log(`Uploading chunk ${chunkIndex + 1}/${chunks} (${formatFileSize(chunk.size)})`);
-          await axios.post(`${apiUrl}/api/zips/upload-chunk`, formData, {
-            headers: {
-              'Content-Type': 'multipart/form-data',
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
-            },
-            onUploadProgress: (progressEvent) => {
-              // Calculate overall progress considering current chunk and total chunks
-              const chunkProgress = progressEvent.loaded / progressEvent.total;
-              const overallProgress = ((chunkIndex + chunkProgress) / chunks) * 100;
-              setUploadProgress(Math.round(overallProgress));
-            },
-            // Increase timeout for large chunks
-            timeout: 300000 // 5 minutes per chunk
-          });
-          uploadedChunks++;
-          console.log(`Successfully uploaded chunk ${chunkIndex + 1}/${chunks}`);
-        } catch (chunkError) {
-          console.error(`Failed to upload chunk ${chunkIndex}:`, chunkError);
-          failedChunks.push(chunkIndex);
-          
-          // Try again once more
-          try {
-            console.log(`Retrying chunk ${chunkIndex}...`);
-            await axios.post(`${apiUrl}/api/zips/upload-chunk`, formData, {
-              headers: {
-                'Content-Type': 'multipart/form-data',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-              },
-              timeout: 300000 // 5 minutes per chunk
-            });
-            uploadedChunks++;
-            console.log(`Retry successful for chunk ${chunkIndex}`);
-            
-            // Remove from failed chunks if retry succeeds
-            failedChunks.pop();
-          } catch (retryError) {
-            console.error(`Retry failed for chunk ${chunkIndex}:`, retryError);
-          }
-        }
-      }
-      
-      // Check if all chunks were uploaded successfully
-      if (failedChunks.length > 0) {
-        throw new Error(`Failed to upload chunks: ${failedChunks.join(', ')}`);
-      }
-      
-      console.log('All chunks uploaded, completing upload...');
-      // Finalize the upload
-      const finalizeResponse = await axios.post(`${apiUrl}/api/zips/upload-complete`, {
-        uploadId: uniqueId
-      }, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${token}`
         },
-        timeout: 600000 // 10 minutes for finalization
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          setUploadProgress(percentCompleted);
+          console.log(`Upload progress: ${percentCompleted}%`);
+        },
+        // Increase timeout for large files (2 hours)
+        timeout: 7200000
       });
       
-      console.log('Upload completed:', finalizeResponse.data);
+      console.log('Upload completed successfully');
       // Refresh the UI
       handleZipSubmit(null, true);
-      
+      setUploadError("");
       return true;
     } catch (error) {
-      console.error('Chunked upload failed:', error);
-      let errorMessage = error.message;
+      console.error('Upload failed:', error);
       
-      if (error.response) {
-        console.error('Error response data:', error.response.data);
-        errorMessage = error.response.data.error || errorMessage;
+      let errorMessage = "Upload failed";
+      if (error.response && error.response.data && error.response.data.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.message) {
+        errorMessage = error.message;
       }
       
-      throw new Error(`Upload failed: ${errorMessage}`);
+      setUploadError(errorMessage);
+      throw new Error(errorMessage);
     }
   };
 
-  // Custom submit handler to track upload progress with chunking
+  // Simplified submit handler
   const submitWithProgress = async (e) => {
     e.preventDefault();
     if (!zipFile) return;
     
     setIsUploading(true);
     setUploadProgress(0);
+    setUploadError("");
     
     try {
-      await uploadFileInChunks(zipFile);
+      await uploadFile(zipFile);
     } catch (error) {
-      console.error('Upload failed:', error);
-      alert('Upload failed: ' + (error.response?.data?.error || error.message));
+      console.error('Upload process failed:', error);
+      // Error is already set in the uploadFile function
     } finally {
       setIsUploading(false);
     }
@@ -232,8 +149,15 @@ const ZipManager = ({ zips, zipsLoading, deleteZip, zipFile, handleZipChange, cl
                 ></div>
               </div>
               <p className="text-sm text-center text-neutral-600 dark:text-neutral-400">
-                {uploadProgress}% uploaded - Chunk {currentChunk} of {totalChunks}
+                {uploadProgress}% uploaded
               </p>
+            </div>
+          )}
+
+          {uploadError && (
+            <div className="p-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg">
+              <p className="text-sm font-medium">{uploadError}</p>
+              <p className="text-xs mt-1">Please try again or contact support if the issue persists.</p>
             </div>
           )}
 
