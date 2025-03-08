@@ -15,16 +15,38 @@ const uploadSessions = {};
 // Configure storage for chunks
 const chunksStorage = multer.diskStorage({
     destination: function(req, file, cb) {
-        const uploadsDir = path.join(__dirname, '..', 'upload-chunks');
+        const uploadId = req.body.uploadId || 'default';
+        // Create a dedicated directory for each upload session
+        const uploadsDir = path.join(__dirname, '..', 'upload-chunks', uploadId);
+        
+        if (!fs.existsSync(path.join(__dirname, '..', 'upload-chunks'))) {
+            fs.mkdirSync(path.join(__dirname, '..', 'upload-chunks'), { recursive: true });
+            console.log(`Created main upload-chunks directory`);
+        }
+        
         if (!fs.existsSync(uploadsDir)) {
             fs.mkdirSync(uploadsDir, { recursive: true });
+            console.log(`Created upload session directory: ${uploadsDir}`);
         }
+        
+        // Ensure directory exists and has proper permissions
+        fs.access(uploadsDir, fs.constants.W_OK, (err) => {
+            if (err) {
+                console.error(`Directory ${uploadsDir} is not writable:`, err);
+                // Try to fix permissions
+                try {
+                    fs.chmodSync(uploadsDir, 0o777);
+                } catch (chmodErr) {
+                    console.error('Failed to change directory permissions:', chmodErr);
+                }
+            }
+        });
+        
         cb(null, uploadsDir);
     },
     filename: function(req, file, cb) {
-        const uploadId = req.body.uploadId;
         const chunkIndex = req.body.chunkIndex;
-        cb(null, `${uploadId}-${chunkIndex}`);
+        cb(null, `${chunkIndex}`);
     }
 });
 
@@ -44,6 +66,15 @@ router.post('/upload-init', authorizeRoles(['clipteam', 'admin']), async (req, r
         const uploadDir = path.join(__dirname, '..', 'upload-chunks', uploadId);
         if (!fs.existsSync(uploadDir)) {
             fs.mkdirSync(uploadDir, { recursive: true });
+            console.log(`Created upload session directory: ${uploadDir}`);
+            
+            // Ensure directory has proper permissions
+            try {
+                fs.chmodSync(uploadDir, 0o777);
+                console.log(`Set permissions on directory: ${uploadDir}`);
+            } catch (chmodErr) {
+                console.error('Failed to change directory permissions:', chmodErr);
+            }
         }
         
         // Store session info
@@ -55,13 +86,14 @@ router.post('/upload-init', authorizeRoles(['clipteam', 'admin']), async (req, r
             year: parseInt(year),
             clipAmount: parseInt(clipAmount),
             fileSize: parseInt(fileSize),
-            completed: false
+            completed: false,
+            uploadDir: uploadDir // Store the absolute path to upload directory
         };
         
         res.json({ success: true, message: 'Upload session initialized' });
     } catch (error) {
         console.error('Error initializing upload:', error);
-        res.status(500).json({ error: 'Failed to initialize upload' });
+        res.status(500).json({ error: 'Failed to initialize upload: ' + error.message });
     }
 });
 
@@ -104,70 +136,199 @@ router.post('/upload-complete', authorizeRoles(['clipteam', 'admin']), async (re
     try {
         const { uploadId } = req.body;
         
+        if (!uploadId) {
+            console.error('Upload complete called without uploadId');
+            return res.status(400).json({ error: 'Upload ID is required' });
+        }
+        
         if (!uploadSessions[uploadId]) {
+            console.error(`Upload session not found for ID: ${uploadId}`);
             return res.status(404).json({ error: 'Upload session not found' });
         }
         
         const session = uploadSessions[uploadId];
+        console.log(`Processing upload completion for session: ${JSON.stringify(session)}`);
         
         if (session.receivedChunks !== session.totalChunks) {
+            console.error(`Upload incomplete: Received ${session.receivedChunks} of ${session.totalChunks} chunks`);
             return res.status(400).json({ 
                 error: `Upload incomplete. Received ${session.receivedChunks} of ${session.totalChunks} chunks`
             });
+        }
+        
+        // Ensure download directory exists
+        const downloadDir = path.join(__dirname, '..', 'download');
+        if (!fs.existsSync(downloadDir)) {
+            fs.mkdirSync(downloadDir, { recursive: true });
+            console.log(`Created download directory: ${downloadDir}`);
         }
         
         // Merge chunks into final file
         console.log(`Finalizing upload ${uploadId}, merging ${session.totalChunks} chunks...`);
         
         const finalFilename = `${Date.now()}-${session.filename}`;
-        const finalFilePath = path.join(__dirname, '..', 'download', finalFilename);
-        const writeStream = fs.createWriteStream(finalFilePath);
+        const finalFilePath = path.join(downloadDir, finalFilename);
         
-        // Read all chunks in order and append to the final file
-        for (let i = 0; i < session.totalChunks; i++) {
-            const chunkPath = path.join(__dirname, '..', 'upload-chunks', `${uploadId}-${i}`);
-            const chunkData = fs.readFileSync(chunkPath);
-            writeStream.write(chunkData);
+        try {
+            // Use streams for better memory efficiency when merging
+            const writeStream = fs.createWriteStream(finalFilePath);
             
-            // Clean up the chunk file
-            fs.unlinkSync(chunkPath);
+            // Track if any chunks are missing
+            const missingChunks = [];
+            
+            // List all files in the upload directory
+            const uploadDir = session.uploadDir || path.join(__dirname, '..', 'upload-chunks', uploadId);
+            console.log(`Looking for chunk files in directory: ${uploadDir}`);
+            
+            try {
+                const files = fs.readdirSync(uploadDir);
+                console.log(`Found ${files.length} files in upload directory: ${files.join(', ')}`);
+            } catch (readdirErr) {
+                console.error(`Could not read upload directory: ${readdirErr.message}`);
+            }
+            
+            // Read all chunks in order and append to the final file
+            for (let i = 0; i < session.totalChunks; i++) {
+                const chunkPath = path.join(uploadDir, `${i}`);
+                
+                // Check if chunk exists
+                if (!fs.existsSync(chunkPath)) {
+                    missingChunks.push(i);
+                    console.error(`Chunk file missing: ${chunkPath}`);
+                    // Try alternative paths
+                    const altPath1 = path.join(__dirname, '..', 'upload-chunks', `${uploadId}-${i}`);
+                    const altPath2 = path.join(uploadDir, `chunk-${i}`);
+                    const altPath3 = path.join(uploadDir, `${uploadId}-${i}`);
+                    
+                    if (fs.existsSync(altPath1)) {
+                        console.log(`Found chunk at alternate path: ${altPath1}`);
+                        try {
+                            const chunkData = fs.readFileSync(altPath1);
+                            writeStream.write(chunkData);
+                            // Remove from missing chunks
+                            missingChunks.pop();
+                            console.log(`Successfully wrote chunk ${i} to final file from alternate path`);
+                        } catch (altReadErr) {
+                            console.error(`Error reading alternate chunk path ${altPath1}: ${altReadErr.message}`);
+                        }
+                    } else if (fs.existsSync(altPath2)) {
+                        console.log(`Found chunk at alternate path: ${altPath2}`);
+                        try {
+                            const chunkData = fs.readFileSync(altPath2);
+                            writeStream.write(chunkData);
+                            // Remove from missing chunks
+                            missingChunks.pop();
+                            console.log(`Successfully wrote chunk ${i} to final file from alternate path`);
+                        } catch (altReadErr) {
+                            console.error(`Error reading alternate chunk path ${altPath2}: ${altReadErr.message}`);
+                        }
+                    } else if (fs.existsSync(altPath3)) {
+                        console.log(`Found chunk at alternate path: ${altPath3}`);
+                        try {
+                            const chunkData = fs.readFileSync(altPath3);
+                            writeStream.write(chunkData);
+                            // Remove from missing chunks
+                            missingChunks.pop();
+                            console.log(`Successfully wrote chunk ${i} to final file from alternate path`);
+                        } catch (altReadErr) {
+                            console.error(`Error reading alternate chunk path ${altPath3}: ${altReadErr.message}`);
+                        }
+                    }
+                    
+                    continue;
+                }
+                
+                try {
+                    console.log(`Reading chunk ${i} from: ${chunkPath}`);
+                    // Use buffer reading to prevent memory issues with large files
+                    const chunkData = fs.readFileSync(chunkPath);
+                    writeStream.write(chunkData);
+                    console.log(`Successfully wrote chunk ${i} to final file`);
+                    
+                    // Clean up the chunk file
+                    try {
+                        fs.unlinkSync(chunkPath);
+                    } catch (unlinkErr) {
+                        console.warn(`Warning: Could not delete chunk file ${chunkPath}: ${unlinkErr.message}`);
+                    }
+                } catch (chunkErr) {
+                    console.error(`Error processing chunk ${i}: ${chunkErr.message}`);
+                    throw new Error(`Error processing chunk ${i}: ${chunkErr.message}`);
+                }
+            }
+            
+            // If any chunks are missing, report the error
+            if (missingChunks.length > 0) {
+                writeStream.end();
+                throw new Error(`Missing chunks: ${missingChunks.join(', ')}`);
+            }
+            
+            writeStream.end();
+            
+            // Wait for the write to finish
+            await new Promise((resolve, reject) => {
+                writeStream.on('finish', resolve);
+                writeStream.on('error', reject);
+            });
+            
+            console.log(`Upload ${uploadId} completed. File saved as ${finalFilename}`);
+            
+            // Verify final file exists and has content
+            if (!fs.existsSync(finalFilePath)) {
+                throw new Error(`Final file was not created: ${finalFilePath}`);
+            }
+            
+            const stats = fs.statSync(finalFilePath);
+            
+            if (stats.size === 0) {
+                throw new Error('Final file has zero size');
+            }
+            
+            // Save to database
+            const zip = new Zip({
+                url: `https://api.spoekle.com/download/${finalFilename}`,
+                season: session.season,
+                year: session.year,
+                name: finalFilename,
+                size: stats.size,
+                clipAmount: session.clipAmount,
+            });
+            
+            await zip.save();
+            
+            // Clean up session
+            delete uploadSessions[uploadId];
+            
+            // Try to remove the session directory
+            try {
+                fs.rmdirSync(uploadDir, { recursive: true });
+                console.log(`Removed upload session directory: ${uploadDir}`);
+            } catch (rmdirErr) {
+                console.warn(`Warning: Could not remove upload directory: ${rmdirErr.message}`);
+            }
+            
+            res.json({ 
+                success: true, 
+                message: 'Upload completed successfully',
+                filename: finalFilename
+            });
+        } catch (mergeError) {
+            console.error(`Error merging chunks: ${mergeError.message}`);
+            
+            // Try to clean up the incomplete file
+            try {
+                if (fs.existsSync(finalFilePath)) {
+                    fs.unlinkSync(finalFilePath);
+                }
+            } catch (cleanupError) {
+                console.error(`Error cleaning up incomplete file: ${cleanupError.message}`);
+            }
+            
+            throw mergeError;
         }
-        
-        writeStream.end();
-        
-        // Wait for the write to finish
-        await new Promise(resolve => {
-            writeStream.on('finish', resolve);
-        });
-        
-        console.log(`Upload ${uploadId} completed. File saved as ${finalFilename}`);
-        
-        // Save to database
-        const stats = fs.statSync(finalFilePath);
-        
-        const zip = new Zip({
-            url: `https://api.spoekle.com/download/${finalFilename}`,
-            season: session.season,
-            year: session.year,
-            name: finalFilename,
-            size: stats.size,
-            clipAmount: session.clipAmount,
-        });
-        
-        await zip.save();
-        
-        // Clean up session
-        delete uploadSessions[uploadId];
-        
-        res.json({ 
-            success: true, 
-            message: 'Upload completed successfully',
-            filename: finalFilename
-        });
-        
     } catch (error) {
         console.error('Error completing upload:', error);
-        res.status(500).json({ error: 'Failed to complete upload' });
+        res.status(500).json({ error: 'Failed to complete upload: ' + error.message });
     }
 });
 

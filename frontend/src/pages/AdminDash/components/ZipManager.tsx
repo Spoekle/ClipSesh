@@ -37,7 +37,10 @@ const ZipManager = ({ zips, zipsLoading, deleteZip, zipFile, handleZipChange, cl
     
     // Initialize metadata on the server
     try {
-      await axios.post(`${apiUrl}/api/zips/upload-init`, {
+      console.log('Initializing upload session...');
+      console.log(`File name: ${file.name}, size: ${file.size}, chunks: ${chunks}`);
+      
+      const initResponse = await axios.post(`${apiUrl}/api/zips/upload-init`, {
         filename: file.name,
         totalChunks: chunks,
         uploadId: uniqueId,
@@ -51,7 +54,12 @@ const ZipManager = ({ zips, zipsLoading, deleteZip, zipFile, handleZipChange, cl
         }
       });
       
+      console.log('Upload session initialized:', initResponse.data);
+      
       // Start uploading chunks
+      let uploadedChunks = 0;
+      const failedChunks = [];
+      
       for (let chunkIndex = 0; chunkIndex < chunks; chunkIndex++) {
         setCurrentChunk(chunkIndex + 1);
         
@@ -64,36 +72,80 @@ const ZipManager = ({ zips, zipsLoading, deleteZip, zipFile, handleZipChange, cl
         formData.append('chunkIndex', chunkIndex.toString());
         formData.append('uploadId', uniqueId);
         
-        await axios.post(`${apiUrl}/api/zips/upload-chunk`, formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
-          onUploadProgress: (progressEvent) => {
-            // Calculate overall progress considering current chunk and total chunks
-            const chunkProgress = progressEvent.loaded / progressEvent.total;
-            const overallProgress = ((chunkIndex + chunkProgress) / chunks) * 100;
-            setUploadProgress(Math.round(overallProgress));
-          },
-        });
+        try {
+          console.log(`Uploading chunk ${chunkIndex + 1}/${chunks} (${formatFileSize(chunk.size)})`);
+          await axios.post(`${apiUrl}/api/zips/upload-chunk`, formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            onUploadProgress: (progressEvent) => {
+              // Calculate overall progress considering current chunk and total chunks
+              const chunkProgress = progressEvent.loaded / progressEvent.total;
+              const overallProgress = ((chunkIndex + chunkProgress) / chunks) * 100;
+              setUploadProgress(Math.round(overallProgress));
+            },
+            // Increase timeout for large chunks
+            timeout: 300000 // 5 minutes per chunk
+          });
+          uploadedChunks++;
+          console.log(`Successfully uploaded chunk ${chunkIndex + 1}/${chunks}`);
+        } catch (chunkError) {
+          console.error(`Failed to upload chunk ${chunkIndex}:`, chunkError);
+          failedChunks.push(chunkIndex);
+          
+          // Try again once more
+          try {
+            console.log(`Retrying chunk ${chunkIndex}...`);
+            await axios.post(`${apiUrl}/api/zips/upload-chunk`, formData, {
+              headers: {
+                'Content-Type': 'multipart/form-data',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+              },
+              timeout: 300000 // 5 minutes per chunk
+            });
+            uploadedChunks++;
+            console.log(`Retry successful for chunk ${chunkIndex}`);
+            
+            // Remove from failed chunks if retry succeeds
+            failedChunks.pop();
+          } catch (retryError) {
+            console.error(`Retry failed for chunk ${chunkIndex}:`, retryError);
+          }
+        }
       }
       
+      // Check if all chunks were uploaded successfully
+      if (failedChunks.length > 0) {
+        throw new Error(`Failed to upload chunks: ${failedChunks.join(', ')}`);
+      }
+      
+      console.log('All chunks uploaded, completing upload...');
       // Finalize the upload
-      await axios.post(`${apiUrl}/api/zips/upload-complete`, {
+      const finalizeResponse = await axios.post(`${apiUrl}/api/zips/upload-complete`, {
         uploadId: uniqueId
       }, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+        },
+        timeout: 600000 // 10 minutes for finalization
       });
       
+      console.log('Upload completed:', finalizeResponse.data);
       // Refresh the UI
       handleZipSubmit(null, true);
       
       return true;
     } catch (error) {
       console.error('Chunked upload failed:', error);
-      throw error;
+      let errorMessage = error.message;
+      
+      if (error.response) {
+        console.error('Error response data:', error.response.data);
+        errorMessage = error.response.data.error || errorMessage;
+      }
+      
+      throw new Error(`Upload failed: ${errorMessage}`);
     }
   };
 
