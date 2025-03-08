@@ -605,6 +605,7 @@ function AdminDash() {
               handleClipAmountChange={handleClipAmountChange}
               handleZipSubmit={handleZipSubmit}
               seasonInfo={seasonInfo}
+              apiUrl={apiUrl}
             />
 
             {/* Denied Clips - Full Width */}

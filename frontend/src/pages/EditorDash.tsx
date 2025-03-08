@@ -30,6 +30,17 @@ interface SeasonInfo {
   clipAmount?: number;
 }
 
+interface Zip {
+  _id: string;
+  name: string;
+  url: string;
+  season: string;
+  year: number; // Updated to include year
+  clipAmount: number;
+  size: number;
+  createdAt: string;
+}
+
 const EditorDash: React.FC = () => {
   const [config, setConfig] = useState<Config>({ denyThreshold: 0, latestVideoLink: '' });
   const [clips, setClips] = useState<Clip[]>([]);
@@ -380,7 +391,7 @@ const EditorDash: React.FC = () => {
                         <div className="flex items-center gap-6 text-sm text-neutral-700 dark:text-neutral-300 mt-1">
                           <div className="flex items-center gap-1">
                             <FaCalendarAlt />
-                            <span>{zip.season} Season</span>
+                            <span>{zip.season} {zip.year}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <FaClipboard />

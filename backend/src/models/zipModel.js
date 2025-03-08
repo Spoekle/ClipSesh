@@ -14,6 +14,10 @@ const zipSchema = new mongoose.Schema({
         required: true,
         enum: ['Spring', 'Summer', 'Fall', 'Winter']
     },
+    year: {
+        type: Number,
+        required: true
+    },
     clipAmount: {
         type: Number,
         default: 0

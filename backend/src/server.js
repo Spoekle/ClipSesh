@@ -26,8 +26,19 @@ app.use((_req, _res, next) => {
   next();
 });
 
-app.use(bodyParser.json({ limit: '200mb' }));
-app.use(bodyParser.urlencoded({ limit: '200mb', extended: true }));
+// Increase limits for large file uploads (3GB)
+app.use(bodyParser.json({ limit: '3072mb' }));
+app.use(bodyParser.urlencoded({ limit: '3072mb', extended: true }));
+app.use(express.json({ limit: '3072mb' }));
+
+// Increase request timeout for large uploads
+app.use((_req, _res, next) => {
+  _req.ip = _req.headers['x-forwarded-for'] || _req.socket.remoteAddress;
+  // Set timeout to 2 hours to prevent timeouts during large uploads
+  _req.setTimeout(7200000);
+  next();
+});
+
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/profilePictures', express.static(path.join(__dirname, 'profilePictures')));
 app.use('/download', express.static(path.join(__dirname, 'download')));
@@ -47,7 +58,6 @@ app.use('/api/messages', messagesRoute);
 app.use('/api/ratings', ratingsRoute);
 app.use('/api/zips', zipsRoute);
 app.use('/api/discord', discordRoute);
-app.use('/api/notifications', require('./routes/Notifications'));
 
 const swaggerOptions = {
   swaggerDefinition: {
