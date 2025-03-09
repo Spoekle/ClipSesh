@@ -11,6 +11,9 @@ const ZipManager = ({ zips, zipsLoading, deleteZip, zipFile, handleZipChange, cl
   const [selectedSeason, setSelectedSeason] = useState(seasonInfo.season || "Spring");
   const [uploadError, setUploadError] = useState("");
   const [retryAttempt, setRetryAttempt] = useState(0);
+  const [currentChunk, setCurrentChunk] = useState(0);
+  const [totalChunks, setTotalChunks] = useState(0);
+  const [uploadId, setUploadId] = useState('');
 
   const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
@@ -20,86 +23,96 @@ const ZipManager = ({ zips, zipsLoading, deleteZip, zipFile, handleZipChange, cl
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // Enhanced direct upload with better handling for large files
-  const uploadFile = async (file) => {
-    const formData = new FormData();
-    formData.append('clipsZip', file);
-    formData.append('clipAmount', clipAmount);
-    formData.append('season', selectedSeason);
-    formData.append('year', yearInput.toString());
-
+  // Split file into chunks and upload each chunk
+  const uploadFileInChunks = async (file) => {
     try {
       const token = localStorage.getItem('token');
-      console.log(`Starting upload of file: ${file.name} (${formatFileSize(file.size)})`);
+      console.log(`Starting chunked upload of file: ${file.name} (${formatFileSize(file.size)})`);
       
-      // Create a custom axios instance with optimized settings for large files
-      const uploadInstance = axios.create({
-        timeout: 0, // No timeout for large files
-        maxContentLength: Infinity,
-        maxBodyLength: Infinity, // Remove size limitations
-      });
+      // Create a unique ID for this upload
+      const newUploadId = `upload_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+      setUploadId(newUploadId);
       
-      // Add progress tracking interceptor
-      const cancelTokenSource = axios.CancelToken.source();
-      let lastProgressPercentage = 0;
-      let progressStallTimer = null;
-      let stallCount = 0;
+      // Configure chunk size - 5MB is a good balance
+      const chunkSize = 5 * 1024 * 1024; // 5MB chunks
+      const chunks = Math.ceil(file.size / chunkSize);
+      setTotalChunks(chunks);
+      console.log(`File will be split into ${chunks} chunks of ${formatFileSize(chunkSize)} each`);
       
-      const checkProgressStall = (currentProgress) => {
-        // Clear existing timer
-        if (progressStallTimer) clearTimeout(progressStallTimer);
-        
-        // If progress hasn't changed in 15 seconds, we might be stuck
-        if (currentProgress === lastProgressPercentage && currentProgress > 0 && currentProgress < 100) {
-          progressStallTimer = setTimeout(() => {
-            console.warn(`Upload progress stalled at ${currentProgress}%`);
-            stallCount++;
-            
-            if (stallCount >= 3 && currentProgress > 60 && currentProgress < 65) {
-              console.log("Progress appears stuck around 62%. This is likely just the server processing the file.");
-              // Show user message that backend is processing
-              setUploadError(
-                "Upload appears to be taking a while at this percentage. " + 
-                "The server is likely still processing your file. Please be patient."
-              );
-            }
-          }, 15000);
-        } else {
-          // Progress changed, reset stall counter
-          stallCount = 0;
-          setUploadError("");
-        }
-        
-        lastProgressPercentage = currentProgress;
-      };
-
-      // Use the new upload endpoint
-      await uploadInstance.post(`${apiUrl}/api/zips/upload`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
+      // Initialize the upload by telling the server we're starting
+      await axios.post(`${apiUrl}/api/zips/init-chunked-upload`, {
+        filename: file.name,
+        totalChunks: chunks,
+        fileSize: file.size,
+        uploadId: newUploadId,
+        clipAmount,
+        season: selectedSeason,
+        year: yearInput.toString()
+      }, {
+        headers: { 
           'Authorization': `Bearer ${token}`,
-          'Cache-Control': 'no-cache', // Prevent caching
-        },
-        onUploadProgress: (progressEvent) => {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          setUploadProgress(percentCompleted);
-          console.log(`Upload progress: ${percentCompleted}%`);
-          checkProgressStall(percentCompleted);
-        },
-        cancelToken: cancelTokenSource.token
+          'Content-Type': 'application/json'
+        }
       });
       
-      // Clear any stall timer
-      if (progressStallTimer) clearTimeout(progressStallTimer);
+      // Upload each chunk
+      for (let i = 0; i < chunks; i++) {
+        setCurrentChunk(i + 1);
+        const start = i * chunkSize;
+        const end = Math.min(file.size, start + chunkSize);
+        const chunk = file.slice(start, end);
+        
+        const formData = new FormData();
+        formData.append('chunk', chunk);
+        formData.append('uploadId', newUploadId);
+        formData.append('chunkIndex', i.toString());
+        formData.append('totalChunks', chunks.toString());
+        
+        console.log(`Uploading chunk ${i+1}/${chunks} (${formatFileSize(chunk.size)})`);
+        
+        await axios.post(`${apiUrl}/api/zips/upload-chunk`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            'Authorization': `Bearer ${token}`
+          },
+          onUploadProgress: (progressEvent) => {
+            // Calculate progress across all chunks
+            const chunkProgress = progressEvent.loaded / progressEvent.total;
+            const overallProgress = ((i + chunkProgress) / chunks) * 100;
+            setUploadProgress(Math.min(Math.round(overallProgress), 99)); // Cap at 99% until complete
+          }
+        });
+        
+        // Update overall progress after chunk is complete
+        const overallProgress = ((i + 1) / chunks) * 100;
+        setUploadProgress(Math.min(Math.round(overallProgress), 99));
+      }
       
-      console.log('Upload completed successfully');
+      // Tell the server we're done uploading chunks and it should reassemble the file
+      console.log("All chunks uploaded, finalizing...");
+      const finalizeResponse = await axios.post(`${apiUrl}/api/zips/finalize-upload`, {
+        uploadId: newUploadId,
+        filename: file.name,
+        clipAmount,
+        season: selectedSeason,
+        year: yearInput.toString()
+      }, {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log('Upload completed and finalized successfully');
+      setUploadProgress(100);
+      
       // Refresh the UI
       handleZipSubmit(null, true);
       setUploadError("");
       setRetryAttempt(0);
       return true;
     } catch (error) {
-      console.error('Upload failed:', error);
+      console.error('Chunked upload failed:', error);
       
       let errorMessage = "Upload failed";
       if (error.response) {
@@ -116,12 +129,12 @@ const ZipManager = ({ zips, zipsLoading, deleteZip, zipFile, handleZipChange, cl
         errorMessage = error.message;
       }
       
-      setUploadError(`${errorMessage} (Attempt: ${retryAttempt + 1})`);
+      setUploadError(`${errorMessage} (Attempt: ${retryAttempt + 1}, Chunk: ${currentChunk}/${totalChunks})`);
       throw new Error(errorMessage);
     }
   };
 
-  // Enhanced submit handler with retry capability
+  // Enhanced submit handler using chunked upload
   const submitWithProgress = async (e) => {
     e.preventDefault();
     if (!zipFile || isUploading) return;
@@ -129,12 +142,14 @@ const ZipManager = ({ zips, zipsLoading, deleteZip, zipFile, handleZipChange, cl
     setIsUploading(true);
     setUploadProgress(0);
     setUploadError("");
+    setCurrentChunk(0);
+    setTotalChunks(0);
     
     try {
-      await uploadFile(zipFile);
+      // Use the chunked upload method instead of the old one
+      await uploadFileInChunks(zipFile);
     } catch (error) {
       console.error('Upload process failed:', error);
-      // Allow for retry on failure
       setRetryAttempt(prev => prev + 1);
     } finally {
       setIsUploading(false);
@@ -213,14 +228,12 @@ const ZipManager = ({ zips, zipsLoading, deleteZip, zipFile, handleZipChange, cl
               </div>
               <p className="text-sm text-center text-neutral-600 dark:text-neutral-400">
                 {uploadProgress}% uploaded
-                {uploadProgress > 0 && uploadProgress < 100 && (
-                  <span className="ml-2 italic">Please keep the page open...</span>
-                )}
-                {uploadProgress > 60 && uploadProgress < 65 && uploadProgress > 0 && (
-                  <span className="block text-xs mt-1 text-amber-600 dark:text-amber-400">
-                    If stuck at this percentage, the server is likely still processing your file.
+                {totalChunks > 0 && (
+                  <span className="ml-2">
+                    (Chunk {currentChunk}/{totalChunks})
                   </span>
                 )}
+                <span className="block text-xs mt-1 italic">Please keep the page open...</span>
               </p>
             </div>
           )}

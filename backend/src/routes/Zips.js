@@ -50,12 +50,201 @@ const chunksStorage = multer.diskStorage({
     }
 });
 
+// Updated chunk configuration
 const uploadChunk = multer({ 
     storage: chunksStorage,
     limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit per chunk
 }).single('chunk');
 
-// Configure improved storage for direct uploads
+// Start a new chunked upload session
+router.post('/init-chunked-upload', authorizeRoles(['clipteam', 'admin']), (req, res) => {
+    try {
+        const { filename, totalChunks, fileSize, uploadId, clipAmount, season, year } = req.body;
+        
+        if (!filename || !totalChunks || !fileSize || !uploadId) {
+            return res.status(400).json({ error: 'Missing required fields for chunked upload' });
+        }
+        
+        console.log(`=== Initializing chunked upload: ${filename} (${formatBytes(fileSize)}) ===`);
+        console.log(`Upload ID: ${uploadId}, Total chunks: ${totalChunks}, Metadata: ${season} ${year}, ${clipAmount} clips`);
+        
+        // Store upload session details
+        uploadSessions[uploadId] = {
+            filename,
+            originalFilename: filename,
+            totalChunks: parseInt(totalChunks),
+            receivedChunks: 0,
+            fileSize: parseInt(fileSize),
+            clipAmount,
+            season,
+            year,
+            chunkStatus: new Array(parseInt(totalChunks)).fill(false),
+            startTime: Date.now()
+        };
+        
+        // Create directory for chunks
+        const uploadsDir = path.join(__dirname, '..', 'upload-chunks', uploadId);
+        if (!fs.existsSync(uploadsDir)) {
+            fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+        
+        res.json({ 
+            success: true, 
+            message: 'Chunked upload initialized', 
+            uploadId 
+        });
+    } catch (error) {
+        console.error('Error initializing chunked upload:', error);
+        res.status(500).json({ error: 'Server error: ' + error.message });
+    }
+});
+
+// Handle individual chunk uploads
+router.post('/upload-chunk', authorizeRoles(['clipteam', 'admin']), (req, res) => {
+    uploadChunk(req, res, async function(err) {
+        if (err) {
+            console.error("Chunk upload error:", err);
+            return res.status(400).json({ error: 'Chunk upload error: ' + err.message });
+        }
+        
+        try {
+            const { uploadId, chunkIndex, totalChunks } = req.body;
+            
+            if (!uploadId || chunkIndex === undefined) {
+                return res.status(400).json({ error: 'Missing uploadId or chunkIndex' });
+            }
+            
+            const session = uploadSessions[uploadId];
+            if (!session) {
+                return res.status(404).json({ error: 'Upload session not found' });
+            }
+            
+            const index = parseInt(chunkIndex);
+            
+            console.log(`Received chunk ${index + 1}/${totalChunks} for upload ${uploadId}`);
+            
+            // Mark chunk as received
+            session.chunkStatus[index] = true;
+            session.receivedChunks++;
+            
+            res.json({
+                success: true,
+                message: `Chunk ${index + 1}/${totalChunks} received`,
+                receivedChunks: session.receivedChunks,
+                remaining: session.totalChunks - session.receivedChunks
+            });
+        } catch (error) {
+            console.error('Error processing chunk:', error);
+            res.status(500).json({ error: 'Server error: ' + error.message });
+        }
+    });
+});
+
+// Finalize the upload by assembling all chunks
+router.post('/finalize-upload', authorizeRoles(['clipteam', 'admin']), async (req, res) => {
+    try {
+        const { uploadId, filename, clipAmount, season, year } = req.body;
+        
+        if (!uploadId) {
+            return res.status(400).json({ error: 'Missing uploadId' });
+        }
+        
+        const session = uploadSessions[uploadId];
+        if (!session) {
+            return res.status(404).json({ error: 'Upload session not found' });
+        }
+        
+        console.log(`Finalizing upload ${uploadId}. Received ${session.receivedChunks}/${session.totalChunks} chunks`);
+        
+        // Check if all chunks were received
+        const allChunksReceived = session.chunkStatus.every(status => status === true);
+        if (!allChunksReceived) {
+            const missingChunks = session.chunkStatus
+                .map((status, idx) => status ? null : idx)
+                .filter(idx => idx !== null);
+            
+            console.error(`Missing chunks for ${uploadId}:`, missingChunks);
+            return res.status(400).json({ 
+                error: 'Some chunks are missing', 
+                missingChunks 
+            });
+        }
+        
+        // Create the destination file
+        const finalFilename = `${Date.now()}-${session.originalFilename}`;
+        const outputPath = path.join(__dirname, '..', 'download', finalFilename);
+        const outputStream = fs.createWriteStream(outputPath);
+        console.log(`Assembling chunks into final file: ${outputPath}`);
+        
+        // Combine all chunks
+        for (let i = 0; i < session.totalChunks; i++) {
+            const chunkPath = path.join(__dirname, '..', 'upload-chunks', uploadId, i.toString());
+            
+            // Append this chunk to the output file
+            await new Promise((resolve, reject) => {
+                const chunkStream = fs.createReadStream(chunkPath);
+                chunkStream.pipe(outputStream, { end: false });
+                chunkStream.on('end', resolve);
+                chunkStream.on('error', reject);
+            });
+            
+            console.log(`Appended chunk ${i}/${session.totalChunks - 1}`);
+        }
+        
+        // Close the output stream
+        outputStream.end();
+        
+        // Wait for write to complete
+        await new Promise(resolve => outputStream.on('close', resolve));
+        
+        console.log(`File assembly complete for ${uploadId}`);
+        
+        // Verify the file size matches the expected total
+        const stats = fs.statSync(outputPath);
+        if (stats.size !== session.fileSize) {
+            console.error(`Size mismatch: Expected ${session.fileSize}, got ${stats.size}`);
+        }
+        
+        // Calculate elapsed time
+        const elapsedSeconds = Math.round((Date.now() - session.startTime) / 1000);
+        console.log(`Upload completed in ${elapsedSeconds} seconds`);
+        
+        // Save to database
+        const seasonZip = new Zip({
+            url: `https://api.spoekle.com/download/${finalFilename}`,
+            season: session.season,
+            year: parseInt(session.year),
+            name: finalFilename,
+            size: stats.size,
+            clipAmount: session.clipAmount,
+        });
+        
+        await seasonZip.save();
+        console.log("Database record created successfully for chunked upload.");
+        
+        // Clean up temp files
+        try {
+            console.log(`Cleaning up temporary chunks for ${uploadId}`);
+            fs.rmSync(path.join(__dirname, '..', 'upload-chunks', uploadId), { recursive: true, force: true });
+            delete uploadSessions[uploadId];
+        } catch (cleanupError) {
+            console.error('Error cleaning up temp files:', cleanupError);
+        }
+        
+        return res.json({ 
+            success: true, 
+            message: 'Upload finalized successfully',
+            fileSize: stats.size,
+            id: seasonZip._id,
+            elapsedSeconds
+        });
+    } catch (error) {
+        console.error('Error finalizing upload:', error);
+        res.status(500).json({ error: 'Server error: ' + error.message });
+    }
+});
+
+// Configure improved storage for direct uploads (keeping this for backward compatibility)
 const directStorage = multer.diskStorage({
     destination: function(req, file, cb) {
         const downloadDir = path.join(__dirname, '..', 'download');
@@ -88,7 +277,7 @@ const uploadLargeFile = multer({
     },
 }).single('clipsZip');
 
-// Simplified and renamed upload endpoint
+// Keep the regular upload endpoint
 router.post('/upload', authorizeRoles(['clipteam', 'admin']), (req, res) => {
     console.log("=== Starting file upload process ===");
     
@@ -131,7 +320,7 @@ router.post('/upload', authorizeRoles(['clipteam', 'admin']), (req, res) => {
             // Verify the file exists and has content
             try {
                 const stats = fs.statSync(zip.path);
-                console.log(`File verification: ${zip.path}, size: ${formatBytes(stats.size)}`);
+                console.log(`File verification: ${zip.path, size: ${formatBytes(stats.size)}`);
                 
                 if (stats.size === 0) {
                     console.error("Uploaded file has zero bytes");
