@@ -221,7 +221,7 @@ router.post('/upload', authorizeRoles(['clipteam', 'admin']), (req, res) => {
             // Verify the file exists and has content
             try {
                 const stats = fs.statSync(zip.path);
-                console.log(`File verification: ${zip.path, size: ${formatBytes(stats.size)}`);
+                console.log(`File verification: ${zip.path}, size: ${formatBytes(stats.size)}`);
                 
                 if (stats.size === 0) {
                     console.error("Uploaded file has zero bytes");
