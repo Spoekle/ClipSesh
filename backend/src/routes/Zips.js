@@ -95,7 +95,7 @@ router.post('/upload-chunk', authorizeRoles(['clipteam', 'admin']), (req, res) =
     });
 });
 
-// Finalize the upload - simplified
+// Finalize the upload - improved with file validation
 router.post('/finalize-upload', authorizeRoles(['clipteam', 'admin']), async (req, res) => {
     try {
         const { uploadId, filename } = req.body;
@@ -124,20 +124,87 @@ router.post('/finalize-upload', authorizeRoles(['clipteam', 'admin']), async (re
             });
         }
         
+        // Verify chunk files exist
+        const chunksPath = path.join(chunksDir, uploadId);
+        console.log(`Verifying chunks in: ${chunksPath}`);
+        
+        if (!fs.existsSync(chunksPath)) {
+            console.error(`Chunks directory not found: ${chunksPath}`);
+            return res.status(500).json({ 
+                error: 'Chunks directory not found', 
+                path: chunksPath 
+            });
+        }
+        
+        // List available files for debugging
+        try {
+            const files = fs.readdirSync(chunksPath);
+            console.log(`Files in chunks directory: ${files.join(', ')}`);
+        } catch (err) {
+            console.error(`Error reading chunks directory:`, err);
+        }
+        
+        // Verify each chunk file exists
+        const missingFiles = [];
+        for (let i = 0; i < session.totalChunks; i++) {
+            const chunkPath = path.join(chunksPath, i.toString());
+            if (!fs.existsSync(chunkPath)) {
+                console.error(`Missing chunk file: ${chunkPath}`);
+                missingFiles.push(i);
+            } else {
+                // Add debug info about the file
+                const stats = fs.statSync(chunkPath);
+                console.log(`Chunk ${i} exists: ${chunkPath} (${formatBytes(stats.size)})`);
+            }
+        }
+        
+        if (missingFiles.length > 0) {
+            return res.status(400).json({
+                error: 'Some chunk files are missing from the filesystem',
+                missingFiles
+            });
+        }
+        
         // Create the destination file
         const finalFilename = `${Date.now()}-${session.originalFilename}`;
         const outputPath = path.join(downloadDir, finalFilename);
+        
+        console.log(`Creating final file: ${outputPath}`);
         const outputStream = fs.createWriteStream(outputPath);
         
-        // Combine all chunks
+        // Combine all chunks with better error handling
         for (let i = 0; i < session.totalChunks; i++) {
-            const chunkPath = path.join(chunksDir, uploadId, i.toString());
-            await new Promise((resolve, reject) => {
-                const chunkStream = fs.createReadStream(chunkPath);
-                chunkStream.pipe(outputStream, { end: false });
-                chunkStream.on('end', resolve);
-                chunkStream.on('error', reject);
-            });
+            const chunkPath = path.join(chunksPath, i.toString());
+            
+            try {
+                console.log(`Processing chunk ${i}: ${chunkPath}`);
+                
+                await new Promise((resolve, reject) => {
+                    // Verify file exists right before reading
+                    if (!fs.existsSync(chunkPath)) {
+                        return reject(new Error(`File suddenly disappeared: ${chunkPath}`));
+                    }
+                    
+                    const chunkStream = fs.createReadStream(chunkPath);
+                    chunkStream.on('error', (err) => {
+                        console.error(`Error reading chunk ${i}:`, err);
+                        reject(err);
+                    });
+                    
+                    chunkStream.pipe(outputStream, { end: false });
+                    chunkStream.on('end', () => {
+                        console.log(`Chunk ${i} appended successfully`);
+                        resolve();
+                    });
+                });
+            } catch (err) {
+                console.error(`Error processing chunk ${i}:`, err);
+                outputStream.end();
+                return res.status(500).json({ 
+                    error: `Error processing chunk ${i}: ${err.message}`,
+                    code: err.code
+                });
+            }
         }
         
         // Close the output stream
@@ -145,6 +212,11 @@ router.post('/finalize-upload', authorizeRoles(['clipteam', 'admin']), async (re
         
         // Wait for write to complete
         await new Promise(resolve => outputStream.on('close', resolve));
+        
+        // Rest of the function remains the same...
+        // ...existing code...
+        
+        console.log("File assembly completed successfully");
         
         // Save to database
         const stats = fs.statSync(outputPath);
@@ -161,7 +233,8 @@ router.post('/finalize-upload', authorizeRoles(['clipteam', 'admin']), async (re
         
         // Clean up temp files
         try {
-            fs.rmSync(path.join(chunksDir, uploadId), { recursive: true, force: true });
+            console.log(`Cleaning up temp files in: ${chunksPath}`);
+            fs.rmSync(chunksPath, { recursive: true, force: true });
             delete uploadSessions[uploadId];
         } catch (cleanupError) {
             console.error('Error cleaning up temp files:', cleanupError);
@@ -175,7 +248,11 @@ router.post('/finalize-upload', authorizeRoles(['clipteam', 'admin']), async (re
         });
     } catch (error) {
         console.error('Error finalizing upload:', error);
-        res.status(500).json({ error: 'Server error: ' + error.message });
+        res.status(500).json({ 
+            error: 'Server error: ' + error.message,
+            stack: error.stack,
+            code: error.code || 'UNKNOWN'
+        });
     }
 });
 
