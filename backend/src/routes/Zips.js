@@ -4,57 +4,14 @@ const axios = require('axios');
 const archiver = require('archiver');
 const fs = require('fs');
 const path = require('path');
-const multer = require('multer');
 
 const authorizeRoles = require('./middleware/AuthorizeRoles');
 const Zip = require('../models/zipModel');
+// Import the shared upload configuration
+const { clipsZipUpload, chunkUpload, clipsZipDir, chunksDir } = require('./storage/ClipsZipUpload');
 
 // In-memory storage for tracking chunk uploads
 const uploadSessions = {};
-
-// Configure storage for chunks
-const chunksStorage = multer.diskStorage({
-    destination: function(req, file, cb) {
-        const uploadId = req.body.uploadId || 'default';
-        // Create a dedicated directory for each upload session
-        const uploadsDir = path.join(__dirname, '..', 'upload-chunks', uploadId);
-        
-        if (!fs.existsSync(path.join(__dirname, '..', 'upload-chunks'))) {
-            fs.mkdirSync(path.join(__dirname, '..', 'upload-chunks'), { recursive: true });
-            console.log(`Created main upload-chunks directory`);
-        }
-        
-        if (!fs.existsSync(uploadsDir)) {
-            fs.mkdirSync(uploadsDir, { recursive: true });
-            console.log(`Created upload session directory: ${uploadsDir}`);
-        }
-        
-        // Ensure directory exists and has proper permissions
-        fs.access(uploadsDir, fs.constants.W_OK, (err) => {
-            if (err) {
-                console.error(`Directory ${uploadsDir} is not writable:`, err);
-                // Try to fix permissions
-                try {
-                    fs.chmodSync(uploadsDir, 0o777);
-                } catch (chmodErr) {
-                    console.error('Failed to change directory permissions:', chmodErr);
-                }
-            }
-        });
-        
-        cb(null, uploadsDir);
-    },
-    filename: function(req, file, cb) {
-        const chunkIndex = req.body.chunkIndex;
-        cb(null, `${chunkIndex}`);
-    }
-});
-
-// Updated chunk configuration
-const uploadChunk = multer({ 
-    storage: chunksStorage,
-    limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit per chunk
-}).single('chunk');
 
 // Start a new chunked upload session
 router.post('/init-chunked-upload', authorizeRoles(['clipteam', 'admin']), (req, res) => {
@@ -82,10 +39,10 @@ router.post('/init-chunked-upload', authorizeRoles(['clipteam', 'admin']), (req,
             startTime: Date.now()
         };
         
-        // Create directory for chunks
-        const uploadsDir = path.join(__dirname, '..', 'upload-chunks', uploadId);
-        if (!fs.existsSync(uploadsDir)) {
-            fs.mkdirSync(uploadsDir, { recursive: true });
+        // Ensure session directory exists
+        const sessionDir = path.join(chunksDir, uploadId);
+        if (!fs.existsSync(sessionDir)) {
+            fs.mkdirSync(sessionDir, { recursive: true, mode: 0o777 });
         }
         
         res.json({ 
@@ -99,12 +56,19 @@ router.post('/init-chunked-upload', authorizeRoles(['clipteam', 'admin']), (req,
     }
 });
 
-// Handle individual chunk uploads
+// Handle individual chunk uploads with improved error handling
 router.post('/upload-chunk', authorizeRoles(['clipteam', 'admin']), (req, res) => {
-    uploadChunk(req, res, async function(err) {
+    console.log("Receiving chunk:", req.body.chunkIndex, "for upload:", req.body.uploadId);
+    
+    // Using the shared chunkUpload configuration
+    chunkUpload.single('chunk')(req, res, async function(err) {
         if (err) {
             console.error("Chunk upload error:", err);
-            return res.status(400).json({ error: 'Chunk upload error: ' + err.message });
+            return res.status(400).json({ 
+                error: 'Chunk upload error: ' + err.message,
+                details: err.stack,
+                code: err.code || 'UNKNOWN' 
+            });
         }
         
         try {
@@ -121,18 +85,51 @@ router.post('/upload-chunk', authorizeRoles(['clipteam', 'admin']), (req, res) =
             
             const index = parseInt(chunkIndex);
             
-            console.log(`Received chunk ${index + 1}/${totalChunks} for upload ${uploadId}`);
+            // Verify the chunk file exists
+            const chunkPath = path.join(chunksDir, uploadId, chunkIndex.toString());
             
-            // Mark chunk as received
-            session.chunkStatus[index] = true;
-            session.receivedChunks++;
+            let chunkExists = false;
+            let actualChunkPath = '';
             
-            res.json({
-                success: true,
-                message: `Chunk ${index + 1}/${totalChunks} received`,
-                receivedChunks: session.receivedChunks,
-                remaining: session.totalChunks - session.receivedChunks
-            });
+            try {
+                if (fs.existsSync(chunkPath)) {
+                    chunkExists = true;
+                    actualChunkPath = chunkPath;
+                }
+                
+                console.log(`Chunk path check [${chunkIndex}]: ${actualChunkPath} - Exists: ${chunkExists}`);
+                
+                if (!chunkExists) {
+                    return res.status(500).json({ 
+                        error: `Chunk file missing after upload: ${chunkPath}`,
+                        paths: {
+                            checked1: chunkPath
+                        }
+                    });
+                }
+                
+                // Get the chunk stats for verification
+                const stats = fs.statSync(actualChunkPath);
+                console.log(`Received chunk ${index + 1}/${totalChunks} for upload ${uploadId} - Size: ${formatBytes(stats.size)}`);
+                
+                // Mark chunk as received
+                session.chunkStatus[index] = true;
+                session.receivedChunks++;
+                
+                return res.json({
+                    success: true,
+                    message: `Chunk ${index + 1}/${totalChunks} received`,
+                    receivedChunks: session.receivedChunks,
+                    remaining: session.totalChunks - session.receivedChunks,
+                    path: actualChunkPath
+                });
+            } catch (fsError) {
+                console.error(`Error verifying chunk file:`, fsError);
+                return res.status(500).json({ 
+                    error: `Error verifying chunk: ${fsError.message}`,
+                    code: fsError.code
+                });
+            }
         } catch (error) {
             console.error('Error processing chunk:', error);
             res.status(500).json({ error: 'Server error: ' + error.message });
@@ -140,7 +137,7 @@ router.post('/upload-chunk', authorizeRoles(['clipteam', 'admin']), (req, res) =
     });
 });
 
-// Finalize the upload by assembling all chunks
+// Finalize the upload with more robust directory handling
 router.post('/finalize-upload', authorizeRoles(['clipteam', 'admin']), async (req, res) => {
     try {
         const { uploadId, filename, clipAmount, season, year } = req.body;
@@ -170,25 +167,64 @@ router.post('/finalize-upload', authorizeRoles(['clipteam', 'admin']), async (re
             });
         }
         
+        const chunksDir = path.join(chunksDir, uploadId);
+        console.log(`Looking for chunks in: ${chunksDir}`);
+        
+        // Check if directory exists
+        if (!fs.existsSync(chunksDir)) {
+            console.error(`Chunks directory not found: ${chunksDir}`);
+            return res.status(404).json({
+                error: 'Chunks directory not found',
+                path: chunksDir
+            });
+        }
+        
         // Create the destination file
         const finalFilename = `${Date.now()}-${session.originalFilename}`;
-        const outputPath = path.join(__dirname, '..', 'download', finalFilename);
+        const outputPath = path.join(clipsZipDir, finalFilename);
+        
+        // Ensure download directory exists
+        if (!fs.existsSync(clipsZipDir)) {
+            fs.mkdirSync(clipsZipDir, { recursive: true, mode: 0o777 });
+        }
+        
         const outputStream = fs.createWriteStream(outputPath);
         console.log(`Assembling chunks into final file: ${outputPath}`);
         
-        // Combine all chunks
+        // List actual files in the directory to verify
+        const actualFiles = fs.readdirSync(chunksDir);
+        console.log(`Found ${actualFiles.length} files in chunks directory:`, actualFiles);
+        
+        // Combine all chunks with better error handling
         for (let i = 0; i < session.totalChunks; i++) {
-            const chunkPath = path.join(__dirname, '..', 'upload-chunks', uploadId, i.toString());
+            const chunkPath = path.join(chunksDir, i.toString());
+            
+            // Check if this chunk exists
+            if (!fs.existsSync(chunkPath)) {
+                console.error(`Missing chunk file at: ${chunkPath}`);
+                return res.status(400).json({
+                    error: `Missing chunk file: ${i}`,
+                    path: chunkPath
+                });
+            }
             
             // Append this chunk to the output file
-            await new Promise((resolve, reject) => {
-                const chunkStream = fs.createReadStream(chunkPath);
-                chunkStream.pipe(outputStream, { end: false });
-                chunkStream.on('end', resolve);
-                chunkStream.on('error', reject);
-            });
-            
-            console.log(`Appended chunk ${i}/${session.totalChunks - 1}`);
+            try {
+                await new Promise((resolve, reject) => {
+                    const chunkStream = fs.createReadStream(chunkPath);
+                    chunkStream.pipe(outputStream, { end: false });
+                    chunkStream.on('end', resolve);
+                    chunkStream.on('error', reject);
+                });
+                
+                console.log(`Appended chunk ${i}/${session.totalChunks - 1}`);
+            } catch (streamErr) {
+                console.error(`Error streaming chunk ${i}:`, streamErr);
+                return res.status(500).json({
+                    error: `Failed to process chunk ${i}: ${streamErr.message}`,
+                    code: streamErr.code
+                });
+            }
         }
         
         // Close the output stream
@@ -225,7 +261,7 @@ router.post('/finalize-upload', authorizeRoles(['clipteam', 'admin']), async (re
         // Clean up temp files
         try {
             console.log(`Cleaning up temporary chunks for ${uploadId}`);
-            fs.rmSync(path.join(__dirname, '..', 'upload-chunks', uploadId), { recursive: true, force: true });
+            fs.rmSync(path.join(chunksDir, uploadId), { recursive: true, force: true });
             delete uploadSessions[uploadId];
         } catch (cleanupError) {
             console.error('Error cleaning up temp files:', cleanupError);
@@ -244,40 +280,7 @@ router.post('/finalize-upload', authorizeRoles(['clipteam', 'admin']), async (re
     }
 });
 
-// Configure improved storage for direct uploads (keeping this for backward compatibility)
-const directStorage = multer.diskStorage({
-    destination: function(req, file, cb) {
-        const downloadDir = path.join(__dirname, '..', 'download');
-        // Create directory if it doesn't exist
-        if (!fs.existsSync(downloadDir)) {
-            fs.mkdirSync(downloadDir, { recursive: true });
-            console.log(`Created download directory: ${downloadDir}`);
-            
-            // Set directory permissions to ensure writeability
-            try {
-                fs.chmodSync(downloadDir, 0o777);
-                console.log(`Set permissions on download directory`);
-            } catch (err) {
-                console.warn(`Could not set permissions: ${err.message}`);
-            }
-        }
-        cb(null, downloadDir);
-    },
-    filename: function(req, file, cb) {
-        const uniquePrefix = Date.now();
-        cb(null, `${uniquePrefix}-${file.originalname}`);
-    }
-});
-
-// Improved upload configuration for handling large files properly
-const uploadLargeFile = multer({
-    storage: directStorage,
-    limits: {
-        fileSize: 5 * 1024 * 1024 * 1024, // 5GB max size
-    },
-}).single('clipsZip');
-
-// Keep the regular upload endpoint
+// Use the shared clipsZipUpload configuration
 router.post('/upload', authorizeRoles(['clipteam', 'admin']), (req, res) => {
     console.log("=== Starting file upload process ===");
     
@@ -289,8 +292,7 @@ router.post('/upload', authorizeRoles(['clipteam', 'admin']), (req, res) => {
     const memUsage = process.memoryUsage();
     console.log(`Memory usage before upload: ${Math.round(memUsage.heapUsed / 1024 / 1024)}MB / ${Math.round(memUsage.heapTotal / 1024 / 1024)}MB`);
     
-    // Using multer with improved error handling
-    uploadLargeFile(req, res, async function(err) {
+    clipsZipUpload.single('clipsZip')(req, res, async function(err) {
         if (err) {
             console.error("Upload error:", err);
             if (err.code === 'LIMIT_FILE_SIZE') {
@@ -382,7 +384,7 @@ router.post('/process', authorizeRoles(['clipteam', 'admin']), async (req, res) 
     try {
         const { clips, season, year } = req.body;
         const zipFilename = `processed-${Date.now()}.zip`;
-        const zipPath = path.join(__dirname, '..', 'download', zipFilename);
+        const zipPath = path.join(clipsZipDir, zipFilename);
         const zipStream = fs.createWriteStream(zipPath);
         const archive = archiver('zip', { zlib: { level: 6 } });
 
@@ -454,7 +456,7 @@ router.delete('/:id', authorizeRoles(['admin']), async (req, res) => {
             // Extract filename from URL for deletion
             const urlParts = zip.url.split('/');
             const filename = urlParts[urlParts.length - 1];
-            const filePath = path.join(__dirname, '..', 'download', filename);
+            const filePath = path.join(clipsZipDir, filename);
             
             if (fs.existsSync(filePath)) {
                 fs.unlinkSync(filePath);

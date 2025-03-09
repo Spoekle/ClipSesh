@@ -23,7 +23,7 @@ const ZipManager = ({ zips, zipsLoading, deleteZip, zipFile, handleZipChange, cl
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // Split file into chunks and upload each chunk
+  // Split file into chunks and upload each chunk with retry logic
   const uploadFileInChunks = async (file) => {
     try {
       const token = localStorage.getItem('token');
@@ -40,22 +40,31 @@ const ZipManager = ({ zips, zipsLoading, deleteZip, zipFile, handleZipChange, cl
       console.log(`File will be split into ${chunks} chunks of ${formatFileSize(chunkSize)} each`);
       
       // Initialize the upload by telling the server we're starting
-      await axios.post(`${apiUrl}/api/zips/init-chunked-upload`, {
-        filename: file.name,
-        totalChunks: chunks,
-        fileSize: file.size,
-        uploadId: newUploadId,
-        clipAmount,
-        season: selectedSeason,
-        year: yearInput.toString()
-      }, {
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      try {
+        await axios.post(`${apiUrl}/api/zips/init-chunked-upload`, {
+          filename: file.name,
+          totalChunks: chunks,
+          fileSize: file.size,
+          uploadId: newUploadId,
+          clipAmount,
+          season: selectedSeason,
+          year: yearInput.toString()
+        }, {
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        console.log("Upload session initialized successfully");
+      } catch (initError) {
+        console.error("Failed to initialize upload:", initError);
+        throw new Error(`Failed to initialize upload: ${initError.message}`);
+      }
       
-      // Upload each chunk
+      // Track failed chunks for retry
+      const failedChunks = [];
+      
+      // Upload each chunk with retry capability
       for (let i = 0; i < chunks; i++) {
         setCurrentChunk(i + 1);
         const start = i * chunkSize;
@@ -63,54 +72,90 @@ const ZipManager = ({ zips, zipsLoading, deleteZip, zipFile, handleZipChange, cl
         const chunk = file.slice(start, end);
         
         const formData = new FormData();
-        formData.append('chunk', chunk);
+        formData.append('chunk', chunk, `chunk-${i}`); // Add a name to the file
         formData.append('uploadId', newUploadId);
         formData.append('chunkIndex', i.toString());
         formData.append('totalChunks', chunks.toString());
         
         console.log(`Uploading chunk ${i+1}/${chunks} (${formatFileSize(chunk.size)})`);
         
-        await axios.post(`${apiUrl}/api/zips/upload-chunk`, formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-            'Authorization': `Bearer ${token}`
-          },
-          onUploadProgress: (progressEvent) => {
-            // Calculate progress across all chunks
-            const chunkProgress = progressEvent.loaded / progressEvent.total;
-            const overallProgress = ((i + chunkProgress) / chunks) * 100;
-            setUploadProgress(Math.min(Math.round(overallProgress), 99)); // Cap at 99% until complete
+        // Try up to 3 times for each chunk
+        let chunkUploaded = false;
+        let attemptCount = 0;
+        
+        while (!chunkUploaded && attemptCount < 3) {
+          attemptCount++;
+          try {
+            const response = await axios.post(`${apiUrl}/api/zips/upload-chunk`, formData, {
+              headers: {
+                'Content-Type': 'multipart/form-data',
+                'Authorization': `Bearer ${token}`
+              },
+              onUploadProgress: (progressEvent) => {
+                // Calculate progress across all chunks
+                const chunkProgress = progressEvent.loaded / progressEvent.total;
+                const overallProgress = ((i + chunkProgress) / chunks) * 100;
+                setUploadProgress(Math.min(Math.round(overallProgress), 99)); // Cap at 99% until complete
+              }
+            });
+            
+            chunkUploaded = true;
+            console.log(`Chunk ${i+1}/${chunks} uploaded successfully:`, response.data);
+          } catch (chunkError) {
+            console.error(`Error uploading chunk ${i+1}/${chunks} (attempt ${attemptCount}/3):`, chunkError);
+            
+            if (attemptCount === 3) {
+              failedChunks.push(i);
+              console.error(`Failed to upload chunk ${i+1} after 3 attempts`);
+            } else {
+              // Wait before retry (exponential backoff)
+              const delay = attemptCount * 2000;
+              console.log(`Retrying chunk ${i+1} in ${delay/1000} seconds...`);
+              await new Promise(resolve => setTimeout(resolve, delay));
+            }
           }
-        });
+        }
         
         // Update overall progress after chunk is complete
         const overallProgress = ((i + 1) / chunks) * 100;
         setUploadProgress(Math.min(Math.round(overallProgress), 99));
       }
       
+      // Check if any chunks failed
+      if (failedChunks.length > 0) {
+        console.error(`${failedChunks.length} chunks failed to upload:`, failedChunks);
+        throw new Error(`Failed to upload ${failedChunks.length} chunks. Please retry the upload.`);
+      }
+      
       // Tell the server we're done uploading chunks and it should reassemble the file
       console.log("All chunks uploaded, finalizing...");
-      const finalizeResponse = await axios.post(`${apiUrl}/api/zips/finalize-upload`, {
-        uploadId: newUploadId,
-        filename: file.name,
-        clipAmount,
-        season: selectedSeason,
-        year: yearInput.toString()
-      }, {
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      console.log('Upload completed and finalized successfully');
-      setUploadProgress(100);
-      
-      // Refresh the UI
-      handleZipSubmit(null, true);
-      setUploadError("");
-      setRetryAttempt(0);
-      return true;
+      try {
+        const finalizeResponse = await axios.post(`${apiUrl}/api/zips/finalize-upload`, {
+          uploadId: newUploadId,
+          filename: file.name,
+          clipAmount,
+          season: selectedSeason,
+          year: yearInput.toString()
+        }, {
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 300000 // 5 minute timeout for finalization which may take time for large files
+        });
+        
+        console.log('Upload completed and finalized successfully:', finalizeResponse.data);
+        setUploadProgress(100);
+        
+        // Refresh the UI
+        handleZipSubmit(null, true);
+        setUploadError("");
+        setRetryAttempt(0);
+        return true;
+      } catch (finalizeError) {
+        console.error("Failed to finalize upload:", finalizeError);
+        throw new Error(`Failed to finalize upload: ${finalizeError.message}`);
+      }
     } catch (error) {
       console.error('Chunked upload failed:', error);
       
@@ -119,6 +164,10 @@ const ZipManager = ({ zips, zipsLoading, deleteZip, zipFile, handleZipChange, cl
         // Server responded with a non-2xx status
         if (error.response.data && error.response.data.error) {
           errorMessage = error.response.data.error;
+          // If there's additional path information, include it
+          if (error.response.data.path) {
+            errorMessage += ` (Path: ${error.response.data.path})`;
+          }
         } else {
           errorMessage = `Server error: ${error.response.status}`;
         }
