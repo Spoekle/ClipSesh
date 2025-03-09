@@ -53,7 +53,7 @@ const clipsZipUpload = multer({
 
 const chunkUpload = multer({
   storage: chunksStorage,
-  limits: { fileSize: 550 * 1024 * 1024 } // 550MB per chunk (little extra for safety)
+  limits: { fileSize: 60 * 1024 * 1024 } // 60MB per chunk (reduced from 550MB)
 });
 
 module.exports = {

@@ -33,8 +33,8 @@ const ZipManager = ({ zips, zipsLoading, deleteZip, zipFile, handleZipChange, cl
       const newUploadId = `upload_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
       setUploadId(newUploadId);
       
-      // Configure chunk size - 500MB chunks
-      const chunkSize = 500 * 1024 * 1024; // 500MB chunks (increased from 5MB)
+      // Configure chunk size - reduced to 50MB to avoid 413 Payload Too Large errors
+      const chunkSize = 50 * 1024 * 1024; // 50MB chunks (reduced from 500MB)
       const chunks = Math.ceil(file.size / chunkSize);
       setTotalChunks(chunks);
       console.log(`File will be split into ${chunks} chunks of ${formatFileSize(chunkSize)} each`);
