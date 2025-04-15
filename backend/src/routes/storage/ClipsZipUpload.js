@@ -2,13 +2,12 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 
-// Simple function to ensure directory exists with proper permissions
+// Ensure directory exists with proper permissions
 function ensureDirectoryExists(directory) {
   if (!fs.existsSync(directory)) {
     try {
       fs.mkdirSync(directory, { recursive: true, mode: 0o777 });
-      console.log(`Created directory: ${directory}`);
-      // Explicitly set permissions to ensure writability
+      // Set permissions to ensure writability
       fs.chmodSync(directory, 0o777);
     } catch (err) {
       console.error(`Error creating directory ${directory}:`, err);
@@ -18,23 +17,19 @@ function ensureDirectoryExists(directory) {
   return directory;
 }
 
-// Setup basic directories
+// Setup directories
 let downloadDir = path.join(__dirname, '..', '..', 'download');
-let chunksDir = path.join(__dirname, '..', '..', 'upload-chunks');
+let chunksDir = path.join(downloadDir, 'tmp');
 
 // Check for production environment paths
 if (process.env.NODE_ENV === 'production' || fs.existsSync('/var/www/backend')) {
   downloadDir = '/var/www/backend/src/download';
-  chunksDir = '/var/www/backend/src/upload-chunks';
-  console.log("Using production paths for file storage");
+  chunksDir = path.join(downloadDir, 'tmp');
 }
 
-// Ensure directories exist with proper permissions
+// Ensure directories exist
 ensureDirectoryExists(downloadDir);
 ensureDirectoryExists(chunksDir);
-
-console.log(`Chunks directory set to: ${chunksDir}`);
-console.log(`Download directory set to: ${downloadDir}`);
 
 // Configure multer storage for complete ZIP files
 const clipsZipStorage = multer.diskStorage({
@@ -51,16 +46,18 @@ const clipsZipStorage = multer.diskStorage({
 const chunksStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     try {
-      const uploadId = req.body.uploadId;
+      // Get uploadId from body or query params
+      let uploadId = req.body.uploadId || req.query.uploadId;
+      
       if (!uploadId) {
-        console.error('No uploadId found in request body!');
-        return cb(new Error('Missing uploadId in request'));
+        // Create a temporary directory for orphaned chunks
+        const tempDir = path.join(chunksDir, 'orphaned_' + Date.now());
+        ensureDirectoryExists(tempDir);
+        return cb(null, tempDir);
       }
       
-      console.log(`Creating chunk directory for uploadId: ${uploadId}`);
       const sessionDir = path.join(chunksDir, uploadId);
       ensureDirectoryExists(sessionDir);
-      console.log(`Using session directory: ${sessionDir}`);
       cb(null, sessionDir);
     } catch (err) {
       console.error('Error setting chunk destination:', err);
@@ -68,9 +65,24 @@ const chunksStorage = multer.diskStorage({
     }
   },
   filename: (req, file, cb) => {
-    const chunkIndex = req.body.chunkIndex;
-    console.log(`Setting chunk filename: ${chunkIndex}`);
-    cb(null, `${chunkIndex}`);
+    try {
+      // Get chunkIndex from body or query params
+      let chunkIndex = req.body.chunkIndex;
+      if (chunkIndex === undefined && req.query.chunkIndex !== undefined) {
+        chunkIndex = req.query.chunkIndex;
+      }
+      
+      if (chunkIndex === undefined) {
+        // Generate a unique filename for orphaned chunks
+        const uniqueName = `orphaned_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+        return cb(null, uniqueName);
+      }
+      
+      cb(null, `${chunkIndex}`);
+    } catch (err) {
+      console.error('Error setting chunk filename:', err);
+      cb(err);
+    }
   }
 });
 

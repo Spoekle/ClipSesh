@@ -12,21 +12,28 @@ const NotificationBadge: React.FC = () => {
   const [notifications, setNotifications] = useState<UserNotificationResponse | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [apiAvailable, setApiAvailable] = useState<boolean>(true);
 
   // Pre-fetch notifications data on component mount and periodically
   useEffect(() => {
-    fetchUnreadCount();
-    fetchNotifications(); // Pre-fetch on component mount
+    // Check if notifications API is available
+    checkApiAvailability();
     
-    const countInterval = setInterval(fetchUnreadCount, 60000);
-    const notificationsInterval = setInterval(fetchNotifications, 120000);
-    
-    return () => {
-      clearInterval(countInterval);
-      clearInterval(notificationsInterval);
-      if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
-    };
-  }, []);
+    // Only set up intervals if the API is available
+    if (apiAvailable) {
+      fetchUnreadCount();
+      fetchNotifications(); // Pre-fetch on component mount
+      
+      const countInterval = setInterval(fetchUnreadCount, 60000);
+      const notificationsInterval = setInterval(fetchNotifications, 120000);
+      
+      return () => {
+        clearInterval(countInterval);
+        clearInterval(notificationsInterval);
+        if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
+      };
+    }
+  }, [apiAvailable]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -42,7 +49,24 @@ const NotificationBadge: React.FC = () => {
     };
   }, []);
 
+  // Check if notifications API endpoints exist
+  const checkApiAvailability = async (): Promise<void> => {
+    try {
+      // Try to access the notification endpoint with HEAD request
+      await axios.head(`${apiUrl}/api/notifications`);
+      setApiAvailable(true);
+    } catch (error: any) {
+      // If we get 404, the API doesn't exist
+      if (error.response && error.response.status === 404) {
+        console.log('Notifications API not available, disabling notification features');
+        setApiAvailable(false);
+      }
+    }
+  };
+
   const fetchUnreadCount = async (): Promise<void> => {
+    if (!apiAvailable) return;
+    
     const token = localStorage.getItem('token');
     if (!token) return;
 
@@ -53,12 +77,15 @@ const NotificationBadge: React.FC = () => {
       );
       setUnreadCount(response.data.unreadCount);
     } catch (error) {
-      console.error('Error fetching unread notifications count', error);
+      console.log('Could not fetch notification count - API may not be implemented yet');
+      // Don't show errors for missing notification API
     }
   };
 
   // Fetch notifications data in the background
   const fetchNotifications = async (): Promise<void> => {
+    if (!apiAvailable) return;
+    
     const token = localStorage.getItem('token');
     if (!token) return;
 
@@ -69,11 +96,14 @@ const NotificationBadge: React.FC = () => {
       );
       setNotifications(response.data);
     } catch (error) {
-      console.error('Error pre-fetching notifications', error);
+      console.log('Could not fetch notifications - API may not be implemented yet');
+      // Don't show errors for missing notification API
     }
   };
 
   const toggleDropdown = () => {
+    if (!apiAvailable) return;
+    
     if (!dropdownOpen && !notifications) {
       // If opening and we don't have data yet
       setIsLoading(true);
@@ -84,6 +114,8 @@ const NotificationBadge: React.FC = () => {
 
   // Force a refresh after actions in dropdown (mark as read, delete)
   const handleNotificationsUpdate = useCallback(() => {
+    if (!apiAvailable) return;
+    
     // Don't fetch immediately - wait a little to avoid flickering
     if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
     
@@ -91,7 +123,12 @@ const NotificationBadge: React.FC = () => {
       fetchUnreadCount();
       fetchNotifications();
     }, 500);
-  }, []);
+  }, [apiAvailable]);
+
+  // If the notifications API isn't available, don't render anything
+  if (!apiAvailable) {
+    return null;
+  }
 
   return (
     <div className="relative" ref={containerRef}>

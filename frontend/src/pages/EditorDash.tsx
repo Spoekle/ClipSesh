@@ -23,22 +23,12 @@ import { Clip, Rating, Zip } from '../types/adminTypes';
 interface Config {
   denyThreshold: number;
   latestVideoLink: string;
+  clipAmount?: number;
 }
 
 interface SeasonInfo {
   season?: string;
   clipAmount?: number;
-}
-
-interface Zip {
-  _id: string;
-  name: string;
-  url: string;
-  season: string;
-  year: number; // Updated to include year
-  clipAmount: number;
-  size: number;
-  createdAt: string;
 }
 
 const EditorDash: React.FC = () => {
@@ -53,6 +43,15 @@ const EditorDash: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'current' | 'all'>('current');
 
   const { showError } = useNotification();
+
+  // Utility function to format file sizes properly
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
 
   useEffect(() => {
     fetchInitialData();
@@ -77,11 +76,30 @@ const EditorDash: React.FC = () => {
 
   const fetchConfig = async (): Promise<void> => {
     try {
-      const response = await axios.get<Config[]>(`${apiUrl}/api/admin/config`);
-
-      if (response) {
-        setConfig(response.data[0]);
-        console.log('Config fetched successfully:', response.data[0]);
+      const response = await axios.get<{public: Config, admin: any}>(`${apiUrl}/api/config`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      
+      if (response.data) {
+        const publicConfig = response.data.public || {};
+        const adminConfig = response.data.admin || {};
+        
+        // Merge configs and set clip count
+        setConfig({
+          denyThreshold: adminConfig.denyThreshold ?? 5,
+          latestVideoLink: publicConfig.latestVideoLink ?? '',
+          clipAmount: publicConfig.clipAmount ?? 0
+        });
+        
+        // Update total clip count for pagination
+        if (publicConfig.clipAmount) {
+          setSeasonInfo(prevSeasonInfo => ({
+            ...prevSeasonInfo,
+            clipAmount: publicConfig.clipAmount
+          }));
+        }
+        
+        console.log("Fetched config with clip amount:", publicConfig.clipAmount);
       }
     } catch (error) {
       console.error('Error fetching config:', error);
@@ -90,31 +108,130 @@ const EditorDash: React.FC = () => {
 
   const fetchClipsAndRatings = async (): Promise<void> => {
     try {
-      const clipResponse = await axios.get<Clip[]>(`${apiUrl}/api/clips`);
-      setClips(clipResponse.data);
-      setSeasonInfo(prevSeasonInfo => ({
-        ...prevSeasonInfo,
-        clipAmount: clipResponse.data.length
-      }));
+      // Use query parameters for backend filtering/sorting
       const token = localStorage.getItem('token');
-      if (token) {
-        const ratingPromises = clipResponse.data.map(clip =>
-          axios.get<Rating>(`${apiUrl}/api/ratings/${clip._id}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          })
+      const headers = { Authorization: `Bearer ${token}` };
+      
+      // Request clips with pagination and sorting from the backend
+      const clipResponse = await axios.get(`${apiUrl}/api/clips`, {
+        params: {
+          limit: 1000, // Get a large number of clips for admin view
+          sortBy: 'createdAt',
+          sortOrder: 'desc',
+          includeRatings: true // Request ratings to be included with clips
+        },
+        headers
+      });
+      
+      // Process the response data
+      let clipsData: Clip[] = [];
+      let ratingsData: Record<string, Rating> = {};
+      
+      if (clipResponse.data) {
+        // Check for clips in various response formats
+        if (Array.isArray(clipResponse.data)) {
+          clipsData = clipResponse.data;
+        } else if (clipResponse.data.clips && Array.isArray(clipResponse.data.clips)) {
+          clipsData = clipResponse.data.clips;
+        } else if (clipResponse.data.data && Array.isArray(clipResponse.data.data)) {
+          clipsData = clipResponse.data.data;
+        }
+        
+        // Check for included ratings in the response
+        if (clipResponse.data.ratings && typeof clipResponse.data.ratings === 'object') {
+          ratingsData = clipResponse.data.ratings;
+        }
+      }
+      
+      // Update state with fetched data
+      setClips(clipsData);
+      
+      // If ratings weren't included in the response, fetch them separately
+      if (Object.keys(ratingsData).length === 0 && clipsData.length > 0) {
+        setProgress(65);
+        
+        // Make individual requests for ratings if not included in the clips response
+        const ratingPromises = clipsData.map(clip =>
+          axios.get<Rating>(`${apiUrl}/api/ratings/${clip._id}`, { headers })
         );
+        
+        setProgress(80);
         const ratingResponses = await Promise.all(ratingPromises);
-        const ratingsData = ratingResponses.reduce<Record<string, Rating>>((acc, res, index) => {
-          acc[clipResponse.data[index]._id] = res.data;
+        
+        ratingsData = ratingResponses.reduce<Record<string, Rating>>((acc, res, index) => {
+          acc[clipsData[index]._id] = res.data;
           setProgress(90);
           return acc;
         }, {});
-        setRatings(ratingsData);
       }
+      
+      // Transform ratings to ensure they have the expected format for the frontend
+      const transformedRatings = transformRatings(ratingsData);
+      setRatings(transformedRatings);
+      
     } catch (error) {
       console.error('Error fetching clips and ratings:', error);
     }
   };
+
+  // Utility function to transform backend rating format to frontend expected format
+  const transformRatings = (ratings: Record<string, any>): Record<string, Rating> => {
+    const transformed: Record<string, Rating> = {};
+    
+    Object.entries(ratings).forEach(([clipId, ratingData]) => {
+      // Check if we need to transform this rating data
+      if (ratingData && !ratingData.ratingCounts && ratingData.ratings) {
+        // Transform from backend format to frontend expected format
+        const ratingCounts = [
+          { 
+            rating: '1', 
+            count: Array.isArray(ratingData.ratings['1']) ? ratingData.ratings['1'].length : 0,
+            users: Array.isArray(ratingData.ratings['1']) ? ratingData.ratings['1'] : []
+          },
+          { 
+            rating: '2', 
+            count: Array.isArray(ratingData.ratings['2']) ? ratingData.ratings['2'].length : 0,
+            users: Array.isArray(ratingData.ratings['2']) ? ratingData.ratings['2'] : []
+          },
+          { 
+            rating: '3', 
+            count: Array.isArray(ratingData.ratings['3']) ? ratingData.ratings['3'].length : 0,
+            users: Array.isArray(ratingData.ratings['3']) ? ratingData.ratings['3'] : [] 
+          },
+          { 
+            rating: '4', 
+            count: Array.isArray(ratingData.ratings['4']) ? ratingData.ratings['4'].length : 0,
+            users: Array.isArray(ratingData.ratings['4']) ? ratingData.ratings['4'] : []
+          },
+          { 
+            rating: 'deny', 
+            count: Array.isArray(ratingData.ratings['deny']) ? ratingData.ratings['deny'].length : 0,
+            users: Array.isArray(ratingData.ratings['deny']) ? ratingData.ratings['deny'] : []
+          }
+        ];
+        
+        transformed[clipId] = {
+          ...ratingData,
+          ratingCounts: ratingCounts
+        };
+      } else {
+        // Rating is already in the right format or is null/undefined
+        transformed[clipId] = ratingData;
+      }
+    });
+    
+    return transformed;
+  };
+
+  const deniedClips = clips.filter(clip => {
+    const ratingData = ratings[clip._id];
+    return ratingData && 
+           ratingData.ratingCounts && 
+           Array.isArray(ratingData.ratingCounts) &&
+           ratingData.ratingCounts.some(rateData => 
+             rateData.rating === 'deny' && rateData.count >= config.denyThreshold
+           );
+  }).length;
 
   const fetchZips = async (): Promise<void> => {
     try {
@@ -129,13 +246,6 @@ const EditorDash: React.FC = () => {
       setZipsLoading(false);
     }
   };
-
-  const deniedClips = clips.filter(clip => {
-    const ratingData = ratings[clip._id];
-    return ratingData && ratingData.ratingCounts.some(rateData => 
-      rateData.rating === 'deny' && rateData.count >= config.denyThreshold
-    );
-  }).length;
 
   const approvedClips = (seasonInfo.clipAmount || 0) - deniedClips;
 
@@ -397,7 +507,7 @@ const EditorDash: React.FC = () => {
                             <FaClipboard />
                             <span>{zip.clipAmount} clips</span>
                           </div>
-                          <span>{(zip.size / 1000000).toFixed(2)} MB</span>
+                          <span>{formatFileSize(zip.size)}</span>
                         </div>
                       </div>
                     </div>

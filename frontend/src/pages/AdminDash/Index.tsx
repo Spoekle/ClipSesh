@@ -15,29 +15,86 @@ import ConfigPanel from './components/ConfigPanel';
 import AdminActions from './components/AdminActions';
 import ZipManager from './components/ZipManager';
 import SeasonInfo from './components/SeasonInfo';
+import { getCurrentSeason } from '../../utils/seasonHelpers';
+import ProcessClipsModal from '../../components/admin/ProcessClipsModal';
+import useSocket from '../../hooks/useSocket';
+
+import { Clip, Rating  } from '../../types/adminTypes';
+
+// Define interfaces for the app's data types
+interface User {
+  _id: string;
+  username: string;
+  status: 'active' | 'disabled';
+  roles: string[];
+  profilePicture?: string;
+  discordId?: string;
+  discordUsername?: string;
+}
+
+interface Config {
+  denyThreshold: number;
+  latestVideoLink: string;
+  clipChannelIds?: string[];
+}
+
+interface Zip {
+  _id: string;
+  url: string;
+  season: string;
+  year: number;
+  name: string;
+  size: number;
+  clipAmount: number;
+  createdAt: string;
+}
+
+interface UserRating {
+  username: string;
+  '1': number;
+  '2': number;
+  '3': number;
+  '4': number;
+  deny: number;
+  total: number;
+  percentageRated: number;
+}
+
+interface SeasonInfoType {
+  season?: string;
+  clipAmount?: number;
+}
+
+interface AdminStats {
+  userCount: number;
+  activeUserCount: number;
+  clipCount: number;
+  ratedClipsCount: number;
+  deniedClipsCount: number;
+}
 
 function AdminDash() {
-  const [allUsers, setAllUsers] = useState([]);
-  const [otherRoles, setOtherRoles] = useState([]);
-  const [allActiveUsers, setAllActiveUsers] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [admins, setAdmins] = useState([]);
-  const [clipTeam, setClipTeam] = useState([]);
-  const [editors, setEditors] = useState([]);
-  const [uploader, setUploader] = useState([]);
-  const [disabledUsers, setDisabledUsers] = useState([]);
-  const [config, setConfig] = useState({ denyThreshold: 5, latestVideoLink: '' });
-  const [clips, setClips] = useState([]);
-  const [ratings, setRatings] = useState({});
-  const [downloading, setDownloading] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [progress, setProgress] = useState(0);
-  const [userRatings, setUserRatings] = useState([]);
-  const [seasonInfo, setSeasonInfo] = useState({});
-  const [zips, setZips] = useState([]);
-  const [zipsLoading, setZipsLoading] = useState(true);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [otherRoles, setOtherRoles] = useState<User[]>([]);
+  const [allActiveUsers, setAllActiveUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [admins, setAdmins] = useState<User[]>([]);
+  const [clipTeam, setClipTeam] = useState<User[]>([]);
+  const [editors, setEditors] = useState<User[]>([]);
+  const [uploader, setUploader] = useState<User[]>([]);
+  const [disabledUsers, setDisabledUsers] = useState<User[]>([]);
+  const [config, setConfig] = useState<Config>({ denyThreshold: 5, latestVideoLink: '' });
+  const [clips, setClips] = useState<Clip[]>([]);
+  const [ratings, setRatings] = useState<Record<string, Rating>>({});
+  const [downloading, setDownloading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [progress, setProgress] = useState<number>(0);
+  const [userRatings, setUserRatings] = useState<UserRating[]>([]);
+  const [seasonInfo, setSeasonInfo] = useState<SeasonInfoType>({});
+  const [zips, setZips] = useState<Zip[]>([]);
+  const [zipsLoading, setZipsLoading] = useState<boolean>(true);
   const AVAILABLE_ROLES = ['user', 'admin', 'clipteam', 'editor', 'uploader'];
-  const [adminStats, setAdminStats] = useState({
+  const [adminStats, setAdminStats] = useState<AdminStats>({
     userCount: 0,
     activeUserCount: 0,
     clipCount: 0,
@@ -45,13 +102,20 @@ function AdminDash() {
     deniedClipsCount: 0
   });
 
+  const [processModalOpen, setProcessModalOpen] = useState<boolean>(false);
+  const [processingClips, setProcessingClips] = useState<boolean>(false);
+  const [processProgress, setProcessProgress] = useState<number>(0);
+  const [processJobId, setProcessJobId] = useState<string | null>(null);
+  const [currentYear, setCurrentYear] = useState<number>(new Date().getFullYear());
+
   const location = useLocation();
+  const { isConnected } = useSocket();
 
   useEffect(() => {
     fetchInitialData();
   }, []);
 
-  const fetchInitialData = async () => {
+  const fetchInitialData = async (): Promise<void> => {
     try {
       await fetchUsers();
       setProgress(10);
@@ -71,9 +135,9 @@ function AdminDash() {
     }
   };
 
-  const fetchZips = async () => {
+  const fetchZips = async (): Promise<void> => {
     try {
-      const response = await axios.get(`${apiUrl}/api/zips`, {
+      const response = await axios.get<Zip[]>(`${apiUrl}/api/zips`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       });
       setZips(response.data);
@@ -84,7 +148,7 @@ function AdminDash() {
     }
   };
 
-  const deleteZip = async (zipId) => {
+  const deleteZip = async (zipId: string): Promise<void> => {
     if (!window.confirm("Are you sure you want to delete this zip?")) {
       return;
     }
@@ -102,10 +166,10 @@ function AdminDash() {
     }
   };
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (): Promise<void> => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`${apiUrl}/api/users`, {
+      const response = await axios.get<User[]>(`${apiUrl}/api/users`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const everyUser = response.data;
@@ -125,14 +189,14 @@ function AdminDash() {
       setDisabledUsers(everyUser.filter(user => user.status === 'disabled'));
     } catch (error) {
       console.error('Error fetching users:', error);
-      if (error.response && error.response.status === 403) {
+      if (axios.isAxiosError(error) && error.response && error.response.status === 403) {
         window.location.href = '/clips';
         alert('You do not have permission to view this page.');
       }
     }
   };
 
-  const handleApproveUser = async (userId) => {
+  const handleApproveUser = async (userId: string): Promise<void> => {
     try {
       const token = localStorage.getItem('token');
       await axios.post(`${apiUrl}/api/users/approve`, { userId }, {
@@ -145,23 +209,47 @@ function AdminDash() {
     }
   };
 
-  const fetchConfig = async () => {
+  const fetchConfig = async (): Promise<void> => {
     try {
-      const response = await axios.get(`${apiUrl}/api/admin/config`,);
-
-      if (response) {
-        setConfig(response.data[0]);
-        console.log('Config fetched successfully:', response.data[0]);
+      // Use the correct endpoint for config data
+      const response = await axios.get<any>(`${apiUrl}/api/config`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      
+      // Extract config from the combined object returned by the API
+      if (response.data) {
+        const publicConfig = response.data.public || {};
+        const adminConfig = response.data.admin || {};
+        
+        // Merge admin and public configs into a single config object
+        setConfig({
+          denyThreshold: adminConfig.denyThreshold ?? 5,
+          latestVideoLink: publicConfig.latestVideoLink ?? '',
+          clipChannelIds: adminConfig.clipChannelIds ?? []
+        });
+        
+        // Update season info with clip amount from config if available
+        if (publicConfig.clipAmount !== undefined) {
+          setSeasonInfo(prevState => ({
+            ...prevState,
+            clipAmount: publicConfig.clipAmount
+          }));
+          console.log(`Retrieved clipAmount from config: ${publicConfig.clipAmount}`);
+        }
+      } else {
+        console.warn('Empty config response, using defaults');
+        // Keep the default values from initial state
       }
     } catch (error) {
       console.error('Error fetching config:', error);
+      // Keep using default values on error
     }
   };
 
-  const fetchAdminStats = async () => {
+  const fetchAdminStats = async (): Promise<void> => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`${apiUrl}/api/admin/stats`, {
+      const response = await axios.get<AdminStats>(`${apiUrl}/api/admin/stats`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setAdminStats(response.data);
@@ -170,35 +258,131 @@ function AdminDash() {
     }
   };
 
-  const fetchClipsAndRatings = async () => {
+  const fetchClipsAndRatings = async (): Promise<void> => {
     try {
-      const clipResponse = await axios.get(`${apiUrl}/api/clips`);
-      setClips(clipResponse.data);
-      setProgress(65);
+      // Use query parameters for backend filtering/sorting
       const token = localStorage.getItem('token');
-      if (token) {
-        const ratingPromises = clipResponse.data.map(clip =>
-          axios.get(`${apiUrl}/api/ratings/${clip._id}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          })
+      const headers = { Authorization: `Bearer ${token}` };
+      
+      // Request clips with pagination and sorting from the backend
+      const clipResponse = await axios.get(`${apiUrl}/api/clips`, {
+        params: {
+          limit: 1000, // Get a large number of clips for admin view
+          sortBy: 'createdAt',
+          sortOrder: 'desc',
+          includeRatings: true // Request ratings to be included with clips
+        },
+        headers
+      });
+      
+      // Process the response data
+      let clipsData: Clip[] = [];
+      let ratingsData: Record<string, Rating> = {};
+      
+      if (clipResponse.data) {
+        // Check for clips in various response formats
+        if (Array.isArray(clipResponse.data)) {
+          clipsData = clipResponse.data;
+        } else if (clipResponse.data.clips && Array.isArray(clipResponse.data.clips)) {
+          clipsData = clipResponse.data.clips;
+        } else if (clipResponse.data.data && Array.isArray(clipResponse.data.data)) {
+          clipsData = clipResponse.data.data;
+        }
+        
+        // Check for included ratings in the response
+        if (clipResponse.data.ratings && typeof clipResponse.data.ratings === 'object') {
+          ratingsData = clipResponse.data.ratings;
+        }
+      }
+      
+      // Update state with fetched data
+      setClips(clipsData);
+      
+      // If ratings weren't included in the response, fetch them separately
+      if (Object.keys(ratingsData).length === 0 && clipsData.length > 0) {
+        setProgress(65);
+        
+        // Make individual requests for ratings if not included in the clips response
+        const ratingPromises = clipsData.map(clip =>
+          axios.get<Rating>(`${apiUrl}/api/ratings/${clip._id}`, { headers })
         );
+        
         setProgress(80);
         const ratingResponses = await Promise.all(ratingPromises);
-        const ratingsData = ratingResponses.reduce((acc, res, index) => {
-          acc[clipResponse.data[index]._id] = res.data;
+        
+        ratingsData = ratingResponses.reduce<Record<string, Rating>>((acc, res, index) => {
+          acc[clipsData[index]._id] = res.data;
           setProgress(90);
           return acc;
         }, {});
-        setRatings(ratingsData);
       }
+      
+      // Transform ratings to ensure they have the expected format for the frontend
+      const transformedRatings = transformRatings(ratingsData);
+      setRatings(transformedRatings);
+      
     } catch (error) {
       console.error('Error fetching clips and ratings:', error);
     }
   };
 
+  // Utility function to transform backend rating format to frontend expected format
+  const transformRatings = (ratings: Record<string, any>): Record<string, Rating> => {
+    const transformed: Record<string, Rating> = {};
+    
+    Object.entries(ratings).forEach(([clipId, ratingData]) => {
+      // Check if we need to transform this rating data
+      if (ratingData && !ratingData.ratingCounts && ratingData.ratings) {
+        // Transform from backend format to frontend expected format
+        const ratingCounts = [
+          { 
+            rating: '1', 
+            count: Array.isArray(ratingData.ratings['1']) ? ratingData.ratings['1'].length : 0,
+            users: Array.isArray(ratingData.ratings['1']) ? ratingData.ratings['1'] : []
+          },
+          { 
+            rating: '2', 
+            count: Array.isArray(ratingData.ratings['2']) ? ratingData.ratings['2'].length : 0,
+            users: Array.isArray(ratingData.ratings['2']) ? ratingData.ratings['2'] : []
+          },
+          { 
+            rating: '3', 
+            count: Array.isArray(ratingData.ratings['3']) ? ratingData.ratings['3'].length : 0,
+            users: Array.isArray(ratingData.ratings['3']) ? ratingData.ratings['3'] : [] 
+          },
+          { 
+            rating: '4', 
+            count: Array.isArray(ratingData.ratings['4']) ? ratingData.ratings['4'].length : 0,
+            users: Array.isArray(ratingData.ratings['4']) ? ratingData.ratings['4'] : []
+          },
+          { 
+            rating: 'deny', 
+            count: Array.isArray(ratingData.ratings['deny']) ? ratingData.ratings['deny'].length : 0,
+            users: Array.isArray(ratingData.ratings['deny']) ? ratingData.ratings['deny'] : []
+          }
+        ];
+        
+        transformed[clipId] = {
+          ...ratingData,
+          ratingCounts: ratingCounts
+        };
+      } else {
+        // Rating is already in the right format or is null/undefined
+        transformed[clipId] = ratingData;
+      }
+    });
+    
+    return transformed;
+  };
+
   const deniedClips = clips.filter(clip => {
     const ratingData = ratings[clip._id];
-    return ratingData && ratingData.ratingCounts.some(rateData => rateData.rating === 'deny' && rateData.count >= config.denyThreshold);
+    return ratingData && 
+           ratingData.ratingCounts && 
+           Array.isArray(ratingData.ratingCounts) &&
+           ratingData.ratingCounts.some(rateData => 
+             rateData.rating === 'deny' && rateData.count >= config.denyThreshold
+           );
   }).length;
 
   useEffect(() => {
@@ -207,11 +391,11 @@ function AdminDash() {
     }
   }, [ratings]);
 
-  const countRatingsPerUser = () => {
-    const userRatingCount = {};
+  const countRatingsPerUser = (): void => {
+    const userRatingCount: Record<string, any> = {};
 
     [...clipTeam, ...admins]
-      .filter(user => user.username !== 'UploadBot' && !['editor', 'uploader'].includes(user.roles))
+      .filter(user => user.username !== 'UploadBot' && !user.roles.includes('editor') && !user.roles.includes('uploader'))
       .forEach(user => {
         userRatingCount[user.username] = { '1': 0, '2': 0, '3': 0, '4': 0, 'deny': 0, total: 0, percentageRated: 0 };
       });
@@ -255,7 +439,7 @@ function AdminDash() {
     setUserRatings(userRatingCounts);
   };
 
-  const handleConfigChange = (e) => {
+  const handleConfigChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const { name, value } = e.target;
     setConfig({
       ...config,
@@ -263,7 +447,7 @@ function AdminDash() {
     });
   };
 
-  const handleConfigSubmit = async (e) => {
+  const handleConfigSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
@@ -277,7 +461,7 @@ function AdminDash() {
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: string): Promise<void> => {
     if (!window.confirm("Are you sure you want to delete this user?")) {
       return;
     }
@@ -296,31 +480,38 @@ function AdminDash() {
     }
   };
 
-  const [zipFile, setZipFile] = useState(null);
-  const [clipAmount, setClipAmount] = useState(0);
+  const [zipFile, setZipFile] = useState<File | null>(null);
+  const [clipAmount, setClipAmount] = useState<number>(0);
 
-  const handleZipChange = (e) => {
-    setZipFile(e.target.files[0]);
+  const handleZipChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    if (e.target.files && e.target.files[0]) {
+      setZipFile(e.target.files[0]);
+    }
   };
 
-  const handleClipAmountChange = (e) => {
+  const handleClipAmountChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const clipAmount = Number(e.target.value);
     if (clipAmount >= 0) {
       setClipAmount(clipAmount);
     }
   };
 
-  const handleZipSubmit = async (e) => {
-    e.preventDefault();
-    if (!zipFile) {
+  const handleZipSubmit = async (e: React.FormEvent | null, refresh?: boolean): Promise<void> => {
+    if (e) e.preventDefault();
+    if (!zipFile && !refresh) {
       return;
     }
 
+    if (refresh) {
+      fetchZips();
+      return;
+    }
+    
     const formData = new FormData();
 
-    formData.append('clipsZip', zipFile);
-    formData.append('clipAmount', clipAmount);
-    formData.append('season', seasonInfo.season);
+    formData.append('clipsZip', zipFile as Blob);
+    formData.append('clipAmount', clipAmount.toString());
+    formData.append('season', seasonInfo.season || '');
 
     try {
       const token = localStorage.getItem('token');
@@ -339,36 +530,46 @@ function AdminDash() {
     }
   };
 
-  const processClips = async () => {
-    if (!window.confirm("Are you sure you want to process these clips?")) {
-      return;
-    }
-
-    setDownloading(true);
+  const processClips = async (season: string, year: number): Promise<void> => {
+    setProcessingClips(true);
+    setProcessProgress(0);
 
     const filteredClips = clips.filter((clip) => {
       const ratingData = ratings[clip._id];
       return (
-        ratingData &&
+        ratingData && 
+        ratingData.ratingCounts && 
+        Array.isArray(ratingData.ratingCounts) &&
         ratingData.ratingCounts.every(
           (rateData) => rateData.rating !== 'deny' || rateData.count < config.denyThreshold
         )
       );
     });
 
+    if (filteredClips.length === 0) {
+      alert('No clips to process. All clips have been denied.');
+      setProcessingClips(false);
+      setProcessModalOpen(false);
+      return;
+    }
+
     try {
+      console.log(`Starting clip processing for ${season} ${year} with ${filteredClips.length} clips`);
+      
+      // Send the processing request
       const response = await axios.post(
         `${apiUrl}/api/zips/process`,
         {
-          clips: filteredClips.map((clip) => {
+          clips: filteredClips.map((clip, index) => {
             const ratingData = ratings[clip._id];
             const mostChosenRating = ratingData.ratingCounts.reduce(
               (max, rateData) => (rateData.count > max.count ? rateData : max),
               ratingData.ratingCounts[0]
             );
-            return { ...clip, rating: mostChosenRating.rating };
+            return { ...clip, rating: mostChosenRating.rating, index }; // Include index for tracking
           }),
-          season: seasonInfo.season,
+          season: season,
+          year: year
         },
         {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
@@ -379,16 +580,59 @@ function AdminDash() {
         throw new Error('Failed to process clips');
       }
 
-      alert('Zipped clips stored in DB successfully!');
-      fetchZips();
+      const { jobId } = response.data;
+      console.log(`Process job started with ID: ${jobId}`);
+      setProcessJobId(jobId);
+
+      // We don't need the polling logic anymore since we're using WebSockets,
+      // but we'll keep a simplified version as a fallback
+      if (!isConnected) {
+        let pollFrequency = 3000;
+        
+        const checkProgress = async () => {
+          try {
+            const statusResponse = await axios.get(
+              `${apiUrl}/api/zips/process-status/${jobId}`,
+              {
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+              }
+            );
+            
+            const { progress, status } = statusResponse.data;
+            setProcessProgress(progress);
+            
+            if (status === 'completed') {
+              clearTimeout(timeoutId);
+              setProcessingClips(false);
+              setProcessModalOpen(false);
+              fetchZips();
+              return;
+            } else if (status === 'error') {
+              clearTimeout(timeoutId);
+              setProcessingClips(false);
+              alert(`Error: ${statusResponse.data.error || 'Unknown error'}`);
+              return;
+            }
+            
+            timeoutId = setTimeout(checkProgress, pollFrequency);
+          } catch (error) {
+            console.error('Error checking process status:', error);
+            timeoutId = setTimeout(checkProgress, 5000);
+          }
+        };
+        
+        // Start polling only as fallback
+        let timeoutId = setTimeout(checkProgress, pollFrequency);
+      }
+      
     } catch (error) {
       console.error('Error processing clips:', error);
-    } finally {
-      setDownloading(false);
+      setProcessingClips(false);
+      alert('Failed to start processing clips. Please try again.');
     }
   };
 
-  const handleDeleteAllClips = async () => {
+  const handleDeleteAllClips = async (): Promise<void> => {
     if (!window.confirm("Are you sure you want to delete all clips?")) {
       return;
     }
@@ -405,38 +649,17 @@ function AdminDash() {
     }
   };
 
-  const getSeason = () => {
-    const now = new Date();
-    const month = now.getMonth() + 1;
-    const day = now.getDate();
-    let season = '';
-
-    if (
-      (month === 3 && day >= 20) ||
-      (month > 3 && month < 6) ||
-      (month === 6 && day <= 20)
-    ) {
-      season = 'Spring';
-    } else if (
-      (month === 6 && day >= 21) ||
-      (month > 6 && month < 9) ||
-      (month === 9 && day <= 20)
-    ) {
-      season = 'Summer';
-    } else if (
-      (month === 9 && day >= 21) ||
-      (month > 9 && month < 12) ||
-      (month === 12 && day <= 20)
-    ) {
-      season = 'Fall';
-    } else {
-      season = 'Winter';
-    }
-
+  const getSeason = (): void => {
+    const { season } = getCurrentSeason();
     setSeasonInfo(prevSeasonInfo => ({
       ...prevSeasonInfo,
       season
     }));
+    setCurrentYear(new Date().getFullYear());
+  };
+
+  const openProcessModal = (): void => {
+    setProcessModalOpen(true);
   };
 
   return (
@@ -503,7 +726,7 @@ function AdminDash() {
               />
 
               <AdminActions
-                processClips={processClips}
+                openProcessModal={openProcessModal}
                 handleDeleteAllClips={handleDeleteAllClips}
                 downloading={downloading}
               />
@@ -618,6 +841,27 @@ function AdminDash() {
           </div>
         </div>
       )}
+      <ProcessClipsModal
+        isOpen={processModalOpen}
+        onClose={() => setProcessModalOpen(false)}
+        onProcess={processClips}
+        processing={processingClips}
+        progress={processProgress}
+        currentSeason={seasonInfo.season || ''}
+        currentYear={currentYear}
+        clipCount={clips.filter(clip => {
+          const ratingData = ratings[clip._id];
+          return (
+            ratingData && 
+            ratingData.ratingCounts && 
+            Array.isArray(ratingData.ratingCounts) &&
+            ratingData.ratingCounts.every(
+              (rateData) => rateData.rating !== 'deny' || rateData.count < config.denyThreshold
+            )
+          );
+        }).length}
+        processJobId={processJobId}
+      />
     </div>
   );
 }

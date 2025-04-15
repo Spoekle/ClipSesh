@@ -3,7 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcrypt');
 
 const User = require('../models/userModel');
-const AdminConfig = require('../models/configModel');
+const { AdminConfig, PublicConfig } = require('../models/configModel');
 const authorizeRoles = require('./middleware/AuthorizeRoles');
 
 /**
@@ -331,27 +331,54 @@ router.get('/users', authorizeRoles(['admin']), async (req, res) => {
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   _id:
- *                     type: string
- *                   denyThreshold:
- *                     type: number
- *                     description: Number of deny votes needed to reject a clip
- *                     example: 5
- *                   latestVideoLink:
- *                     type: string
- *                     description: Link to the latest video to show on homepage
- *                     example: https://www.youtube.com/watch?v=abcdefg
+ *               type: object
+ *               properties:
+ *                 admin:
+ *                   type: object
+ *                   properties:
+ *                     denyThreshold:
+ *                       type: number
+ *                       description: Number of deny votes needed to reject a clip
+ *                     clipChannelIds:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       description: Discord channel IDs for clip collection
+ *                 public:
+ *                   type: object
+ *                   properties:
+ *                     latestVideoLink:
+ *                       type: string
+ *                       description: Link to the latest video to show on homepage
  *       500:
  *         description: Internal server error
  */
-router.get('/config', async (req, res) => {
+router.get('/config', authorizeRoles(['admin']), async (req, res) => {
   try {
-    const config = await AdminConfig.find();
-    res.json(config);
+    // Find or create configs
+    let adminConfig = await AdminConfig.findOne();
+    let publicConfig = await PublicConfig.findOne();
+    
+    if (!adminConfig) {
+      adminConfig = new AdminConfig();
+      await adminConfig.save();
+    }
+    
+    if (!publicConfig) {
+      publicConfig = new PublicConfig();
+      await publicConfig.save();
+    }
+    
+    // For backward compatibility, include the admin config fields at the top level
+    // as well as in the structured format
+    res.json([{
+      _id: adminConfig._id,
+      denyThreshold: adminConfig.denyThreshold,
+      latestVideoLink: publicConfig.latestVideoLink,
+      // Include the structured format as well
+      admin: adminConfig,
+      public: publicConfig
+    }]);
   } catch (error) {
     console.error('Error fetching config:', error);
     res.status(500).json({ error: 'Internal Server Error', details: error.message });
@@ -363,7 +390,7 @@ router.get('/config', async (req, res) => {
  * /api/admin/config:
  *   put:
  *     summary: Update admin configuration
- *     description: Update system configuration like deny threshold and latest video link (Admin only)
+ *     description: Update system configuration including private and public settings (Admin only)
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
@@ -376,45 +403,78 @@ router.get('/config', async (req, res) => {
  *             properties:
  *               denyThreshold:
  *                 type: number
- *                 description: Number of deny votes needed to reject a clip
- *                 example: 5
  *               latestVideoLink:
  *                 type: string
- *                 description: YouTube URL to display on homepage
- *                 example: https://www.youtube.com/watch?v=abcdefg
+ *               admin:
+ *                 type: object
+ *                 properties:
+ *                   denyThreshold:
+ *                     type: number
+ *                   clipChannelIds:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                   backendUrl:
+ *                     type: string
+ *                   discordBotToken:
+ *                     type: string
+ *               public:
+ *                 type: object
+ *                 properties:
+ *                   latestVideoLink:
+ *                     type: string
  *     responses:
  *       200:
  *         description: Configuration updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 _id:
- *                   type: string
- *                 denyThreshold:
- *                   type: number
- *                   example: 5
- *                 latestVideoLink:
- *                   type: string
- *                   example: https://www.youtube.com/watch?v=abcdefg
  *       401:
  *         description: Unauthorized - Authentication required or insufficient permissions
  *       500:
  *         description: Internal server error
  */
 router.put('/config', authorizeRoles(['admin']), async (req, res) => {
-  const { denyThreshold, latestVideoLink } = req.body;
   try {
-    let config = await AdminConfig.findOne();
-    if (!config) {
-      config = new AdminConfig({ denyThreshold, latestVideoLink });
-    } else {
-      if (denyThreshold !== undefined) config.denyThreshold = denyThreshold;
-      if (latestVideoLink !== undefined) config.latestVideoLink = latestVideoLink;
+    // Support both new structured format and legacy flat format
+    const { denyThreshold, latestVideoLink, admin = {}, public = {} } = req.body;
+    
+    // Find or create configs
+    let adminConfig = await AdminConfig.findOne();
+    let publicConfig = await PublicConfig.findOne();
+    
+    if (!adminConfig) {
+      adminConfig = new AdminConfig();
     }
-    await config.save();
-    res.json(config);
+    
+    if (!publicConfig) {
+      publicConfig = new PublicConfig();
+    }
+    
+    // Update admin config - handle both structured and flat formats
+    if (denyThreshold !== undefined) {
+      adminConfig.denyThreshold = denyThreshold;
+    }
+    
+    // Update public config - handle both structured and flat formats
+    if (latestVideoLink !== undefined) {
+      publicConfig.latestVideoLink = latestVideoLink;
+    }
+    
+    // Update admin config from structured format
+    if (admin) {
+      if (admin.denyThreshold !== undefined) adminConfig.denyThreshold = admin.denyThreshold;
+      if (admin.clipChannelIds !== undefined) adminConfig.clipChannelIds = admin.clipChannelIds;
+      if (admin.backendUrl !== undefined) adminConfig.backendUrl = admin.backendUrl;
+      if (admin.discordBotToken !== undefined) adminConfig.discordBotToken = admin.discordBotToken;
+    }
+    
+    // Update public config from structured format
+    if (public) {
+      if (public.latestVideoLink !== undefined) publicConfig.latestVideoLink = public.latestVideoLink;
+    }
+    
+    // Save both configs
+    await Promise.all([adminConfig.save(), publicConfig.save()]);
+    
+    res.json({ message: 'Configuration updated successfully' });
   } catch (error) {
     console.error('Error updating config:', error);
     res.status(500).json({ error: 'Internal Server Error', details: error.message });

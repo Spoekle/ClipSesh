@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FaCalendarAlt, FaExclamationCircle } from 'react-icons/fa';
+import { FaCalendarAlt, FaExclamationCircle, FaClipboard } from 'react-icons/fa';
 import { SeasonInfo as SeasonInfoType } from '../../../types/adminTypes';
 
 interface SeasonInfoProps {
@@ -9,6 +9,8 @@ interface SeasonInfoProps {
 }
 
 const SeasonInfo: React.FC<SeasonInfoProps> = ({ seasonInfo, deniedClips }) => {
+  const approvedClips = (seasonInfo.clipAmount || 0) - deniedClips;
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
@@ -35,7 +37,7 @@ const SeasonInfo: React.FC<SeasonInfoProps> = ({ seasonInfo, deniedClips }) => {
             </div>
           </div>
         </motion.div>
-        
+
         <motion.div 
           whileHover={{ scale: 1.03 }}
           className="bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-blue-900/20 dark:to-blue-800/40 p-5 rounded-lg shadow relative overflow-hidden"
@@ -44,25 +46,46 @@ const SeasonInfo: React.FC<SeasonInfoProps> = ({ seasonInfo, deniedClips }) => {
           <div>
             <p className="text-sm uppercase tracking-wider text-neutral-600 dark:text-neutral-400 mb-1">Total Clips</p>
             <h3 className="text-3xl font-bold">{seasonInfo.clipAmount || 0}</h3>
-            <div className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
-              Clips available for rating
+            <div className="mt-2 text-sm text-neutral-500 dark:text-neutral-400 flex items-center">
+              <FaClipboard className="mr-1" /> 
+              {approvedClips} approved / {deniedClips} denied
             </div>
           </div>
         </motion.div>
-        
+
         <motion.div 
           whileHover={{ scale: 1.03 }}
-          className="bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-red-900/20 dark:to-red-800/40 p-5 rounded-lg shadow relative overflow-hidden"
+          className={`bg-gradient-to-br from-neutral-200 to-neutral-300 ${
+            deniedClips > approvedClips 
+              ? 'dark:from-red-900/20 dark:to-red-800/40' 
+              : 'dark:from-green-900/20 dark:to-green-800/40'
+          } p-5 rounded-lg shadow relative overflow-hidden`}
         >
-          <div className="absolute top-0 right-0 w-20 h-20 -mt-8 -mr-8 rounded-full bg-red-500/20 dark:bg-red-500/10"></div>
+          <div className={`absolute top-0 right-0 w-20 h-20 -mt-8 -mr-8 rounded-full ${
+            deniedClips > approvedClips 
+              ? 'bg-red-500/20 dark:bg-red-500/10' 
+              : 'bg-green-500/20 dark:bg-green-500/10'
+          }`}></div>
           <div>
-            <p className="text-sm uppercase tracking-wider text-neutral-600 dark:text-neutral-400 mb-1">Denied Clips</p>
-            <h3 className="text-3xl font-bold flex items-center">
-              {deniedClips}
-              <FaExclamationCircle className="ml-2 text-red-500 text-xl" />
-            </h3>
-            <div className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
-              {deniedClips > 0 ? 'Requires review' : 'No clips denied'}
+            <p className="text-sm uppercase tracking-wider text-neutral-600 dark:text-neutral-400 mb-1">Status</p>
+            <h3 className="text-3xl font-bold">{
+              seasonInfo.clipAmount === 0 
+                ? 'No Clips' 
+                : deniedClips > approvedClips 
+                  ? 'Needs Attention' 
+                  : 'Looking Good'
+            }</h3>
+            <div className="mt-2 text-sm text-neutral-500 dark:text-neutral-400 flex items-center">
+              {seasonInfo.clipAmount === 0 ? (
+                <span>Upload clips to get started</span>
+              ) : deniedClips > approvedClips ? (
+                <span className="flex items-center text-red-600 dark:text-red-400">
+                  <FaExclamationCircle className="mr-1" /> 
+                  More than 50% clips denied
+                </span>
+              ) : (
+                <span>Majority of clips are approved</span>
+              )}
             </div>
           </div>
         </motion.div>

@@ -42,7 +42,11 @@ const CommentReply: React.FC<CommentReplyProps> = ({
       const token = localStorage.getItem('token');
       const response = await axios.post<Clip>(
         `${apiUrl}/api/clips/${clipId}/comment/${commentId}/reply`,
-        { content: replyContent },
+        { 
+          replyText: replyContent, // Changed from 'content' to 'replyText' to match backend schema
+          userId: user._id,
+          username: user.username
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       

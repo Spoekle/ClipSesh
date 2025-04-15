@@ -7,7 +7,6 @@ const adminUsername = process.env.ADMIN_USERNAME;
 const mailEmail = process.env.MAIL_EMAIL;
 const mailPassword = process.env.MAIL_PASSWORD;
 const fs = require('fs');
-const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const path = require('path');
 

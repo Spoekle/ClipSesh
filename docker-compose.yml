@@ -31,6 +31,9 @@ services:
       - type: bind
         source: ./backend/src/scripts
         target: /var/www/backend/src/scripts
+      - type: bind
+        source: ./backend/src/download/tmp
+        target: /var/www/backend/src/download/tmp
     depends_on:
       - mongo
     environment:
@@ -48,14 +51,15 @@ services:
       - VIRTUAL_HOST=clipsesh.spoekle.com
 
   discord-bot:
+    image: clipsesh-discord-bot
     build:
       context: ./discord-bot
+      cache_from:
+        - clipsesh-discord-bot:latest
     container_name: clipsesh-discord-bot
-    environment:
-      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
-      - BACKEND_URL=https://api.spoekle.com
     volumes:
-      - ./discord-bot:/app
+      - ./discord-bot/logs:/app/logs
+    restart: unless-stopped
     depends_on:
       - api
 

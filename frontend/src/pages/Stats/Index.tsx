@@ -17,17 +17,65 @@ import {
 import PageLayout from '../components/layouts/PageLayout';
 import { User } from '../../types/adminTypes';
 
+// Define missing types
+interface RatingUser {
+  username: string;
+  userId: string;
+}
+
+interface RatingCount {
+  rating: string;
+  count: number;
+  users: RatingUser[];
+}
+
+interface Rating {
+  ratings?: {
+    '1': RatingUser[];
+    '2': RatingUser[];
+    '3': RatingUser[];
+    '4': RatingUser[];
+    'deny': RatingUser[];
+  };
+  ratingCounts?: RatingCount[];
+}
+
+interface Clip {
+  _id: string;
+  title: string;
+  url: string;
+  createdAt: string;
+  // Add other properties as needed
+}
+
+interface UserRatingData {
+  username: string;
+  '1': number;
+  '2': number;
+  '3': number;
+  '4': number;
+  'deny': number;
+  total: number;
+  percentageRated: number;
+  [key: string]: number | string; // Add index signature for string keys
+}
+
+interface SeasonInfo {
+  season?: string;
+  clipAmount?: number;
+}
+
 interface StatsProps {
   user: User;
   setUser: React.Dispatch<React.SetStateAction<User | null>>;
 }
 
-const Stats: React.FC<StatsProps> = ({ user, setUser }) => {
+const Stats: React.FC<StatsProps> = ({ user }) => {
   const [progress, setProgress] = useState(0);
-  const [ratings, setRatings] = useState({});
-  const [userRatings, setUserRatings] = useState([]);
-  const [seasonInfo, setSeasonInfo] = useState({});
-  const [clips, setClips] = useState([]);
+  const [ratings, setRatings] = useState<Record<string, Rating>>({});
+  const [userRatings, setUserRatings] = useState<UserRatingData[]>([]);
+  const [seasonInfo, setSeasonInfo] = useState<SeasonInfo>({});
+  const [clips, setClips] = useState<Clip[]>([]);
 
   const location = useLocation();
 
@@ -46,28 +94,123 @@ const Stats: React.FC<StatsProps> = ({ user, setUser }) => {
     }
   };
 
-  const fetchClipsAndRatings = async () => {
+  const fetchClipsAndRatings = async (): Promise<void> => {
     try {
-      const clipResponse = await axios.get(`${apiUrl}/api/clips`);
-      setClips(clipResponse.data);
+      // Use query parameters for backend filtering/sorting
       const token = localStorage.getItem('token');
-      if (token) {
-        const ratingPromises = clipResponse.data.map(clip =>
-          axios.get(`${apiUrl}/api/ratings/${clip._id}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          })
+      const headers = { Authorization: `Bearer ${token}` };
+      
+      // Request clips with pagination and sorting from the backend
+      const clipResponse = await axios.get(`${apiUrl}/api/clips`, {
+        params: {
+          limit: 1000, // Get a large number of clips for admin view
+          sortBy: 'createdAt',
+          sortOrder: 'desc',
+          includeRatings: true // Request ratings to be included with clips
+        },
+        headers
+      });
+      
+      // Process the response data
+      let clipsData: Clip[] = [];
+      let ratingsData: Record<string, Rating> = {};
+      
+      if (clipResponse.data) {
+        // Check for clips in various response formats
+        if (Array.isArray(clipResponse.data)) {
+          clipsData = clipResponse.data;
+        } else if (clipResponse.data.clips && Array.isArray(clipResponse.data.clips)) {
+          clipsData = clipResponse.data.clips;
+        } else if (clipResponse.data.data && Array.isArray(clipResponse.data.data)) {
+          clipsData = clipResponse.data.data;
+        }
+        
+        // Check for included ratings in the response
+        if (clipResponse.data.ratings && typeof clipResponse.data.ratings === 'object') {
+          ratingsData = clipResponse.data.ratings;
+        }
+      }
+      
+      // Update state with fetched data
+      setClips(clipsData);
+      
+      // If ratings weren't included in the response, fetch them separately
+      if (Object.keys(ratingsData).length === 0 && clipsData.length > 0) {
+        setProgress(65);
+        
+        // Make individual requests for ratings if not included in the clips response
+        const ratingPromises = clipsData.map(clip =>
+          axios.get<Rating>(`${apiUrl}/api/ratings/${clip._id}`, { headers })
         );
+        
+        setProgress(80);
         const ratingResponses = await Promise.all(ratingPromises);
-        const ratingsData = ratingResponses.reduce((acc, res, index) => {
-          acc[clipResponse.data[index]._id] = res.data;
+        
+        ratingsData = ratingResponses.reduce<Record<string, Rating>>((acc, res, index) => {
+          acc[clipsData[index]._id] = res.data;
+          setProgress(90);
           return acc;
         }, {});
-        setRatings(ratingsData);
       }
+      
+      // Transform ratings to ensure they have the expected format for the frontend
+      const transformedRatings = transformRatings(ratingsData);
+      setRatings(transformedRatings);
+      
     } catch (error) {
       console.error('Error fetching clips and ratings:', error);
     }
   };
+
+  // Utility function to transform backend rating format to frontend expected format
+  const transformRatings = (ratings: Record<string, any>): Record<string, Rating> => {
+    const transformed: Record<string, Rating> = {};
+    
+    Object.entries(ratings).forEach(([clipId, ratingData]) => {
+      // Check if we need to transform this rating data
+      if (ratingData && !ratingData.ratingCounts && ratingData.ratings) {
+        // Transform from backend format to frontend expected format
+        const ratingCounts = [
+          { 
+            rating: '1', 
+            count: Array.isArray(ratingData.ratings['1']) ? ratingData.ratings['1'].length : 0,
+            users: Array.isArray(ratingData.ratings['1']) ? ratingData.ratings['1'] : []
+          },
+          { 
+            rating: '2', 
+            count: Array.isArray(ratingData.ratings['2']) ? ratingData.ratings['2'].length : 0,
+            users: Array.isArray(ratingData.ratings['2']) ? ratingData.ratings['2'] : []
+          },
+          { 
+            rating: '3', 
+            count: Array.isArray(ratingData.ratings['3']) ? ratingData.ratings['3'].length : 0,
+            users: Array.isArray(ratingData.ratings['3']) ? ratingData.ratings['3'] : [] 
+          },
+          { 
+            rating: '4', 
+            count: Array.isArray(ratingData.ratings['4']) ? ratingData.ratings['4'].length : 0,
+            users: Array.isArray(ratingData.ratings['4']) ? ratingData.ratings['4'] : []
+          },
+          { 
+            rating: 'deny', 
+            count: Array.isArray(ratingData.ratings['deny']) ? ratingData.ratings['deny'].length : 0,
+            users: Array.isArray(ratingData.ratings['deny']) ? ratingData.ratings['deny'] : []
+          }
+        ];
+        
+        transformed[clipId] = {
+          ...ratingData,
+          ratingCounts: ratingCounts
+        };
+      } else {
+        // Rating is already in the right format or is null/undefined
+        transformed[clipId] = ratingData;
+      }
+    });
+    
+    return transformed;
+  };
+
 
   useEffect(() => {
     if (Object.keys(ratings).length > 0) {
@@ -76,7 +219,7 @@ const Stats: React.FC<StatsProps> = ({ user, setUser }) => {
   }, [ratings]);
 
   const countRatingsLoggedIn = () => {
-    const userRatingCount = {};
+    const userRatingCount: Record<string, UserRatingData> = {};
 
     const clipLength = Object.keys(ratings).length;
     setSeasonInfo(prevSeasonInfo => ({
@@ -100,26 +243,33 @@ const Stats: React.FC<StatsProps> = ({ user, setUser }) => {
           ratingData.users.forEach(ratingUser => {
             if (ratingUser.username === user.username) {
               if (!userRatingCount[user.username]) {
-                userRatingCount[user.username] = { '1': 0, '2': 0, '3': 0, '4': 0, 'deny': 0, total: 0 };
+                userRatingCount[user.username] = { 
+                  username: user.username, 
+                  '1': 0, 
+                  '2': 0, 
+                  '3': 0, 
+                  '4': 0, 
+                  'deny': 0, 
+                  total: 0, 
+                  percentageRated: 0 
+                };
               }
               if (userRatingCount[user.username][ratingData.rating] !== undefined) {
-                userRatingCount[user.username][ratingData.rating]++;
+                // Use Number() to ensure we're working with a number for the increment operation
+                userRatingCount[user.username][ratingData.rating] = Number(userRatingCount[user.username][ratingData.rating]) + 1;
                 userRatingCount[user.username].total++;
               } else {
                 console.error(`Unknown rating type: ${ratingData.rating}`);
               }
               userRatingCount[user.username].percentageRated = (userRatingCount[user.username].total / clipLength) * 100;
-
             }
           });
         }
       });
     });
 
-
     // Convert userRatingCount object into an array of objects with username and rating counts
     const userRatingCounts = Object.keys(userRatingCount).map(username => ({
-      username,
       ...userRatingCount[username]
     }));
 
@@ -160,7 +310,7 @@ const Stats: React.FC<StatsProps> = ({ user, setUser }) => {
   ];
 
   // Function to get an inspirational message based on rating percentage
-  const getInspirationMessage = (percentage) => {
+  const getInspirationMessage = (percentage: number) => {
     if (percentage === 100) {
       return {
         title: "Perfect Score!",
@@ -201,7 +351,7 @@ const Stats: React.FC<StatsProps> = ({ user, setUser }) => {
       backgroundImage={user.profilePicture}
       metaDescription={`${user.username}'s clip rating statistics and progress on ClipSesh`}
     >
-      <LoadingBar color='#3b82f6' height="4px" progress={progress} onLoaderFinished={() => setProgress(0)} />
+      <LoadingBar color='#3b82f6' height={4} progress={progress} onLoaderFinished={() => setProgress(0)} />
       
       {userRatings.length > 0 && userRatings.map(userData => {
         const inspiration = getInspirationMessage(userData.percentageRated);
@@ -457,7 +607,7 @@ const Stats: React.FC<StatsProps> = ({ user, setUser }) => {
                 animationDuration={1500}
                 animationBegin={300}
               >
-                {combinedRatings.map((entry, index) => (
+                {combinedRatings.map((_entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
@@ -466,7 +616,7 @@ const Stats: React.FC<StatsProps> = ({ user, setUser }) => {
                   key={user.username}
                   data={[
                     { name: 'Rated', value: user.total },
-                    { name: 'Unrated', value: seasonInfo.clipAmount - user.total }
+                    { name: 'Unrated', value: seasonInfo.clipAmount ? seasonInfo.clipAmount - user.total : 0 }
                   ]}
                   dataKey="value"
                   nameKey="name"

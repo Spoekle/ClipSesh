@@ -91,7 +91,7 @@ export interface UserRating {
 // Other admin dashboard types
 export interface SeasonInfo {
   season?: string;
-  clipAmount: number;
+  clipAmount?: number;
 }
 
 export interface Zip {
@@ -99,6 +99,7 @@ export interface Zip {
   name: string;
   url: string;
   season: string;
+  year: number;
   clipAmount: number;
   size: number;
   createdAt: string;

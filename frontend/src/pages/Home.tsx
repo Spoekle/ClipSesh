@@ -18,12 +18,15 @@ import { motion } from 'framer-motion';
 import banner1 from '../media/banner1.png';
 
 interface Config {
-  denyThreshold: number;
-  latestVideoLink: string;
+  latestVideoLink?: string;
+  [key: string]: any;
 }
 
 function HomePage() {
-  const [config, setConfig] = useState({} as Config);
+  const [config, setConfig] = useState<Config>({
+    // Default config values to prevent undefined errors
+    latestVideoLink: 'https://www.youtube.com/watch?v=WQy7hb_jlCs',
+  });
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
@@ -31,8 +34,16 @@ function HomePage() {
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const response = await axios.get(`${apiUrl}/api/admin/config`);
-        setConfig(response.data[0]);
+        const response = await axios.get(`${apiUrl}/api/config/public`);
+        if (response.data) {
+          // Merge with defaults to ensure all required properties exist
+          setConfig(prevConfig => ({
+            ...prevConfig,
+            ...response.data
+          }));
+        } else {
+          console.warn('Config data is empty or malformed, using default values');
+        }
       } catch (error) {
         console.error('Error fetching config:', error);
       }

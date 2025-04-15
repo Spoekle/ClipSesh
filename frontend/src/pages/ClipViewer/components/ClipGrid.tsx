@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React from 'react';
 import ClipItem from './ClipItem';
 import Pagination from './Pagination';
+import { motion } from 'framer-motion';
 
 const ClipGrid = ({
   isLoading,
@@ -17,177 +17,101 @@ const ClipGrid = ({
   paginate,
   itemsPerPage,
 }) => {
-  const [previousClips, setPreviousClips] = useState([]);
-  const [isChangingPage, setIsChangingPage] = useState(false);
-  const [gridHeight, setGridHeight] = useState(null);
-  const [direction, setDirection] = useState(0); // -1 for backward, 1 for forward
-
-  // Store grid height to maintain consistent size during page transitions
-  useEffect(() => {
-    const gridElement = document.querySelector('.clips-container');
-    if (gridElement && !isLoading) {
-      setGridHeight(gridElement.offsetHeight);
+  // Animation settings for staggered appearance
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+        delayChildren: 0.3
+      }
     }
-  }, [isLoading]);
-
-  // Handle page transition animations smoothly
-  useEffect(() => {
-    if (!isLoading && currentClips.length > 0) {
-      setPreviousClips(currentClips);
-    }
-  }, [currentClips, isLoading]);
-
-  const handlePageChange = (newPage) => {
-    // Detect direction for animation
-    setDirection(newPage > currentPage ? 1 : -1);
-    
-    // Set changing page state to trigger animation
-    setIsChangingPage(true);
-    
-    // Store grid height before page change
-    const gridElement = document.querySelector('.clips-container');
-    if (gridElement) {
-      setGridHeight(gridElement.offsetHeight);
-    }
-    
-    // Small timeout to allow animation to start before actual page change
-    setTimeout(() => {
-      paginate(newPage);
-      // Reset changing state after a bit to allow new items to animate in
-      setTimeout(() => setIsChangingPage(false), 100);
-    }, 200);
   };
 
-  // Loading state placeholders with animation
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    show: { 
+      opacity: 1, 
+      y: 0,
+      transition: {
+        type: "spring",
+        stiffness: 80,
+        damping: 12
+      }
+    }
+  };
+
   if (isLoading) {
     return (
-      <div className="clip-grid">
-        <div 
-          className="clips-container grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 p-4"
-          style={gridHeight ? { minHeight: gridHeight } : {}}
-        >
-          {Array.from({ length: itemsPerPage }).map((_, index) => (
-            <motion.div
-              key={`loading-${index}`}
-              initial={{ opacity: 0.5 }}
-              animate={{ opacity: [0.5, 0.8, 0.5] }}
-              transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-              className="relative bg-neutral-800/20 aspect-video rounded-lg overflow-hidden shadow-lg"
-            />
-          ))}
-        </div>
-        
-        <div className="flex justify-center mt-6">
-          <Pagination 
-            currentPage={currentPage} 
-            totalPages={totalPages} 
-            onPageChange={handlePageChange}
-            disabled={true}
-          />
+      <div className="flex flex-col items-center justify-center min-h-[300px] w-full">
+        <div className="flex flex-col items-center justify-center gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          <p className="text-neutral-600 dark:text-neutral-400">Loading clips...</p>
         </div>
       </div>
     );
   }
 
-  // Empty state
   if (filteredClips.length === 0) {
     return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="flex flex-col items-center justify-center py-16"
-      >
-        <div className="text-5xl mb-4">🎬</div>
-        <h3 className="text-xl font-medium text-neutral-800 dark:text-neutral-200 mb-2">No clips found</h3>
-        <p className="text-neutral-500 dark:text-neutral-400">
-          Try adjusting your filters or check back later
+      <div className="flex flex-col items-center justify-center min-h-[300px] bg-white dark:bg-neutral-800 rounded-xl shadow-lg p-8">
+        <div className="text-9xl mb-4 text-neutral-400">😢</div>
+        <h2 className="text-2xl font-bold text-neutral-700 dark:text-neutral-300 mb-2">No Clips Found</h2>
+        <p className="text-neutral-600 dark:text-neutral-400 text-center max-w-lg mb-6">
+          {filterRatedClips 
+            ? "You've rated all available clips. Check back later for new content!"
+            : "No clips match your current filters. Try adjusting your search or filter settings."}
         </p>
-      </motion.div>
+      </div>
     );
   }
-
-  // Filter clips based on conditions
-  const displayedClips = currentClips
-    .filter((clip) => {
-      if (filterRatedClips && user && (user.roles.includes('admin') || user.roles.includes('clipteam'))) {
-        const ratingData = ratings[clip._id];
-        return (
-          !ratingData || 
-          !ratingData.ratingCounts.some(
-            (rateData) => rateData.rating === 'deny' && rateData.count >= config.denyThreshold
-          )
-        );
-      }
-      return true;
-    });
-
-  // Page transition animations
-  const pageTransition = {
-    in: {
-      opacity: 1,
-      x: 0,
-      transition: { duration: 0.3, ease: "easeOut" }
-    },
-    out: (direction) => ({
-      opacity: 0,
-      x: direction * 40,
-      transition: { duration: 0.2, ease: "easeIn" }
-    }),
-    initial: (direction) => ({
-      opacity: 0,
-      x: direction * -40,
-    })
-  };
 
   return (
     <div className="clip-grid">
-      <AnimatePresence mode="wait" initial={false} custom={direction}>
-        <motion.div
-          key={`page-${currentPage}`}
-          className="clips-container grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 p-4"
-          custom={direction}
-          variants={pageTransition}
-          initial="initial"
-          animate="in"
-          exit="out"
-          style={gridHeight ? { minHeight: gridHeight } : {}}
-        >
-          {displayedClips.map((clip, index) => {
-            const hasUserRated =
-              user &&
-              ratings[clip._id] &&
-              ratings[clip._id].ratingCounts?.some((rateData) =>
-                rateData.users.some((u) => u.userId === user._id)
-              );
-
-            return (
-              <motion.div
-                key={clip._id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05, duration: 0.3 }}
-                layout
-              >
-                <ClipItem
-                  clip={clip}
-                  hasUserRated={hasUserRated}
-                  setExpandedClip={setExpandedClip}
-                  index={index}
-                />
-              </motion.div>
-            );
-          })}
-        </motion.div>
-      </AnimatePresence>
-
-      <div className="flex justify-center mt-6">
-        <Pagination 
-          currentPage={currentPage} 
-          totalPages={totalPages} 
-          onPageChange={handlePageChange}
-          disabled={isChangingPage}
+      <motion.div 
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+      >
+        {currentClips.map((clip) => (
+          <motion.div 
+            key={clip._id}
+            variants={itemVariants}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <ClipItem
+              clip={clip}
+              user={user}
+              ratings={ratings}
+              config={config}
+              filterRatedClips={filterRatedClips}
+              setExpandedClip={setExpandedClip}
+            />
+          </motion.div>
+        ))}
+      </motion.div>
+      
+      {/* Empty placeholders for grid alignment when not full row */}
+      {currentClips.length > 0 && currentClips.length % 4 !== 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-6">
+          {[...Array(4 - (currentClips.length % 4))].map((_, i) => (
+            <div key={i} className="hidden xl:block"></div>
+          ))}
+        </div>
+      )}
+      
+      {/* Pagination component */}
+      {totalPages > 1 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={paginate}
+          disabled={isLoading}
         />
-      </div>
+      )}
     </div>
   );
 };

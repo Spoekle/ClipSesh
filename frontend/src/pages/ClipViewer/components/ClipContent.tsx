@@ -4,7 +4,16 @@ import apiUrl from '../../../config/config';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaThumbsUp, FaThumbsDown, FaShare, FaRegCalendarAlt, FaUser, FaLink } from 'react-icons/fa';
+import { 
+  FaThumbsUp, 
+  FaThumbsDown, 
+  FaShare, 
+  FaRegCalendarAlt, 
+  FaUser, 
+  FaLink,
+  FaChevronLeft,
+  FaChevronRight
+} from 'react-icons/fa';
 import { IoMdInformationCircleOutline } from 'react-icons/io';
 import { AiOutlineDelete, AiOutlineEdit } from 'react-icons/ai';
 import MessageComponent from './MessageComponent';
@@ -24,6 +33,7 @@ interface ClipContentProps {
   token: string | null;
   fetchClipsAndRatings: (user: User | null) => Promise<void>;
   ratings: Record<string, Rating>;
+  searchParams: URLSearchParams;
 }
 
 interface LocationState {
@@ -40,7 +50,8 @@ const ClipContent: React.FC<ClipContentProps> = ({
   user, 
   token, 
   fetchClipsAndRatings, 
-  ratings 
+  ratings,
+  searchParams
 }) => {
   const [currentClip, setCurrentClip] = useState<Clip>(clip);
   const [newComment, setNewComment] = useState<string>('');
@@ -48,6 +59,10 @@ const ClipContent: React.FC<ClipContentProps> = ({
   const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [shareUrl, setShareUrl] = useState<string>('');
+  const [nextClip, setNextClip] = useState<Clip | null>(null);
+  const [prevClip, setPrevClip] = useState<Clip | null>(null);
+  const [loadingAdjacentClips, setLoadingAdjacentClips] = useState<boolean>(false);
+  const [isClipLoading, setIsClipLoading] = useState<boolean>(false);
   
   // Use our custom notification hook instead of toast
   const { showSuccess, showError, showInfo } = useNotification();
@@ -70,7 +85,91 @@ const ClipContent: React.FC<ClipContentProps> = ({
 
   useEffect(() => {
     setShareUrl(`${window.location.origin}/clips/${clip._id}`);
+    fetchAdjacentClips();
   }, [clip._id]);
+
+  // Update the fetchAdjacentClips function to call the correct API endpoint
+  const fetchAdjacentClips = async (specificClipId?: string) => {
+    setLoadingAdjacentClips(true);
+    try {
+      // Build the search parameters based on the current search params
+      const queryParams = new URLSearchParams();
+      
+      // Copy over sort parameter if it exists
+      const currentSort = searchParams.get('sort');
+      if (currentSort) {
+        queryParams.append('sort', currentSort);
+      }
+      
+      // Add parameters to get adjacent clips
+      // Use the specificClipId if provided (when navigating), otherwise use current clip id
+      const clipIdToUse = specificClipId || clip._id;
+      queryParams.append('currentClipId', clipIdToUse);
+      queryParams.append('getAdjacent', 'true');
+      
+      // Add streamer filter if present in URL
+      const streamerFilter = searchParams.get('streamer');
+      if (streamerFilter) {
+        queryParams.append('streamer', streamerFilter);
+      }
+      
+      console.log(`Fetching adjacent clips for: ${clipIdToUse} with sort: ${currentSort}`);
+      
+      // Make a single API call to get both previous and next clips
+      const response = await axios.get(`${apiUrl}/api/clips/clip-navigation/adjacent`, {
+        params: queryParams,
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined
+      });
+      
+      console.log("Adjacent clips response:", response.data);
+      
+      // Set the prev and next clips from response
+      if (response.data) {
+        setPrevClip(response.data.prevClip || null);
+        setNextClip(response.data.nextClip || null);
+      }
+    } catch (error) {
+      console.error('Error fetching adjacent clips:', error);
+      // Don't clear existing nav clips on error
+    } finally {
+      setLoadingAdjacentClips(false);
+    }
+  };
+
+  // Navigate to adjacent clip with improved reliability
+  const navigateToClip = (clipId: string) => {
+    // Don't navigate if already loading
+    if (isClipLoading) return;
+    
+    // Show loading state
+    setIsClipLoading(true);
+    
+    // Fetch the clip data
+    axios.get(`${apiUrl}/api/clips/${clipId}`)
+      .then((response) => {
+        // Update the current clip with the new data
+        setCurrentClip(response.data);
+        
+        // Update the URL to reflect the new clip ID
+        navigate(`/clips/${clipId}`, { 
+          state: { from: location.pathname + location.search },
+          replace: true // Replace current history entry to avoid back button issues
+        });
+        
+        // Update the expanded clip ID in parent component
+        setExpandedClip(clipId);
+        
+        // After setting the new clip, fetch its adjacent clips
+        return fetchAdjacentClips(clipId);
+      })
+      .catch((error) => {
+        console.error('Error fetching clip:', error);
+        showError("Could not load clip. It may have been deleted or is unavailable.");
+      })
+      .finally(() => {
+        setIsClipLoading(false);
+      });
+  };
 
   if (!currentClip) {
     return (
@@ -194,14 +293,37 @@ const ClipContent: React.FC<ClipContentProps> = ({
     showSuccess('Share link copied to clipboard!');
   };
 
-  const userRatingData = ratings[clip._id]?.ratingCounts.find(
-    (rateData) => rateData.users.some((u) => u.userId === user?._id)
-  );
+  // Updated code to get user's current rating from the ratings object structure
+  const getUserCurrentRating = () => {
+    if (!ratings || !ratings[clip._id] || !ratings[clip._id].ratings || !user) return null;
+    
+    // Get the rating categories
+    const ratingCategories = ratings[clip._id].ratings;
+    
+    // Check each rating category (1-4) to see if the user is in it
+    for (const rating of ['1', '2', '3', '4']) {
+      const usersInRating = ratingCategories[rating] || [];
+      if (usersInRating.some(u => u.userId === user._id)) {
+        return rating;
+      }
+    }
+    
+    return null;
+  };
   
-  const userCurrentRating = userRatingData?.rating;
-  const isDenied = ratings[clip._id]?.ratingCounts.some(
-    rateData => rateData.rating === 'deny' && rateData.users.some(u => u.userId === user?._id)
-  );
+  // Updated code to check if user has denied this clip
+  const isClipDeniedByUser = () => {
+    if (!ratings || !ratings[clip._id] || !ratings[clip._id].ratings || !user) return false;
+    
+    // Get the 'deny' category
+    const denyUsers = ratings[clip._id].ratings.deny || [];
+    
+    // Check if user is in the deny list
+    return denyUsers.some(u => u.userId === user._id);
+  };
+  
+  const userCurrentRating = getUserCurrentRating();
+  const isDenied = isClipDeniedByUser();
 
   return (
     <motion.div 
@@ -235,7 +357,33 @@ const ClipContent: React.FC<ClipContentProps> = ({
           Back
         </Link>
         
-        <div className="flex space-x-2">
+        <div className="flex items-center space-x-2">
+          {prevClip && (
+            <button
+              onClick={() => navigateToClip(prevClip._id)}
+              disabled={loadingAdjacentClips || isClipLoading}
+              className="md:hidden flex items-center gap-1 bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 text-neutral-800 dark:text-white px-3 py-2 rounded-lg transition"
+              title="Previous clip"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+            </button>
+          )}
+
+          {nextClip && (
+            <button
+              onClick={() => navigateToClip(nextClip._id)}
+              disabled={loadingAdjacentClips || isClipLoading}
+              className="md:hidden flex items-center gap-1 bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 text-neutral-800 dark:text-white px-3 py-2 rounded-lg transition"
+              title="Next clip"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+              </svg>
+            </button>
+          )}
+          
           <button 
             className="flex items-center gap-2 bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 text-neutral-800 dark:text-white px-4 py-2 rounded-lg transition"
             onClick={() => {
@@ -272,150 +420,220 @@ const ClipContent: React.FC<ClipContentProps> = ({
       </div>
       
       <div className="container mx-auto px-4 py-6 flex flex-col lg:flex-row gap-6">
-        {/* Main content area */}
-        <div className="flex-grow lg:w-2/3">
-          {/* Video player */}
-          <motion.div 
-            initial={{ y: 20, opacity: 0 }} 
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.1 }}
-            className="bg-white dark:bg-neutral-800 rounded-xl shadow-lg overflow-hidden"
-          >
-            <CustomPlayer currentClip={currentClip} />
+        {/* Main content area with side navigation buttons */}
+        <div className="flex-grow lg:w-2/3 relative">
+          {/* Video player container */}
+          <div className="flex items-center">
+            {/* Previous clip button - positioned outside the video */}
+            {prevClip && (
+              <button
+                onClick={() => navigateToClip(prevClip._id)}
+                disabled={loadingAdjacentClips || isClipLoading}
+                className="hidden sm:flex fixed left-4 top-1/2 transform -translate-y-1/2 z-20 bg-white/90 dark:bg-neutral-800/90 hover:bg-white dark:hover:bg-neutral-700 text-neutral-800 dark:text-white h-16 w-16 items-center justify-center rounded-full shadow-lg transition hover:scale-110"
+                aria-label="Previous clip"
+              >
+                <FaChevronLeft size={24} />
+              </button>
+            )}
             
-            <div className="p-6">
-              <h1 className="text-2xl text-neutral-900 dark:text-white font-bold mb-2">
-                {currentClip.title}
-              </h1>
+            {/* For mobile - bottom navigation bar */}
+            <div className="sm:hidden fixed bottom-0 left-0 right-0 z-20 flex justify-between items-center px-4 py-3 bg-neutral-100/90 dark:bg-neutral-800/90 backdrop-blur-sm">
+              <button
+                onClick={() => prevClip && navigateToClip(prevClip._id)}
+                disabled={!prevClip || loadingAdjacentClips || isClipLoading}
+                className={`flex items-center justify-center rounded-full w-12 h-12 shadow-md ${!prevClip || loadingAdjacentClips || isClipLoading ? 
+                  'bg-neutral-300 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-500' : 
+                  'bg-white dark:bg-neutral-700 text-neutral-800 dark:text-white hover:bg-neutral-200 dark:hover:bg-neutral-600'}`}
+                aria-label="Previous clip"
+              >
+                <FaChevronLeft size={20} />
+              </button>
               
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mt-4 mb-6">
-                <div className="flex items-center gap-4">
-                  <div className="flex space-x-2 items-center">
-                    <button
-                      className={`flex items-center px-4 py-2 rounded-full shadow transition transform hover:scale-105 ${
-                        currentClip.upvotes > currentClip.downvotes 
-                          ? 'bg-green-500 hover:bg-green-600 text-white' 
-                          : 'bg-neutral-200 dark:bg-neutral-700 hover:bg-green-500 dark:hover:bg-green-500 text-neutral-700 dark:text-white hover:text-white'
-                      }`}
-                      onClick={handleUpvote}
-                      disabled={isLoading}
+              <Link
+                to={from}
+                onClick={closeExpandedClip}
+                className="bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 text-neutral-800 dark:text-white px-4 py-2 rounded-lg transition flex items-center gap-2 font-medium"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+                </svg>
+                <span>Home</span>
+              </Link>
+
+              <button
+                onClick={() => nextClip && navigateToClip(nextClip._id)}
+                disabled={!nextClip || loadingAdjacentClips || isClipLoading}
+                className={`flex items-center justify-center rounded-full w-12 h-12 shadow-md ${!nextClip || loadingAdjacentClips || isClipLoading ? 
+                  'bg-neutral-300 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-500' : 
+                  'bg-white dark:bg-neutral-700 text-neutral-800 dark:text-white hover:bg-neutral-200 dark:hover:bg-neutral-600'}`}
+                aria-label="Next clip"
+              >
+                <FaChevronRight size={20} />
+              </button>
+            </div>
+            
+            {/* Video and content */}
+            <motion.div 
+              initial={{ y: 20, opacity: 0 }} 
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.1 }}
+              className="bg-white dark:bg-neutral-800 rounded-xl shadow-lg overflow-hidden w-full"
+            >
+              <CustomPlayer currentClip={currentClip} />
+              
+              <div className="p-6">
+                <h1 className="text-2xl text-neutral-900 dark:text-white font-bold mb-2">
+                  {currentClip.title}
+                </h1>
+                
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mt-4 mb-6">
+                  <div className="flex items-center gap-4">
+                    <div className="flex space-x-2 items-center">
+                      <button
+                        className={`flex items-center px-4 py-2 rounded-full shadow transition transform hover:scale-105 ${
+                          currentClip.upvotes > currentClip.downvotes 
+                            ? 'bg-green-500 hover:bg-green-600 text-white' 
+                            : 'bg-neutral-200 dark:bg-neutral-700 hover:bg-green-500 dark:hover:bg-green-500 text-neutral-700 dark:text-white hover:text-white'
+                        }`}
+                        onClick={handleUpvote}
+                        disabled={isLoading}
+                      >
+                        <FaThumbsUp className="mr-2" /> {currentClip.upvotes}
+                      </button>
+                      <button
+                        className={`flex items-center px-4 py-2 rounded-full shadow transition transform hover:scale-105 ${
+                          currentClip.downvotes > currentClip.upvotes 
+                            ? 'bg-red-500 hover:bg-red-600 text-white' 
+                            : 'bg-neutral-200 dark:bg-neutral-700 hover:bg-red-500 dark:hover:bg-red-500 text-neutral-700 dark:text-white hover:text-white'
+                        }`}
+                        onClick={handleDownvote}
+                        disabled={isLoading}
+                      >
+                        <FaThumbsDown className="mr-2" /> {currentClip.downvotes}
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <a
+                      href={currentClip.link}
+                      className="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 transition"
+                      target="_blank"
+                      rel="noreferrer"
                     >
-                      <FaThumbsUp className="mr-2" /> {currentClip.upvotes}
-                    </button>
-                    <button
-                      className={`flex items-center px-4 py-2 rounded-full shadow transition transform hover:scale-105 ${
-                        currentClip.downvotes > currentClip.upvotes 
-                          ? 'bg-red-500 hover:bg-red-600 text-white' 
-                          : 'bg-neutral-200 dark:bg-neutral-700 hover:bg-red-500 dark:hover:bg-red-500 text-neutral-700 dark:text-white hover:text-white'
-                      }`}
-                      onClick={handleDownvote}
-                      disabled={isLoading}
-                    >
-                      <FaThumbsDown className="mr-2" /> {currentClip.downvotes}
-                    </button>
+                      <FaLink className="text-sm" />
+                      <span>Original clip</span>
+                    </a>
                   </div>
                 </div>
                 
-                <div>
-                  <a
-                    href={currentClip.link}
-                    className="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 transition"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    <FaLink className="text-sm" />
-                    <span>Original clip</span>
-                  </a>
-                </div>
-              </div>
-              
-              <div className="border-t border-b dark:border-neutral-700 py-4 my-4">
-                <div className="flex flex-wrap gap-y-3">
-                  <div className="w-full sm:w-1/2">
-                    <div className="flex items-center gap-2">
-                      <FaUser className="text-neutral-500 dark:text-neutral-400" />
-                      <span className="text-lg text-neutral-900 dark:text-white font-semibold">
-                        {currentClip.streamer}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  {currentClip.submitter !== 'Legacy(no data)' && (
+                <div className="border-t border-b dark:border-neutral-700 py-4 my-4">
+                  <div className="flex flex-wrap gap-y-3">
                     <div className="w-full sm:w-1/2">
                       <div className="flex items-center gap-2">
                         <FaUser className="text-neutral-500 dark:text-neutral-400" />
-                        <span className="text-neutral-600 dark:text-neutral-300">
-                          Submitted by: <span className="font-medium">{currentClip.submitter}</span>
+                        <span className="text-lg text-neutral-900 dark:text-white font-semibold">
+                          {currentClip.streamer}
                         </span>
                       </div>
                     </div>
-                  )}
-                  
-                  <div className="w-full sm:w-1/2">
-                    <div className="flex items-center gap-2">
-                      <FaRegCalendarAlt className="text-neutral-500 dark:text-neutral-400" />
-                      <span className="text-neutral-600 dark:text-neutral-300">
-                        {new Date(currentClip.createdAt).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
-                      </span>
+                    
+                    {currentClip.submitter !== 'Legacy(no data)' && (
+                      <div className="w-full sm:w-1/2">
+                        <div className="flex items-center gap-2">
+                          <FaUser className="text-neutral-500 dark:text-neutral-400" />
+                          <span className="text-neutral-600 dark:text-neutral-300">
+                            Submitted by: <span className="font-medium">{currentClip.submitter}</span>
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="w-full sm:w-1/2">
+                      <div className="flex items-center gap-2">
+                        <FaRegCalendarAlt className="text-neutral-500 dark:text-neutral-400" />
+                        <span className="text-neutral-600 dark:text-neutral-300">
+                          {new Date(currentClip.createdAt).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-              
-              {/* Team rating buttons */}
-              {user && (user.roles.includes('admin') || user.roles.includes('clipteam')) && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="mt-6 p-4 bg-neutral-100 dark:bg-neutral-700 rounded-lg"
-                >
-                  <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-3 flex items-center">
-                    <IoMdInformationCircleOutline className="mr-2" />
-                    Team Rating Controls
-                  </h3>
-                  <div className="flex flex-wrap gap-3 justify-center sm:justify-start">
-                    {[1, 2, 3, 4].map((rate) => (
+                
+                {/* Team rating buttons */}
+                {user && (user.roles.includes('admin') || user.roles.includes('clipteam')) && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="mt-6 p-4 bg-neutral-100 dark:bg-neutral-700 rounded-lg"
+                  >
+                    <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-3 flex items-center">
+                      <IoMdInformationCircleOutline className="mr-2" />
+                      Team Rating Controls
+                    </h3>
+                    <div className="flex flex-wrap gap-3 justify-center sm:justify-start">
+                      {[1, 2, 3, 4].map((rate) => {
+                        // Check if this is the user's current rating
+                        const isSelected = userCurrentRating === rate.toString();
+                        
+                        return (
+                          <button
+                            key={rate}
+                            className={`px-4 py-2 rounded-full font-semibold transition transform ${
+                              isSelected
+                                ? 'bg-blue-500 text-white shadow-lg scale-110 ring-2 ring-blue-300 dark:ring-blue-700'
+                                : 'bg-neutral-200 dark:bg-neutral-600 text-neutral-800 dark:text-white hover:bg-blue-400 hover:text-white'
+                            } hover:scale-105`}
+                            onClick={() => rateOrDenyClip(clip._id, rate)}
+                            disabled={isLoading}
+                          >
+                            {rate}
+                            {isSelected && <span className="ml-1">★</span>}
+                          </button>
+                        );
+                      })}
                       <button
-                        key={rate}
-                        className={`px-4 py-2 rounded-full font-semibold transition transform hover:scale-105 ${
-                          userCurrentRating === rate.toString()
-                            ? 'bg-blue-500 text-white shadow-lg'
-                            : 'bg-neutral-200 dark:bg-neutral-600 text-neutral-800 dark:text-white hover:bg-blue-400 hover:text-white'
-                        }`}
-                        onClick={() => rateOrDenyClip(clip._id, rate)}
+                        className={`px-4 py-2 rounded-full font-semibold transition transform ${
+                          isDenied
+                            ? 'bg-red-600 text-white shadow-lg scale-110 ring-2 ring-red-300 dark:ring-red-800'
+                            : 'bg-neutral-200 dark:bg-neutral-600 text-neutral-800 dark:text-white hover:bg-red-500 hover:text-white'
+                        } hover:scale-105`}
+                        onClick={() => rateOrDenyClip(clip._id, null, true)}
                         disabled={isLoading}
                       >
-                        {rate}
+                        Deny
+                        {isDenied && <span className="ml-1">✓</span>}
                       </button>
-                    ))}
-                    <button
-                      className={`px-4 py-2 rounded-full font-semibold transition transform hover:scale-105 ${
-                        isDenied
-                          ? 'bg-red-600 text-white shadow-lg'
-                          : 'bg-neutral-200 dark:bg-neutral-600 text-neutral-800 dark:text-white hover:bg-red-500 hover:text-white'
-                      }`}
-                      onClick={() => rateOrDenyClip(clip._id, null, true)}
-                      disabled={isLoading}
-                    >
-                      Deny
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-            </div>
-          </motion.div>
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+            </motion.div>
+            
+            {/* Next clip button - positioned outside the video */}
+            {nextClip && (
+              <button
+                onClick={() => navigateToClip(nextClip._id)}
+                disabled={loadingAdjacentClips || isClipLoading}
+                className="hidden sm:flex fixed right-4 top-1/2 transform -translate-y-1/2 z-20 bg-white/90 dark:bg-neutral-800/90 hover:bg-white dark:hover:bg-neutral-700 text-neutral-800 dark:text-white h-16 w-16 items-center justify-center rounded-full shadow-lg transition hover:scale-110"
+                aria-label="Next clip"
+              >
+                <FaChevronRight size={24} />
+              </button>
+            )}
+          </div>
 
           {/* Comments section */}
           <motion.div
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="mt-6 bg-white dark:bg-neutral-800 rounded-xl shadow-lg p-6"
+            className="mt-6 bg-white dark:bg-neutral-800 rounded-xl shadow-lg p-6 mb-16 sm:mb-6" // Added bottom margin for mobile navigation
           >
             <h3 className="text-xl font-bold text-neutral-900 dark:text-white mb-4 flex items-center">
               Comments 

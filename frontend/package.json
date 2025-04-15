@@ -25,6 +25,7 @@
     "react-snow-overlay": "^1.0.12",
     "react-top-loading-bar": "^3.0.2",
     "recharts": "^2.15.1",
+    "socket.io-client": "^4.8.1",
     "tailwindcss": "^4.0.9",
     "timeago.js": "^4.0.2",
     "uuid": "^11.1.0"

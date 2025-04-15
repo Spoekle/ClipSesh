@@ -97,6 +97,7 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
   const removeRecentSearch = (search: string): void => {
     if (search === 'all') {
       setRecentSearches([]);
+      localStorage.setItem('recentSearches', JSON.stringify([]));
       return;
     }
     
@@ -141,8 +142,49 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
     };
   }, []);
 
+  // Navbar animation variants
+  const navbarVariants = {
+    initial: {
+      y: -20,
+      opacity: 0
+    },
+    animate: {
+      y: 0,
+      opacity: 1,
+      transition: {
+        duration: 0.4,
+        ease: "easeOut",
+        when: "beforeChildren",
+        staggerChildren: 0.1
+      }
+    }
+  };
+  
+  const logoVariants = {
+    initial: { opacity: 0, rotate: -10 },
+    animate: { 
+      opacity: 1, 
+      rotate: 0,
+      transition: {
+        type: "spring",
+        damping: 15
+      }
+    },
+    hover: { 
+      rotate: 10, 
+      transition: { 
+        duration: 0.3,
+        yoyo: Infinity,
+        repeatDelay: 0.5
+      } 
+    }
+  };
+
   return (
     <motion.nav
+      initial="initial"
+      animate="animate"
+      variants={navbarVariants}
       className={`p-2 z-50 sticky top-0 transition-all duration-300 ${
         isScrolled 
           ? 'bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md shadow-md' 
@@ -161,15 +203,21 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
             className="flex items-center mr-6 bg-transparent hover:text-transparent transition-all duration-300 group"
           >
             <motion.img 
-              whileHover={{ rotate: 360 }}
+              variants={logoVariants}
+              whileHover="hover"
               transition={{ duration: 0.5 }}
               src={logo} 
               alt="Logo" 
               className="h-10 mr-2" 
             />
-            <span className="font-bold text-xl tracking-tight text-neutral-800 dark:text-white group-hover:bg-gradient-to-r group-hover:from-cc-red group-hover:from-30% group-hover:to-cc-blue group-hover:bg-clip-text group-hover:text-transparent">
+            <motion.span 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+              className="font-bold text-xl tracking-tight text-neutral-800 dark:text-white group-hover:bg-gradient-to-r group-hover:from-cc-red group-hover:from-30% group-hover:to-cc-blue group-hover:bg-clip-text group-hover:text-transparent"
+            >
               ClipSesh!
-            </span>
+            </motion.span>
           </NavLink>
         </motion.div>
         
@@ -179,13 +227,6 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
           transition={{ delay: 0.3 }}
           className="flex items-center"
         >
-          {/* Remove this NotificationBadge section */}
-          {/* {user && (
-            <div className="mr-2">
-              <NotificationBadge />
-            </div>
-          )} */}
-          
           {isMobile ? (
             <MobileNavbar
               toggleLoginModal={toggleLoginModal}

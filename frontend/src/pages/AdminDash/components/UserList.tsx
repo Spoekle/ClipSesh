@@ -109,7 +109,7 @@ const UserList: React.FC<UserListProps> = ({ fetchUsers, AVAILABLE_ROLES, apiUrl
       setEditUser({ 
         ...user, 
         roles: user.roles || ['user'],
-        password: '' // Clear password field for security
+        password: ''
       });
     }
   };

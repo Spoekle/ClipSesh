@@ -16,7 +16,7 @@ const ClipViewerContent = ({
   ratings,
   searchParams,
   unratedClips,
-  setUnratedClips, // Added this missing prop
+  setUnratedClips,
   sortClips,
   sortOptionState,
   setSortOptionState,
@@ -40,52 +40,60 @@ const ClipViewerContent = ({
     return uniqueStreamers.sort();
   }, [unratedClips]);
 
-  // Filter clips by search term and streamer
-  const filteredClips = useMemo(() => {
-    return unratedClips.filter((clip) => {
-      // Search term filter (title or streamer)
-      const matchesSearch = searchTerm === '' || 
-        clip.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        clip.streamer.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      // Streamer filter
-      const matchesStreamer = filterStreamer === '' || 
-        clip.streamer.toLowerCase() === filterStreamer.toLowerCase();
-      
-      return matchesSearch && matchesStreamer;
-    });
-  }, [unratedClips, searchTerm, filterStreamer]);
-
-  // Pagination
-  const indexOfLastClip = currentPage * itemsPerPage;
-  const indexOfFirstClip = indexOfLastClip - itemsPerPage;
-  const currentClips = filteredClips.slice(indexOfFirstClip, indexOfLastClip);
-  const totalPages = Math.ceil(filteredClips.length / itemsPerPage);
+  // We're not filtering clips client-side anymore since it's done on the server
+  const filteredClips = unratedClips;
+  
+  // Calculate total pages based on the clipAmount from config
+  // This ensures pagination works correctly by using the total count of all clips, not just the current page
+  const totalPages = useMemo(() => {
+    // Get the clip amount from config, or fall back to calculating from the current page
+    const totalClips = config.clipAmount || filteredClips.length;
+    console.log(`Total clips: ${totalClips}, itemsPerPage: ${itemsPerPage}, calculated pages: ${Math.ceil(totalClips / itemsPerPage)}`);
+    return Math.max(1, Math.ceil(totalClips / itemsPerPage));
+  }, [config.clipAmount, filteredClips.length, itemsPerPage]);
 
   const handleFilterReset = () => {
     setSearchTerm('');
     setFilterStreamer('');
     setCurrentPage(1);
+    
+    // Trigger a new fetch with reset filters
+    const userData = user;
+    fetchClipsAndRatings(userData, filterRatedClips);
   };
 
   const handleSortChange = (newSortOption) => {
     setSortOptionState(newSortOption);
-    const sorted = sortClips(unratedClips, newSortOption);
-    setUnratedClips(sorted);
-    setSearchParams({ sort: newSortOption, page: currentPage });
+    
+    // Update URL params
+    setSearchParams({ 
+      sort: newSortOption, 
+      page: 1, // Reset to page 1 when sorting changes
+      ...(searchTerm && { q: searchTerm }),
+      ...(filterStreamer && { streamer: filterStreamer }) 
+    }, { replace: true });
+    
+    // Trigger new fetch with updated sort
+    const userData = user;
+    fetchClipsAndRatings(userData, filterRatedClips);
   };
 
   const paginate = (pageNumber) => {
-    // Update URL and state without reloading
+    // Update URL and state
     setCurrentPage(pageNumber);
     setSearchParams({ 
       sort: sortOption, 
       page: pageNumber,
       ...(searchTerm && { q: searchTerm }),
       ...(filterStreamer && { streamer: filterStreamer }) 
-    }, { replace: true }); // Use replace to avoid cluttering history
+    }, { replace: true });
+    
     // Scroll to top of grid when paginating
     document.querySelector('.clip-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    
+    // Trigger new fetch with updated page
+    const userData = user;
+    fetchClipsAndRatings(userData, filterRatedClips);
   };
 
   if (expandedClip === 'new') {
@@ -131,6 +139,9 @@ const ClipViewerContent = ({
     );
   }
 
+  // Debug output for pagination
+  console.log(`Rendering pagination: currentPage=${currentPage}, totalPages=${totalPages}, clipAmount=${config.clipAmount}`);
+
   // Default view - clip grid with filters
   return (
     <div className="animate-fade-in">
@@ -150,12 +161,14 @@ const ClipViewerContent = ({
         streamers={streamers}
         handleFilterReset={handleFilterReset}
         fetchClipsAndRatings={fetchClipsAndRatings}
+        token={token}
+        setSearchParams={setSearchParams}
       />
       
       <ClipGrid
         isLoading={isLoading}
         filteredClips={filteredClips}
-        currentClips={currentClips}
+        currentClips={filteredClips} // Just pass all clips since they're already paginated from the server
         user={user}
         ratings={ratings}
         config={config}

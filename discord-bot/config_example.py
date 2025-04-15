@@ -1,16 +1,22 @@
 # This is the configuration file for the discord bot, after filling in the variables, 
 # rename this file to config.py
-# This file should contain the following variables:
-# DISCORD_BOT_TOKEN: The token of the discord bot
-# UPLOADBOT_USERNAME: The username of the upload bot on the backend server
-# UPLOADBOT_PASSWORD: The password of the upload bot on the backend server
-# BACKEND_URL: The url of the backend server
-# CLIP_CHANNEL_ID: The id of the channel where the bot should listen for clips seperated by commas
 
-DISCORD_BOT_TOKEN=""
+# Configuration variables:
+# UPLOADBOT_USERNAME: The username of the bot account on the backend server
+# UPLOADBOT_PASSWORD: The password of the bot account on the backend server
+# BACKEND_URL: The URL of the backend server (fallback if not available in DB)
+#
+# Note: The following settings are now managed through the admin dashboard:
+# - DISCORD_BOT_TOKEN: The Discord bot token
+# - CLIP_CHANNEL_IDS: List of Discord channel IDs to monitor for clips
+# - BACKEND_URL: The backend URL for API calls (can be overridden here)
+#
+# You can still provide DISCORD_BOT_TOKEN here as a fallback if the backend is unreachable.
+
 UPLOADBOT_USERNAME=""
 UPLOADBOT_PASSWORD=""
-BACKEND_URL=""
+BACKEND_URL="http://backend:3000"  # Default for Docker environment
 
-CLIP_CHANNEL_ID=[]
+# Optional fallback Discord bot token (only used if token can't be fetched from backend)
+DISCORD_BOT_TOKEN=""
 
