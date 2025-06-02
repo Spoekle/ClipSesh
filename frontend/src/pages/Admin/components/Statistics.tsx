@@ -3,17 +3,26 @@ import SummaryStats from './statistics/SummaryStats';
 import RatingDistribution from './statistics/RatingDistribution';
 import IndividualPerformance from './statistics/IndividualPerformance';
 import ComparisonChart from './statistics/ComparisonChart';
+import ActivityTracker from './statistics/ActivityTracker';
 import { motion } from 'framer-motion';
 import { FaChartBar } from 'react-icons/fa';
 import { UserRating, SeasonInfo } from '../../../types/adminTypes';
 
-interface StatisticsProps {
-  clipTeam: string[];
-  userRatings: UserRating[];
-  seasonInfo: SeasonInfo;
+interface User {
+  _id: string;
+  username: string;
+  roles: string[];
+  [key: string]: any;
 }
 
-const Statistics: React.FC<StatisticsProps> = ({ userRatings, seasonInfo }) => {
+interface StatisticsProps {
+  clipTeam: User[];
+  userRatings: UserRating[];
+  seasonInfo: SeasonInfo;
+  adminStats?: any;
+}
+
+const Statistics: React.FC<StatisticsProps> = ({ clipTeam, userRatings, seasonInfo }) => {
     const [sortBy, setSortBy] = useState<'username' | 'rating' | 'percentage'>('rating');
     
     // Calculate overall stats for team
@@ -32,6 +41,9 @@ const Statistics: React.FC<StatisticsProps> = ({ userRatings, seasonInfo }) => {
         }
         return 0;
     });
+
+    // Get usernames for the clip team members
+    const clipTeamUsernames = clipTeam.map(member => member.username || '').filter(Boolean);
 
     return (
         <motion.div 
@@ -58,6 +70,9 @@ const Statistics: React.FC<StatisticsProps> = ({ userRatings, seasonInfo }) => {
                 sortBy={sortBy} 
                 setSortBy={setSortBy} 
             />
+            
+            {/* Activity Tracker section - NEW */}
+            <ActivityTracker clipTeamUsernames={clipTeamUsernames} />
             
             {/* Individual performance section */}
             <IndividualPerformance 

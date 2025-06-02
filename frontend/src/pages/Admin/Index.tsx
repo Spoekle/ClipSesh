@@ -5,7 +5,7 @@ import axios from 'axios';
 import { BiLoaderCircle } from 'react-icons/bi';
 import LoadingBar from 'react-top-loading-bar';
 import background from '../../media/admin.jpg';
-import { FaDiscord, FaUserClock } from "react-icons/fa";
+import { FaDiscord, FaUserClock, FaUsers, FaCog, FaThumbsDown, FaChartBar } from "react-icons/fa";
 import { useLocation } from 'react-router-dom';
 import DeniedClips from './components/DeniedClips';
 import UserList from './components/UserList';
@@ -73,7 +73,13 @@ interface AdminStats {
   deniedClipsCount: number;
 }
 
+// Tab names for the admin dashboard
+type TabName = 'overview' | 'users' | 'content' | 'config' | 'clips' | 'stats';
+
 function AdminDash() {
+  // Tab state - default to overview tab
+  const [activeTab, setActiveTab] = useState<TabName>('overview');
+  
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [otherRoles, setOtherRoles] = useState<User[]>([]);
   const [allActiveUsers, setAllActiveUsers] = useState<User[]>([]);
@@ -385,6 +391,15 @@ function AdminDash() {
            );
   }).length;
 
+  const ratedClips = clips.filter(clip => {
+    const ratingData = ratings[clip._id];
+    if (!ratingData || !ratingData.ratingCounts || !Array.isArray(ratingData.ratingCounts)) {
+      return false;
+    }
+    // Check if any rating category has at least one rating
+    return ratingData.ratingCounts.some(rateData => rateData.count > 0);
+  }).length;
+
   useEffect(() => {
     if (Object.keys(ratings).length > 0) {
       countRatingsPerUser();
@@ -395,7 +410,7 @@ function AdminDash() {
     const userRatingCount: Record<string, any> = {};
 
     [...clipTeam, ...admins]
-      .filter(user => user.username !== 'UploadBot' && !user.roles.includes('editor') && !user.roles.includes('uploader'))
+      .filter(user => user.username !== 'UploadBot' )
       .forEach(user => {
         userRatingCount[user.username] = { '1': 0, '2': 0, '3': 0, '4': 0, 'deny': 0, total: 0, percentageRated: 0 };
       });
@@ -535,19 +550,33 @@ function AdminDash() {
     setProcessProgress(0);
 
     const filteredClips = clips.filter((clip) => {
+      // Check if the clip has a valid ID
+      if (!clip._id) {
+        console.warn('Clip without ID found:', clip);
+        return false;
+      }
+
+      // Check if ratings exist for this clip
       const ratingData = ratings[clip._id];
-      return (
-        ratingData && 
-        ratingData.ratingCounts && 
-        Array.isArray(ratingData.ratingCounts) &&
-        ratingData.ratingCounts.every(
-          (rateData) => rateData.rating !== 'deny' || rateData.count < config.denyThreshold
-        )
+      if (!ratingData) {
+        console.warn(`No rating data found for clip: ${clip._id}`);
+        return true; // We'll include clips without ratings as they haven't been denied
+      }
+
+      // Check for valid rating counts
+      if (!ratingData.ratingCounts || !Array.isArray(ratingData.ratingCounts)) {
+        console.warn(`Invalid rating counts for clip: ${clip._id}`);
+        return true; // Similarly, include clips with invalid rating structures
+      }
+
+      // Only filter out clips that have been denied by enough users
+      return ratingData.ratingCounts.every(
+        (rateData) => rateData.rating !== 'deny' || rateData.count < config.denyThreshold
       );
     });
 
     if (filteredClips.length === 0) {
-      alert('No clips to process. All clips have been denied.');
+      alert('No clips to process. All clips have been denied or are invalid.');
       setProcessingClips(false);
       setProcessModalOpen(false);
       return;
@@ -562,6 +591,13 @@ function AdminDash() {
         {
           clips: filteredClips.map((clip, index) => {
             const ratingData = ratings[clip._id];
+            
+            // Add a safety check to make sure ratingData and ratingCounts exist
+            if (!ratingData || !ratingData.ratingCounts || !Array.isArray(ratingData.ratingCounts) || !ratingData.ratingCounts.length) {
+              // Default to rating '1' if no ratings exist
+              return { ...clip, rating: '1', index };
+            }
+            
             const mostChosenRating = ratingData.ratingCounts.reduce(
               (max, rateData) => (rateData.count > max.count ? rateData : max),
               ratingData.ratingCounts[0]
@@ -658,8 +694,165 @@ function AdminDash() {
     setCurrentYear(new Date().getFullYear());
   };
 
-  const openProcessModal = (): void => {
+  const openProcessModal = async (): Promise<void> => {
+    // Refresh clip ratings before opening modal to ensure we have the latest data
+    try {
+      await fetchClipsAndRatings();
+      console.log('Refreshed clip ratings before processing');
+    } catch (error) {
+      console.error('Error refreshing clip data before processing:', error);
+    }
     setProcessModalOpen(true);
+  };
+
+  // Tab content rendering
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'overview':
+        return (
+          <>
+            <Statistics
+              clipTeam={clipTeam}
+              userRatings={userRatings}
+              seasonInfo={seasonInfo}
+              adminStats={adminStats}
+            />
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+              <AdminActions
+                openProcessModal={openProcessModal}
+                handleDeleteAllClips={handleDeleteAllClips}
+                downloading={downloading}
+              />
+            </div>
+          </>
+        );
+      case 'users':
+        return (
+          <div className="space-y-10">
+            {/* User List */}
+            <UserList
+              fetchUsers={fetchUsers}
+              disabledUsers={disabledUsers}
+              setDisabledUsers={setDisabledUsers}
+              AVAILABLE_ROLES={AVAILABLE_ROLES}
+              apiUrl={apiUrl}
+            />
+
+            {/* Create User and Disabled Users Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+              <CreateUser
+                fetchUsers={fetchUsers}
+                AVAILABLE_ROLES={AVAILABLE_ROLES}
+                apiUrl={apiUrl}
+              />
+
+              <div className="w-full bg-neutral-300 dark:bg-neutral-800 text-neutral-900 dark:text-white transition duration-200 p-6 md:p-8 rounded-xl shadow-lg hover:shadow-xl">
+                <h2 className="text-2xl md:text-3xl font-bold mb-6 border-b pb-3 border-neutral-400 dark:border-neutral-700 flex items-center">
+                  <FaUserClock className="mr-3 text-yellow-500" />
+                  Disabled Users
+                </h2>
+                
+                {!disabledUsers.length ? (
+                  <div className="flex flex-col items-center justify-center p-8 bg-neutral-200 dark:bg-neutral-700 rounded-lg">
+                    <p className="text-lg text-neutral-600 dark:text-neutral-300">
+                      No disabled users at this time
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+                    {disabledUsers.map(user => (
+                      <div
+                        key={user._id}
+                        className="bg-neutral-200 dark:bg-neutral-700 p-4 rounded-lg flex justify-between items-center"
+                      >
+                        <div className="flex items-center">
+                          <div className="w-10 h-10 rounded-full overflow-hidden mr-3 bg-neutral-300 dark:bg-neutral-600">
+                            {user.profilePicture ? (
+                              <img 
+                                src={user.profilePicture} 
+                                alt={user.username} 
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-lg font-bold">
+                                {user.username.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-semibold">{user.username}</p>
+                            <div className="flex items-center text-xs text-neutral-500 dark:text-neutral-400">
+                              <FaDiscord 
+                                className="mr-1" 
+                                style={{ color: user.discordId ? '#7289da' : 'currentColor' }} 
+                              />
+                              <span>{user.discordUsername || 'Not connected'}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleApproveUser(user._id)}
+                            className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-md text-sm font-medium transition-colors"
+                          >
+                            Enable
+                          </button>
+                          <button
+                            onClick={() => handleDelete(user._id)}
+                            className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm font-medium transition-colors"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      case 'content':
+        return (
+          <>
+            <ZipManager
+              zips={zips}
+              zipsLoading={zipsLoading}
+              deleteZip={deleteZip}
+              zipFile={zipFile}
+              handleZipChange={handleZipChange}
+              clipAmount={clipAmount}
+              handleClipAmountChange={handleClipAmountChange}
+              handleZipSubmit={handleZipSubmit}
+              seasonInfo={seasonInfo}
+              apiUrl={apiUrl}
+            />
+
+            <DeniedClips
+              clips={clips}
+              ratings={ratings}
+              config={config}
+              location={location}
+            />
+          </>
+        );
+      case 'config':
+        return (
+          <ConfigPanel
+            config={config}
+            handleConfigChange={handleConfigChange}
+            handleConfigSubmit={handleConfigSubmit}
+          />
+        );
+      default:
+        return (
+          <div className="p-8 bg-neutral-300 dark:bg-neutral-800 rounded-xl text-center">
+            <h3 className="text-2xl font-bold">No content available</h3>
+            <p>Please select a different tab</p>
+          </div>
+        );
+    }
   };
 
   return (
@@ -674,7 +867,7 @@ function AdminDash() {
       
       {/* Progress bar */}
       <div className='w-full'>
-        <LoadingBar color='#f11946' progress={progress} onLoaderFinished={() => setProgress(0)} />
+        <LoadingBar color='#f11946' height={4} progress={progress} onLoaderFinished={() => setProgress(0)} />
       </div>
       
       {/* Header banner */}
@@ -701,143 +894,62 @@ function AdminDash() {
         </div>
       ) : (
         <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-20 text-neutral-900 dark:text-white bg-neutral-200 dark:bg-neutral-900 transition duration-200 animate-fade">
-          {/* Season Info */}
+          {/* Season Info - Always visible */}
           <SeasonInfo 
             seasonInfo={seasonInfo} 
-            deniedClips={deniedClips} 
+            deniedClips={deniedClips}
+            ratedClips={ratedClips}
           />
-
-          {/* Statistics */}
-          <Statistics
-            clipTeam={clipTeam}
-            userRatings={userRatings}
-            seasonInfo={seasonInfo}
-            adminStats={adminStats}
-          />
-
-          {/* Main grid layout with improved spacing */}
-          <div className="mt-10 space-y-10">
-            {/* Admin Config and Actions Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
-              <ConfigPanel
-                config={config}
-                handleConfigChange={handleConfigChange}
-                handleConfigSubmit={handleConfigSubmit}
-              />
-
-              <AdminActions
-                openProcessModal={openProcessModal}
-                handleDeleteAllClips={handleDeleteAllClips}
-                downloading={downloading}
-              />
+          
+          {/* Tabs Navigation */}
+          <div className="mt-8 mb-6">
+            <div className="flex flex-wrap gap-2 border-b border-neutral-400 dark:border-neutral-700 pb-2">
+              <button
+                onClick={() => setActiveTab('overview')}
+                className={`px-4 py-2 rounded-t-lg flex items-center gap-2 transition-all ${
+                  activeTab === 'overview'
+                    ? 'bg-blue-600 text-white font-medium'
+                    : 'bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-400 dark:hover:bg-neutral-600 text-neutral-800 dark:text-white'
+                }`}
+              >
+                <FaChartBar /> Overview
+              </button>
+              <button
+                onClick={() => setActiveTab('users')}
+                className={`px-4 py-2 rounded-t-lg flex items-center gap-2 transition-all ${
+                  activeTab === 'users'
+                    ? 'bg-blue-600 text-white font-medium'
+                    : 'bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-400 dark:hover:bg-neutral-600 text-neutral-800 dark:text-white'
+                }`}
+              >
+                <FaUsers /> User Management
+              </button>
+              <button
+                onClick={() => setActiveTab('content')}
+                className={`px-4 py-2 rounded-t-lg flex items-center gap-2 transition-all ${
+                  activeTab === 'content'
+                    ? 'bg-blue-600 text-white font-medium'
+                    : 'bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-400 dark:hover:bg-neutral-600 text-neutral-800 dark:text-white'
+                }`}
+              >
+                <FaThumbsDown /> Content Management
+              </button>
+              <button
+                onClick={() => setActiveTab('config')}
+                className={`px-4 py-2 rounded-t-lg flex items-center gap-2 transition-all ${
+                  activeTab === 'config'
+                    ? 'bg-blue-600 text-white font-medium'
+                    : 'bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-400 dark:hover:bg-neutral-600 text-neutral-800 dark:text-white'
+                }`}
+              >
+                <FaCog /> Configuration
+              </button>
             </div>
+          </div>
 
-            {/* User Management Section */}
-            <div className="space-y-10">
-              {/* User List */}
-              <UserList
-                fetchUsers={fetchUsers}
-                disabledUsers={disabledUsers}
-                setDisabledUsers={setDisabledUsers}
-                AVAILABLE_ROLES={AVAILABLE_ROLES}
-                apiUrl={apiUrl}
-              />
-
-              {/* Create User and Disabled Users Row */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
-                <CreateUser
-                  fetchUsers={fetchUsers}
-                  AVAILABLE_ROLES={AVAILABLE_ROLES}
-                  apiUrl={apiUrl}
-                />
-
-                <div className="w-full bg-neutral-300 dark:bg-neutral-800 text-neutral-900 dark:text-white transition duration-200 p-6 md:p-8 rounded-xl shadow-lg hover:shadow-xl">
-                  <h2 className="text-2xl md:text-3xl font-bold mb-6 border-b pb-3 border-neutral-400 dark:border-neutral-700 flex items-center">
-                    <FaUserClock className="mr-3 text-yellow-500" />
-                    Disabled Users
-                  </h2>
-                  
-                  {!disabledUsers.length ? (
-                    <div className="flex flex-col items-center justify-center p-8 bg-neutral-200 dark:bg-neutral-700 rounded-lg">
-                      <p className="text-lg text-neutral-600 dark:text-neutral-300">
-                        No disabled users at this time
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
-                      {disabledUsers.map(user => (
-                        <div
-                          key={user._id}
-                          className="bg-neutral-200 dark:bg-neutral-700 p-4 rounded-lg flex justify-between items-center"
-                        >
-                          <div className="flex items-center">
-                            <div className="w-10 h-10 rounded-full overflow-hidden mr-3 bg-neutral-300 dark:bg-neutral-600">
-                              {user.profilePicture ? (
-                                <img 
-                                  src={user.profilePicture} 
-                                  alt={user.username} 
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-lg font-bold">
-                                  {user.username.charAt(0).toUpperCase()}
-                                </div>
-                              )}
-                            </div>
-                            <div>
-                              <p className="font-semibold">{user.username}</p>
-                              <div className="flex items-center text-xs text-neutral-500 dark:text-neutral-400">
-                                <FaDiscord 
-                                  className="mr-1" 
-                                  style={{ color: user.discordId ? '#7289da' : 'currentColor' }} 
-                                />
-                                <span>{user.discordUsername || 'Not connected'}</span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleApproveUser(user._id)}
-                              className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-md text-sm font-medium transition-colors"
-                            >
-                              Enable
-                            </button>
-                            <button
-                              onClick={() => handleDelete(user._id)}
-                              className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm font-medium transition-colors"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Zip Manager - Full Width */}
-            <ZipManager
-              zips={zips}
-              zipsLoading={zipsLoading}
-              deleteZip={deleteZip}
-              zipFile={zipFile}
-              handleZipChange={handleZipChange}
-              clipAmount={clipAmount}
-              handleClipAmountChange={handleClipAmountChange}
-              handleZipSubmit={handleZipSubmit}
-              seasonInfo={seasonInfo}
-              apiUrl={apiUrl}
-            />
-
-            {/* Denied Clips - Full Width */}
-            <DeniedClips
-              clips={clips}
-              ratings={ratings}
-              config={config}
-              location={location}
-            />
+          {/* Tab Content */}
+          <div className="mt-8 space-y-10">
+            {renderTabContent()}
           </div>
         </div>
       )}

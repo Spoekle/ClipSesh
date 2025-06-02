@@ -4,12 +4,12 @@ import { FaTrash, FaFileDownload, FaSpinner, FaInfoCircle } from 'react-icons/fa
 import ConfirmationDialog from '../../../components/common/ConfirmationDialog';
 
 interface AdminActionsProps {
-  processClips: () => Promise<void>;
+  openProcessModal: () => void;
   handleDeleteAllClips: () => Promise<void>;
   downloading: boolean;
 }
 
-const AdminActions: React.FC<AdminActionsProps> = ({ processClips, handleDeleteAllClips, downloading }) => {
+const AdminActions: React.FC<AdminActionsProps> = ({ openProcessModal, handleDeleteAllClips, downloading }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showProcessConfirm, setShowProcessConfirm] = useState(false);
 
@@ -18,9 +18,9 @@ const AdminActions: React.FC<AdminActionsProps> = ({ processClips, handleDeleteA
     await handleDeleteAllClips();
   };
 
-  const confirmProcess = async () => {
+  const confirmProcess = () => {
     setShowProcessConfirm(false);
-    await processClips();
+    openProcessModal();
   };
 
   return (
