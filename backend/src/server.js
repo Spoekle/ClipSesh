@@ -8,12 +8,9 @@ const socketIo = require('socket.io');
 const swaggerJsDoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
 const fs = require('fs');
-require('./config/config');
+require('dotenv').config();
 
-console.log('Config loaded...');
-console.log('Created admin user with the following credentials:');
-console.log(`Username: ${process.env.ADMIN_USERNAME}`);
-console.log(`Password: ${process.env.ADMIN_PASSWORD}`);
+console.log('Environment variables loaded...');
 
 // Create necessary directories if they don't exist
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -30,19 +27,22 @@ const chunksDir = path.join(__dirname, 'download/tmp');
 
 // Improved MongoDB connection to use the correct remote MongoDB server IP
 // This setup mirrors the working approach from OV-Tikkertje
-mongoose.connect("mongodb://mongo:27017/clipsDB", {
+mongoose.connect(process.env.MONGODB_URI || "mongodb://mongo:27017/clipsDB", {
   serverSelectionTimeoutMS: 30000, // Increase timeout to 30 seconds
   socketTimeoutMS: 45000, // Increase socket timeout
   connectTimeoutMS: 30000, // Increase connect timeout
 })
 .then(() => {
-  console.log('Connected to MongoDB at container...');
+  console.log(`Connected to MongoDB at ${process.env.MONGODB_URI || "mongodb://mongo:27017/clipsDB"}`);
   // Only require CreateAdmin after successful MongoDB connection
   require('./scripts/CreateAdmin');
+  console.log('Admin user credentials:');
+  console.log(`Username: ${process.env.ADMIN_USERNAME}`);
+  console.log(`Password: ${process.env.ADMIN_PASSWORD}`);
 })
 .catch(err => {
   console.error('MongoDB connection error:', err);
-  console.error('Please check if MongoDB is running at container');
+  console.error(`Please check if MongoDB is running at ${process.env.MONGODB_URI || "mongodb://mongo:27017/clipsDB"}`);
   // Don't exit the process, let the application continue without DB
 });
 

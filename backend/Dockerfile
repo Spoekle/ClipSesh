@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y nginx certbot python3-certbot-nginx ffm
 # Create and set the working directory for the application
 WORKDIR /var/www/backend
 
-# Copy the package.json and package-lock.json files
+# Copy package files for dependency installation
 COPY package*.json ./
 
 # Install dependencies
@@ -22,9 +22,8 @@ RUN npm install -g pm2
 # Copy the Nginx configuration file
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Expose ports for Nginx
+# Expose ports
 EXPOSE 80
-EXPOSE 443
 
 # Start Nginx and the application
 CMD ["sh", "-c", "nginx && pm2-runtime start src/server.js"]

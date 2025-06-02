@@ -196,7 +196,7 @@ router.put('/admin', authorizeRoles(['admin']), async (req, res) => {
  *       500:
  *         description: Internal server error
  */
-router.get('/', authorizeRoles(['admin']), async (req, res) => {
+router.get('/', authorizeRoles(['admin', 'clipteam', 'editor']), async (req, res) => {
   try {
     // Find both configs or create if they don't exist
     let [publicConfig, adminConfig] = await Promise.all([

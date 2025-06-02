@@ -10,18 +10,18 @@ const ytdl = require('ytdl-core');
 const axios = require('axios');
 const http = require('http');
 const https = require('https');
-const mongoose = require('mongoose'); // Add this import
+const mongoose = require('mongoose');
 
 // Import necessary modules and models
 const Clip = require('../models/clipModel');
 const IpVote = require('../models/ipVoteModel');
-const { PublicConfig } = require('../models/configModel'); // Add this import
+const { PublicConfig } = require('../models/configModel');
 const authorizeRoles = require('./middleware/AuthorizeRoles');
 const searchLimiter = require('./middleware/SearchLimiter');
 const clipUpload = require('./storage/ClipUpload');
 const Notification = require('../models/notificationModel');
 const User = require('../models/userModel');
-const Rating = require('../models/ratingModel'); // Add this import
+const Rating = require('../models/ratingModel');
 
 /**
  * Update the clip count in the public config
@@ -93,10 +93,10 @@ async function updateClipCount() {
  *           type: string
  *         description: User ID to exclude clips rated by this user
  *       - in: query
- *         name: includeRatings
+ *         name: excludeDeniedClips
  *         schema:
  *           type: boolean
- *         description: Include ratings data in the response
+ *         description: Exclude denied clips
  *     responses:
  *       200:
  *         description: OK
@@ -117,12 +117,8 @@ router.get('/', async (req, res) => {
         } = req.query;
 
         // Parse numeric values and boolean flags
-        page = parseInt(page);
-        limit = parseInt(limit);
-        includeRatings = includeRatings === 'true';
-
-        // Ensure limit doesn't exceed reasonable bounds
-        limit = Math.min(limit, 100);
+        page = Math.max(1, parseInt(page) || 1);
+        limit = Math.min(Math.max(1, parseInt(limit) || 12), 100);
         
         console.log(`Clips query: page=${page}, limit=${limit}, sortBy=${sortBy}, sortOrder=${sortOrder}, streamer=${streamer}, search=${search}, excludeRatedByUser=${excludeRatedByUser}`);
         
@@ -130,27 +126,21 @@ router.get('/', async (req, res) => {
         const query = {};
         
         // Add streamer filter if provided
-        if (streamer) {
-            query.streamer = { $regex: new RegExp(streamer, 'i') };
+        if (streamer && streamer.trim()) {
+            query.streamer = { $regex: new RegExp(streamer.trim(), 'i') };
         }
 
         // Add search term filter if provided
-        if (search) {
+        if (search && search.trim()) {
             query.$or = [
-                { title: { $regex: new RegExp(search, 'i') } },
-                { streamer: { $regex: new RegExp(search, 'i') } }
+                { title: { $regex: new RegExp(search.trim(), 'i') } },
+                { streamer: { $regex: new RegExp(search.trim(), 'i') } }
             ];
         }
 
         // Get total count of all clips (for overall pagination)
         const totalClipsBeforeFiltering = await Clip.countDocuments({});
 
-        // Get total count after basic filters (streamer, search)
-        const totalClipsAfterBasicFilters = await Clip.countDocuments(query);
-        
-        // Create sort object based on sort option
-        const sortObj = { [sortBy]: sortOrder === 'asc' ? 1 : -1 };
-        
         // Find all ratings by the user if excludeRatedByUser is specified
         let userRatedClipIds = [];
         if (excludeRatedByUser && mongoose.Types.ObjectId.isValid(excludeRatedByUser)) {
@@ -191,27 +181,228 @@ router.get('/', async (req, res) => {
         const totalClipsAfterAllFilters = await Clip.countDocuments(query);
         
         // Calculate total pages based on filtered clips
-        const totalPages = Math.ceil(totalClipsAfterAllFilters / limit) || 1;
+        const totalPages = Math.max(1, Math.ceil(totalClipsAfterAllFilters / limit));
         
-        // Adjust page number if it exceeds total pages
-        page = Math.max(1, Math.min(page, totalPages));
+        // Ensure page doesn't exceed total pages
+        const validPage = Math.min(page, totalPages);
         
         // Calculate skip value for pagination
-        const skip = (page - 1) * limit;
+        const skip = (validPage - 1) * limit;
         
-        // If we're excluding rated clips, we might need to fetch more than the limit
-        // to ensure we have enough clips to display after filtering
-        const fetchLimit = excludeRatedByUser ? limit : limit;
+        console.log(`Pagination: totalClips=${totalClipsAfterAllFilters}, totalPages=${totalPages}, requestedPage=${page}, validPage=${validPage}, skip=${skip}, limit=${limit}`);
         
-        // Fetch clips with pagination and sorting
-        let clips = await Clip.find(query)
-            .sort(sortObj)
-            .skip(skip)
-            .limit(fetchLimit);
+        // Handle special sorting cases that require aggregation
+        let clips;
+        
+        if (sortBy === 'ratio' || sortBy === 'averageRating' || sortBy === 'ratingCount') {
+            // Use aggregation pipeline for complex sorting
+            const pipeline = [
+                { $match: query },
+                {
+                    $addFields: {
+                        // Calculate vote ratio as percentage (upvotes / (upvotes + downvotes) * 100)
+                        ratio: {
+                            $cond: {
+                                if: { $eq: [{ $add: ['$upvotes', '$downvotes'] }, 0] },
+                                then: 0,
+                                else: { 
+                                    $multiply: [
+                                        { $divide: ['$upvotes', { $add: ['$upvotes', '$downvotes'] }] },
+                                        100
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            ];
+
+            // Add rating-related calculations if needed
+            if (sortBy === 'averageRating' || sortBy === 'ratingCount') {
+                pipeline.push({
+                    $lookup: {
+                        from: 'ratings',
+                        localField: '_id',
+                        foreignField: 'clipId',
+                        as: 'ratingData'
+                    }
+                });
+
+                if (sortBy === 'averageRating') {
+                    pipeline.push({
+                        $addFields: {
+                            averageRating: {
+                                $cond: {
+                                    if: { 
+                                        $or: [
+                                            { $eq: [{ $size: '$ratingData' }, 0] },
+                                            { $eq: [{ $arrayElemAt: ['$ratingData', 0] }, null] }
+                                        ]
+                                    },
+                                    then: 999, // Put clips with no ratings at the end
+                                    else: {
+                                        $let: {
+                                            vars: {
+                                                rating: { $arrayElemAt: ['$ratingData', 0] }
+                                            },
+                                            in: {
+                                                $cond: {
+                                                    if: {
+                                                        $or: [
+                                                            { $eq: ['$$rating', null] },
+                                                            { $not: { $ifNull: ['$$rating.ratings', false] } }
+                                                        ]
+                                                    },
+                                                    then: 999,
+                                                    else: {
+                                                        $let: {
+                                                            vars: {
+                                                                // Get counts for each rating category
+                                                                rating1Count: { $size: { $ifNull: ['$$rating.ratings.1', []] } },
+                                                                rating2Count: { $size: { $ifNull: ['$$rating.ratings.2', []] } },
+                                                                rating3Count: { $size: { $ifNull: ['$$rating.ratings.3', []] } },
+                                                                rating4Count: { $size: { $ifNull: ['$$rating.ratings.4', []] } },
+                                                                denyCount: { $size: { $ifNull: ['$$rating.ratings.deny', []] } }
+                                                            },
+                                                            in: {
+                                                                $let: {
+                                                                    vars: {
+                                                                        totalValidRatings: { 
+                                                                            $add: ['$$rating1Count', '$$rating2Count', '$$rating3Count', '$$rating4Count'] 
+                                                                        }
+                                                                    },
+                                                                    in: {
+                                                                        $cond: {
+                                                                            if: { $eq: ['$$totalValidRatings', 0] },
+                                                                            then: 1000, // Use 1000 for deny-only clips to ensure they're always at the end regardless of sort direction
+                                                                            else: {
+                                                                                // Calculate weighted average: (1*count1 + 2*count2 + 3*count3 + 4*count4) / total valid ratings
+                                                                                $divide: [
+                                                                                    {
+                                                                                        $add: [
+                                                                                            { $multiply: [1, '$$rating1Count'] },
+                                                                                            { $multiply: [2, '$$rating2Count'] },
+                                                                                            { $multiply: [3, '$$rating3Count'] },
+                                                                                            { $multiply: [4, '$$rating4Count'] }
+                                                                                        ]
+                                                                                    },
+                                                                                    '$$totalValidRatings'
+                                                                                ]
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                if (sortBy === 'ratingCount') {
+                    pipeline.push({
+                        $addFields: {
+                            ratingCount: {
+                                $cond: {
+                                    if: { 
+                                        $or: [
+                                            { $eq: [{ $size: '$ratingData' }, 0] },
+                                            { $eq: [{ $arrayElemAt: ['$ratingData', 0] }, null] }
+                                        ]
+                                    },
+                                    then: 0,
+                                    else: {
+                                        $let: {
+                                            vars: {
+                                                rating: { $arrayElemAt: ['$ratingData', 0] }
+                                            },
+                                            in: {
+                                                $cond: {
+                                                    if: {
+                                                        $or: [
+                                                            { $eq: ['$$rating', null] },
+                                                            { $not: { $ifNull: ['$$rating.ratings', false] } }
+                                                        ]
+                                                    },
+                                                    then: 0,
+                                                    else: {
+                                                        // Count ALL ratings including denies
+                                                        $add: [
+                                                            { $size: { $ifNull: ['$$rating.ratings.1', []] } },
+                                                            { $size: { $ifNull: ['$$rating.ratings.2', []] } },
+                                                            { $size: { $ifNull: ['$$rating.ratings.3', []] } },
+                                                            { $size: { $ifNull: ['$$rating.ratings.4', []] } },
+                                                            { $size: { $ifNull: ['$$rating.ratings.deny', []] } }
+                                                        ]
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+
+            // Add sorting
+            const sortStage = {};
+            // For average rating, we need to invert the sort direction since lower numbers are better
+            // Also ensure deny-only clips (1000) always go to end regardless of sort direction
+            if (sortBy === 'averageRating') {
+                sortStage[sortBy] = sortOrder === 'asc' ? -1 : 1; // Inverted: asc becomes -1, desc becomes 1
+                // Add a secondary sort to ensure deny-only clips (value 1000) always go to end
+                pipeline.push({ 
+                    $addFields: {
+                        sortPriority: {
+                            $cond: {
+                                if: { $gte: ['$averageRating', 1000] },
+                                then: 1, // Deny-only clips get priority 1 (last)
+                                else: 0  // Regular clips get priority 0 (first)
+                            }
+                        }
+                    }
+                });
+                pipeline.push({ 
+                    $sort: { 
+                        sortPriority: 1,        // Sort by priority first (deny clips always last)
+                        [sortBy]: sortStage[sortBy] // Then by average rating
+                    } 
+                });
+            } else {
+                sortStage[sortBy] = sortOrder === 'asc' ? 1 : -1; // Normal sorting for other fields
+                pipeline.push({ $sort: sortStage });
+            }
+
+            // Add pagination
+            pipeline.push({ $skip: skip });
+            pipeline.push({ $limit: limit });
+
+            console.log(`Aggregation pipeline for ${sortBy}:`, JSON.stringify(pipeline, null, 2));
+            clips = await Clip.aggregate(pipeline);
+        } else {
+            // Simple sorting for basic fields
+            const sortObj = { [sortBy]: sortOrder === 'asc' ? 1 : -1 };
+            
+            clips = await Clip.find(query)
+                .sort(sortObj)
+                .skip(skip)
+                .limit(limit)
+                .lean();
+        }
+        
+        console.log(`Query executed: found ${clips.length} clips for page ${validPage}`);
         
         // Prepare ratings data if requested
         let ratingsData = {};
-        if (includeRatings && clips.length > 0) {
+        if (clips.length > 0) {
             const clipIds = clips.map(clip => clip._id);
             
             // Fetch ratings for all clips on this page
@@ -241,19 +432,22 @@ router.get('/', async (req, res) => {
         }
         
         // Send the response with comprehensive metadata
-        res.json({
+        const response = {
             clips,
-            ratings: includeRatings ? ratingsData : undefined,
-            currentPage: page,
+            ratings: ratingsData,
+            currentPage: validPage,
             totalPages,
             totalClips: totalClipsAfterAllFilters,
             totalUnfilteredClips: totalClipsBeforeFiltering,
             appliedFilters: {
                 streamer: streamer || null,
                 search: search || null,
-                excludeRatedByUser: excludeRatedByUser || null
+                excludeRatedByUser: excludeRatedByUser || null,
             }
-        });
+        };
+        
+        console.log(`Response: returning ${clips.length} clips, page ${validPage}/${totalPages}`);
+        res.json(response);
     } catch (error) {
         console.error('Error fetching clips:', error);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -470,8 +664,8 @@ router.get('/info', authorizeRoles(['uploader', 'admin']), async (req, res) => {
             try {
                 const info = await ytdl.getInfo(url);
                 res.json({
-                    title: info.videoDetails.title,
-                    author: info.videoDetails.author.name,
+                    title: info.title,
+                    author: info.author,
                     platform: 'youtube'
                 });
             } catch (error) {
@@ -480,62 +674,23 @@ router.get('/info', authorizeRoles(['uploader', 'admin']), async (req, res) => {
             }
         } else if (url.includes('twitch.tv')) {
             try {
-                // For Twitch, we'll make a request to the clip page and extract basic info
-                const response = await axios.get(url, {
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-                    }
-                });
-                
-                const htmlContent = response.data;
-                
-                // Extract title if available (basic regex, can be improved)
-                let title = 'Twitch Clip';
-                const titleMatch = htmlContent.match(/<title[^>]*>([^<]+)<\/title>/);
-                if (titleMatch && titleMatch[1]) {
-                    title = titleMatch[1].trim();
-                }
-                
-                // Extract channel name if possible
-                let author = 'Twitch Streamer';
-                const channelMatch = htmlContent.match(/channel_name\s*:\s*['"](.*?)['"]/);
-                if (channelMatch && channelMatch[1]) {
-                    author = channelMatch[1];
-                }
-                
+                const info = await ytdl.getInfo(url);
                 res.json({
-                    title: title,
-                    author: author,
+                    title: info.title,
+                    author: info.channel,
                     platform: 'twitch'
                 });
+
             } catch (error) {
                 console.error('Error fetching Twitch info:', error);
                 res.status(500).json({ error: 'Error fetching Twitch clip information' });
             }
         } else if (url.includes('medal.tv')) {
             try {
-                const response = await axios.get(url, {
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-                    }
-                });
-                
-                const htmlContent = response.data;
-                
-                // Extract title if available
-                let title = 'Medal.tv Clip';
-                const titleMatch = htmlContent.match(/<title[^>]*>([^<]+)<\/title>/);
-                if (titleMatch && titleMatch[1]) {
-                    title = titleMatch[1].trim();
-                }
-                
-                // Extract author if available
-                let author = 'Medal.tv User';
-                const authorMatch = htmlContent.match(/(?:username|displayName|authorName)\s*[:=]\s*['"](.*?)['"]/i);
-                if (authorMatch && authorMatch[1]) {
-                    author = authorMatch[1];
-                }
-                
+                const info = await ytdl.getInfo(url);
+                const title = info.title;
+                const author = info.uploader;
+
                 res.json({
                     title: title,
                     author: author,
@@ -639,78 +794,66 @@ router.get('/clip-navigation/adjacent', async (req, res) => {
         if (!currentClipId || getAdjacent !== 'true') {
             return res.status(400).json({ error: 'Required parameters missing' });
         }
-        
-        // Find the current clip to get its creation date for sorting
+
         const currentClip = await Clip.findById(currentClipId);
         if (!currentClip) {
             return res.status(404).json({ error: 'Current clip not found' });
         }
-        
-        // Build query for filtering - used for both next and prev clip queries
+
         const baseQuery = {};
         if (streamer) {
             baseQuery.streamer = { $regex: new RegExp(streamer, 'i') };
         }
         
-        // Determine sort field and direction based on sort option
         let sortField = 'createdAt';
-        let sortDirection = -1; // Default to newest first (descending)
+        let sortDirection = -1;
         
         switch (sort) {
             case 'oldest':
                 sortField = 'createdAt';
-                sortDirection = 1; // Ascending
+                sortDirection = 1;
                 break;
             case 'highestUpvotes':
                 sortField = 'upvotes';
-                sortDirection = -1; // Descending
+                sortDirection = -1;
                 break;
             case 'highestDownvotes':
                 sortField = 'downvotes';
-                sortDirection = -1; // Descending
+                sortDirection = -1;
                 break;
             case 'newest':
             default:
                 sortField = 'createdAt';
-                sortDirection = -1; // Descending
+                sortDirection = -1;
                 break;
         }
 
         console.log(`Finding adjacent clips for ${currentClipId} with sort: ${sort} (${sortField}, direction: ${sortDirection})`);
         console.log(`Current clip ${sortField} value:`, currentClip[sortField]);
-        
-        // Find previous clip (the one that comes before in the sorted order)
-        // If sorting in descending order (newest first), previous means higher value
-        // If sorting in ascending order (oldest first), previous means lower value
+
         const prevClipQuery = { ...baseQuery };
         if (sortDirection === -1) {
-            // For descending order, previous clip has a higher value of the sort field
-            prevClipQuery[sortField] = { $gt: currentClip[sortField] };
-        } else {
-            // For ascending order, previous clip has a lower value of the sort field
             prevClipQuery[sortField] = { $lt: currentClip[sortField] };
+        } else {
+            prevClipQuery[sortField] = { $gt: currentClip[sortField] };
         }
         
         console.log('Previous clip query:', JSON.stringify(prevClipQuery));
         const prevClip = await Clip.findOne(prevClipQuery)
-            .sort({ [sortField]: sortDirection }) // Use the same direction as main sort
+            .sort({ [sortField]: sortDirection })
             .limit(1);
         
-        // Find next clip (the one that comes after in the sorted order)
-        // If sorting in descending order (newest first), next means lower value
-        // If sorting in ascending order (oldest first), next means higher value
         const nextClipQuery = { ...baseQuery };
         if (sortDirection === -1) {
-            // For descending order, next clip has a lower value of the sort field
-            nextClipQuery[sortField] = { $lt: currentClip[sortField] };
-        } else {
-            // For ascending order, next clip has a higher value of the sort field
             nextClipQuery[sortField] = { $gt: currentClip[sortField] };
+        } else {
+            nextClipQuery[sortField] = { $lt: currentClip[sortField] };
         }
         
         console.log('Next clip query:', JSON.stringify(nextClipQuery));
+        // For the next clip, we need to reverse the sort direction to get the correct adjacent clip
         const nextClip = await Clip.findOne(nextClipQuery)
-            .sort({ [sortField]: sortDirection === 1 ? 1 : -1 }) // For next, use same direction as main sort
+            .sort({ [sortField]: -sortDirection })
             .limit(1);
         
         console.log(`Found previous clip: ${prevClip?._id || 'none'}, next clip: ${nextClip?._id || 'none'}`);
@@ -1152,7 +1295,7 @@ router.delete('/:id', authorizeRoles(['admin']), async (req, res) => {
             } catch (error) {
                 console.error("Error removing file:", error.message);
             }
-            await clip.remove();
+            await clip.deleteOne();
 
             // Update clip count in config
             await updateClipCount();
@@ -1162,6 +1305,7 @@ router.delete('/:id', authorizeRoles(['admin']), async (req, res) => {
             res.status(404).json({ error: 'Clip not found' });
         }
     } catch (error) {
+        console.error('Error deleting clip:', error); // Added error logging for debugging
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
@@ -1249,6 +1393,34 @@ router.post('/:id/vote/:voteType', async (req, res) => {
     } catch (error) {
         console.error('Error voting clip:', error.message);
         res.status(500).send('Internal server error');
+    }
+});
+
+router.get('/:id/vote/status', async (req, res) => {
+    try {
+        const clientIp = req.ip;
+        const { id } = req.params;
+
+        const clip = await Clip.findById(id);
+        if (!clip) {
+            return res.status(404).json({ error: 'Clip not found' });
+        }
+
+        const existingVotes = await IpVote.find({ clipId: id });
+        
+        // Check if the user has already voted
+        for (const vote of existingVotes) {
+            if (await bcrypt.compare(clientIp, vote.ip)) {
+                // Return the vote type
+                return res.json({ hasVoted: true, voteType: vote.vote });
+            }
+        }
+        
+        // If no vote found
+        res.json({ hasVoted: false });
+    } catch (error) {
+        console.error('Error checking vote status:', error.message);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 

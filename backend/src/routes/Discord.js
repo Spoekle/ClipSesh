@@ -3,19 +3,19 @@ const router = express.Router();
 const axios = require('axios');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
-const { AdminConfig } = require('../models/configModel');
-const verifyToken = require('./middleware/VerifyToken');
-const secretKey = process.env.SECRET_KEY;
 
+const verifyToken = require('./middleware/VerifyToken');
+const { AdminConfig } = require('../models/configModel');
 const User = require('../models/userModel');
+
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID;
 const CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
+const secretKey = process.env.SECRET_KEY;
 
 // For users to link Discord account
 router.get('/auth', (req, res) => {
   const state = encodeURIComponent(req.query.siteUserId);
-  const discordAuthUrl = `https://discord.com/oauth2/authorize?client_id=1265824671224561766&response_type=code&redirect_uri=${encodeURIComponent('https://api.spoekle.com/api/discord/callback')}&scope=identify+guilds.members.read+email&state=${state}`;
+  const discordAuthUrl = `https://discord.com/oauth2/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent('https://api.spoekle.com/api/discord/callback')}&scope=identify+guilds.members.read+email&state=${state}`;
   res.redirect(discordAuthUrl);
 });
 
@@ -82,7 +82,7 @@ router.get('/callback', async (req, res) => {
       existingUser.profilePicture = `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}`;
       await existingUser.save();
       if (existingUser.status !== 'active') res.redirect(403, `https://clipsesh.cube.community`);
-      const existingToken = jwt.sign({ id: existingUser._id, username: existingUser.username, roles: existingUser.roles }, secretKey, { expiresIn: '1 day' });
+      const existingToken = jwt.sign({ id: existingUser._id, username: existingUser.username, roles: existingUser.roles }, secretKey, { expiresIn: process.env.JWT_EXPIRES_IN || '7 days' });
       return res.redirect(`https://clipsesh.cube.community?token=${encodeURIComponent(existingToken)}`);
     }
 
@@ -97,7 +97,7 @@ router.get('/callback', async (req, res) => {
         user.roles = determineUserRoles(userGuildInfo.roles);
         await user.save();
         if (user.status !== 'active') return res.redirect(403, `https://clipsesh.cube.community`);
-        const userToken = jwt.sign({ id: user._id, username: user.username, roles: user.roles }, secretKey, { expiresIn: '1 day' });
+        const userToken = jwt.sign({ id: user._id, username: user.username, roles: user.roles }, secretKey, { expiresIn: process.env.JWT_EXPIRES_IN || '7 days' });
         return res.redirect(`https://clipsesh.cube.community?token=${encodeURIComponent(userToken)}`);
       }
     }
@@ -116,7 +116,7 @@ router.get('/callback', async (req, res) => {
 
     await newUser.save();
     if (newUser.status !== 'active') return res.redirect(403, `https://clipsesh.cube.community`);
-    const userToken = jwt.sign({ id: newUser._id, username: newUser.username, roles: newUser.roles }, secretKey, { expiresIn: '1 day' });
+    const userToken = jwt.sign({ id: newUser._id, username: newUser.username, roles: newUser.roles }, secretKey, { expiresIn: process.env.JWT_EXPIRES_IN || '7 days' });
     return res.redirect(`https://clipsesh.cube.community?token=${encodeURIComponent(userToken)}`);
   } catch (error) {
 
@@ -197,7 +197,7 @@ router.get('/bot-callback', async (req, res) => {
       botUsername: discordUser.username, 
       roles: ['bot', 'admin'] 
     }, secretKey, { 
-      expiresIn: '30 days' // Longer expiration for bot token
+      expiresIn: process.env.BOT_TOKEN_EXPIRES_IN || '30 days' // Longer expiration for bot token
     });
 
     // Redirect to a bot success page
