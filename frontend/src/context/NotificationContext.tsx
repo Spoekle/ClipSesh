@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { NotificationContextType, Notification, NotificationType } from '../types/notificationTypes';
+import { NotificationContextType, Notification } from '../types/notificationTypes';
 
 // Create the notification context with default values
 const NotificationContext = createContext<NotificationContextType>({
@@ -32,7 +32,19 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   
   // Remove a notification by ID
   const removeNotification = (id: string): void => {
-    setNotifications(prev => prev.filter(notification => notification.id !== id));
+    // Using a callback to ensure we're only updating notifications that exist
+    // and do it in a more immutable way to prevent React reconciliation issues
+    setNotifications(prev => {
+      const itemIndex = prev.findIndex(item => item.id === id);
+      
+      // Only update state if the notification exists
+      if (itemIndex === -1) return prev;
+      
+      // Create a new array without modifying the original
+      const newNotifications = [...prev];
+      newNotifications.splice(itemIndex, 1);
+      return newNotifications;
+    });
   };
   
   // Helper functions for each notification type
