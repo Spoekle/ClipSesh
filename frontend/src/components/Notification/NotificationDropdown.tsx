@@ -209,9 +209,24 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
   const isLoadingData = loading || externalLoading;
 
   const dropdownVariants = {
-    hidden: { opacity: 0, y: -10, scale: 0.95 },
-    visible: { opacity: 1, y: 0, scale: 1 },
-    exit: { opacity: 0, y: -10, scale: 0.95, transition: { duration: 0.1 } }
+    hidden: { 
+      opacity: 0, 
+      y: -10, 
+      scale: 0.95,
+      transition: { duration: 0.1, ease: "easeOut" }
+    },
+    visible: { 
+      opacity: 1, 
+      y: 0, 
+      scale: 1,
+      transition: { duration: 0.15, ease: "easeOut" }
+    },
+    exit: { 
+      opacity: 0, 
+      y: -10, 
+      scale: 0.95, 
+      transition: { duration: 0.1, ease: "easeIn" } 
+    }
   };
 
   return (
@@ -222,8 +237,9 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
           initial="hidden"
           animate="visible"
           exit="exit"
-          transition={{ type: "tween", duration: 0.15 }} // Faster animation for better responsiveness
+          transition={{ type: "tween", duration: 0.15 }}
           className="absolute right-0 mt-2 w-80 bg-white dark:bg-neutral-800 rounded-lg shadow-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden z-50"
+          style={{ transformOrigin: 'top right' }}
           onClick={e => e.stopPropagation()}
         >
           {/* Header */}

@@ -1,18 +1,28 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import { FaBell } from 'react-icons/fa';
 import axios from 'axios';
 import apiUrl from '../../config/config';
 import { UserNotificationResponse, UnreadCountResponse } from '../../types/notificationTypes';
 import NotificationDropdown from './NotificationDropdown';
 
-const NotificationBadge: React.FC = () => {
+interface NotificationBadgeProps {
+  isOpen?: boolean;
+  onToggle?: () => void;
+}
+
+const NotificationBadge: React.FC<NotificationBadgeProps> = ({ isOpen, onToggle }) => {
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [dropdownOpen, setDropdownOpen] = useState<boolean>(false);
+  const [internalDropdownOpen, setInternalDropdownOpen] = useState<boolean>(false);
   const [notifications, setNotifications] = useState<UserNotificationResponse | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [apiAvailable, setApiAvailable] = useState<boolean>(true);
+
+  // Use external state if provided, otherwise use internal state
+  const dropdownOpen = isOpen !== undefined ? isOpen : internalDropdownOpen;
+  const setDropdownOpen = onToggle !== undefined ? onToggle : setInternalDropdownOpen;
 
   // Pre-fetch notifications data on component mount and periodically
   useEffect(() => {
@@ -35,11 +45,13 @@ const NotificationBadge: React.FC = () => {
     }
   }, [apiAvailable]);
 
-  // Close dropdown when clicking outside
+  // Close dropdown when clicking outside (only for internal state management)
   useEffect(() => {
+    if (onToggle) return; // Don't handle outside clicks if using external state management
+    
     const handleOutsideClick = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setDropdownOpen(false);
+        setInternalDropdownOpen(false);
       }
     };
 
@@ -47,7 +59,7 @@ const NotificationBadge: React.FC = () => {
     return () => {
       document.removeEventListener("mousedown", handleOutsideClick);
     };
-  }, []);
+  }, [onToggle]);
 
   // Check if notifications API endpoints exist
   const checkApiAvailability = async (): Promise<void> => {
@@ -109,7 +121,14 @@ const NotificationBadge: React.FC = () => {
       setIsLoading(true);
       fetchNotifications().finally(() => setIsLoading(false));
     }
-    setDropdownOpen(!dropdownOpen);
+    
+    if (onToggle) {
+      // Use external toggle function
+      onToggle();
+    } else {
+      // Use internal state
+      setInternalDropdownOpen(!internalDropdownOpen);
+    }
   };
 
   // Force a refresh after actions in dropdown (mark as read, delete)
@@ -132,7 +151,10 @@ const NotificationBadge: React.FC = () => {
 
   return (
     <div className="relative" ref={containerRef}>
-      <button
+      <motion.button
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.95 }}
+        transition={{ type: "spring", stiffness: 400, damping: 17 }}
         onClick={toggleDropdown}
         className="relative p-2 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
         disabled={isLoading}
@@ -143,10 +165,10 @@ const NotificationBadge: React.FC = () => {
         
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-            {unreadCount > 9 ? '9+' : unreadCount}
+            {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
-      </button>
+      </motion.button>
       
       <NotificationDropdown 
         isOpen={dropdownOpen} 

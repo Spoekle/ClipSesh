@@ -61,7 +61,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification, onRem
       initial={{ x: 50, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       exit={{ x: 50, opacity: 0 }}
-      className={`flex items-center p-3 pr-4 rounded-lg shadow-lg min-w-[18rem] max-w-md ${styles.bgClass} border border-white/10`}
+      className={`flex items-center p-3 pr-4 rounded-lg shadow-lg backdrop-blur-lg min-w-[18rem] max-w-md ${styles.bgClass} border border-white/10`}
     >
       <div className={`mr-3 ${styles.iconClass}`}>
         {styles.icon}
