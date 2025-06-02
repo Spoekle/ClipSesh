@@ -95,7 +95,20 @@ const ProcessClipsModal: React.FC<ProcessClipsModalProps> = ({
 
   const handleConfirmProcess = () => {
     setShowConfirmation(false);
-    onProcess(season, year);
+    setErrorMessage(null); // Clear any previous error messages
+    
+    try {
+      // Add a condition to verify clips are available
+      if (clipCount <= 0) {
+        setErrorMessage("No clips available to process.");
+        return;
+      }
+      
+      onProcess(season, year);
+    } catch (error) {
+      console.error("Error in process clips:", error);
+      setErrorMessage(error instanceof Error ? error.message : "An unknown error occurred");
+    }
   };
 
   const handleCancelConfirmation = () => {
@@ -216,8 +229,11 @@ const ProcessClipsModal: React.FC<ProcessClipsModalProps> = ({
 
                     {errorMessage && (
                       <div className="bg-red-100 dark:bg-red-900 p-3 rounded-md text-red-800 dark:text-red-200 text-sm">
-                        <FaExclamationTriangle className="inline mr-2" />
-                        {errorMessage}
+                        <p className="font-medium flex items-start">
+                          <FaExclamationTriangle className="inline mr-2 mt-1 flex-shrink-0" />
+                          <span>Error: {errorMessage}</span>
+                        </p>
+                        <p className="mt-2 text-xs italic">Check the browser console for more details.</p>
                       </div>
                     )}
 
