@@ -1,47 +1,42 @@
 import React, { useState, useEffect } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaSearch, FaBars, FaTimes, FaUserCircle, FaRegChartBar } from 'react-icons/fa';
 import { MdLogin, MdLogout, MdDashboard, MdHome, MdNotifications } from "react-icons/md";
-import LoginModal from '../LoginModal';
 import { User } from '../../../types/adminTypes';
 import NotificationBadge from '../../../components/Notification/NotificationBadge';
-import axios from 'axios';
-import apiUrl from '../../../config/config';
-import { UnreadCountResponse } from '../../../types/notificationTypes';
 
 interface MobileNavbarProps {
   toggleLoginModal: () => void;
-  isLoginModalOpen: boolean;
   user: User | null;
   isDropdownOpen: boolean;
   toggleDropdown: () => void;
   isSearchDropdownOpen: boolean;
   toggleSearchDropdown: () => void;
   handleLogout: () => void;
-  fetchUser: () => Promise<User | null>;
   setSearchInput: React.Dispatch<React.SetStateAction<string>>;
   searchInput: string;
   handleSearch: (e: React.FormEvent) => void;
   recentSearches: string[];
   removeRecentSearch: (search: string) => void;
+  isNotificationDropdownOpen: boolean;
+  toggleNotificationDropdown: () => void;
 }
 
 const MobileNavbar: React.FC<MobileNavbarProps> = ({
   toggleLoginModal,
-  isLoginModalOpen,
   user,
   handleLogout,
-  fetchUser,
   setSearchInput,
   searchInput,
   handleSearch,
   recentSearches,
-  removeRecentSearch
+  removeRecentSearch,
+  isNotificationDropdownOpen,
+  toggleNotificationDropdown
 }) => {
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
   const [showSearch, setShowSearch] = useState<boolean>(false);
-  const navigate = useNavigate();
 
   // Prevent body scrolling when menu is open
   useEffect(() => {
@@ -68,11 +63,6 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
   const handleSubmitSearch = (e: React.FormEvent): void => {
     handleSearch(e);
     setShowSearch(false);
-    setMenuOpen(false);
-  };
-
-  const goToNotifications = (): void => {
-    navigate('/notifications');
     setMenuOpen(false);
   };
   
@@ -164,13 +154,10 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
         
         {/* Add NotificationBadge here if user is logged in */}
         {user && (
-          <motion.div
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            transition={{ type: "spring", stiffness: 400, damping: 17 }}
-          >
-            <NotificationBadge />
-          </motion.div>
+          <NotificationBadge 
+            isOpen={isNotificationDropdownOpen}
+            onToggle={toggleNotificationDropdown}
+          />
         )}
         
         <motion.button
@@ -561,14 +548,6 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
           </motion.div>
         )}
       </AnimatePresence>
-
-      {isLoginModalOpen && (
-        <LoginModal
-          isLoginModalOpen={isLoginModalOpen}
-          setIsLoginModalOpen={toggleLoginModal}
-          fetchUser={fetchUser}
-        />
-      )}
     </div>
   );
 }

@@ -1,11 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import apiUrl from '../../config/config';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TbLoader2 } from "react-icons/tb";
 import { FaDiscord, FaTimes, FaEnvelope, FaLock, FaUser } from "react-icons/fa";
 
-const LoginModal = ({ setIsLoginModalOpen, isLoginModalOpen, fetchUser }) => {
+interface LoginModalProps {
+  setIsLoginModalOpen: (isOpen: boolean) => void;
+  isLoginModalOpen: boolean;
+  fetchUser: () => Promise<any>;
+}
+
+const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginModalOpen, fetchUser }) => {
   const [formMode, setFormMode] = useState('login');
   const [formData, setFormData] = useState({ username: '', password: '' });
   const [email, setEmail] = useState('');
@@ -16,7 +22,7 @@ const LoginModal = ({ setIsLoginModalOpen, isLoginModalOpen, fetchUser }) => {
 
   // Close modal when Escape key is pressed
   useEffect(() => {
-    const handleEscape = (e) => {
+    const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') handleClose();
     };
     
@@ -24,19 +30,19 @@ const LoginModal = ({ setIsLoginModalOpen, isLoginModalOpen, fetchUser }) => {
     return () => window.removeEventListener('keydown', handleEscape);
   }, []);
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setError(''); // Clear error when user types
   };
 
-  const handleEmailChange = (e) => {
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEmail(e.target.value);
     setResetMessage({ type: '', message: '' });
   };
 
   const handleClose = () => {
-    const modalContent = document.querySelector('.modal-content');
-    const modalOverlay = document.querySelector('.login-modal-overlay');
+    const modalContent = document.querySelector('.modal-content') as HTMLElement;
+    const modalOverlay = document.querySelector('.login-modal-overlay') as HTMLElement;
     
     if (modalContent && modalOverlay) {
       modalContent.style.transition = 'transform 300ms, opacity 300ms';
@@ -50,7 +56,7 @@ const LoginModal = ({ setIsLoginModalOpen, isLoginModalOpen, fetchUser }) => {
     }
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsSubmitting(true);
@@ -76,18 +82,22 @@ const LoginModal = ({ setIsLoginModalOpen, isLoginModalOpen, fetchUser }) => {
       }
     } catch (error) {
       console.error('Error:', error);
-      if (error.response) {
-        if (error.response.status === 403) {
-          setError('Account awaiting admin approval.');
-        } else if (error.response.status === 400) {
-          setError(error.response.data.message || 'Invalid username or password.');
-        } else if (error.response.status === 409) {
-          setError('Username already exists. Please choose another.');
+      if (axios.isAxiosError(error)) {
+        if (error.response) {
+          if (error.response.status === 403) {
+            setError('Account awaiting admin approval.');
+          } else if (error.response.status === 400) {
+            setError(error.response.data.message || 'Invalid username or password.');
+          } else if (error.response.status === 409) {
+            setError('Username already exists. Please choose another.');
+          } else {
+            setError('An error occurred. Please try again later.');
+          }
         } else {
-          setError('An error occurred. Please try again later.');
+          setError('Network error. Please check your connection.');
         }
       } else {
-        setError('Network error. Please check your connection.');
+        setError('An unexpected error occurred.');
       }
     } finally {
       setIsSubmitting(false);
@@ -111,7 +121,7 @@ const LoginModal = ({ setIsLoginModalOpen, isLoginModalOpen, fetchUser }) => {
         message: `Password reset instructions sent to ${email}. Please check your inbox.` 
       });
     } catch (error) {
-      if (error.response && error.response.status === 404) {
+      if (axios.isAxiosError(error) && error.response && error.response.status === 404) {
         setResetMessage({ type: 'error', message: 'Email not found. Please try again.' });
       } else {
         setResetMessage({ type: 'error', message: 'Failed to reset password. Please try again later.' });
@@ -142,22 +152,22 @@ const LoginModal = ({ setIsLoginModalOpen, isLoginModalOpen, fetchUser }) => {
     <AnimatePresence>
       {isLoginModalOpen && (
         <motion.div
-          className="login-modal-overlay fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-50"
+          className="login-modal-overlay fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-[200]"
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
           onClick={(e) => e.target === e.currentTarget && handleClose()}
           variants={overlayVariants}
           initial="hidden"
           animate="visible"
           exit="exit"
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
           <motion.div 
             className="modal-content relative bg-white dark:bg-neutral-800 rounded-2xl shadow-xl max-w-md w-full mx-4"
+            style={{ maxHeight: '90vh', overflowY: 'auto' }}
             variants={modalVariants}
             initial="hidden"
             animate="visible"
             exit="exit"
             onClick={(e) => e.stopPropagation()}
-            style={{ margin: 'auto' }}
           >
             <button
               onClick={handleClose}

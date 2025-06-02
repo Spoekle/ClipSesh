@@ -1,24 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaSearch, FaTimes, FaUserCircle, FaClipboard, FaRegChartBar, FaCog, FaBell } from 'react-icons/fa';
+import { FaSearch, FaTimes, FaUserCircle, FaRegChartBar } from 'react-icons/fa';
 import { MdLogin, MdLogout, MdDashboard, MdNotifications } from "react-icons/md";
-import LoginModal from '../LoginModal';
 import { User } from '../../../types/adminTypes';
-import axios from 'axios';
-import apiUrl from '../../../config/config';
-import { UnreadCountResponse } from '../../../types/notificationTypes';
-import NotificationBadge from '../../../components/Notification/NotificationBadge'; // Add this import
+import NotificationBadge from '../../../components/Notification/NotificationBadge';
 
 interface DesktopNavbarProps {
   toggleLoginModal: () => void;
-  isLoginModalOpen: boolean;
   user: User | null;
   isDropdownOpen: boolean;
   setIsDropdownOpen: React.Dispatch<React.SetStateAction<boolean>>;
   toggleDropdown: () => void;
   handleLogout: () => void;
-  fetchUser: () => Promise<User | null>;
   setSearchInput: React.Dispatch<React.SetStateAction<string>>;
   searchInput: string;
   handleSearch: (e: React.FormEvent) => void;
@@ -26,18 +20,18 @@ interface DesktopNavbarProps {
   showRecentSearched: boolean;
   setShowRecentSearched: React.Dispatch<React.SetStateAction<boolean>>;
   removeRecentSearch: (search: string) => void;
-  dropdownRef: React.RefObject<HTMLDivElement>;
+  dropdownRef: React.RefObject<HTMLDivElement | null>;
+  isNotificationDropdownOpen: boolean;
+  toggleNotificationDropdown: () => void;
 }
 
 function DesktopNavbar({
   toggleLoginModal,
-  isLoginModalOpen,
   user,
   isDropdownOpen,
   setIsDropdownOpen,
   toggleDropdown,
   handleLogout,
-  fetchUser,
   setSearchInput,
   searchInput,
   handleSearch,
@@ -45,11 +39,12 @@ function DesktopNavbar({
   showRecentSearched,
   setShowRecentSearched,
   removeRecentSearch,
-  dropdownRef
+  dropdownRef,
+  isNotificationDropdownOpen,
+  toggleNotificationDropdown
 }: DesktopNavbarProps) {
   const searchRef = useRef<HTMLDivElement>(null);
   const [searchFocused, setSearchFocused] = useState(false);
-  const navigate = useNavigate();
 
   // Close recent searches dropdown when clicking outside
   useEffect(() => {
@@ -281,14 +276,11 @@ function DesktopNavbar({
           {user ? (
             <div className="relative" ref={dropdownRef}>
               <div className="flex items-center space-x-2">
-                {/* Animated NotificationBadge */}
-                <motion.div
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                >
-                  <NotificationBadge />
-                </motion.div>
+                {/* NotificationBadge with external state management */}
+                <NotificationBadge 
+                  isOpen={isNotificationDropdownOpen}
+                  onToggle={toggleNotificationDropdown}
+                />
                 
                 <motion.button
                   whileHover={{ scale: 1.05 }}
@@ -419,14 +411,6 @@ function DesktopNavbar({
           )}
         </motion.div>
       </div>
-      
-      {isLoginModalOpen && (
-        <LoginModal
-          isLoginModalOpen={isLoginModalOpen}
-          setIsLoginModalOpen={toggleLoginModal}
-          fetchUser={fetchUser}
-        />
-      )}
     </>
   );
 }
