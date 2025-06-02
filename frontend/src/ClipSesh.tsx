@@ -4,10 +4,10 @@ import axios from 'axios';
 import Navbar from './pages/components/Navbar';
 import Footer from './pages/components/Footer';
 import EditorDash from './pages/EditorDash';
-import ClipViewer from './pages/ClipViewer/Index'
+import ClipViewer from './pages/Clips/Index'
 import ClipSearch from './pages/ClipSearch';
 import Home from './pages/Home';
-import AdminDash from './pages/AdminDash/Index';
+import AdminDash from './pages/Admin/Index';
 import ResetPassword from './pages/ResetPassword';
 import PrivacyStatement from './pages/PrivacyStatement';
 import ProfilePage from './pages/ProfilePage';
@@ -232,8 +232,8 @@ function ClipSesh() {
   };
 
   return (
-    <NotificationProvider>
-      <Router>
+    <Router>
+      <NotificationProvider>
         <div className="flex flex-col min-h-screen">
           <Navbar user={user} setUser={setUser} />
           <main className="flex-grow">
@@ -264,10 +264,10 @@ function ClipSesh() {
             </Routes>
           </main>
           <Footer />
+          <NotificationContainer />
         </div>
-      </Router>
-      <NotificationContainer />
-    </NotificationProvider>
+      </NotificationProvider>
+    </Router>
   );
 }
 

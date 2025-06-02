@@ -4,7 +4,10 @@ import axios from 'axios';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import LoadingBar from 'react-top-loading-bar';
 import RatedClips from './components/RatedClips';
+import ActivityTracker from './components/ActivityTracker';
+import { getCurrentSeason } from '../../utils/seasonHelpers';
 import apiUrl from '../../config/config';
+
 import { motion } from 'framer-motion';
 import { 
   FaStar, 
@@ -17,7 +20,6 @@ import {
 import PageLayout from '../components/layouts/PageLayout';
 import { User } from '../../types/adminTypes';
 
-// Define missing types
 interface RatingUser {
   username: string;
   userId: string;
@@ -45,7 +47,6 @@ interface Clip {
   title: string;
   url: string;
   createdAt: string;
-  // Add other properties as needed
 }
 
 interface UserRatingData {
@@ -57,7 +58,7 @@ interface UserRatingData {
   'deny': number;
   total: number;
   percentageRated: number;
-  [key: string]: number | string; // Add index signature for string keys
+  [key: string]: number | string;
 }
 
 interface SeasonInfo {
@@ -96,27 +97,23 @@ const Stats: React.FC<StatsProps> = ({ user }) => {
 
   const fetchClipsAndRatings = async (): Promise<void> => {
     try {
-      // Use query parameters for backend filtering/sorting
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
       
-      // Request clips with pagination and sorting from the backend
       const clipResponse = await axios.get(`${apiUrl}/api/clips`, {
         params: {
-          limit: 1000, // Get a large number of clips for admin view
+          limit: 1000,
           sortBy: 'createdAt',
           sortOrder: 'desc',
-          includeRatings: true // Request ratings to be included with clips
+          includeRatings: true
         },
         headers
       });
       
-      // Process the response data
       let clipsData: Clip[] = [];
       let ratingsData: Record<string, Rating> = {};
       
       if (clipResponse.data) {
-        // Check for clips in various response formats
         if (Array.isArray(clipResponse.data)) {
           clipsData = clipResponse.data;
         } else if (clipResponse.data.clips && Array.isArray(clipResponse.data.clips)) {
@@ -125,20 +122,16 @@ const Stats: React.FC<StatsProps> = ({ user }) => {
           clipsData = clipResponse.data.data;
         }
         
-        // Check for included ratings in the response
         if (clipResponse.data.ratings && typeof clipResponse.data.ratings === 'object') {
           ratingsData = clipResponse.data.ratings;
         }
       }
       
-      // Update state with fetched data
       setClips(clipsData);
       
-      // If ratings weren't included in the response, fetch them separately
       if (Object.keys(ratingsData).length === 0 && clipsData.length > 0) {
         setProgress(65);
         
-        // Make individual requests for ratings if not included in the clips response
         const ratingPromises = clipsData.map(clip =>
           axios.get<Rating>(`${apiUrl}/api/ratings/${clip._id}`, { headers })
         );
@@ -153,7 +146,6 @@ const Stats: React.FC<StatsProps> = ({ user }) => {
         }, {});
       }
       
-      // Transform ratings to ensure they have the expected format for the frontend
       const transformedRatings = transformRatings(ratingsData);
       setRatings(transformedRatings);
       
@@ -162,14 +154,11 @@ const Stats: React.FC<StatsProps> = ({ user }) => {
     }
   };
 
-  // Utility function to transform backend rating format to frontend expected format
   const transformRatings = (ratings: Record<string, any>): Record<string, Rating> => {
     const transformed: Record<string, Rating> = {};
     
     Object.entries(ratings).forEach(([clipId, ratingData]) => {
-      // Check if we need to transform this rating data
       if (ratingData && !ratingData.ratingCounts && ratingData.ratings) {
-        // Transform from backend format to frontend expected format
         const ratingCounts = [
           { 
             rating: '1', 
@@ -203,7 +192,6 @@ const Stats: React.FC<StatsProps> = ({ user }) => {
           ratingCounts: ratingCounts
         };
       } else {
-        // Rating is already in the right format or is null/undefined
         transformed[clipId] = ratingData;
       }
     });
@@ -230,16 +218,13 @@ const Stats: React.FC<StatsProps> = ({ user }) => {
     Object.keys(ratings).forEach(clipId => {
       const clipRatingCounts = ratings[clipId].ratingCounts;
 
-      // Check if clipRatingCounts is an array
       if (!Array.isArray(clipRatingCounts)) {
         console.error(`clipRatingCounts for Clip ID ${clipId} is not an array:`, clipRatingCounts);
         return;
       }
 
-      // Loop through each rating count entry in the array
       clipRatingCounts.forEach(ratingData => {
         if (ratingData.users && ratingData.users.length > 0) {
-          // Iterate over the users who rated this clip
           ratingData.users.forEach(ratingUser => {
             if (ratingUser.username === user.username) {
               if (!userRatingCount[user.username]) {
@@ -255,7 +240,6 @@ const Stats: React.FC<StatsProps> = ({ user }) => {
                 };
               }
               if (userRatingCount[user.username][ratingData.rating] !== undefined) {
-                // Use Number() to ensure we're working with a number for the increment operation
                 userRatingCount[user.username][ratingData.rating] = Number(userRatingCount[user.username][ratingData.rating]) + 1;
                 userRatingCount[user.username].total++;
               } else {
@@ -268,30 +252,17 @@ const Stats: React.FC<StatsProps> = ({ user }) => {
       });
     });
 
-    // Convert userRatingCount object into an array of objects with username and rating counts
     const userRatingCounts = Object.keys(userRatingCount).map(username => ({
       ...userRatingCount[username]
     }));
 
-    // Sort userRatingCounts by total count in descending order
     userRatingCounts.sort((a, b) => b.total - a.total);
 
     setUserRatings(userRatingCounts);
   };
 
   const getSeason = () => {
-    const currentDate = new Date().toLocaleDateString();
-    let season = '';
-
-    if (currentDate >= '12-21' || currentDate <= '03-19') {
-      season = 'Winter';
-    } else if (currentDate >= '03-20' && currentDate <= '06-20') {
-      season = 'Spring';
-    } else if (currentDate >= '06-21' && currentDate <= '09-21') {
-      season = 'Summer';
-    } else {
-      season = 'Fall';
-    }
+    const { season } = getCurrentSeason();
 
     setSeasonInfo(prevSeasonInfo => ({
       ...prevSeasonInfo,
@@ -309,7 +280,6 @@ const Stats: React.FC<StatsProps> = ({ user }) => {
     { name: 'Denied', value: userRatings.reduce((acc, user) => acc + user['deny'], 0) },
   ];
 
-  // Function to get an inspirational message based on rating percentage
   const getInspirationMessage = (percentage: number) => {
     if (percentage === 100) {
       return {
@@ -637,8 +607,12 @@ const Stats: React.FC<StatsProps> = ({ user }) => {
               ))}
             </PieChart>
           </ResponsiveContainer>
+
+          <ActivityTracker />
         </div>
       </motion.div>
+
+      
       
       {/* Rated clips section */}
       {clips.length > 0 && Object.keys(ratings).length > 0 && (

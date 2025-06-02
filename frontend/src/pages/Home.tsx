@@ -29,7 +29,7 @@ function HomePage() {
   });
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
-  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [, setIsVideoPlaying] = useState(false);
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -53,7 +53,6 @@ function HomePage() {
     
     // Add scroll listener for animations
     const handleScroll = () => {
-      const scrollPosition = window.scrollY;
       const elements = document.querySelectorAll('.scroll-animate');
       
       elements.forEach(el => {
@@ -94,25 +93,6 @@ function HomePage() {
       y: 0,
       transition: { delay: custom * 0.2, duration: 0.6 }
     })
-  };
-  
-  const staggerItems = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.2
-      }
-    }
-  };
-  
-  const featureItem = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.5 }
-    }
   };
 
   // Steps for the "How it works" section

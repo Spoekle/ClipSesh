@@ -3,8 +3,15 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FaPlay } from 'react-icons/fa';
 import { useNotification } from '../../../context/NotificationContext';
+import { Rating, Clip } from '../../../types/adminTypes';
 
-const RatedClips = ({ ratingsData, clipsData, location }) => {
+interface RatedClipsProps {
+    ratingsData: Record<string, Rating>;
+    clipsData: Clip[];
+    location?: any;
+}
+
+const RatedClips: React.FC<RatedClipsProps> = ({ ratingsData, clipsData, location }) => {
     const [ratedClips, setRatedClips] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(9);
@@ -34,7 +41,7 @@ const RatedClips = ({ ratingsData, clipsData, location }) => {
                 }
 
                 // Filter clips that user has rated
-                const userRated = [];
+                const userRated: Clip[] = [];
                 
                 clipsData.forEach(clip => {
                     const clipRatings = ratingsData[clip._id];
@@ -88,12 +95,12 @@ const RatedClips = ({ ratingsData, clipsData, location }) => {
     const totalPages = Math.ceil(ratedClips.length / itemsPerPage);
 
     // Handle page change
-    const paginate = (pageNumber) => {
+    const paginate = (pageNumber: number) => {
         setCurrentPage(pageNumber);
     };
 
     // Rating badge color
-    const getRatingColor = (rating) => {
+    const getRatingColor = (rating: string | number) => {
         if (rating === 1) return "bg-blue-600";
         if (rating === 2) return "bg-green-600";
         if (rating === 3) return "bg-amber-500";

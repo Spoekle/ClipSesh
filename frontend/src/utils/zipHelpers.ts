@@ -115,11 +115,10 @@ export const uploadFileInChunks = async (options: ChunkedUploadOptions): Promise
           });
           
           chunkUploaded = true;
-        } catch (error) {
+        } catch {
           if (attemptCount >= 3) {
             failedChunks.push(i);
           } else {
-            // Wait before retry with exponential backoff
             const delay = attemptCount * 2000;
             await new Promise(resolve => setTimeout(resolve, delay));
           }

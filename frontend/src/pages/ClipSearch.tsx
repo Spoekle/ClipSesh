@@ -228,7 +228,7 @@ const ClipSearch: React.FC = () => {
         progress={progress}
         onLoaderFinished={() => setProgress(0)}
         shadow={true}
-        height={3}
+        height={4}
       />
       
       {/* Search Hero Section */}
@@ -269,10 +269,10 @@ const ClipSearch: React.FC = () => {
                     onChange={handleSortChange}
                     className="appearance-none bg-white/20 hover:bg-white/30 text-white rounded px-4 py-2 pr-8 cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/50"
                   >
-                    <option value="newest">Newest First</option>
-                    <option value="oldest">Oldest First</option>
-                    <option value="upvotes">Most Upvotes</option>
-                    <option value="downvotes">Most Downvotes</option>
+                    <option className="text-neutral-900" value="newest">Newest First</option>
+                    <option className="text-neutral-900" value="oldest">Oldest First</option>
+                    <option className="text-neutral-900" value="upvotes">Most Upvotes</option>
+                    <option className="text-neutral-900" value="downvotes">Most Downvotes</option>
                   </select>
                   <FaSortAmountDown className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
                 </div>

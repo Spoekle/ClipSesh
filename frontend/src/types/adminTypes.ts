@@ -11,6 +11,12 @@ export interface User {
   createdAt?: string;
 }
 
+export interface RatingDistributionProps {
+  userRatings: UserRating[];
+  sortBy: 'username' | 'rating' | 'percentage';
+  setSortBy: React.Dispatch<React.SetStateAction<'username' | 'rating' | 'percentage'>>;
+}
+
 export interface CreateUserFormData {
   username: string;
   password: string;
@@ -40,7 +46,7 @@ export interface Clip {
   downvotes: number;
   comments: Comment[];
   createdAt: string;
-  updatedAt?: string;
+  updatedAt: string;
 }
 
 export interface Reply {
@@ -66,15 +72,23 @@ export interface RatingCount {
   users: RatingUser[];
 }
 
+// Updated Rating interface to match actual structure
+export interface RatingUser {
+  userId: string;
+  username: string;
+}
+
 export interface Rating {
   clipId: string;
   ratingCounts: RatingCount[];
   totalRatings: number;
-}
-
-export interface RatingUser {
-  userId: string;
-  username: string;
+  ratings?: {
+    '1'?: RatingUser[];
+    '2'?: RatingUser[];
+    '3'?: RatingUser[];
+    '4'?: RatingUser[];
+    deny?: RatingUser[];
+  };
 }
 
 export interface UserRating {
@@ -91,7 +105,7 @@ export interface UserRating {
 // Other admin dashboard types
 export interface SeasonInfo {
   season?: string;
-  clipAmount?: number;
+  clipAmount: number;
 }
 
 export interface Zip {

@@ -190,7 +190,7 @@ const NotificationsPage: React.FC = () => {
         <meta name="description" content="Your notifications on ClipSesh" />
       </Helmet>
       
-      <LoadingBar color='#3b82f6' height={3} progress={progress} onLoaderFinished={() => setProgress(0)} />
+      <LoadingBar color='#3b82f6' height={4} progress={progress} onLoaderFinished={() => setProgress(0)} />
       
       <div className="container mx-auto px-4 py-8">
         <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-lg overflow-hidden">
