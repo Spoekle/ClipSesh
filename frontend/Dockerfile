@@ -4,7 +4,7 @@ FROM node:18-alpine AS build
 # Set the working directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json
+# Copy package files first for better caching
 COPY package*.json ./
 
 # Install dependencies
@@ -16,7 +16,7 @@ COPY . .
 # Build the application
 RUN npm run build
 
-# Production stage
+# Production stage using smaller alpine image
 FROM nginx:alpine
 
 # Copy the build output to the Nginx HTML directory
