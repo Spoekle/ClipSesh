@@ -1,14 +1,23 @@
 // User-related types
+export interface Trophy {
+  _id: string;
+  trophyName: string;
+  description: string;
+  dateEarned: string;
+}
+
 export interface User {
   _id: string;
   username: string;
   email?: string;
+  password?: string;
   roles: string[];
   profilePicture?: string;
   discordId?: string;
   discordUsername?: string;
   status?: string;
   createdAt?: string;
+  trophies?: Trophy[];
 }
 
 export interface RatingDistributionProps {

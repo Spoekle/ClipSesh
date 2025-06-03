@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import apiUrl from '../../../config/config';
 import { motion } from 'framer-motion';
-import { FaChartLine } from 'react-icons/fa';
 import DateRangePicker from '../../../components/DateRangePicker';
+import { getMyRatings, UserRatingData } from '../../../services/ratingService';
 
 interface DataPoint {
   date: string;
@@ -12,7 +10,7 @@ interface DataPoint {
 }
 
 const ActivityTracker: React.FC = () => {
-  const [rawRatings, setRawRatings] = useState<any[]>([]);
+  const [rawRatings, setRawRatings] = useState<UserRatingData[]>([]);
   const [data, setData] = useState<DataPoint[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,7 +22,6 @@ const ActivityTracker: React.FC = () => {
       setLoading(true);
       setError(null);
       try {
-        const token = localStorage.getItem('token');
         const params: any = {};
         
         // Add date range parameters if set
@@ -38,11 +35,8 @@ const ActivityTracker: React.FC = () => {
           params.endDate = endDate.toISOString().split('T')[0];
         }
         
-        const res = await axios.get(`${apiUrl}/api/ratings/my-ratings`, {
-          headers: { Authorization: `Bearer ${token}` },
-          params
-        });
-        setRawRatings(res.data.ratings || []);
+        const result = await getMyRatings(params);
+        setRawRatings(result.ratings || []);
       } catch (e) {
         setError('Unable to load activity');
       } finally {

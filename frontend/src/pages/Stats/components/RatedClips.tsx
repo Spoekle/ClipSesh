@@ -5,6 +5,11 @@ import { FaPlay } from 'react-icons/fa';
 import { useNotification } from '../../../context/NotificationContext';
 import { Rating, Clip } from '../../../types/adminTypes';
 
+// Extended Clip interface to include user rating
+interface ExtendedClip extends Clip {
+    userRating?: string | number;
+}
+
 interface RatedClipsProps {
     ratingsData: Record<string, Rating>;
     clipsData: Clip[];
@@ -12,7 +17,7 @@ interface RatedClipsProps {
 }
 
 const RatedClips: React.FC<RatedClipsProps> = ({ ratingsData, clipsData, location }) => {
-    const [ratedClips, setRatedClips] = useState([]);
+    const [ratedClips, setRatedClips] = useState<ExtendedClip[]>([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(9);
     const [isLoading, setIsLoading] = useState(true);
@@ -41,7 +46,7 @@ const RatedClips: React.FC<RatedClipsProps> = ({ ratingsData, clipsData, locatio
                 }
 
                 // Filter clips that user has rated
-                const userRated: Clip[] = [];
+                const userRated: ExtendedClip[] = [];
                 
                 clipsData.forEach(clip => {
                     const clipRatings = ratingsData[clip._id];
@@ -55,7 +60,7 @@ const RatedClips: React.FC<RatedClipsProps> = ({ ratingsData, clipsData, locatio
                     
                     if (userRatedThis) {
                         // Find what rating the user gave
-                        let userRating = null;
+                        let userRating: string | number | undefined = undefined;
                         clipRatings.ratingCounts.forEach(ratingCount => {
                             const userRatingObj = ratingCount.users.find(u => u.userId === userId);
                             if (userRatingObj) {
@@ -72,7 +77,7 @@ const RatedClips: React.FC<RatedClipsProps> = ({ ratingsData, clipsData, locatio
                 
                 // Sort by creation date (newest first)
                 const sortedRated = [...userRated].sort(
-                    (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+                    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
                 );
                 
                 setRatedClips(sortedRated);
@@ -101,10 +106,10 @@ const RatedClips: React.FC<RatedClipsProps> = ({ ratingsData, clipsData, locatio
 
     // Rating badge color
     const getRatingColor = (rating: string | number) => {
-        if (rating === 1) return "bg-blue-600";
-        if (rating === 2) return "bg-green-600";
-        if (rating === 3) return "bg-amber-500";
-        if (rating === 4) return "bg-orange-500";
+        if (rating === 1 || rating === '1') return "bg-blue-600";
+        if (rating === 2 || rating === '2') return "bg-green-600";
+        if (rating === 3 || rating === '3') return "bg-amber-500";
+        if (rating === 4 || rating === '4') return "bg-orange-500";
         if (rating === "deny") return "bg-red-600";
         return "bg-neutral-600";
     };
@@ -139,7 +144,7 @@ const RatedClips: React.FC<RatedClipsProps> = ({ ratingsData, clipsData, locatio
             ) : (
                 <>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 p-4">
-                        {currentClips.map((clip) => (
+                        {currentClips.map((clip: ExtendedClip) => (
                             <motion.div
                                 key={clip._id}
                                 initial={{ opacity: 0, y: 20 }}
@@ -155,8 +160,8 @@ const RatedClips: React.FC<RatedClipsProps> = ({ ratingsData, clipsData, locatio
                                 >
                                     {/* Rating badge */}
                                     <div className="absolute z-30 top-2 right-2 backdrop-blur-sm text-white px-2 py-1 rounded-md flex items-center font-bold text-sm shadow-md"
-                                         style={{ backgroundColor: getRatingColor(clip.userRating) }}>
-                                        {clip.userRating === "deny" ? "Denied" : `Rated ${clip.userRating}`}
+                                         style={{ backgroundColor: getRatingColor(clip.userRating || 'unknown') }}>
+                                        {clip.userRating === "deny" ? "Denied" : `Rated ${clip.userRating || 'Unknown'}`}
                                     </div>
                                     
                                     {/* Streamer name */}
