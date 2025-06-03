@@ -1,0 +1,39 @@
+# Node modules and logs
+node_modules
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Development files
+.git
+.gitignore
+.env.local
+.env.development
+.env.test
+README.md
+
+# Large directories that are mounted as volumes
+src/uploads/
+src/profilePictures/
+src/download/
+src/download/tmp/
+
+# Avoid copying processed videos and large files
+*.mp4
+*.mkv
+*.webm
+*.mov
+*.avi
+*.wmv
+*.flv
+*.zip
+
+# Docker specific
+Dockerfile
+.dockerignore
+
+# Build artifacts and temporary files
+dist
+build
+.tmp
+.temp

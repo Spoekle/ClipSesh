@@ -5,12 +5,43 @@ const path = require('path');
 const Fuse = require('fuse.js');
 const bcrypt = require('bcrypt');
 const ffmpeg = require('fluent-ffmpeg');
+const { v4: uuidv4 } = require('uuid');
+const ytdl = require('ytdl-core');
+const axios = require('axios');
+const http = require('http');
+const https = require('https');
+const mongoose = require('mongoose');
 
+// Import necessary modules and models
 const Clip = require('../models/clipModel');
 const IpVote = require('../models/ipVoteModel');
+const { PublicConfig } = require('../models/configModel');
 const authorizeRoles = require('./middleware/AuthorizeRoles');
 const searchLimiter = require('./middleware/SearchLimiter');
 const clipUpload = require('./storage/ClipUpload');
+const Notification = require('../models/notificationModel');
+const User = require('../models/userModel');
+const Rating = require('../models/ratingModel');
+const { getClipPath, getDailyDirectory, isLegacyPath } = require('../utils/seasonHelpers');
+
+/**
+ * Update the clip count in the public config
+ */
+async function updateClipCount() {
+  try {
+    const count = await Clip.countDocuments();
+    await PublicConfig.findOneAndUpdate(
+      {}, 
+      { clipAmount: count }, 
+      { upsert: true, new: true }
+    );
+    console.log(`Updated clipAmount in config: ${count} clips`);
+    return count;
+  } catch (error) {
+    console.error('Error updating clip count:', error);
+    return null;
+  }
+}
 
 /**
  * @swagger
@@ -25,7 +56,48 @@ const clipUpload = require('./storage/ClipUpload');
  *   get:
  *     tags:
  *       - clips
- *     summary: Get all clips
+ *     summary: Get clips with pagination, filtering, and sorting
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *         description: Page number (starting from 1)
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         description: Number of clips per page
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *         description: Field to sort by (createdAt, upvotes, downvotes)
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *         description: Sort direction (asc, desc)
+ *       - in: query
+ *         name: streamer
+ *         schema:
+ *           type: string
+ *         description: Filter by streamer name
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search clips by title or streamer
+ *       - in: query
+ *         name: excludeRatedByUser
+ *         schema:
+ *           type: string
+ *         description: User ID to exclude clips rated by this user
+ *       - in: query
+ *         name: excludeDeniedClips
+ *         schema:
+ *           type: boolean
+ *         description: Exclude denied clips
  *     responses:
  *       200:
  *         description: OK
@@ -34,8 +106,349 @@ const clipUpload = require('./storage/ClipUpload');
  */
 router.get('/', async (req, res) => {
     try {
-        const clips = await Clip.find();
-        res.json(clips);
+        let { 
+            page = 1, 
+            limit = 12, 
+            sortBy = 'createdAt', 
+            sortOrder = 'desc',
+            streamer = '',
+            search = '',
+            excludeRatedByUser = '',
+            includeRatings = false
+        } = req.query;
+
+        // Parse numeric values and boolean flags
+        page = Math.max(1, parseInt(page) || 1);
+        limit = Math.min(Math.max(1, parseInt(limit) || 12), 100);
+        
+        console.log(`Clips query: page=${page}, limit=${limit}, sortBy=${sortBy}, sortOrder=${sortOrder}, streamer=${streamer}, search=${search}, excludeRatedByUser=${excludeRatedByUser}`);
+        
+        // Basic query object
+        const query = {};
+        
+        // Add streamer filter if provided
+        if (streamer && streamer.trim()) {
+            query.streamer = { $regex: new RegExp(streamer.trim(), 'i') };
+        }
+
+        // Add search term filter if provided
+        if (search && search.trim()) {
+            query.$or = [
+                { title: { $regex: new RegExp(search.trim(), 'i') } },
+                { streamer: { $regex: new RegExp(search.trim(), 'i') } }
+            ];
+        }
+
+        // Get total count of all clips (for overall pagination)
+        const totalClipsBeforeFiltering = await Clip.countDocuments({});
+
+        // Find all ratings by the user if excludeRatedByUser is specified
+        let userRatedClipIds = [];
+        if (excludeRatedByUser && mongoose.Types.ObjectId.isValid(excludeRatedByUser)) {
+            try {
+                // More efficient approach: Find only ratings where this specific user has rated
+                const ratings = await Rating.find({});
+                
+                // Filter to find clips rated by this specific user
+                userRatedClipIds = ratings.filter(rating => {
+                    // Check each rating category (1-4 and deny)
+                    const categories = ['1', '2', '3', '4', 'deny'];
+                    for (const cat of categories) {
+                        if (rating.ratings && 
+                            rating.ratings[cat] && 
+                            Array.isArray(rating.ratings[cat])) {
+                            // Check if user has rated in this category
+                            const userRated = rating.ratings[cat].some(r => 
+                                r.userId && r.userId.toString() === excludeRatedByUser.toString()
+                            );
+                            if (userRated) return true;
+                        }
+                    }
+                    return false;
+                }).map(rating => rating.clipId);
+                
+                console.log(`Found ${userRatedClipIds.length} clips rated by user ${excludeRatedByUser}`);
+                
+                // Add to query to exclude these clips
+                if (userRatedClipIds.length > 0) {
+                    query._id = { $nin: userRatedClipIds };
+                }
+            } catch (error) {
+                console.error('Error fetching user ratings:', error);
+            }
+        }
+        
+        // Count clips after all filters applied
+        const totalClipsAfterAllFilters = await Clip.countDocuments(query);
+        
+        // Calculate total pages based on filtered clips
+        const totalPages = Math.max(1, Math.ceil(totalClipsAfterAllFilters / limit));
+        
+        // Ensure page doesn't exceed total pages
+        const validPage = Math.min(page, totalPages);
+        
+        // Calculate skip value for pagination
+        const skip = (validPage - 1) * limit;
+        
+        console.log(`Pagination: totalClips=${totalClipsAfterAllFilters}, totalPages=${totalPages}, requestedPage=${page}, validPage=${validPage}, skip=${skip}, limit=${limit}`);
+        
+        // Handle special sorting cases that require aggregation
+        let clips;
+        
+        if (sortBy === 'ratio' || sortBy === 'averageRating' || sortBy === 'ratingCount') {
+            // Use aggregation pipeline for complex sorting
+            const pipeline = [
+                { $match: query },
+                {
+                    $addFields: {
+                        // Calculate vote ratio as percentage (upvotes / (upvotes + downvotes) * 100)
+                        ratio: {
+                            $cond: {
+                                if: { $eq: [{ $add: ['$upvotes', '$downvotes'] }, 0] },
+                                then: 0,
+                                else: { 
+                                    $multiply: [
+                                        { $divide: ['$upvotes', { $add: ['$upvotes', '$downvotes'] }] },
+                                        100
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            ];
+
+            // Add rating-related calculations if needed
+            if (sortBy === 'averageRating' || sortBy === 'ratingCount') {
+                pipeline.push({
+                    $lookup: {
+                        from: 'ratings',
+                        localField: '_id',
+                        foreignField: 'clipId',
+                        as: 'ratingData'
+                    }
+                });
+
+                if (sortBy === 'averageRating') {
+                    pipeline.push({
+                        $addFields: {
+                            averageRating: {
+                                $cond: {
+                                    if: { 
+                                        $or: [
+                                            { $eq: [{ $size: '$ratingData' }, 0] },
+                                            { $eq: [{ $arrayElemAt: ['$ratingData', 0] }, null] }
+                                        ]
+                                    },
+                                    then: 999, // Put clips with no ratings at the end
+                                    else: {
+                                        $let: {
+                                            vars: {
+                                                rating: { $arrayElemAt: ['$ratingData', 0] }
+                                            },
+                                            in: {
+                                                $cond: {
+                                                    if: {
+                                                        $or: [
+                                                            { $eq: ['$$rating', null] },
+                                                            { $not: { $ifNull: ['$$rating.ratings', false] } }
+                                                        ]
+                                                    },
+                                                    then: 999,
+                                                    else: {
+                                                        $let: {
+                                                            vars: {
+                                                                // Get counts for each rating category
+                                                                rating1Count: { $size: { $ifNull: ['$$rating.ratings.1', []] } },
+                                                                rating2Count: { $size: { $ifNull: ['$$rating.ratings.2', []] } },
+                                                                rating3Count: { $size: { $ifNull: ['$$rating.ratings.3', []] } },
+                                                                rating4Count: { $size: { $ifNull: ['$$rating.ratings.4', []] } },
+                                                                denyCount: { $size: { $ifNull: ['$$rating.ratings.deny', []] } }
+                                                            },
+                                                            in: {
+                                                                $let: {
+                                                                    vars: {
+                                                                        totalValidRatings: { 
+                                                                            $add: ['$$rating1Count', '$$rating2Count', '$$rating3Count', '$$rating4Count'] 
+                                                                        }
+                                                                    },
+                                                                    in: {
+                                                                        $cond: {
+                                                                            if: { $eq: ['$$totalValidRatings', 0] },
+                                                                            then: 1000, // Use 1000 for deny-only clips to ensure they're always at the end regardless of sort direction
+                                                                            else: {
+                                                                                // Calculate weighted average: (1*count1 + 2*count2 + 3*count3 + 4*count4) / total valid ratings
+                                                                                $divide: [
+                                                                                    {
+                                                                                        $add: [
+                                                                                            { $multiply: [1, '$$rating1Count'] },
+                                                                                            { $multiply: [2, '$$rating2Count'] },
+                                                                                            { $multiply: [3, '$$rating3Count'] },
+                                                                                            { $multiply: [4, '$$rating4Count'] }
+                                                                                        ]
+                                                                                    },
+                                                                                    '$$totalValidRatings'
+                                                                                ]
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                if (sortBy === 'ratingCount') {
+                    pipeline.push({
+                        $addFields: {
+                            ratingCount: {
+                                $cond: {
+                                    if: { 
+                                        $or: [
+                                            { $eq: [{ $size: '$ratingData' }, 0] },
+                                            { $eq: [{ $arrayElemAt: ['$ratingData', 0] }, null] }
+                                        ]
+                                    },
+                                    then: 0,
+                                    else: {
+                                        $let: {
+                                            vars: {
+                                                rating: { $arrayElemAt: ['$ratingData', 0] }
+                                            },
+                                            in: {
+                                                $cond: {
+                                                    if: {
+                                                        $or: [
+                                                            { $eq: ['$$rating', null] },
+                                                            { $not: { $ifNull: ['$$rating.ratings', false] } }
+                                                        ]
+                                                    },
+                                                    then: 0,
+                                                    else: {
+                                                        // Count ALL ratings including denies
+                                                        $add: [
+                                                            { $size: { $ifNull: ['$$rating.ratings.1', []] } },
+                                                            { $size: { $ifNull: ['$$rating.ratings.2', []] } },
+                                                            { $size: { $ifNull: ['$$rating.ratings.3', []] } },
+                                                            { $size: { $ifNull: ['$$rating.ratings.4', []] } },
+                                                            { $size: { $ifNull: ['$$rating.ratings.deny', []] } }
+                                                        ]
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+
+            // Add sorting
+            const sortStage = {};
+            // For average rating, we need to invert the sort direction since lower numbers are better
+            // Also ensure deny-only clips (1000) always go to end regardless of sort direction
+            if (sortBy === 'averageRating') {
+                sortStage[sortBy] = sortOrder === 'asc' ? -1 : 1; // Inverted: asc becomes -1, desc becomes 1
+                // Add a secondary sort to ensure deny-only clips (value 1000) always go to end
+                pipeline.push({ 
+                    $addFields: {
+                        sortPriority: {
+                            $cond: {
+                                if: { $gte: ['$averageRating', 1000] },
+                                then: 1, // Deny-only clips get priority 1 (last)
+                                else: 0  // Regular clips get priority 0 (first)
+                            }
+                        }
+                    }
+                });
+                pipeline.push({ 
+                    $sort: { 
+                        sortPriority: 1,        // Sort by priority first (deny clips always last)
+                        [sortBy]: sortStage[sortBy] // Then by average rating
+                    } 
+                });
+            } else {
+                sortStage[sortBy] = sortOrder === 'asc' ? 1 : -1; // Normal sorting for other fields
+                pipeline.push({ $sort: sortStage });
+            }
+
+            // Add pagination
+            pipeline.push({ $skip: skip });
+            pipeline.push({ $limit: limit });
+
+            console.log(`Aggregation pipeline for ${sortBy}:`, JSON.stringify(pipeline, null, 2));
+            clips = await Clip.aggregate(pipeline);
+        } else {
+            // Simple sorting for basic fields
+            const sortObj = { [sortBy]: sortOrder === 'asc' ? 1 : -1 };
+            
+            clips = await Clip.find(query)
+                .sort(sortObj)
+                .skip(skip)
+                .limit(limit)
+                .lean();
+        }
+        
+        console.log(`Query executed: found ${clips.length} clips for page ${validPage}`);
+        
+        // Prepare ratings data if requested
+        let ratingsData = {};
+        if (clips.length > 0) {
+            const clipIds = clips.map(clip => clip._id);
+            
+            // Fetch ratings for all clips on this page
+            const ratings = await Rating.find({ clipId: { $in: clipIds } });
+            
+            // Organize ratings by clip ID - ensure we convert ObjectId to string for consistent key access
+            ratingsData = ratings.reduce((acc, rating) => {
+                acc[rating.clipId.toString()] = rating;
+                return acc;
+            }, {});
+            
+            // Make sure each clip has an entry in the ratings data, even if empty
+            clipIds.forEach(clipId => {
+                const clipIdStr = clipId.toString();
+                if (!ratingsData[clipIdStr]) {
+                    ratingsData[clipIdStr] = {
+                        clipId: clipIdStr,
+                        ratingCounts: []
+                    };
+                }
+                
+                // Ensure the ratingCounts array exists
+                if (!ratingsData[clipIdStr].ratingCounts) {
+                    ratingsData[clipIdStr].ratingCounts = [];
+                }
+            });
+        }
+        
+        // Send the response with comprehensive metadata
+        const response = {
+            clips,
+            ratings: ratingsData,
+            currentPage: validPage,
+            totalPages,
+            totalClips: totalClipsAfterAllFilters,
+            totalUnfilteredClips: totalClipsBeforeFiltering,
+            appliedFilters: {
+                streamer: streamer || null,
+                search: search || null,
+                excludeRatedByUser: excludeRatedByUser || null,
+            }
+        };
+        
+        console.log(`Response: returning ${clips.length} clips, page ${validPage}/${totalPages}`);
+        res.json(response);
     } catch (error) {
         console.error('Error fetching clips:', error);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -219,6 +632,92 @@ router.get('/search', searchLimiter, async (req, res) => {
 
 /**
  * @swagger
+ * /api/clips/info:
+ *   get:
+ *     tags:
+ *       - clips
+ *     summary: Get information about a video from its URL without downloading
+ *     parameters:
+ *       - in: query
+ *         name: url
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: URL of the video to get information about
+ *     responses:
+ *       200:
+ *         description: OK
+ *       400:
+ *         description: Invalid URL
+ *       500:
+ *         description: Internal Server Error
+ */
+router.get('/info', authorizeRoles(['uploader', 'admin']), async (req, res) => {
+    try {
+        const { url } = req.query;
+        
+        if (!url) {
+            return res.status(400).json({ error: 'URL parameter is required' });
+        }
+
+        // Support for YouTube, Twitch, and other platforms
+        if (url.includes('youtube.com') || url.includes('youtu.be')) {
+            try {
+                const info = await ytdl.getInfo(url);
+                res.json({
+                    title: info.title,
+                    author: info.author,
+                    platform: 'youtube'
+                });
+            } catch (error) {
+                console.error('Error fetching YouTube info:', error);
+                res.status(500).json({ error: 'Error fetching YouTube video information' });
+            }
+        } else if (url.includes('twitch.tv')) {
+            try {
+                const info = await ytdl.getInfo(url);
+                res.json({
+                    title: info.title,
+                    author: info.channel,
+                    platform: 'twitch'
+                });
+
+            } catch (error) {
+                console.error('Error fetching Twitch info:', error);
+                res.status(500).json({ error: 'Error fetching Twitch clip information' });
+            }
+        } else if (url.includes('medal.tv')) {
+            try {
+                const info = await ytdl.getInfo(url);
+                const title = info.title;
+                const author = info.uploader;
+
+                res.json({
+                    title: title,
+                    author: author,
+                    platform: 'medal'
+                });
+            } catch (error) {
+                console.error('Error fetching Medal.tv info:', error);
+                res.status(500).json({ error: 'Error fetching Medal.tv clip information' });
+            }
+        } else {
+            // For other URLs, return basic info
+            const filename = url.split('/').pop();
+            res.json({
+                title: filename || 'Video Clip',
+                author: 'Unknown',
+                platform: 'other'
+            });
+        }
+    } catch (error) {
+        console.error('Error in /info endpoint:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @swagger
  * /api/clips/{id}:
  *   get:
  *     tags:
@@ -252,50 +751,519 @@ router.get('/:id', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/clips/clip-navigation/adjacent:
+ *   get:
+ *     tags:
+ *       - clips
+ *     summary: Get adjacent clips (previous and next) for navigation
+ *     parameters:
+ *       - in: query
+ *         name: currentClipId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the current clip
+ *       - in: query
+ *         name: sort
+ *         schema:
+ *           type: string
+ *         description: Sorting option to determine clip order
+ *       - in: query
+ *         name: streamer
+ *         schema:
+ *           type: string
+ *         description: Optional streamer filter
+ *       - in: query
+ *         name: getAdjacent
+ *         schema:
+ *           type: boolean
+ *         description: Must be true to get adjacent clips
+ *     responses:
+ *       200:
+ *         description: OK
+ *       404:
+ *         description: Clip not found
+ *       500:
+ *         description: Internal Server Error
+ */
+router.get('/clip-navigation/adjacent', async (req, res) => {
+    try {
+        const { currentClipId, sort = 'newest', streamer, getAdjacent } = req.query;
+        
+        if (!currentClipId || getAdjacent !== 'true') {
+            return res.status(400).json({ error: 'Required parameters missing' });
+        }
+
+        const currentClip = await Clip.findById(currentClipId);
+        if (!currentClip) {
+            return res.status(404).json({ error: 'Current clip not found' });
+        }
+
+        const baseQuery = {};
+        if (streamer) {
+            baseQuery.streamer = { $regex: new RegExp(streamer, 'i') };
+        }
+        
+        let sortField = 'createdAt';
+        let sortDirection = -1;
+        
+        switch (sort) {
+            case 'oldest':
+                sortField = 'createdAt';
+                sortDirection = 1;
+                break;
+            case 'highestUpvotes':
+                sortField = 'upvotes';
+                sortDirection = -1;
+                break;
+            case 'highestDownvotes':
+                sortField = 'downvotes';
+                sortDirection = -1;
+                break;
+            case 'newest':
+            default:
+                sortField = 'createdAt';
+                sortDirection = -1;
+                break;
+        }
+
+        console.log(`Finding adjacent clips for ${currentClipId} with sort: ${sort} (${sortField}, direction: ${sortDirection})`);
+        console.log(`Current clip ${sortField} value:`, currentClip[sortField]);
+
+        const prevClipQuery = { ...baseQuery };
+        if (sortDirection === -1) {
+            prevClipQuery[sortField] = { $lt: currentClip[sortField] };
+        } else {
+            prevClipQuery[sortField] = { $gt: currentClip[sortField] };
+        }
+        
+        console.log('Previous clip query:', JSON.stringify(prevClipQuery));
+        const prevClip = await Clip.findOne(prevClipQuery)
+            .sort({ [sortField]: sortDirection })
+            .limit(1);
+        
+        const nextClipQuery = { ...baseQuery };
+        if (sortDirection === -1) {
+            nextClipQuery[sortField] = { $gt: currentClip[sortField] };
+        } else {
+            nextClipQuery[sortField] = { $lt: currentClip[sortField] };
+        }
+        
+        console.log('Next clip query:', JSON.stringify(nextClipQuery));
+        // For the next clip, we need to reverse the sort direction to get the correct adjacent clip
+        const nextClip = await Clip.findOne(nextClipQuery)
+            .sort({ [sortField]: -sortDirection })
+            .limit(1);
+        
+        console.log(`Found previous clip: ${prevClip?._id || 'none'}, next clip: ${nextClip?._id || 'none'}`);
+        
+        res.json({
+            prevClip,
+            nextClip
+        });
+    } catch (error) {
+        console.error('Error fetching adjacent clips:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+/**
+ * Compress video using ffmpeg to h.264 format
+ * @param {string} inputPath - Path to input video file
+ * @returns {Promise<string>} - Path to compressed video
+ */
+async function compressVideo(inputPath) {
+    const outputPath = `${inputPath}.compressed.mp4`;
+    
+    return new Promise((resolve, reject) => {
+        console.log(`Compressing video: ${inputPath} to ${outputPath}`);
+        
+        ffmpeg(inputPath)
+            .output(outputPath)
+            .videoCodec('libx264')
+            .outputOptions('-crf 23')  // Same compression quality as Discord bot
+            .on('end', () => {
+                console.log('Video compression completed');
+                
+                // Replace original with compressed version
+                try {
+                    fs.unlinkSync(inputPath);
+                    fs.renameSync(outputPath, inputPath);
+                    resolve(inputPath);
+                } catch (err) {
+                    console.error('Error replacing original file:', err);
+                    resolve(outputPath); // Use compressed version if rename fails
+                }
+            })
+            .on('error', (err) => {
+                console.error('Error compressing video:', err);
+                reject(err);
+            })
+            .run();
+    });
+}
+
+/**
+ * Download a clip from a URL using ytdl-core
+ * @param {string} url - URL of the video to download
+ * @returns {Promise<{filePath: string, fileName: string, info: Object}>}
+ */
+async function downloadClipFromUrl(url) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            // Create a unique ID for this download
+            const uniqueId = uuidv4();
+            const uploadsBaseDir = path.join(__dirname, '..', 'uploads');
+            const filename = `${uniqueId}.mp4`;
+            
+            // Get the season/date-based path for the file
+            const { fullPath: outputPath, relativePath } = getClipPath(uploadsBaseDir, filename);
+            
+            console.log(`Downloading from URL: ${url} to ${outputPath}`);
+            
+            // Process based on platform
+            if (url.includes('youtube.com') || url.includes('youtu.be')) {
+                // YouTube videos using ytdl-core
+                try {
+                    const info = await ytdl.getInfo(url);
+                    
+                    // Get the best video format with audio
+                    const format = ytdl.chooseFormat(info.formats, { quality: 'highest', filter: 'audioandvideo' });
+                    
+                    // Create write stream to save the video
+                    const writeStream = fs.createWriteStream(outputPath);
+                    
+                    // Download the video
+                    ytdl(url, { format: format })
+                        .pipe(writeStream)
+                        .on('finish', () => {
+                            console.log('YouTube video download completed');
+                            
+                            resolve({
+                                filePath: outputPath,
+                                fileName: filename,
+                                relativePath: relativePath,
+                                info: {
+                                    title: info.videoDetails.title,
+                                    author: info.videoDetails.author.name
+                                }
+                            });
+                        })
+                        .on('error', (err) => {
+                            console.error('Error downloading YouTube video:', err);
+                            reject(err);
+                        });
+                } catch (err) {
+                    console.error('Error getting YouTube video info:', err);
+                    reject(err);
+                }
+            } else if (url.includes('twitch.tv')) {
+                // For Twitch, we'll use their API to get clip info
+                try {
+                    // Extract the clip slug from the URL
+                    const clipSlug = url.split('/').pop();
+                    
+                    // First approach: Try direct download from the source URL
+                    let downloadUrl = null;
+                    
+                    // For Twitch clips, the download URL is typically in the page content
+                    // We'll make a request to the clip page and extract the mp4 URL
+                    try {
+                        const response = await axios.get(url, {
+                            headers: {
+                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                            }
+                        });
+                        
+                        const htmlContent = response.data;
+                        
+                        // Try to find the clip URL in the page content
+                        // This pattern looks for mp4 URLs within the page source
+                        const mp4UrlPattern = /(https:\/\/[^"]+\.mp4[^"]*)/;
+                        const match = htmlContent.match(mp4UrlPattern);
+                        
+                        if (match && match[1]) {
+                            downloadUrl = match[1];
+                            console.log(`Found Twitch clip download URL: ${downloadUrl}`);
+                        }
+                    } catch (err) {
+                        console.error('Error extracting Twitch clip info:', err);
+                    }
+                    
+                    if (downloadUrl) {
+                        // Download the clip directly
+                        const fileStream = fs.createWriteStream(outputPath);
+                        
+                        const protocol = downloadUrl.startsWith('https') ? https : http;
+                        
+                        await new Promise((resolveDownload, rejectDownload) => {
+                            protocol.get(downloadUrl, response => {
+                                response.pipe(fileStream);
+                                
+                                fileStream.on('finish', () => {
+                                    fileStream.close();
+                                    console.log('Twitch clip download completed');
+                                    resolveDownload();
+                                });
+                            }).on('error', err => {
+                                fs.unlink(outputPath, () => {});
+                                rejectDownload(err);
+                            });
+                        });
+                        
+                        // Extract some basic info from the URL or page title
+                        resolve({
+                            filePath: outputPath,
+                            fileName: filename,
+                            relativePath: relativePath,
+                            info: {
+                                title: `Twitch Clip ${clipSlug}`,
+                                author: 'Twitch Streamer'
+                            }
+                        });
+                    } else {
+                        throw new Error('Could not find Twitch clip download URL');
+                    }
+                } catch (err) {
+                    console.error('Error downloading Twitch clip:', err);
+                    reject(err);
+                }
+            } else if (url.includes('medal.tv')) {
+                // Medal.tv clips
+                try {
+                    // For Medal.tv, we'll try to extract the clip URL from the page
+                    const response = await axios.get(url, {
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                        }
+                    });
+                    
+                    const htmlContent = response.data;
+                    
+                    // Try to find the clip URL in the page content
+                    // This pattern looks for mp4 URLs within the page source
+                    const mp4UrlPattern = /(https:\/\/[^"]+\.mp4[^"]*)/;
+                    const match = htmlContent.match(mp4UrlPattern);
+                    
+                    if (match && match[1]) {
+                        const downloadUrl = match[1];
+                        console.log(`Found Medal.tv clip download URL: ${downloadUrl}`);
+                        
+                        // Download the clip
+                        const fileStream = fs.createWriteStream(outputPath);
+                        
+                        const protocol = downloadUrl.startsWith('https') ? https : http;
+                        
+                        await new Promise((resolveDownload, rejectDownload) => {
+                            protocol.get(downloadUrl, response => {
+                                response.pipe(fileStream);
+                                
+                                fileStream.on('finish', () => {
+                                    fileStream.close();
+                                    console.log('Medal.tv clip download completed');
+                                    resolveDownload();
+                                });
+                            }).on('error', err => {
+                                fs.unlink(outputPath, () => {});
+                                rejectDownload(err);
+                            });
+                        });
+                        
+                        // Extract title if available
+                        let title = 'Medal.tv Clip';
+                        const titleMatch = htmlContent.match(/<title[^>]*>([^<]+)<\/title>/);
+                        if (titleMatch && titleMatch[1]) {
+                            title = titleMatch[1].trim();
+                        }
+                        
+                        resolve({
+                            filePath: outputPath,
+                            fileName: filename,
+                            relativePath: relativePath,
+                            info: {
+                                title: title,
+                                author: 'Medal.tv User'
+                            }
+                        });
+                    } else {
+                        throw new Error('Could not find Medal.tv clip download URL');
+                    }
+                } catch (err) {
+                    console.error('Error downloading Medal.tv clip:', err);
+                    reject(err);
+                }
+            } else {
+                // Default for other URLs - attempt direct download
+                try {
+                    const fileStream = fs.createWriteStream(outputPath);
+                    const protocol = url.startsWith('https') ? https : http;
+                    
+                    await new Promise((resolveDownload, rejectDownload) => {
+                        protocol.get(url, response => {
+                            if (response.statusCode !== 200) {
+                                rejectDownload(new Error(`Failed to download: Status code ${response.statusCode}`));
+                                return;
+                            }
+                            
+                            response.pipe(fileStream);
+                            
+                            fileStream.on('finish', () => {
+                                fileStream.close();
+                                console.log('Direct download completed');
+                                resolveDownload();
+                            });
+                        }).on('error', err => {
+                            fs.unlink(outputPath, () => {});
+                            rejectDownload(err);
+                        });
+                    });
+                    
+                    resolve({
+                        filePath: outputPath,
+                        fileName: filename,
+                        relativePath: relativePath,
+                        info: {
+                            title: path.basename(url),
+                            author: 'Unknown'
+                        }
+                    });
+                } catch (err) {
+                    console.error('Error downloading from URL:', err);
+                    reject(err);
+                }
+            }
+        } catch (error) {
+            console.error('Error in downloadClipFromUrl:', error);
+            reject(error);
+        }
+    });
+}
+
 router.post('/', authorizeRoles(['uploader', 'admin']), clipUpload.single('clip'), async (req, res) => {
     console.log("=== Handling new clip upload ===");
     try {
-        const { streamer, submitter, title, url, link } = req.body;
-        console.log("Request body:", { streamer, submitter, title, url, link });
+        const { streamer, submitter, title, link } = req.body;
+        console.log("Request body:", { streamer, submitter, title, link });
 
         let fileUrl;
         let thumbnailUrl;
-        if (url) {
-            fileUrl = url;
-            thumbnailUrl = null;
-            console.log("Using provided URL:", fileUrl);
-        } else if (req.file) {
-            fileUrl = `https://api.spoekle.com/uploads/${req.file.filename}`;
-            console.log("File uploaded with filename:", req.file.filename);
+        let finalTitle = title;
+        
+        // Case 1: Direct file upload
+        if (req.file) {
+            // req.file.path already contains the full path with season/date structure
+            const uploadPath = req.file.path;
+            const uploadsBaseDir = path.join(__dirname, '..', 'uploads');
+            const relativePath = path.relative(uploadsBaseDir, uploadPath);
+            
+            console.log("File uploaded to:", uploadPath);
+            console.log("Relative path:", relativePath);
+            
+            try {
+                // Compress the video file with ffmpeg (same as Discord bot)
+                await compressVideo(uploadPath);
+                console.log("Video compressed successfully");
+            } catch (compressionError) {
+                console.error("Error compressing video:", compressionError);
+                // Continue with uncompressed video if compression fails
+            }
 
-            // Generate thumbnail
+            // Use relative path for URL to support both legacy and new structure
+            fileUrl = `https://api.spoekle.com/uploads/${relativePath.replace(/\\/g, '/')}`;
+
+            // Generate thumbnail in the same directory as the video
             const thumbnailFilename = `${path.parse(req.file.filename).name}_thumbnail.png`;
+            const thumbnailDirectory = path.dirname(uploadPath);
+            const thumbnailPath = path.join(thumbnailDirectory, thumbnailFilename);
+            const thumbnailRelativePath = path.relative(uploadsBaseDir, thumbnailPath);
+            
             console.log("Generating thumbnail:", thumbnailFilename);
 
-            const uploadPath = path.join(__dirname, '..', 'uploads', req.file.filename);
             await new Promise((resolve, reject) => {
                 ffmpeg(uploadPath)
                     .screenshots({
                         timestamps: ['00:00:00.001'],
                         filename: thumbnailFilename,
-                        folder: path.join(__dirname, '..', 'uploads'),
+                        folder: thumbnailDirectory,
                         size: '640x360',
                     })
                     .on('end', resolve)
                     .on('error', reject);
             });
 
-            thumbnailUrl = `https://api.spoekle.com/uploads/${thumbnailFilename}`;
+            thumbnailUrl = `https://api.spoekle.com/uploads/${thumbnailRelativePath.replace(/\\/g, '/')}`;
             console.log("Thumbnail URL:", thumbnailUrl);
-        } else {
-            console.log("No file or link provided.");
-            return res.status(400).json({ error: 'No file or link provided' });
+        } 
+        // Case 2: URL-based clip from YouTube, Twitch, etc.
+        else if (link && (link.includes('youtube.com') || link.includes('youtu.be') || 
+                link.includes('twitch.tv') || link.includes('medal.tv'))) {
+            console.log("Downloading clip from URL:", link);
+            try {
+                // Download the clip using our new Node.js based function
+                const downloadResult = await downloadClipFromUrl(link);
+                
+                // Extract useful metadata from the download result
+                if (downloadResult.info.title && !finalTitle) {
+                    finalTitle = downloadResult.info.title;
+                }
+                
+                // Use the relative path for the URL
+                fileUrl = `https://api.spoekle.com/uploads/${downloadResult.relativePath.replace(/\\/g, '/')}`;
+                
+                // Generate thumbnail for the downloaded file in the same directory
+                const thumbnailFilename = `${path.parse(downloadResult.fileName).name}_thumbnail.png`;
+                const thumbnailDirectory = path.dirname(downloadResult.filePath);
+                const uploadsBaseDir = path.join(__dirname, '..', 'uploads');
+                const thumbnailPath = path.join(thumbnailDirectory, thumbnailFilename);
+                const thumbnailRelativePath = path.relative(uploadsBaseDir, thumbnailPath);
+                
+                await new Promise((resolve, reject) => {
+                    ffmpeg(downloadResult.filePath)
+                        .screenshots({
+                            timestamps: ['00:00:00.001'],
+                            filename: thumbnailFilename,
+                            folder: thumbnailDirectory,
+                            size: '640x360',
+                        })
+                        .on('end', resolve)
+                        .on('error', reject);
+                });
+                
+                thumbnailUrl = `https://api.spoekle.com/uploads/${thumbnailRelativePath.replace(/\\/g, '/')}`;
+                console.log("Downloaded and processed URL-based clip:", fileUrl);
+            } catch (error) {
+                console.error("Error downloading from URL:", error);
+                return res.status(400).json({ error: 'Failed to download clip from URL: ' + error.message });
+            }
+        } 
+        // Case 3: Direct URL to a video file
+        else if (link && /\.(mp4|webm|mov)$/i.test(link)) {
+            fileUrl = link;
+            thumbnailUrl = null;
+            console.log("Using direct video URL:", fileUrl);
+        }
+        else {
+            console.log("No file or valid link provided.");
+            return res.status(400).json({ error: 'No file or valid link provided' });
         }
 
-        const newClip = new Clip({ url: fileUrl, thumbnail: thumbnailUrl, streamer, submitter, title, link });
+        const newClip = new Clip({ 
+            url: fileUrl, 
+            thumbnail: thumbnailUrl, 
+            streamer, 
+            submitter, 
+            title: finalTitle || title, 
+            link 
+        });
         await newClip.save();
 
         console.log("New clip saved:", newClip);
+
+        // Update clip count in config
+        await updateClipCount();
+
         res.json({ success: true, clip: newClip });
     } catch (error) {
         console.error("Error processing clip upload:", error);
@@ -339,16 +1307,48 @@ router.delete('/:id', authorizeRoles(['admin']), async (req, res) => {
         const clip = await Clip.findById(id);
         if (clip) {
             try {
-                fs.unlinkSync(path.join(__dirname, 'uploads', path.basename(clip.url)));
+                // Extract file path from URL - handle both legacy and new structures
+                const uploadsBaseDir = path.join(__dirname, '..', 'uploads');
+                let filePath;
+                
+                if (clip.url.includes('uploads/')) {
+                    // Extract the path after 'uploads/'
+                    const urlPath = clip.url.split('uploads/')[1];
+                    filePath = path.join(uploadsBaseDir, urlPath);
+                } else {
+                    // Fallback for legacy structure
+                    filePath = path.join(uploadsBaseDir, path.basename(clip.url));
+                }
+                
+                console.log("Attempting to delete file:", filePath);
+                
+                if (fs.existsSync(filePath)) {
+                    fs.unlinkSync(filePath);
+                    console.log("File deleted successfully");
+                } else {
+                    console.log("File not found, continuing with database deletion");
+                }
+                
+                // Also try to delete thumbnail if it exists
+                const thumbnailPath = filePath.replace(/\.[^/.]+$/, '_thumbnail.png');
+                if (fs.existsSync(thumbnailPath)) {
+                    fs.unlinkSync(thumbnailPath);
+                    console.log("Thumbnail deleted successfully");
+                }
             } catch (error) {
                 console.error("Error removing file:", error.message);
             }
-            await clip.remove();
+            await clip.deleteOne();
+
+            // Update clip count in config
+            await updateClipCount();
+
             res.json({ success: true });
         } else {
             res.status(404).json({ error: 'Clip not found' });
         }
     } catch (error) {
+        console.error('Error deleting clip:', error); // Added error logging for debugging
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
@@ -356,16 +1356,55 @@ router.delete('/:id', authorizeRoles(['admin']), async (req, res) => {
 router.delete('/', authorizeRoles(['admin']), async (req, res) => {
     try {
         await Clip.deleteMany({});
-        const files = fs.readdirSync(path.join(__dirname, 'uploads'));
-        for (const file of files) {
-            fs.unlinkSync(path.join(__dirname, 'uploads', file));
+        
+        // Recursively delete all files in uploads directory
+        const uploadsDir = path.join(__dirname, '..', 'uploads');
+        
+        function deleteDirectoryRecursive(dirPath) {
+            if (fs.existsSync(dirPath) && fs.lstatSync(dirPath).isDirectory()) {
+                const files = fs.readdirSync(dirPath);
+                for (const file of files) {
+                    const curPath = path.join(dirPath, file);
+                    if (fs.lstatSync(curPath).isDirectory()) {
+                        deleteDirectoryRecursive(curPath);
+                    } else {
+                        try {
+                            fs.unlinkSync(curPath);
+                        } catch (err) {
+                            console.error(`Error deleting file ${curPath}:`, err);
+                        }
+                    }
+                }
+                
+                // Only delete the directory if it's not the main uploads directory
+                if (dirPath !== uploadsDir) {
+                    try {
+                        fs.rmdirSync(dirPath);
+                    } catch (err) {
+                        console.error(`Error deleting directory ${dirPath}:`, err);
+                    }
+                }
+            }
         }
+        
+        deleteDirectoryRecursive(uploadsDir);
+
+        // Update clip count in config to 0
+        await PublicConfig.findOneAndUpdate(
+            {}, 
+            { clipAmount: 0 }, 
+            { upsert: true, new: true }
+        );
+        console.log("Reset clipAmount to 0 after deleting all clips");
+
         res.json({ success: true, message: 'All clips deleted successfully' });
     } catch (error) {
+        console.error('Error deleting all clips:', error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
+// Fix the vote handling code
 router.post('/:id/vote/:voteType', async (req, res) => {
     try {
         const clientIp = req.ip;
@@ -387,7 +1426,8 @@ router.post('/:id/vote/:voteType', async (req, res) => {
                     } else {
                         clip.downvotes -= 1;
                     }
-                    await vote.remove();
+                    // Use deleteOne() instead of remove()
+                    await vote.deleteOne();
                     await clip.save();
                     return res.send(clip);
                 } else {
@@ -423,11 +1463,40 @@ router.post('/:id/vote/:voteType', async (req, res) => {
     }
 });
 
-//Comment on post
+router.get('/:id/vote/status', async (req, res) => {
+    try {
+        const clientIp = req.ip;
+        const { id } = req.params;
+
+        const clip = await Clip.findById(id);
+        if (!clip) {
+            return res.status(404).json({ error: 'Clip not found' });
+        }
+
+        const existingVotes = await IpVote.find({ clipId: id });
+        
+        // Check if the user has already voted
+        for (const vote of existingVotes) {
+            if (await bcrypt.compare(clientIp, vote.ip)) {
+                // Return the vote type
+                return res.json({ hasVoted: true, voteType: vote.vote });
+            }
+        }
+        
+        // If no vote found
+        res.json({ hasVoted: false });
+    } catch (error) {
+        console.error('Error checking vote status:', error.message);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+//Comment on post - Store userId correctly
 router.post('/:id/comment', authorizeRoles(['user', 'clipteam', 'editor', 'uploader', 'admin']), async (req, res) => {
     const { id } = req.params;
     const { comment } = req.body;
     const username = req.user.username;
+    const userId = req.user.id;  // Get the user ID from the request
 
     if (!comment) {
         return res.status(400).json({ error: 'Comment is required' });
@@ -439,7 +1508,8 @@ router.post('/:id/comment', authorizeRoles(['user', 'clipteam', 'editor', 'uploa
             return res.status(404).json({ error: 'Post not found' });
         }
 
-        clip.comments.push({ username, comment });
+        // Store both username and userId
+        clip.comments.push({ userId, username, comment });
         await clip.save();
 
         res.json(clip);
@@ -449,7 +1519,7 @@ router.post('/:id/comment', authorizeRoles(['user', 'clipteam', 'editor', 'uploa
     }
 });
 
-// Delete a comment from a post
+// Fix the delete comment function
 router.delete('/:clipId/comment/:commentId', authorizeRoles(['user', 'clipteam', 'editor', 'uploader', 'admin']), async (req, res) => {
     const { clipId, commentId } = req.params;
     const username = req.user.username;
@@ -466,17 +1536,124 @@ router.delete('/:clipId/comment/:commentId', authorizeRoles(['user', 'clipteam',
         }
 
         if (comment.username == username || req.user.roles.includes('admin')) {
-            comment.remove();
+            // Use pull() instead of remove() for subdocuments
+            clip.comments.pull({ _id: commentId });
             await clip.save();
             return res.json(clip);
         } else {
             return res.status(403).json({ error: 'Forbidden: You do not have the required permissions' });
         }
-
     } catch (error) {
         console.error('Error deleting comment:', error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
+});
+
+/**
+ * Reply to a comment
+ */
+router.post('/:clipId/comment/:commentId/reply', authorizeRoles(['user', 'clipteam', 'editor', 'uploader', 'admin']), async (req, res) => {
+  const { clipId, commentId } = req.params;
+  const { replyText } = req.body;
+  const userId = req.user.id;
+  const username = req.user.username;
+
+  if (!replyText || replyText.trim() === '') {
+    return res.status(400).json({ error: 'Reply text is required' });
+  }
+
+  try {
+    const clip = await Clip.findById(clipId);
+    if (!clip) {
+      return res.status(404).json({ error: 'Clip not found' });
+    }
+
+    // Find the comment to reply to
+    const comment = clip.comments.id(commentId);
+    if (!comment) {
+      return res.status(404).json({ error: 'Comment not found' });
+    }
+
+    // Add debug logs for the notification
+    console.log('Comment user ID:', comment.userId);
+    console.log('Current user ID:', userId);
+
+    // Add the reply to the comment
+    const reply = {
+      userId,
+      username,
+      replyText,
+      createdAt: new Date()
+    };
+    
+    comment.replies.push(reply);
+    await clip.save();
+    
+    // Get the newly created reply's ID
+    const newReply = comment.replies[comment.replies.length - 1];
+
+    // Create notification for the original commenter if it's not the same user
+    if (comment.userId && comment.userId.toString() !== userId.toString()) {
+      const notification = new Notification({
+        recipientId: comment.userId,
+        senderId: userId,
+        senderUsername: username,
+        type: 'comment_reply',
+        entityId: commentId, // The comment ID
+        replyId: newReply._id, // The new reply ID
+        clipId: clipId,
+        message: `${username} replied to your comment: "${replyText.substring(0, 50)}${replyText.length > 50 ? '...' : ''}"`,
+      });
+
+      await notification.save();
+      console.log('Notification created successfully for user:', comment.userId);
+    } else {
+      console.log('Notification not created because:',
+        !comment.userId ? 'comment.userId is missing' : 'user is replying to their own comment');
+    }
+
+    res.json(clip);
+  } catch (error) {
+    console.error('Error adding reply:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// Fix the delete reply function
+router.delete('/:clipId/comment/:commentId/reply/:replyId', authorizeRoles(['user', 'clipteam', 'editor', 'uploader', 'admin']), async (req, res) => {
+  const { clipId, commentId, replyId } = req.params;
+  const userId = req.user.id;
+  const isAdmin = req.user.roles.includes('admin');
+
+  try {
+    const clip = await Clip.findById(clipId);
+    if (!clip) {
+      return res.status(404).json({ error: 'Clip not found' });
+    }
+
+    const comment = clip.comments.id(commentId);
+    if (!comment) {
+      return res.status(404).json({ error: 'Comment not found' });
+    }
+
+    const reply = comment.replies.id(replyId);
+    if (!reply) {
+      return res.status(404).json({ error: 'Reply not found' });
+    }
+
+    // Check if the user is the author of the reply or an admin
+    if (reply.userId.toString() === userId || isAdmin) {
+      // Use pull() instead of remove() for subdocuments
+      comment.replies.pull({ _id: replyId });
+      await clip.save();
+      return res.json(clip);
+    } else {
+      return res.status(403).json({ error: 'You are not authorized to delete this reply' });
+    }
+  } catch (error) {
+    console.error('Error deleting reply:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
 });
 
 module.exports = router;

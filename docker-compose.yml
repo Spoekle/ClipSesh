@@ -1,4 +1,4 @@
-name: clipsesh
+version: '3.8'
 
 services:
   mongo:
@@ -15,6 +15,12 @@ services:
   api:
     build:
       context: ./backend
+      dockerfile: Dockerfile
+      args:
+        - NODE_ENV=production
+      cache_from:
+        - clipsesh-api:latest
+    image: clipsesh-api
     container_name: clipsesh-api
     ports:
       - "86:80"
@@ -31,32 +37,48 @@ services:
       - type: bind
         source: ./backend/src/scripts
         target: /var/www/backend/src/scripts
-    depends_on:
-      - mongo
+      - type: bind
+        source: ./backend/src/download/tmp
+        target: /var/www/backend/src/download/tmp
+      - type: bind
+        source: ./backend/.env
+        target: /var/www/backend/.env
     environment:
       - VIRTUAL_HOST=api.spoekle.com
-      - MONGO_URI=mongodb://mongo:27017/clipsDB
+      - NODE_ENV=production
+    env_file:
+      - ./backend/.env
+    restart: unless-stopped
 
   frontend:
     build:
       context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - NODE_ENV=production
     container_name: clipsesh-frontend
     ports:
       - "8080:80"
     environment:
+      - NODE_ENV=production
       - VIRTUAL_HOST=clipsesh.spoekle.com
+    restart: unless-stopped
 
   discord-bot:
+    image: clipsesh-discord-bot
     build:
       context: ./discord-bot
+      dockerfile: Dockerfile
+      cache_from:
+        - clipsesh-discord-bot:latest
     container_name: clipsesh-discord-bot
-    environment:
-      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
-      - BACKEND_URL=https://api.spoekle.com
     volumes:
-      - ./discord-bot:/app
+      - ./discord-bot/logs:/app/logs
+      - ./discord-bot/downloads:/app/downloads
+    restart: unless-stopped
     depends_on:
-      - api
+      api:
+        condition: service_started
 
 volumes:
   mongo-data:

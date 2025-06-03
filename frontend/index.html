@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/CC_Logo_32px.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ClipSesh</title>
+    
+    <!-- Inline critical CSS to prevent FOUC (Flash of Unstyled Content) -->
+    <style>
+      :root {
+        --bg-light: #f9fafb; /* light mode background */
+        --bg-dark: #171717;  /* dark mode background */
+        --text-light: #000000;
+        --text-dark: #ffffff;
+      }
+      
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+          'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+          sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        transition: background-color 0.2s ease, color 0.2s ease;
+      }
+      
+      html.dark {
+        color-scheme: dark;
+      }
+      
+      #root {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      
+      /* Loading state styles */
+      .initial-loader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        z-index: 9999;
+        transition: opacity 0.3s ease-out;
+      }
+      
+      .initial-loader.fade-out {
+        opacity: 0;
+      }
+      
+      .initial-loader-spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid rgba(0, 0, 0, 0.1);
+        border-left-color: #3b82f6; /* blue-500 */
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      
+      .dark .initial-loader-spinner {
+        border-color: rgba(255, 255, 255, 0.1);
+        border-left-color: #3b82f6; /* blue-500 */
+      }
+      
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
+    
+    <!-- Immediate dark mode script - must run BEFORE any content renders -->
+    <script>
+      (function() {
+        // Check for dark mode preference
+        var darkModePref = localStorage.getItem('darkMode');
+        var prefersDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        
+        // If dark mode is enabled or user prefers dark mode and hasn't explicitly set light mode
+        if (darkModePref === 'true' || (prefersDarkMode && darkModePref !== 'false')) {
+          document.documentElement.classList.add('dark');
+          document.documentElement.style.backgroundColor = '#171717'; // neutral-900
+          document.documentElement.style.color = '#ffffff';
+        } else {
+          document.documentElement.classList.remove('dark');
+          document.documentElement.style.backgroundColor = '#f9fafb'; // gray-50
+          document.documentElement.style.color = '#000000';
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <!-- Initial loading indicator -->
+    <div id="initial-loader" class="initial-loader">
+      <div class="initial-loader-spinner"></div>
+      <p style="margin-top: 20px; font-size: 16px;">Loading ClipSesh...</p>
+    </div>
+    
+    <div id="root"></div>
+    
+    <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Hide loader when app is rendered -->
+    <script>
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          var loader = document.getElementById('initial-loader');
+          if (loader) {
+            loader.classList.add('fade-out');
+            setTimeout(function() {
+              loader.style.display = 'none';
+            }, 300);
+          }
+        }, 300); // Small delay to ensure React has started rendering
+      });
+      
+      // Backup timeout to hide loader if something goes wrong
+      setTimeout(function() {
+        var loader = document.getElementById('initial-loader');
+        if (loader) {
+          loader.style.display = 'none';
+        }
+      }, 5000);
+    </script>
+  </body>
+</html>

@@ -7,7 +7,6 @@ const adminUsername = process.env.ADMIN_USERNAME;
 const mailEmail = process.env.MAIL_EMAIL;
 const mailPassword = process.env.MAIL_PASSWORD;
 const fs = require('fs');
-const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const path = require('path');
 
@@ -46,7 +45,7 @@ router.post('/login', async (req, res) => {
         const isPasswordValid = await bcrypt.compare(password, user.password);
         if (!isPasswordValid) return res.status(400).json({ error: 'Invalid username or password' });
 
-        const token = jwt.sign({ id: user._id, username: user.username, roles: user.roles }, secretKey, { expiresIn: '1 day' });
+        const token = jwt.sign({ id: user._id, username: user.username, roles: user.roles }, secretKey, { expiresIn: process.env.JWT_EXPIRES_IN || '7 days' });
         res.json({ token });
     } catch (error) {
         res.status(500).json({ error: 'Internal Server Error' });
@@ -65,7 +64,7 @@ router.post('/register', async (req, res) => {
         const newUser = new User({ username, password: hashedPassword });
         await newUser.save();
 
-        const token = jwt.sign({ id: newUser._id, username: newUser.username, roles: newUser.roles }, secretKey, { expiresIn: '1 day' });
+        const token = jwt.sign({ id: newUser._id, username: newUser.username, roles: newUser.roles }, secretKey, { expiresIn: process.env.JWT_EXPIRES_IN || '7 days' });
         res.json({ token });
     } catch (error) {
         res.status(500).json({ error: 'Internal Server Error' });

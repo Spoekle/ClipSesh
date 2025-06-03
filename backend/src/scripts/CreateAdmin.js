@@ -1,8 +1,13 @@
 const bcrypt = require('bcrypt');
 const User = require('../models/userModel.js');
+const crypto = require('crypto');
+require('dotenv').config();
 
-const adminUsername = process.env.ADMIN_USERNAME;
-const adminPassword = process.env.ADMIN_PASSWORD;
+const adminUsername = process.env.ADMIN_USERNAME || 'admin';
+
+adminPassword = crypto.randomBytes(15).toString('hex').match(/.{1,5}/g).join('-');
+process.env.ADMIN_PASSWORD = adminPassword;
+
 
 const createAdminUser = async () => {
     try {

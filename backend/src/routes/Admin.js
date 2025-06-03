@@ -3,7 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcrypt');
 
 const User = require('../models/userModel');
-const AdminConfig = require('../models/configModel');
+const { AdminConfig, PublicConfig } = require('../models/configModel');
 const authorizeRoles = require('./middleware/AuthorizeRoles');
 
 /**
@@ -331,27 +331,54 @@ router.get('/users', authorizeRoles(['admin']), async (req, res) => {
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   _id:
- *                     type: string
- *                   denyThreshold:
- *                     type: number
- *                     description: Number of deny votes needed to reject a clip
- *                     example: 5
- *                   latestVideoLink:
- *                     type: string
- *                     description: Link to the latest video to show on homepage
- *                     example: https://www.youtube.com/watch?v=abcdefg
+ *               type: object
+ *               properties:
+ *                 admin:
+ *                   type: object
+ *                   properties:
+ *                     denyThreshold:
+ *                       type: number
+ *                       description: Number of deny votes needed to reject a clip
+ *                     clipChannelIds:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       description: Discord channel IDs for clip collection
+ *                 public:
+ *                   type: object
+ *                   properties:
+ *                     latestVideoLink:
+ *                       type: string
+ *                       description: Link to the latest video to show on homepage
  *       500:
  *         description: Internal server error
  */
-router.get('/config', async (req, res) => {
+router.get('/config', authorizeRoles(['admin']), async (req, res) => {
   try {
-    const config = await AdminConfig.find();
-    res.json(config);
+    // Find or create configs
+    let adminConfig = await AdminConfig.findOne();
+    let publicConfig = await PublicConfig.findOne();
+    
+    if (!adminConfig) {
+      adminConfig = new AdminConfig();
+      await adminConfig.save();
+    }
+    
+    if (!publicConfig) {
+      publicConfig = new PublicConfig();
+      await publicConfig.save();
+    }
+    
+    // For backward compatibility, include the admin config fields at the top level
+    // as well as in the structured format
+    res.json([{
+      _id: adminConfig._id,
+      denyThreshold: adminConfig.denyThreshold,
+      latestVideoLink: publicConfig.latestVideoLink,
+      // Include the structured format as well
+      admin: adminConfig,
+      public: publicConfig
+    }]);
   } catch (error) {
     console.error('Error fetching config:', error);
     res.status(500).json({ error: 'Internal Server Error', details: error.message });
@@ -363,7 +390,7 @@ router.get('/config', async (req, res) => {
  * /api/admin/config:
  *   put:
  *     summary: Update admin configuration
- *     description: Update system configuration like deny threshold and latest video link (Admin only)
+ *     description: Update system configuration including private and public settings (Admin only)
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
@@ -376,45 +403,78 @@ router.get('/config', async (req, res) => {
  *             properties:
  *               denyThreshold:
  *                 type: number
- *                 description: Number of deny votes needed to reject a clip
- *                 example: 5
  *               latestVideoLink:
  *                 type: string
- *                 description: YouTube URL to display on homepage
- *                 example: https://www.youtube.com/watch?v=abcdefg
+ *               admin:
+ *                 type: object
+ *                 properties:
+ *                   denyThreshold:
+ *                     type: number
+ *                   clipChannelIds:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                   backendUrl:
+ *                     type: string
+ *                   discordBotToken:
+ *                     type: string
+ *               public:
+ *                 type: object
+ *                 properties:
+ *                   latestVideoLink:
+ *                     type: string
  *     responses:
  *       200:
  *         description: Configuration updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 _id:
- *                   type: string
- *                 denyThreshold:
- *                   type: number
- *                   example: 5
- *                 latestVideoLink:
- *                   type: string
- *                   example: https://www.youtube.com/watch?v=abcdefg
  *       401:
  *         description: Unauthorized - Authentication required or insufficient permissions
  *       500:
  *         description: Internal server error
  */
 router.put('/config', authorizeRoles(['admin']), async (req, res) => {
-  const { denyThreshold, latestVideoLink } = req.body;
   try {
-    let config = await AdminConfig.findOne();
-    if (!config) {
-      config = new AdminConfig({ denyThreshold, latestVideoLink });
-    } else {
-      if (denyThreshold !== undefined) config.denyThreshold = denyThreshold;
-      if (latestVideoLink !== undefined) config.latestVideoLink = latestVideoLink;
+    // Support both new structured format and legacy flat format
+    const { denyThreshold, latestVideoLink, admin = {}, public = {} } = req.body;
+    
+    // Find or create configs
+    let adminConfig = await AdminConfig.findOne();
+    let publicConfig = await PublicConfig.findOne();
+    
+    if (!adminConfig) {
+      adminConfig = new AdminConfig();
     }
-    await config.save();
-    res.json(config);
+    
+    if (!publicConfig) {
+      publicConfig = new PublicConfig();
+    }
+    
+    // Update admin config - handle both structured and flat formats
+    if (denyThreshold !== undefined) {
+      adminConfig.denyThreshold = denyThreshold;
+    }
+    
+    // Update public config - handle both structured and flat formats
+    if (latestVideoLink !== undefined) {
+      publicConfig.latestVideoLink = latestVideoLink;
+    }
+    
+    // Update admin config from structured format
+    if (admin) {
+      if (admin.denyThreshold !== undefined) adminConfig.denyThreshold = admin.denyThreshold;
+      if (admin.clipChannelIds !== undefined) adminConfig.clipChannelIds = admin.clipChannelIds;
+      if (admin.backendUrl !== undefined) adminConfig.backendUrl = admin.backendUrl;
+      if (admin.discordBotToken !== undefined) adminConfig.discordBotToken = admin.discordBotToken;
+    }
+    
+    // Update public config from structured format
+    if (public) {
+      if (public.latestVideoLink !== undefined) publicConfig.latestVideoLink = public.latestVideoLink;
+    }
+    
+    // Save both configs
+    await Promise.all([adminConfig.save(), publicConfig.save()]);
+    
+    res.json({ message: 'Configuration updated successfully' });
   } catch (error) {
     console.error('Error updating config:', error);
     res.status(500).json({ error: 'Internal Server Error', details: error.message });
@@ -483,6 +543,299 @@ router.get('/stats', authorizeRoles(['admin']), async (req, res) => {
   } catch (error) {
     console.error('Error fetching admin stats:', error);
     res.status(500).json({ error: 'Internal Server Error', details: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/admin/users/{userId}/trophies:
+ *   post:
+ *     summary: Award a trophy to a user
+ *     description: Add a trophy to a user's profile (Admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The user ID to award the trophy to
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - trophyName
+ *               - description
+ *               - season
+ *               - year
+ *             properties:
+ *               trophyName:
+ *                 type: string
+ *                 description: Name of the trophy
+ *                 example: "Best Clips of the Month"
+ *               description:
+ *                 type: string
+ *                 description: Description of the trophy achievement
+ *                 example: "Outstanding performance in January 2024"
+ *               season:
+ *                 type: string
+ *                 description: Season when the trophy was earned
+ *                 example: "Winter"
+ *               year:
+ *                 type: number
+ *                 description: Year when the trophy was earned
+ *                 example: 2024
+ *     responses:
+ *       200:
+ *         description: Trophy awarded successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Trophy awarded successfully"
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Bad request or user not found
+ *       401:
+ *         description: Unauthorized - Admin role required
+ *       500:
+ *         description: Internal server error
+ */
+router.post('/users/:userId/trophies', authorizeRoles(['admin']), async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { trophyName, description, season, year } = req.body;
+
+    // Validate required fields
+    if (!trophyName || !description || !season || !year) {
+      return res.status(400).json({
+        success: false,
+        message: 'Trophy name, description, season, and year are required'
+      });
+    }
+
+    // Find the user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Create the trophy object
+    const trophy = {
+      trophyName,
+      description,
+      dateEarned: `${season} ${year}`
+    };
+
+    // Add trophy to user's trophies array
+    user.trophies.push(trophy);
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Trophy awarded successfully',
+      user: user
+    });
+  } catch (error) {
+    console.error('Error awarding trophy:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/admin/users/{userId}/trophies/{trophyId}:
+ *   delete:
+ *     summary: Remove a trophy from a user
+ *     description: Remove a specific trophy from a user's profile (Admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The user ID
+ *       - in: path
+ *         name: trophyId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The trophy ID to remove
+ *     responses:
+ *       200:
+ *         description: Trophy removed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Trophy removed successfully"
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Bad request, user or trophy not found
+ *       401:
+ *         description: Unauthorized - Admin role required
+ *       500:
+ *         description: Internal server error
+ */
+router.delete('/users/:userId/trophies/:trophyId', authorizeRoles(['admin']), async (req, res) => {
+  try {
+    const { userId, trophyId } = req.params;
+
+    // Find the user and remove the trophy
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Find and remove the trophy
+    const trophyIndex = user.trophies.findIndex(trophy => trophy._id.toString() === trophyId);
+    if (trophyIndex === -1) {
+      return res.status(400).json({
+        success: false,
+        message: 'Trophy not found'
+      });
+    }
+
+    user.trophies.splice(trophyIndex, 1);
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Trophy removed successfully',
+      user: user
+    });
+  } catch (error) {
+    console.error('Error removing trophy:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/admin/users/{userId}/trophies/{trophyId}:
+ *   put:
+ *     summary: Update a user's trophy
+ *     description: Update an existing trophy for a user (Admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The user ID
+ *       - in: path
+ *         name: trophyId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The trophy ID to update
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               trophyName:
+ *                 type: string
+ *                 description: Name of the trophy
+ *               description:
+ *                 type: string
+ *                 description: Description of the trophy achievement
+ *               season:
+ *                 type: string
+ *                 description: Season when the trophy was earned
+ *               year:
+ *                 type: number
+ *                 description: Year when the trophy was earned
+ *     responses:
+ *       200:
+ *         description: Trophy updated successfully
+ *       400:
+ *         description: Bad request, user or trophy not found
+ *       401:
+ *         description: Unauthorized - Admin role required
+ *       500:
+ *         description: Internal server error
+ */
+router.put('/users/:userId/trophies/:trophyId', authorizeRoles(['admin']), async (req, res) => {
+  try {
+    const { userId, trophyId } = req.params;
+    const { trophyName, description, season, year } = req.body;
+
+    // Find the user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Find the trophy to update
+    const trophy = user.trophies.id(trophyId);
+    if (!trophy) {
+      return res.status(400).json({
+        success: false,
+        message: 'Trophy not found'
+      });
+    }
+
+    // Update trophy fields if provided
+    if (trophyName) trophy.trophyName = trophyName;
+    if (description) trophy.description = description;
+    if (season && year) trophy.dateEarned = `${season} ${year}`;
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Trophy updated successfully',
+      user: user
+    });
+  } catch (error) {
+    console.error('Error updating trophy:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
   }
 });
 

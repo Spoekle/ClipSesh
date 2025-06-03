@@ -62,22 +62,66 @@ const mongoose = require('mongoose');
  *         - title
  */
 
-const commentSchema = new mongoose.Schema({
-    username: { type: String, required: true },
-    comment: { type: String, required: true }
-}, { timestamps: true
+/**
+ * Reply Schema - embedded in comments
+ */
+const replySchema = new mongoose.Schema({
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  username: {
+    type: String,
+    required: true
+  },
+  replyText: {
+    type: String,
+    required: true
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
 });
 
+/**
+ * Comment Schema - embedded in clips
+ */
+const commentSchema = new mongoose.Schema({
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true  // Make this field required
+  },
+  username: {
+    type: String,
+    required: true
+  },
+  comment: {
+    type: String,
+    required: true
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  replies: [replySchema]
+});
+
+/**
+ * Main Clip Schema
+ */
 const clipSchema = new mongoose.Schema({
-    link: { type: String },
-    url: { type: String, required: true },
-    thumbnail: { type: String },
-    streamer: { type: String, required: true },
-    submitter: { type: String, required: true },
-    title: { type: String, required: true },
-    upvotes: { type: Number, default: 0 },
-    downvotes: { type: Number, default: 0 },
-    comments: { type: [commentSchema], default: [] }
+  link: { type: String },
+  url: { type: String, required: true },
+  thumbnail: { type: String },
+  streamer: { type: String, required: true },
+  submitter: { type: String, required: true },
+  title: { type: String, required: true },
+  upvotes: { type: Number, default: 0 },
+  downvotes: { type: Number, default: 0 },
+  comments: { type: [commentSchema], default: [] }
 }, { timestamps: true });
 
 const Clip = mongoose.model('Clip', clipSchema);

@@ -50,6 +50,12 @@ const mongoose = require('mongoose');
  *         - roles
  */
 
+const trophiesSchema = new mongoose.Schema({
+  trophyName: { type: String, required: true },
+  dateEarned: { type: String, required: true },
+  description: { type: String, required: true },
+});
+
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   email: { type: String, unique: true, sparse: true },
@@ -59,6 +65,7 @@ const userSchema = new mongoose.Schema({
   status: { type: String, enum: ['disabled', 'active'], default: 'active' },
   discordId: { type: String, unique: true, sparse: true },
   discordUsername: { type: String },
+  trophies: { type: [trophiesSchema], default: [] },
 });
 
 const User = mongoose.model('User', userSchema);
