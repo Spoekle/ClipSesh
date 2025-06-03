@@ -22,6 +22,7 @@ const clipUpload = require('./storage/ClipUpload');
 const Notification = require('../models/notificationModel');
 const User = require('../models/userModel');
 const Rating = require('../models/ratingModel');
+const { getClipPath, getDailyDirectory, isLegacyPath } = require('../utils/seasonHelpers');
 
 /**
  * Update the clip count in the public config
@@ -914,13 +915,11 @@ async function downloadClipFromUrl(url) {
         try {
             // Create a unique ID for this download
             const uniqueId = uuidv4();
-            const outputDir = path.join(__dirname, '..', 'uploads');
-            const outputPath = path.join(outputDir, `${uniqueId}.mp4`);
+            const uploadsBaseDir = path.join(__dirname, '..', 'uploads');
+            const filename = `${uniqueId}.mp4`;
             
-            // Ensure the uploads directory exists
-            if (!fs.existsSync(outputDir)) {
-                fs.mkdirSync(outputDir, { recursive: true });
-            }
+            // Get the season/date-based path for the file
+            const { fullPath: outputPath, relativePath } = getClipPath(uploadsBaseDir, filename);
             
             console.log(`Downloading from URL: ${url} to ${outputPath}`);
             
@@ -944,7 +943,8 @@ async function downloadClipFromUrl(url) {
                             
                             resolve({
                                 filePath: outputPath,
-                                fileName: `${uniqueId}.mp4`,
+                                fileName: filename,
+                                relativePath: relativePath,
                                 info: {
                                     title: info.videoDetails.title,
                                     author: info.videoDetails.author.name
@@ -1016,7 +1016,8 @@ async function downloadClipFromUrl(url) {
                         // Extract some basic info from the URL or page title
                         resolve({
                             filePath: outputPath,
-                            fileName: `${uniqueId}.mp4`,
+                            fileName: filename,
+                            relativePath: relativePath,
                             info: {
                                 title: `Twitch Clip ${clipSlug}`,
                                 author: 'Twitch Streamer'
@@ -1079,7 +1080,8 @@ async function downloadClipFromUrl(url) {
                         
                         resolve({
                             filePath: outputPath,
-                            fileName: `${uniqueId}.mp4`,
+                            fileName: filename,
+                            relativePath: relativePath,
                             info: {
                                 title: title,
                                 author: 'Medal.tv User'
@@ -1120,7 +1122,8 @@ async function downloadClipFromUrl(url) {
                     
                     resolve({
                         filePath: outputPath,
-                        fileName: `${uniqueId}.mp4`,
+                        fileName: filename,
+                        relativePath: relativePath,
                         info: {
                             title: path.basename(url),
                             author: 'Unknown'
@@ -1150,8 +1153,13 @@ router.post('/', authorizeRoles(['uploader', 'admin']), clipUpload.single('clip'
         
         // Case 1: Direct file upload
         if (req.file) {
-            const uploadPath = path.join(__dirname, '..', 'uploads', req.file.filename);
-            console.log("File uploaded with filename:", req.file.filename);
+            // req.file.path already contains the full path with season/date structure
+            const uploadPath = req.file.path;
+            const uploadsBaseDir = path.join(__dirname, '..', 'uploads');
+            const relativePath = path.relative(uploadsBaseDir, uploadPath);
+            
+            console.log("File uploaded to:", uploadPath);
+            console.log("Relative path:", relativePath);
             
             try {
                 // Compress the video file with ffmpeg (same as Discord bot)
@@ -1162,10 +1170,15 @@ router.post('/', authorizeRoles(['uploader', 'admin']), clipUpload.single('clip'
                 // Continue with uncompressed video if compression fails
             }
 
-            fileUrl = `https://api.spoekle.com/uploads/${req.file.filename}`;
+            // Use relative path for URL to support both legacy and new structure
+            fileUrl = `https://api.spoekle.com/uploads/${relativePath.replace(/\\/g, '/')}`;
 
-            // Generate thumbnail
+            // Generate thumbnail in the same directory as the video
             const thumbnailFilename = `${path.parse(req.file.filename).name}_thumbnail.png`;
+            const thumbnailDirectory = path.dirname(uploadPath);
+            const thumbnailPath = path.join(thumbnailDirectory, thumbnailFilename);
+            const thumbnailRelativePath = path.relative(uploadsBaseDir, thumbnailPath);
+            
             console.log("Generating thumbnail:", thumbnailFilename);
 
             await new Promise((resolve, reject) => {
@@ -1173,14 +1186,14 @@ router.post('/', authorizeRoles(['uploader', 'admin']), clipUpload.single('clip'
                     .screenshots({
                         timestamps: ['00:00:00.001'],
                         filename: thumbnailFilename,
-                        folder: path.join(__dirname, '..', 'uploads'),
+                        folder: thumbnailDirectory,
                         size: '640x360',
                     })
                     .on('end', resolve)
                     .on('error', reject);
             });
 
-            thumbnailUrl = `https://api.spoekle.com/uploads/${thumbnailFilename}`;
+            thumbnailUrl = `https://api.spoekle.com/uploads/${thumbnailRelativePath.replace(/\\/g, '/')}`;
             console.log("Thumbnail URL:", thumbnailUrl);
         } 
         // Case 2: URL-based clip from YouTube, Twitch, etc.
@@ -1196,26 +1209,29 @@ router.post('/', authorizeRoles(['uploader', 'admin']), clipUpload.single('clip'
                     finalTitle = downloadResult.info.title;
                 }
                 
-                // Use the filename for the URL
-                const filename = downloadResult.fileName;
-                fileUrl = `https://api.spoekle.com/uploads/${filename}`;
+                // Use the relative path for the URL
+                fileUrl = `https://api.spoekle.com/uploads/${downloadResult.relativePath.replace(/\\/g, '/')}`;
                 
-                // Generate thumbnail for the downloaded file
-                const thumbnailFilename = `${path.parse(filename).name}_thumbnail.png`;
+                // Generate thumbnail for the downloaded file in the same directory
+                const thumbnailFilename = `${path.parse(downloadResult.fileName).name}_thumbnail.png`;
+                const thumbnailDirectory = path.dirname(downloadResult.filePath);
+                const uploadsBaseDir = path.join(__dirname, '..', 'uploads');
+                const thumbnailPath = path.join(thumbnailDirectory, thumbnailFilename);
+                const thumbnailRelativePath = path.relative(uploadsBaseDir, thumbnailPath);
                 
                 await new Promise((resolve, reject) => {
                     ffmpeg(downloadResult.filePath)
                         .screenshots({
                             timestamps: ['00:00:00.001'],
                             filename: thumbnailFilename,
-                            folder: path.join(__dirname, '..', 'uploads'),
+                            folder: thumbnailDirectory,
                             size: '640x360',
                         })
                         .on('end', resolve)
                         .on('error', reject);
                 });
                 
-                thumbnailUrl = `https://api.spoekle.com/uploads/${thumbnailFilename}`;
+                thumbnailUrl = `https://api.spoekle.com/uploads/${thumbnailRelativePath.replace(/\\/g, '/')}`;
                 console.log("Downloaded and processed URL-based clip:", fileUrl);
             } catch (error) {
                 console.error("Error downloading from URL:", error);
@@ -1291,7 +1307,34 @@ router.delete('/:id', authorizeRoles(['admin']), async (req, res) => {
         const clip = await Clip.findById(id);
         if (clip) {
             try {
-                fs.unlinkSync(path.join(__dirname, 'uploads', path.basename(clip.url)));
+                // Extract file path from URL - handle both legacy and new structures
+                const uploadsBaseDir = path.join(__dirname, '..', 'uploads');
+                let filePath;
+                
+                if (clip.url.includes('uploads/')) {
+                    // Extract the path after 'uploads/'
+                    const urlPath = clip.url.split('uploads/')[1];
+                    filePath = path.join(uploadsBaseDir, urlPath);
+                } else {
+                    // Fallback for legacy structure
+                    filePath = path.join(uploadsBaseDir, path.basename(clip.url));
+                }
+                
+                console.log("Attempting to delete file:", filePath);
+                
+                if (fs.existsSync(filePath)) {
+                    fs.unlinkSync(filePath);
+                    console.log("File deleted successfully");
+                } else {
+                    console.log("File not found, continuing with database deletion");
+                }
+                
+                // Also try to delete thumbnail if it exists
+                const thumbnailPath = filePath.replace(/\.[^/.]+$/, '_thumbnail.png');
+                if (fs.existsSync(thumbnailPath)) {
+                    fs.unlinkSync(thumbnailPath);
+                    console.log("Thumbnail deleted successfully");
+                }
             } catch (error) {
                 console.error("Error removing file:", error.message);
             }
@@ -1313,14 +1356,38 @@ router.delete('/:id', authorizeRoles(['admin']), async (req, res) => {
 router.delete('/', authorizeRoles(['admin']), async (req, res) => {
     try {
         await Clip.deleteMany({});
-        const files = fs.readdirSync(path.join(__dirname, '..', 'uploads'));
-        for (const file of files) {
-            try {
-                fs.unlinkSync(path.join(__dirname, '..', 'uploads', file));
-            } catch (err) {
-                console.error(`Error deleting file ${file}:`, err);
+        
+        // Recursively delete all files in uploads directory
+        const uploadsDir = path.join(__dirname, '..', 'uploads');
+        
+        function deleteDirectoryRecursive(dirPath) {
+            if (fs.existsSync(dirPath) && fs.lstatSync(dirPath).isDirectory()) {
+                const files = fs.readdirSync(dirPath);
+                for (const file of files) {
+                    const curPath = path.join(dirPath, file);
+                    if (fs.lstatSync(curPath).isDirectory()) {
+                        deleteDirectoryRecursive(curPath);
+                    } else {
+                        try {
+                            fs.unlinkSync(curPath);
+                        } catch (err) {
+                            console.error(`Error deleting file ${curPath}:`, err);
+                        }
+                    }
+                }
+                
+                // Only delete the directory if it's not the main uploads directory
+                if (dirPath !== uploadsDir) {
+                    try {
+                        fs.rmdirSync(dirPath);
+                    } catch (err) {
+                        console.error(`Error deleting directory ${dirPath}:`, err);
+                    }
+                }
             }
         }
+        
+        deleteDirectoryRecursive(uploadsDir);
 
         // Update clip count in config to 0
         await PublicConfig.findOneAndUpdate(

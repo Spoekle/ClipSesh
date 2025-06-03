@@ -6,6 +6,7 @@ import { format } from 'timeago.js';
 import apiUrl from '../../../../config/config';
 import { useNotification } from '../../../../context/NotificationContext';
 import { User, Clip, Reply } from '../../../../types/adminTypes';
+import ConfirmationDialog from '../../../../components/common/ConfirmationDialog';
 
 interface CommentReplyProps {
   clipId: string;
@@ -28,6 +29,8 @@ const CommentReply: React.FC<CommentReplyProps> = ({
   const [showReplies, setShowReplies] = useState<boolean>(replies.length > 0);
   const [replyContent, setReplyContent] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false);
+  const [replyToDelete, setReplyToDelete] = useState<string | null>(null);
   
   const { showSuccess, showError } = useNotification();
 
@@ -66,8 +69,6 @@ const CommentReply: React.FC<CommentReplyProps> = ({
   };
 
   const deleteReply = async (replyId: string) => {
-    if (!window.confirm('Are you sure you want to delete this reply?')) return;
-    
     try {
       const token = localStorage.getItem('token');
       const response = await axios.delete<Clip>(
@@ -81,6 +82,24 @@ const CommentReply: React.FC<CommentReplyProps> = ({
       console.error('Error deleting reply:', error);
       showError(error.response?.data?.message || 'Failed to delete reply');
     }
+  };
+
+  const handleDeleteClick = (replyId: string) => {
+    setReplyToDelete(replyId);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (replyToDelete) {
+      deleteReply(replyToDelete);
+    }
+    setShowDeleteConfirm(false);
+    setReplyToDelete(null);
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteConfirm(false);
+    setReplyToDelete(null);
   };
 
   return (
@@ -185,7 +204,7 @@ const CommentReply: React.FC<CommentReplyProps> = ({
                       
                       {(user.username === reply.username || user.roles.includes('admin')) && (
                         <button
-                          onClick={() => deleteReply(reply._id)}
+                          onClick={() => handleDeleteClick(reply._id)}
                           className="text-neutral-400 hover:text-red-500 transition"
                           title="Delete reply"
                         >
@@ -204,6 +223,17 @@ const CommentReply: React.FC<CommentReplyProps> = ({
           </AnimatePresence>
         </div>
       )}
+
+      {/* Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={showDeleteConfirm}
+        title="Delete Reply"
+        message="Are you sure you want to delete this reply? This action cannot be undone."
+        confirmText="Delete"
+        confirmVariant="danger"
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
+      />
     </div>
   );
 };

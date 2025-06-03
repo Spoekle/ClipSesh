@@ -17,7 +17,9 @@ import axios from 'axios';
 import { useNotification } from '../../../context/NotificationContext';
 import generateAvatar from '../../../utils/generateAvatar';
 import UserEditForm from './UserEditForm';
+import TrophyIndicator from '../components/TrophyIndicator';
 import { User } from '../../../types/adminTypes';
+import ConfirmationDialog from '../../../components/common/ConfirmationDialog';
 
 interface UserListProps {
   fetchUsers: () => void;
@@ -38,6 +40,8 @@ const UserList: React.FC<UserListProps> = ({ fetchUsers, AVAILABLE_ROLES, apiUrl
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [showDisableConfirm, setShowDisableConfirm] = useState<boolean>(false);
+  const [userToDisable, setUserToDisable] = useState<string | null>(null);
   const usersPerPage = 12;
   
   const { showSuccess, showError } = useNotification();
@@ -138,10 +142,6 @@ const UserList: React.FC<UserListProps> = ({ fetchUsers, AVAILABLE_ROLES, apiUrl
   };
 
   const handleDisableUser = async (userId: string) => {
-    if (!window.confirm('Are you sure you want to disable this user?')) {
-      return;
-    }
-
     setIsLoading(true);
     try {
       const token = localStorage.getItem('token');
@@ -156,6 +156,24 @@ const UserList: React.FC<UserListProps> = ({ fetchUsers, AVAILABLE_ROLES, apiUrl
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleDisableClick = (userId: string) => {
+    setUserToDisable(userId);
+    setShowDisableConfirm(true);
+  };
+
+  const handleConfirmDisable = () => {
+    if (userToDisable) {
+      handleDisableUser(userToDisable);
+    }
+    setShowDisableConfirm(false);
+    setUserToDisable(null);
+  };
+
+  const handleCancelDisable = () => {
+    setShowDisableConfirm(false);
+    setUserToDisable(null);
   };
 
   const handleEditSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -410,7 +428,12 @@ const UserList: React.FC<UserListProps> = ({ fetchUsers, AVAILABLE_ROLES, apiUrl
                                 />
                               </div>
                               <div>
-                                <h3 className="font-bold text-lg">{user.username}</h3>
+                                <div className="flex items-center gap-2">
+                                  <h3 className="font-bold text-lg">{user.username}</h3>
+                                  {user.trophies && user.trophies.length > 0 && (
+                                    <TrophyIndicator trophies={user.trophies} size="small" />
+                                  )}
+                                </div>
                                 <div className="flex items-center">
                                   <FaDiscord 
                                     className="mr-1.5"
@@ -437,7 +460,7 @@ const UserList: React.FC<UserListProps> = ({ fetchUsers, AVAILABLE_ROLES, apiUrl
                               <motion.button
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
-                                onClick={() => handleDisableUser(user._id)}
+                                onClick={() => handleDisableClick(user._id)}
                                 className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-md flex items-center justify-center"
                                 disabled={isLoading}
                               >
@@ -527,6 +550,17 @@ const UserList: React.FC<UserListProps> = ({ fetchUsers, AVAILABLE_ROLES, apiUrl
           />
         )}
       </AnimatePresence>
+
+      {/* Disable User Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={showDisableConfirm}
+        title="Disable User"
+        message="Are you sure you want to disable this user? They will no longer be able to access the platform."
+        confirmText="Disable"
+        confirmVariant="danger"
+        onConfirm={handleConfirmDisable}
+        onCancel={handleCancelDisable}
+      />
     </motion.div>
   );
 };

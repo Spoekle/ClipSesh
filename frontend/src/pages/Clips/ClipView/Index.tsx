@@ -19,6 +19,7 @@ import { AiOutlineDelete, AiOutlineEdit } from 'react-icons/ai';
 import MessageComponent from './components/clipteam/MessagesPopup';
 import RatingsComponent from './components/clipteam/RatingsPopup';
 import EditModal from './components/EditClipModal';
+import ConfirmationDialog from '../../../components/common/ConfirmationDialog';
 import CustomPlayer from './components/CustomPlayer';
 import { useNotification } from '../../../context/NotificationContext';
 import { Clip, User, Rating, RatingUser } from '../../../types/adminTypes';
@@ -66,6 +67,7 @@ const ClipContent: React.FC<ClipContentProps> = ({
     const [loadingAdjacentClips, setLoadingAdjacentClips] = useState<boolean>(false);
     const [isClipLoading, setIsClipLoading] = useState<boolean>(false);
     const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false);
 
     // Use our custom notification hook instead of toast
     const { showSuccess, showError } = useNotification();
@@ -353,20 +355,31 @@ const ClipContent: React.FC<ClipContentProps> = ({
 
 
     const handleDeleteClip = async (): Promise<void> => {
-        if (window.confirm('Are you sure you want to delete this clip? This action cannot be undone.')) {
-            const token = localStorage.getItem('token');
-            try {
-                setIsLoading(true);
-                await axios.delete(`${apiUrl}/api/clips/${currentClip._id}`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-                showSuccess('Clip deleted successfully!');
-                closeExpandedClip();
-            } catch (error: any) {
-                showError('Error deleting clip: ' + (error.response?.data?.message || 'Unknown error'));
-                setIsLoading(false);
-            }
+        const token = localStorage.getItem('token');
+        try {
+            setIsLoading(true);
+            await axios.delete(`${apiUrl}/api/clips/${currentClip._id}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            showSuccess('Clip deleted successfully!');
+            closeExpandedClip();
+        } catch (error: any) {
+            showError('Error deleting clip: ' + (error.response?.data?.message || 'Unknown error'));
+            setIsLoading(false);
         }
+    };
+
+    const handleDeleteClick = (): void => {
+        setShowDeleteConfirm(true);
+    };
+
+    const handleConfirmDelete = (): void => {
+        setShowDeleteConfirm(false);
+        handleDeleteClip();
+    };
+
+    const handleCancelDelete = (): void => {
+        setShowDeleteConfirm(false);
     };
 
     const handleCopyShareLink = (): void => {
@@ -469,7 +482,7 @@ const ClipContent: React.FC<ClipContentProps> = ({
                             </button>
                             <button
                                 className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition"
-                                onClick={handleDeleteClip}
+                                onClick={handleDeleteClick}
                                 disabled={isLoading}
                             >
                                 <AiOutlineDelete />
@@ -773,6 +786,17 @@ const ClipContent: React.FC<ClipContentProps> = ({
                     token={token}
                 />
             )}
+
+            {/* Delete Confirmation Dialog */}
+            <ConfirmationDialog
+                isOpen={showDeleteConfirm}
+                title="Delete Clip"
+                message="Are you sure you want to delete this clip? This action cannot be undone."
+                confirmText="Delete"
+                confirmVariant="danger"
+                onConfirm={handleConfirmDelete}
+                onCancel={handleCancelDelete}
+            />
 
             <style>{`
         .custom-scrollbar::-webkit-scrollbar {

@@ -31,7 +31,6 @@ const AdminActions: React.FC<AdminActionsProps> = ({ openProcessModal, handleDel
         title="Delete All Clips"
         message="Are you sure you want to delete all clips? This action cannot be undone and will remove all ratings."
         confirmText="Delete All"
-        cancelText="Cancel"
         confirmVariant="danger"
         onConfirm={confirmDelete}
         onCancel={() => setShowDeleteConfirm(false)}
@@ -43,7 +42,6 @@ const AdminActions: React.FC<AdminActionsProps> = ({ openProcessModal, handleDel
         title="Process Approved Clips"
         message="Are you sure you want to process all approved clips? This will create a ZIP file with all clips that have not been denied."
         confirmText="Process Clips"
-        cancelText="Cancel"
         confirmVariant="primary"
         onConfirm={confirmProcess}
         onCancel={() => setShowProcessConfirm(false)}

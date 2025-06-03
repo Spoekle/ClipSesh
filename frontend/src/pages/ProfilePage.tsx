@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import { Helmet } from 'react-helmet';
-import apiUrl from '../config/config';
-import axios from 'axios';
 import { motion } from 'framer-motion';
 import { 
   FaUser, 
@@ -18,6 +16,13 @@ import {
 } from 'react-icons/fa';
 import { useNotification } from '../context/NotificationContext';
 import { User } from '../types/adminTypes';
+import ConfirmationDialog from '../components/common/ConfirmationDialog';
+import { 
+  updateUserProfile, 
+  uploadProfilePicture, 
+  getDiscordAuthUrl, 
+  unlinkDiscordAccount as unlinkDiscordService 
+} from '../services/userService';
 
 interface ProfilePageProps {
   user: User;
@@ -33,6 +38,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, setUser }) => {
   const [loading, setLoading] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'profile' | 'avatar' | 'connections'>('profile');
+  const [showUnlinkConfirmation, setShowUnlinkConfirmation] = useState<boolean>(false);
   
   const { showSuccess, showError, showWarning } = useNotification();
   
@@ -61,26 +67,18 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, setUser }) => {
     }
 
     setLoading(true);
-    const formData = new FormData();
-    formData.append('profilePicture', profilePicture);
-
     try {
-      const response = await axios.post(`${apiUrl}/api/users/uploadProfilePicture`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
+      const response = await uploadProfilePicture(profilePicture);
 
-      if (response.data.success) {
-        setUser({ ...user, profilePicture: response.data.profilePictureUrl });
+      if (response.success) {
+        setUser({ ...user, profilePicture: response.profilePictureUrl });
         showSuccess('Profile picture updated successfully');
         setProfilePicture(null);
         setPreviewUrl(null);
       }
     } catch (error: any) {
       console.error('Error uploading profile picture:', error);
-      showError(error.response?.data?.message || 'Error uploading profile picture');
+      showError(error.message || 'Error uploading profile picture');
     } finally {
       setLoading(false);
     }
@@ -104,13 +102,9 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, setUser }) => {
 
     setLoading(true);
     try {
-      const response = await axios.put(`${apiUrl}/api/users/${user._id}`, updateData, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
+      const response = await updateUserProfile(user._id, updateData);
 
-      if (response.data.message) {
+      if (response.message) {
         setUser({ ...user, username, email });
         showSuccess('Profile updated successfully');
         setPassword('');
@@ -118,37 +112,40 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, setUser }) => {
       }
     } catch (error: any) {
       console.error('Error updating profile:', error);
-      showError(error.response?.data?.message || 'Error updating profile');
+      showError(error.message || 'Error updating profile');
     } finally {
       setLoading(false);
     }
   };
 
   const linkDiscordAccount = (): void => {
-    window.location.href = `${apiUrl}/api/discord/auth?siteUserId=${user._id}`;
+    window.location.href = getDiscordAuthUrl(user._id);
   };
 
-  const unlinkDiscordAccount = async (): Promise<void> => {
-    if (window.confirm('Are you sure you want to unlink your Discord account?')) {
-      setLoading(true);
-      try {
-        const response = await axios.put(`${apiUrl}/api/users/${user._id}`, { discordId: "", discordUsername: "" }, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        });
+  const unlinkDiscordAccount = (): void => {
+    setShowUnlinkConfirmation(true);
+  };
 
-        if (response.data.message) {
-          setUser({ ...user, discordId: undefined, discordUsername: undefined });
-          showSuccess('Discord account unlinked successfully');
-        }
-      } catch (error: any) {
-        console.error('Error unlinking Discord account:', error);
-        showError(error.response?.data?.message || 'Error unlinking Discord account');
-      } finally {
-        setLoading(false);
+  const confirmUnlinkDiscord = async (): Promise<void> => {
+    setShowUnlinkConfirmation(false);
+    setLoading(true);
+    try {
+      const response = await unlinkDiscordService(user._id);
+
+      if (response.message) {
+        setUser({ ...user, discordId: undefined, discordUsername: undefined });
+        showSuccess('Discord account unlinked successfully');
       }
+    } catch (error: any) {
+      console.error('Error unlinking Discord account:', error);
+      showError(error.message || 'Error unlinking Discord account');
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const cancelUnlinkDiscord = (): void => {
+    setShowUnlinkConfirmation(false);
   };
 
   return (
@@ -485,6 +482,16 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, setUser }) => {
         )}
 
       </div>
+      
+      <ConfirmationDialog
+        isOpen={showUnlinkConfirmation}
+        title="Unlink Discord Account"
+        message="Are you sure you want to unlink your Discord account? This action cannot be undone."
+        confirmText="Unlink"
+        onConfirm={confirmUnlinkDiscord}
+        onCancel={cancelUnlinkDiscord}
+        confirmVariant="danger"
+      />
     </div>
   );
 };

@@ -1,4 +1,4 @@
 // Frontend API configuration
-const apiUrl = 'https://api.spoekle.com';
+const apiUrl = 'https://dev.spoekle.com';
 
 export default apiUrl;

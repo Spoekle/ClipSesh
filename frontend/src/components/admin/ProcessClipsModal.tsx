@@ -32,6 +32,7 @@ const ProcessClipsModal: React.FC<ProcessClipsModalProps> = ({
   const [season, setSeason] = useState(currentSeason);
   const [year, setYear] = useState(currentYear);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [showForceCompleteConfirmation, setShowForceCompleteConfirmation] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [stuckForTooLong, setStuckForTooLong] = useState(false);
@@ -115,34 +116,41 @@ const ProcessClipsModal: React.FC<ProcessClipsModalProps> = ({
     setShowConfirmation(false);
   };
 
-  const handleForceComplete = async () => {
+  const handleForceComplete = () => {
+    setShowForceCompleteConfirmation(true);
+  };
+
+  const confirmForceComplete = async () => {
+    setShowForceCompleteConfirmation(false);
     if (!processJobId) return;
 
     const action = retryCount > 0 ? 'retry completion' : 'force complete';
 
-    if (window.confirm(`Are you sure you want to ${action} this job? This should only be used if the process is stuck at 100%.`)) {
-      try {
-        const response = await axios.post(
-          `${apiUrl}/api/zips/force-complete/${processJobId}`,
-          {},
-          {
-            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-          }
-        );
-
-        if (response.status === 200) {
-          alert('Job marked as completed. Check the zip list for the entry.');
-          onClose();
-        } else {
-          alert(`Failed to ${action} the job.`);
+    try {
+      const response = await axios.post(
+        `${apiUrl}/api/zips/force-complete/${processJobId}`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
         }
-      } catch (error) {
-        console.error(`Error ${action} job:`, error);
-        alert(`Error ${action} job. See console for details.`);
-        // Increment retry count for next attempt
-        setRetryCount(prev => prev + 1);
+      );
+
+      if (response.status === 200) {
+        alert('Job marked as completed. Check the zip list for the entry.');
+        onClose();
+      } else {
+        alert(`Failed to ${action} the job.`);
       }
+    } catch (error) {
+      console.error(`Error ${action} job:`, error);
+      alert(`Error ${action} job. See console for details.`);
+      // Increment retry count for next attempt
+      setRetryCount(prev => prev + 1);
     }
+  };
+
+  const cancelForceComplete = () => {
+    setShowForceCompleteConfirmation(false);
   };
 
   const handleProcessingComplete = () => {
@@ -327,10 +335,19 @@ const ProcessClipsModal: React.FC<ProcessClipsModalProps> = ({
         title="Confirm Processing"
         message={`Are you sure you want to process ${clipCount} clips for ${season} ${year}? This operation may take several minutes depending on the number of clips.`}
         confirmText="Start Processing"
-        cancelText="Cancel"
         confirmVariant="primary"
         onConfirm={handleConfirmProcess}
         onCancel={handleCancelConfirmation}
+      />
+
+      <ConfirmationDialog
+        isOpen={showForceCompleteConfirmation}
+        title="Force Complete Process"
+        message={`Are you sure you want to ${retryCount > 0 ? 'retry completion' : 'force complete'} this job? This should only be used if the process is stuck at 100%.`}
+        confirmText={retryCount > 0 ? `Retry (Attempt ${retryCount + 1})` : 'Force Complete'}
+        confirmVariant="danger"
+        onConfirm={confirmForceComplete}
+        onCancel={cancelForceComplete}
       />
     </>
   );

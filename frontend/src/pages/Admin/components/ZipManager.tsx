@@ -6,25 +6,10 @@ import { saveAs } from 'file-saver';
 import ConfirmationDialog from '../../../components/common/ConfirmationDialog';
 import { formatFileSize, formatDate } from '../../../utils/fileHelpers';
 import { uploadFileInChunks } from '../../../utils/zipHelpers';
-
-interface ZipInfo {
-  _id: string;
-  url: string;
-  name: string;
-  size: number;
-  clipAmount: number;
-  season: string;
-  year: number;
-  createdAt: string;
-}
-
-interface SeasonInfo {
-  season: string;
-  clipAmount?: number;
-}
+import { Zip, SeasonInfo } from '../../../types/adminTypes';
 
 interface ZipManagerProps {
-  zips: ZipInfo[];
+  zips: Zip[];
   zipsLoading: boolean;
   deleteZip: (id: string) => Promise<void>;
   zipFile: File | null;
@@ -143,7 +128,6 @@ const ZipManager: React.FC<ZipManagerProps> = ({
         title="Delete ZIP Archive"
         message={`Are you sure you want to delete "${selectedZipName}"? This action cannot be undone.`}
         confirmText="Delete"
-        cancelText="Cancel"
         confirmVariant="danger"
         onConfirm={confirmDelete}
         onCancel={cancelDelete}
