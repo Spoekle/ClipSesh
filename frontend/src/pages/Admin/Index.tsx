@@ -5,7 +5,7 @@ import axios from 'axios';
 import { BiLoaderCircle } from 'react-icons/bi';
 import LoadingBar from 'react-top-loading-bar';
 import background from '../../media/admin.jpg';
-import { FaDiscord, FaUserClock, FaUsers, FaCog, FaThumbsDown, FaChartBar } from "react-icons/fa";
+import { FaDiscord, FaUserClock, FaUsers, FaCog, FaThumbsDown, FaChartBar, FaTrophy } from "react-icons/fa";
 import { useLocation } from 'react-router-dom';
 import DeniedClips from './components/DeniedClips';
 import UserList from './components/UserList';
@@ -15,54 +15,26 @@ import ConfigPanel from './components/ConfigPanel';
 import AdminActions from './components/AdminActions';
 import ZipManager from './components/ZipManager';
 import SeasonInfo from './components/SeasonInfo';
+import TrophyManagement from './components/TrophyManagement';
 import { getCurrentSeason } from '../../utils/seasonHelpers';
 import ProcessClipsModal from '../../components/admin/ProcessClipsModal';
 import useSocket from '../../hooks/useSocket';
+import ConfirmationDialog from '../../components/common/ConfirmationDialog';
 
-import { Clip, Rating  } from '../../types/adminTypes';
+import { 
+  Clip, 
+  Rating, 
+  User, 
+  UserRating, 
+  Zip, 
+  SeasonInfo as SeasonInfoType 
+} from '../../types/adminTypes';
 
-// Define interfaces for the app's data types
-interface User {
-  _id: string;
-  username: string;
-  status: 'active' | 'disabled';
-  roles: string[];
-  profilePicture?: string;
-  discordId?: string;
-  discordUsername?: string;
-}
-
+// Define interfaces for local app's data types
 interface Config {
   denyThreshold: number;
   latestVideoLink: string;
   clipChannelIds?: string[];
-}
-
-interface Zip {
-  _id: string;
-  url: string;
-  season: string;
-  year: number;
-  name: string;
-  size: number;
-  clipAmount: number;
-  createdAt: string;
-}
-
-interface UserRating {
-  username: string;
-  '1': number;
-  '2': number;
-  '3': number;
-  '4': number;
-  deny: number;
-  total: number;
-  percentageRated: number;
-}
-
-interface SeasonInfoType {
-  season?: string;
-  clipAmount?: number;
 }
 
 interface AdminStats {
@@ -74,7 +46,7 @@ interface AdminStats {
 }
 
 // Tab names for the admin dashboard
-type TabName = 'overview' | 'users' | 'content' | 'config' | 'clips' | 'stats';
+type TabName = 'overview' | 'users' | 'content' | 'config' | 'clips' | 'stats' | 'trophies';
 
 function AdminDash() {
   // Tab state - default to overview tab
@@ -92,11 +64,11 @@ function AdminDash() {
   const [config, setConfig] = useState<Config>({ denyThreshold: 5, latestVideoLink: '' });
   const [clips, setClips] = useState<Clip[]>([]);
   const [ratings, setRatings] = useState<Record<string, Rating>>({});
-  const [downloading, setDownloading] = useState<boolean>(false);
+  const [downloading] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [progress, setProgress] = useState<number>(0);
   const [userRatings, setUserRatings] = useState<UserRating[]>([]);
-  const [seasonInfo, setSeasonInfo] = useState<SeasonInfoType>({});
+  const [seasonInfo, setSeasonInfo] = useState<SeasonInfoType>({ clipAmount: 0 });
   const [zips, setZips] = useState<Zip[]>([]);
   const [zipsLoading, setZipsLoading] = useState<boolean>(true);
   const AVAILABLE_ROLES = ['user', 'admin', 'clipteam', 'editor', 'uploader'];
@@ -112,6 +84,11 @@ function AdminDash() {
   const [processingClips, setProcessingClips] = useState<boolean>(false);
   const [processProgress, setProcessProgress] = useState<number>(0);
   const [processJobId, setProcessJobId] = useState<string | null>(null);
+
+  // Confirmation dialog states
+  const [showDeleteUserConfirmation, setShowDeleteUserConfirmation] = useState<boolean>(false);
+  const [showDeleteAllClipsConfirmation, setShowDeleteAllClipsConfirmation] = useState<boolean>(false);
+  const [userToDelete, setUserToDelete] = useState<string | null>(null);
   const [currentYear, setCurrentYear] = useState<number>(new Date().getFullYear());
 
   const location = useLocation();
@@ -155,10 +132,6 @@ function AdminDash() {
   };
 
   const deleteZip = async (zipId: string): Promise<void> => {
-    if (!window.confirm("Are you sure you want to delete this zip?")) {
-      return;
-    }
-
     try {
       const token = localStorage.getItem('token');
       await axios.delete(`${apiUrl}/api/zips/${zipId}`, {
@@ -476,23 +449,34 @@ function AdminDash() {
     }
   };
 
-  const handleDelete = async (id: string): Promise<void> => {
-    if (!window.confirm("Are you sure you want to delete this user?")) {
-      return;
-    }
+  const handleDelete = (id: string): void => {
+    setUserToDelete(id);
+    setShowDeleteUserConfirmation(true);
+  };
 
+  const confirmDeleteUser = async (): Promise<void> => {
+    if (!userToDelete) return;
+    
+    setShowDeleteUserConfirmation(false);
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`${apiUrl}/api/users/${id}`, {
+      await axios.delete(`${apiUrl}/api/users/${userToDelete}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setUsers(allUsers.filter(user => user._id !== id));
+      setUsers(allUsers.filter(user => user._id !== userToDelete));
       alert('User deleted successfully');
       fetchUsers();
     } catch (error) {
       console.error('Error deleting user:', error);
       alert('Failed to delete user. Please try again.');
+    } finally {
+      setUserToDelete(null);
     }
+  };
+
+  const cancelDeleteUser = (): void => {
+    setShowDeleteUserConfirmation(false);
+    setUserToDelete(null);
   };
 
   const [zipFile, setZipFile] = useState<File | null>(null);
@@ -668,11 +652,12 @@ function AdminDash() {
     }
   };
 
-  const handleDeleteAllClips = async (): Promise<void> => {
-    if (!window.confirm("Are you sure you want to delete all clips?")) {
-      return;
-    }
+  const handleDeleteAllClips = (): void => {
+    setShowDeleteAllClipsConfirmation(true);
+  };
 
+  const confirmDeleteAllClips = async (): Promise<void> => {
+    setShowDeleteAllClipsConfirmation(false);
     try {
       const token = localStorage.getItem('token');
       await axios.delete(`${apiUrl}/api/clips`, {
@@ -683,6 +668,10 @@ function AdminDash() {
     } catch (error) {
       console.error('Error deleting all clips:', error);
     }
+  };
+
+  const cancelDeleteAllClips = (): void => {
+    setShowDeleteAllClipsConfirmation(false);
   };
 
   const getSeason = (): void => {
@@ -721,7 +710,7 @@ function AdminDash() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
               <AdminActions
                 openProcessModal={openProcessModal}
-                handleDeleteAllClips={handleDeleteAllClips}
+                handleDeleteAllClips={async () => handleDeleteAllClips()}
                 downloading={downloading}
               />
             </div>
@@ -845,6 +834,13 @@ function AdminDash() {
             handleConfigSubmit={handleConfigSubmit}
           />
         );
+      case 'trophies':
+        return (
+          <TrophyManagement
+            users={allUsers}
+            onRefreshUsers={fetchUsers}
+          />
+        );
       default:
         return (
           <div className="p-8 bg-neutral-300 dark:bg-neutral-800 rounded-xl text-center">
@@ -944,6 +940,16 @@ function AdminDash() {
               >
                 <FaCog /> Configuration
               </button>
+              <button
+                onClick={() => setActiveTab('trophies')}
+                className={`px-4 py-2 rounded-t-lg flex items-center gap-2 transition-all ${
+                  activeTab === 'trophies'
+                    ? 'bg-blue-600 text-white font-medium'
+                    : 'bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-400 dark:hover:bg-neutral-600 text-neutral-800 dark:text-white'
+                }`}
+              >
+                <FaTrophy /> Trophies
+              </button>
             </div>
           </div>
 
@@ -973,6 +979,27 @@ function AdminDash() {
           );
         }).length}
         processJobId={processJobId}
+      />
+
+      {/* Confirmation Dialogs */}
+      <ConfirmationDialog
+        isOpen={showDeleteUserConfirmation}
+        title="Delete User"
+        message="Are you sure you want to delete this user? This action cannot be undone."
+        confirmText="Delete"
+        confirmVariant="danger"
+        onConfirm={confirmDeleteUser}
+        onCancel={cancelDeleteUser}
+      />
+
+      <ConfirmationDialog
+        isOpen={showDeleteAllClipsConfirmation}
+        title="Delete All Clips"
+        message="Are you sure you want to delete all clips? This action cannot be undone and will remove all ratings."
+        confirmText="Delete All"
+        confirmVariant="danger"
+        onConfirm={confirmDeleteAllClips}
+        onCancel={cancelDeleteAllClips}
       />
     </div>
   );

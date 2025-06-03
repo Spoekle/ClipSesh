@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import axios from 'axios';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import LoadingBar from 'react-top-loading-bar';
 import RatedClips from './components/RatedClips';
 import ActivityTracker from './components/ActivityTracker';
+import TrophyDisplay from './components/TrophyDisplay';
 import { getCurrentSeason } from '../../utils/seasonHelpers';
-import apiUrl from '../../config/config';
+import { getClipsWithRatings } from '../../services/clipService';
 
 import { motion } from 'framer-motion';
 import { 
@@ -18,36 +18,7 @@ import {
   FaRegLightbulb
 } from 'react-icons/fa';
 import PageLayout from '../components/layouts/PageLayout';
-import { User } from '../../types/adminTypes';
-
-interface RatingUser {
-  username: string;
-  userId: string;
-}
-
-interface RatingCount {
-  rating: string;
-  count: number;
-  users: RatingUser[];
-}
-
-interface Rating {
-  ratings?: {
-    '1': RatingUser[];
-    '2': RatingUser[];
-    '3': RatingUser[];
-    '4': RatingUser[];
-    'deny': RatingUser[];
-  };
-  ratingCounts?: RatingCount[];
-}
-
-interface Clip {
-  _id: string;
-  title: string;
-  url: string;
-  createdAt: string;
-}
+import { User, Clip, Rating } from '../../types/adminTypes';
 
 interface UserRatingData {
   username: string;
@@ -97,106 +68,14 @@ const Stats: React.FC<StatsProps> = ({ user }) => {
 
   const fetchClipsAndRatings = async (): Promise<void> => {
     try {
-      const token = localStorage.getItem('token');
-      const headers = { Authorization: `Bearer ${token}` };
-      
-      const clipResponse = await axios.get(`${apiUrl}/api/clips`, {
-        params: {
-          limit: 1000,
-          sortBy: 'createdAt',
-          sortOrder: 'desc',
-          includeRatings: true
-        },
-        headers
-      });
-      
-      let clipsData: Clip[] = [];
-      let ratingsData: Record<string, Rating> = {};
-      
-      if (clipResponse.data) {
-        if (Array.isArray(clipResponse.data)) {
-          clipsData = clipResponse.data;
-        } else if (clipResponse.data.clips && Array.isArray(clipResponse.data.clips)) {
-          clipsData = clipResponse.data.clips;
-        } else if (clipResponse.data.data && Array.isArray(clipResponse.data.data)) {
-          clipsData = clipResponse.data.data;
-        }
-        
-        if (clipResponse.data.ratings && typeof clipResponse.data.ratings === 'object') {
-          ratingsData = clipResponse.data.ratings;
-        }
-      }
+      const { clips: clipsData, ratings: ratingsData } = await getClipsWithRatings();
       
       setClips(clipsData);
-      
-      if (Object.keys(ratingsData).length === 0 && clipsData.length > 0) {
-        setProgress(65);
-        
-        const ratingPromises = clipsData.map(clip =>
-          axios.get<Rating>(`${apiUrl}/api/ratings/${clip._id}`, { headers })
-        );
-        
-        setProgress(80);
-        const ratingResponses = await Promise.all(ratingPromises);
-        
-        ratingsData = ratingResponses.reduce<Record<string, Rating>>((acc, res, index) => {
-          acc[clipsData[index]._id] = res.data;
-          setProgress(90);
-          return acc;
-        }, {});
-      }
-      
-      const transformedRatings = transformRatings(ratingsData);
-      setRatings(transformedRatings);
+      setRatings(ratingsData);
       
     } catch (error) {
       console.error('Error fetching clips and ratings:', error);
     }
-  };
-
-  const transformRatings = (ratings: Record<string, any>): Record<string, Rating> => {
-    const transformed: Record<string, Rating> = {};
-    
-    Object.entries(ratings).forEach(([clipId, ratingData]) => {
-      if (ratingData && !ratingData.ratingCounts && ratingData.ratings) {
-        const ratingCounts = [
-          { 
-            rating: '1', 
-            count: Array.isArray(ratingData.ratings['1']) ? ratingData.ratings['1'].length : 0,
-            users: Array.isArray(ratingData.ratings['1']) ? ratingData.ratings['1'] : []
-          },
-          { 
-            rating: '2', 
-            count: Array.isArray(ratingData.ratings['2']) ? ratingData.ratings['2'].length : 0,
-            users: Array.isArray(ratingData.ratings['2']) ? ratingData.ratings['2'] : []
-          },
-          { 
-            rating: '3', 
-            count: Array.isArray(ratingData.ratings['3']) ? ratingData.ratings['3'].length : 0,
-            users: Array.isArray(ratingData.ratings['3']) ? ratingData.ratings['3'] : [] 
-          },
-          { 
-            rating: '4', 
-            count: Array.isArray(ratingData.ratings['4']) ? ratingData.ratings['4'].length : 0,
-            users: Array.isArray(ratingData.ratings['4']) ? ratingData.ratings['4'] : []
-          },
-          { 
-            rating: 'deny', 
-            count: Array.isArray(ratingData.ratings['deny']) ? ratingData.ratings['deny'].length : 0,
-            users: Array.isArray(ratingData.ratings['deny']) ? ratingData.ratings['deny'] : []
-          }
-        ];
-        
-        transformed[clipId] = {
-          ...ratingData,
-          ratingCounts: ratingCounts
-        };
-      } else {
-        transformed[clipId] = ratingData;
-      }
-    });
-    
-    return transformed;
   };
 
 
@@ -445,6 +324,13 @@ const Stats: React.FC<StatsProps> = ({ user }) => {
                 </div>
               </div>
             </div>
+            
+            {/* Trophy Display */}
+            {user.trophies && user.trophies.length > 0 && (
+              <div className="mb-8">
+                <TrophyDisplay trophies={user.trophies} username={user.username} />
+              </div>
+            )}
             
             {/* Rating breakdown */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">

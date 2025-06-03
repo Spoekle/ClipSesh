@@ -546,4 +546,297 @@ router.get('/stats', authorizeRoles(['admin']), async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/admin/users/{userId}/trophies:
+ *   post:
+ *     summary: Award a trophy to a user
+ *     description: Add a trophy to a user's profile (Admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The user ID to award the trophy to
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - trophyName
+ *               - description
+ *               - season
+ *               - year
+ *             properties:
+ *               trophyName:
+ *                 type: string
+ *                 description: Name of the trophy
+ *                 example: "Best Clips of the Month"
+ *               description:
+ *                 type: string
+ *                 description: Description of the trophy achievement
+ *                 example: "Outstanding performance in January 2024"
+ *               season:
+ *                 type: string
+ *                 description: Season when the trophy was earned
+ *                 example: "Winter"
+ *               year:
+ *                 type: number
+ *                 description: Year when the trophy was earned
+ *                 example: 2024
+ *     responses:
+ *       200:
+ *         description: Trophy awarded successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Trophy awarded successfully"
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Bad request or user not found
+ *       401:
+ *         description: Unauthorized - Admin role required
+ *       500:
+ *         description: Internal server error
+ */
+router.post('/users/:userId/trophies', authorizeRoles(['admin']), async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { trophyName, description, season, year } = req.body;
+
+    // Validate required fields
+    if (!trophyName || !description || !season || !year) {
+      return res.status(400).json({
+        success: false,
+        message: 'Trophy name, description, season, and year are required'
+      });
+    }
+
+    // Find the user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Create the trophy object
+    const trophy = {
+      trophyName,
+      description,
+      dateEarned: `${season} ${year}`
+    };
+
+    // Add trophy to user's trophies array
+    user.trophies.push(trophy);
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Trophy awarded successfully',
+      user: user
+    });
+  } catch (error) {
+    console.error('Error awarding trophy:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/admin/users/{userId}/trophies/{trophyId}:
+ *   delete:
+ *     summary: Remove a trophy from a user
+ *     description: Remove a specific trophy from a user's profile (Admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The user ID
+ *       - in: path
+ *         name: trophyId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The trophy ID to remove
+ *     responses:
+ *       200:
+ *         description: Trophy removed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Trophy removed successfully"
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Bad request, user or trophy not found
+ *       401:
+ *         description: Unauthorized - Admin role required
+ *       500:
+ *         description: Internal server error
+ */
+router.delete('/users/:userId/trophies/:trophyId', authorizeRoles(['admin']), async (req, res) => {
+  try {
+    const { userId, trophyId } = req.params;
+
+    // Find the user and remove the trophy
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Find and remove the trophy
+    const trophyIndex = user.trophies.findIndex(trophy => trophy._id.toString() === trophyId);
+    if (trophyIndex === -1) {
+      return res.status(400).json({
+        success: false,
+        message: 'Trophy not found'
+      });
+    }
+
+    user.trophies.splice(trophyIndex, 1);
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Trophy removed successfully',
+      user: user
+    });
+  } catch (error) {
+    console.error('Error removing trophy:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/admin/users/{userId}/trophies/{trophyId}:
+ *   put:
+ *     summary: Update a user's trophy
+ *     description: Update an existing trophy for a user (Admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The user ID
+ *       - in: path
+ *         name: trophyId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The trophy ID to update
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               trophyName:
+ *                 type: string
+ *                 description: Name of the trophy
+ *               description:
+ *                 type: string
+ *                 description: Description of the trophy achievement
+ *               season:
+ *                 type: string
+ *                 description: Season when the trophy was earned
+ *               year:
+ *                 type: number
+ *                 description: Year when the trophy was earned
+ *     responses:
+ *       200:
+ *         description: Trophy updated successfully
+ *       400:
+ *         description: Bad request, user or trophy not found
+ *       401:
+ *         description: Unauthorized - Admin role required
+ *       500:
+ *         description: Internal server error
+ */
+router.put('/users/:userId/trophies/:trophyId', authorizeRoles(['admin']), async (req, res) => {
+  try {
+    const { userId, trophyId } = req.params;
+    const { trophyName, description, season, year } = req.body;
+
+    // Find the user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Find the trophy to update
+    const trophy = user.trophies.id(trophyId);
+    if (!trophy) {
+      return res.status(400).json({
+        success: false,
+        message: 'Trophy not found'
+      });
+    }
+
+    // Update trophy fields if provided
+    if (trophyName) trophy.trophyName = trophyName;
+    if (description) trophy.description = description;
+    if (season && year) trophy.dateEarned = `${season} ${year}`;
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Trophy updated successfully',
+      user: user
+    });
+  } catch (error) {
+    console.error('Error updating trophy:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
 module.exports = router;
