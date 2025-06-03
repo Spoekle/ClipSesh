@@ -173,6 +173,8 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
   const handleQuickRange = (start: Date, end: Date) => {
     setTempStartDate(start);
     setTempEndDate(end);
+    onDateRangeChange(start, end);
+    setIsOpen(false);
   };
 
   return (
