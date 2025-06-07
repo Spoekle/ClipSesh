@@ -6,9 +6,15 @@ import summerImg from '../../../media/summer.jpg';
 import fallImg from '../../../media/fall.jpg';
 
 
-const ClipViewerHeader = ({ season }) => {
+type Season = 'Winter' | 'Spring' | 'Summer' | 'Fall';
 
-  const seasonImages = {
+interface ClipViewerHeaderProps {
+  season: Season;
+}
+
+const ClipViewerHeader = ({ season }: ClipViewerHeaderProps) => {
+
+  const seasonImages: Record<Season, string> = {
     'Winter': winterImg,
     'Spring': springImg,
     'Summer': summerImg,

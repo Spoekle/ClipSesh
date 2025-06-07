@@ -13,7 +13,7 @@ interface ConfigPanelProps {
   handleConfigSubmit: (e: React.FormEvent) => void;
 }
 
-const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, handleConfigChange, handleConfigSubmit }) => {
+const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, handleConfigChange }) => {
   const [channelIdsText, setChannelIdsText] = useState<string>(
     config?.clipChannelIds?.join('\n') || ''
   );

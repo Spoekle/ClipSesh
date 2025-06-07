@@ -1,7 +1,7 @@
 import background from '../media/background.jpg';
 import { motion } from 'framer-motion';
 import { FaShieldAlt, FaUserShield, FaDatabase, FaServer, FaLock, FaTrash, FaFileContract } from 'react-icons/fa';
-import PageLayout from './components/layouts/PageLayout';
+import PageLayout from '../components/layouts/PageLayout';
 
 function PrivacyStatement() {
     const contentSections = [

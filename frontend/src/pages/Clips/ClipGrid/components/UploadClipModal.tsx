@@ -79,9 +79,11 @@ const UploadClipModal: React.FC<UploadClipModalProps> = ({ isOpen, onClose, onSu
         clearTimeout(urlDebounceTimer);
       }
       
-      // Only fetch info for YouTube, Twitch, or Medal.tv links
+      // Fetch info for supported video URLs
       if (newLink.includes('youtube.com') || newLink.includes('youtu.be') || 
-          newLink.includes('twitch.tv') || newLink.includes('medal.tv')) {
+          newLink.includes('twitch.tv') || newLink.includes('medal.tv') ||
+          newLink.includes('kick.com') || newLink.includes('tiktok.com') ||
+          /\.(mp4|webm|mov)$/i.test(newLink)) {
         
         // Set a new debounce timer to fetch video info after 800ms of no typing
         const timer = setTimeout(() => {
@@ -336,7 +338,7 @@ const UploadClipModal: React.FC<UploadClipModalProps> = ({ isOpen, onClose, onSu
                       )}
                     </div>
                     <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                      Supported platforms: YouTube, Twitch, Medal.tv, or direct video links (.mp4, .webm, .mov)
+                      Supported: YouTube videos, basic info for Twitch/Medal.tv/Kick/TikTok, and direct video links (.mp4, .webm, .mov). Note: Only YouTube and direct video files can be downloaded automatically.
                     </p>
                     {renderVideoInfoPreview()}
                   </div>

@@ -3,8 +3,8 @@ import { NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaSearch, FaTimes, FaUserCircle, FaRegChartBar } from 'react-icons/fa';
 import { MdLogin, MdLogout, MdDashboard, MdNotifications } from "react-icons/md";
-import { User } from '../../../types/adminTypes';
-import NotificationBadge from '../../../components/Notification/NotificationBadge';
+import { User } from '../../types/adminTypes';
+import NotificationBadge from '../Notification/NotificationBadge';
 
 interface DesktopNavbarProps {
   toggleLoginModal: () => void;

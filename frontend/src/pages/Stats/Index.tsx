@@ -7,6 +7,8 @@ import ActivityTracker from './components/ActivityTracker';
 import TrophyDisplay from './components/TrophyDisplay';
 import { getCurrentSeason } from '../../utils/seasonHelpers';
 import { getClipsWithRatings } from '../../services/clipService';
+import apiUrl from '../../config/config';
+import axios from 'axios';
 
 import { motion } from 'framer-motion';
 import { 
@@ -17,7 +19,7 @@ import {
   FaTrophy,
   FaRegLightbulb
 } from 'react-icons/fa';
-import PageLayout from '../components/layouts/PageLayout';
+import PageLayout from '../../components/layouts/PageLayout';
 import { User, Clip, Rating } from '../../types/adminTypes';
 
 interface UserRatingData {
@@ -58,6 +60,8 @@ const Stats: React.FC<StatsProps> = ({ user }) => {
   const fetchInitialData = async () => {
     try {
       getSeason();
+      setProgress(25);
+      await fetchConfig();
       setProgress(50);
       await fetchClipsAndRatings();
       setProgress(100);
@@ -78,6 +82,24 @@ const Stats: React.FC<StatsProps> = ({ user }) => {
     }
   };
 
+  const fetchConfig = async (): Promise<void> => {
+    try {
+      const response = await axios.get<any>(`${apiUrl}/api/config`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      
+      if (response.data?.public?.clipAmount !== undefined) {
+        console.log('Clip amount from config:', response.data.public.clipAmount);
+        setSeasonInfo(prevState => ({
+          ...prevState,
+          clipAmount: response.data.public.clipAmount
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching config:', error);
+    }
+  };
+
 
   useEffect(() => {
     if (Object.keys(ratings).length > 0) {
@@ -89,10 +111,6 @@ const Stats: React.FC<StatsProps> = ({ user }) => {
     const userRatingCount: Record<string, UserRatingData> = {};
 
     const clipLength = Object.keys(ratings).length;
-    setSeasonInfo(prevSeasonInfo => ({
-      ...prevSeasonInfo,
-      clipAmount: clipLength
-    }));
 
     Object.keys(ratings).forEach(clipId => {
       const clipRatingCounts = ratings[clipId].ratingCounts;
@@ -124,7 +142,7 @@ const Stats: React.FC<StatsProps> = ({ user }) => {
               } else {
                 console.error(`Unknown rating type: ${ratingData.rating}`);
               }
-              userRatingCount[user.username].percentageRated = (userRatingCount[user.username].total / clipLength) * 100;
+              userRatingCount[user.username].percentageRated = (userRatingCount[user.username].total / (seasonInfo.clipAmount || clipLength)) * 100;
             }
           });
         }

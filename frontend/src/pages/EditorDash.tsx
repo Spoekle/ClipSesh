@@ -6,17 +6,18 @@ import { saveAs } from 'file-saver';
 import LoadingBar from 'react-top-loading-bar';
 import background from '../media/editor.webp';
 import { motion } from 'framer-motion';
-import { 
-  FaDownload, 
-  FaCalendarAlt, 
-  FaClipboard, 
+import {
+  FaDownload,
+  FaCalendarAlt,
+  FaClipboard,
   FaBan,
-  FaSpinner, 
+  FaSpinner,
   FaFileArchive,
   FaHistory,
   FaCheck,
   FaInfoCircle
 } from 'react-icons/fa';
+import { getCurrentSeason } from '../utils/seasonHelpers';
 import { useNotification } from '../context/NotificationContext';
 import { Clip, Rating, Zip } from '../types/adminTypes';
 
@@ -76,21 +77,21 @@ const EditorDash: React.FC = () => {
 
   const fetchConfig = async (): Promise<void> => {
     try {
-      const response = await axios.get<{public: Config, admin: any}>(`${apiUrl}/api/config`, {
+      const response = await axios.get<{ public: Config, admin: any }>(`${apiUrl}/api/config`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
-      
+
       if (response.data) {
         const publicConfig = response.data.public || {};
         const adminConfig = response.data.admin || {};
-        
+
         // Merge configs and set clip count
         setConfig({
           denyThreshold: adminConfig.denyThreshold ?? 5,
           latestVideoLink: publicConfig.latestVideoLink ?? '',
           clipAmount: publicConfig.clipAmount ?? 0
         });
-        
+
         // Update total clip count for pagination
         if (publicConfig.clipAmount) {
           setSeasonInfo(prevSeasonInfo => ({
@@ -98,7 +99,7 @@ const EditorDash: React.FC = () => {
             clipAmount: publicConfig.clipAmount
           }));
         }
-        
+
         console.log("Fetched config with clip amount:", publicConfig.clipAmount);
       }
     } catch (error) {
@@ -111,7 +112,7 @@ const EditorDash: React.FC = () => {
       // Use query parameters for backend filtering/sorting
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
-      
+
       // Request clips with pagination and sorting from the backend
       const clipResponse = await axios.get(`${apiUrl}/api/clips`, {
         params: {
@@ -122,11 +123,11 @@ const EditorDash: React.FC = () => {
         },
         headers
       });
-      
+
       // Process the response data
       let clipsData: Clip[] = [];
       let ratingsData: Record<string, Rating> = {};
-      
+
       if (clipResponse.data) {
         // Check for clips in various response formats
         if (Array.isArray(clipResponse.data)) {
@@ -136,39 +137,39 @@ const EditorDash: React.FC = () => {
         } else if (clipResponse.data.data && Array.isArray(clipResponse.data.data)) {
           clipsData = clipResponse.data.data;
         }
-        
+
         // Check for included ratings in the response
         if (clipResponse.data.ratings && typeof clipResponse.data.ratings === 'object') {
           ratingsData = clipResponse.data.ratings;
         }
       }
-      
+
       // Update state with fetched data
       setClips(clipsData);
-      
+
       // If ratings weren't included in the response, fetch them separately
       if (Object.keys(ratingsData).length === 0 && clipsData.length > 0) {
         setProgress(65);
-        
+
         // Make individual requests for ratings if not included in the clips response
         const ratingPromises = clipsData.map(clip =>
           axios.get<Rating>(`${apiUrl}/api/ratings/${clip._id}`, { headers })
         );
-        
+
         setProgress(80);
         const ratingResponses = await Promise.all(ratingPromises);
-        
+
         ratingsData = ratingResponses.reduce<Record<string, Rating>>((acc, res, index) => {
           acc[clipsData[index]._id] = res.data;
           setProgress(90);
           return acc;
         }, {});
       }
-      
+
       // Transform ratings to ensure they have the expected format for the frontend
       const transformedRatings = transformRatings(ratingsData);
       setRatings(transformedRatings);
-      
+
     } catch (error) {
       console.error('Error fetching clips and ratings:', error);
     }
@@ -177,39 +178,39 @@ const EditorDash: React.FC = () => {
   // Utility function to transform backend rating format to frontend expected format
   const transformRatings = (ratings: Record<string, any>): Record<string, Rating> => {
     const transformed: Record<string, Rating> = {};
-    
+
     Object.entries(ratings).forEach(([clipId, ratingData]) => {
       // Check if we need to transform this rating data
       if (ratingData && !ratingData.ratingCounts && ratingData.ratings) {
         // Transform from backend format to frontend expected format
         const ratingCounts = [
-          { 
-            rating: '1', 
+          {
+            rating: '1',
             count: Array.isArray(ratingData.ratings['1']) ? ratingData.ratings['1'].length : 0,
             users: Array.isArray(ratingData.ratings['1']) ? ratingData.ratings['1'] : []
           },
-          { 
-            rating: '2', 
+          {
+            rating: '2',
             count: Array.isArray(ratingData.ratings['2']) ? ratingData.ratings['2'].length : 0,
             users: Array.isArray(ratingData.ratings['2']) ? ratingData.ratings['2'] : []
           },
-          { 
-            rating: '3', 
+          {
+            rating: '3',
             count: Array.isArray(ratingData.ratings['3']) ? ratingData.ratings['3'].length : 0,
-            users: Array.isArray(ratingData.ratings['3']) ? ratingData.ratings['3'] : [] 
+            users: Array.isArray(ratingData.ratings['3']) ? ratingData.ratings['3'] : []
           },
-          { 
-            rating: '4', 
+          {
+            rating: '4',
             count: Array.isArray(ratingData.ratings['4']) ? ratingData.ratings['4'].length : 0,
             users: Array.isArray(ratingData.ratings['4']) ? ratingData.ratings['4'] : []
           },
-          { 
-            rating: 'deny', 
+          {
+            rating: 'deny',
             count: Array.isArray(ratingData.ratings['deny']) ? ratingData.ratings['deny'].length : 0,
             users: Array.isArray(ratingData.ratings['deny']) ? ratingData.ratings['deny'] : []
           }
         ];
-        
+
         transformed[clipId] = {
           ...ratingData,
           ratingCounts: ratingCounts
@@ -219,18 +220,18 @@ const EditorDash: React.FC = () => {
         transformed[clipId] = ratingData;
       }
     });
-    
+
     return transformed;
   };
 
   const deniedClips = clips.filter(clip => {
     const ratingData = ratings[clip._id];
-    return ratingData && 
-           ratingData.ratingCounts && 
-           Array.isArray(ratingData.ratingCounts) &&
-           ratingData.ratingCounts.some(rateData => 
-             rateData.rating === 'deny' && rateData.count >= config.denyThreshold
-           );
+    return ratingData &&
+      ratingData.ratingCounts &&
+      Array.isArray(ratingData.ratingCounts) &&
+      ratingData.ratingCounts.some(rateData =>
+        rateData.rating === 'deny' && rateData.count >= config.denyThreshold
+      );
   }).length;
 
   const fetchZips = async (): Promise<void> => {
@@ -249,33 +250,8 @@ const EditorDash: React.FC = () => {
 
   const approvedClips = (seasonInfo.clipAmount || 0) - deniedClips;
 
-  const getSeason = (): void => {
-    const now = new Date();
-    const month = now.getMonth() + 1;
-    const day = now.getDate();
-    let season = '';
-
-    if (
-      (month === 3 && day >= 20) ||
-      (month > 3 && month < 6) ||
-      (month === 6 && day <= 20)
-    ) {
-      season = 'Spring';
-    } else if (
-      (month === 6 && day >= 21) ||
-      (month > 6 && month < 9) ||
-      (month === 9 && day <= 20)
-    ) {
-      season = 'Summer';
-    } else if (
-      (month === 9 && day >= 21) ||
-      (month > 9 && month < 12) ||
-      (month === 12 && day <= 20)
-    ) {
-      season = 'Fall';
-    } else {
-      season = 'Winter';
-    }
+  const getSeason = () => {
+    const { season } = getCurrentSeason();
 
     setSeasonInfo(prevSeasonInfo => ({
       ...prevSeasonInfo,
@@ -293,28 +269,28 @@ const EditorDash: React.FC = () => {
     if (!seasonInfo.clipAmount || seasonInfo.clipAmount === 0) return '0.0';
     return ((deniedClips / seasonInfo.clipAmount) * 100).toFixed(1);
   };
-  
+
   // Loading state
   if (loading) {
     return (
       <div className="min-h-screen text-white flex flex-col items-center bg-neutral-200 dark:bg-neutral-900 transition duration-200">
         <Helmet>
           <title>Editor Dashboard | ClipSesh</title>
-          <meta 
-            name="description" 
-            content="ClipSesh Editor Dashboard - Process and download clip collections" 
+          <meta
+            name="description"
+            content="ClipSesh Editor Dashboard - Process and download clip collections"
           />
         </Helmet>
         <div className='w-full'>
           <LoadingBar color='#3b82f6' height={4} progress={progress} onLoaderFinished={() => setProgress(0)} />
         </div>
-        <div 
+        <div
           className="w-full flex h-96 justify-center items-center animate-fade"
-          style={{ 
-            backgroundImage: `url(${background})`, 
-            backgroundSize: 'cover', 
-            backgroundPosition: 'center', 
-            clipPath: 'polygon(0 0, 100% 0, 100% 80%, 0 100%)' 
+          style={{
+            backgroundImage: `url(${background})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            clipPath: 'polygon(0 0, 100% 0, 100% 80%, 0 100%)'
           }}
         >
           <div className="flex bg-gradient-to-b from-neutral-900/80 to-bg-black/40 backdrop-blur-md justify-center items-center w-full h-full">
@@ -335,26 +311,26 @@ const EditorDash: React.FC = () => {
     <div className="min-h-screen text-white flex flex-col items-center bg-neutral-200 dark:bg-neutral-900 transition duration-200">
       <Helmet>
         <title>Editor Dashboard | ClipSesh</title>
-        <meta 
-          name="description" 
-          content="ClipSesh Editor Dashboard - Process and download clip collections" 
+        <meta
+          name="description"
+          content="ClipSesh Editor Dashboard - Process and download clip collections"
         />
       </Helmet>
       <div className='w-full'>
         <LoadingBar color='#3b82f6' height={4} progress={progress} onLoaderFinished={() => setProgress(0)} />
       </div>
-      <div 
+      <div
         className="w-full flex h-96 justify-center items-center animate-fade"
-        style={{ 
-          backgroundImage: `url(${background})`, 
-          backgroundSize: 'cover', 
-          backgroundPosition: 'center', 
-          clipPath: 'polygon(0 0, 100% 0, 100% 80%, 0 100%)' 
+        style={{
+          backgroundImage: `url(${background})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          clipPath: 'polygon(0 0, 100% 0, 100% 80%, 0 100%)'
         }}
       >
         <div className="flex bg-gradient-to-b from-neutral-900/80 to-bg-black/40 backdrop-blur-md justify-center items-center w-full h-full">
           <div className="flex flex-col justify-center items-center px-4 md:px-0">
-            <motion.h1 
+            <motion.h1
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
@@ -362,7 +338,7 @@ const EditorDash: React.FC = () => {
             >
               Editor Dashboard
             </motion.h1>
-            <motion.h1 
+            <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
@@ -375,9 +351,9 @@ const EditorDash: React.FC = () => {
       </div>
 
       <div className="container px-4 md:px-8 pt-16 pb-12 bg-neutral-200 dark:bg-neutral-900 transition duration-200 text-white justify-center justify-items-center">
-        
+
         {/* Season Info Card */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
@@ -387,10 +363,10 @@ const EditorDash: React.FC = () => {
             <FaInfoCircle className="mr-3 text-blue-500" />
             Current Season Overview
           </h2>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Season */}
-            <motion.div 
+            <motion.div
               whileHover={{ scale: 1.02 }}
               className="p-5 bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-neutral-700 dark:to-neutral-600 rounded-lg shadow"
             >
@@ -400,9 +376,9 @@ const EditorDash: React.FC = () => {
               <h3 className="text-lg font-medium mb-2 text-center">Season</h3>
               <h2 className="text-3xl font-bold text-center">{seasonInfo.season}</h2>
             </motion.div>
-            
+
             {/* Approved Clips */}
-            <motion.div 
+            <motion.div
               whileHover={{ scale: 1.02 }}
               className="p-5 bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-neutral-700 dark:to-neutral-600 rounded-lg shadow"
             >
@@ -415,9 +391,9 @@ const EditorDash: React.FC = () => {
                 {getApprovedPercentage()}% of total
               </p>
             </motion.div>
-            
+
             {/* Denied Clips */}
-            <motion.div 
+            <motion.div
               whileHover={{ scale: 1.02 }}
               className="p-5 bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-neutral-700 dark:to-neutral-600 rounded-lg shadow"
             >
@@ -430,45 +406,43 @@ const EditorDash: React.FC = () => {
                 {getDeniedPercentage()}% of total
               </p>
             </motion.div>
-          </div>    
+          </div>
         </motion.div>
-        
+
         {/* Available Archives */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
           className="w-full p-6 md:p-8 mt-8 bg-neutral-300 dark:bg-neutral-800 text-neutral-900 dark:text-white transition duration-200 rounded-xl shadow-lg hover:shadow-xl"
         >
           <h2 className="text-3xl font-bold mb-6 border-b pb-3 border-neutral-400 dark:border-neutral-700 flex items-center">
-            <FaFileArchive className="mr-3 text-amber-500" /> 
+            <FaFileArchive className="mr-3 text-amber-500" />
             Available Archives
           </h2>
-          
+
           {/* Tab navigation */}
           <div className="flex space-x-2 mb-6 overflow-x-auto pb-2">
             <button
               onClick={() => setActiveTab('current')}
-              className={`px-4 py-2 rounded-lg flex items-center gap-2 whitespace-nowrap transition-all ${
-                activeTab === 'current'
+              className={`px-4 py-2 rounded-lg flex items-center gap-2 whitespace-nowrap transition-all ${activeTab === 'current'
                   ? 'bg-blue-600 text-white font-medium'
                   : 'bg-neutral-200 dark:bg-neutral-700 text-neutral-800 dark:text-white'
-              }`}
+                }`}
             >
               <FaCalendarAlt /> Current Season
             </button>
             <button
               onClick={() => setActiveTab('all')}
-              className={`px-4 py-2 rounded-lg flex items-center gap-2 whitespace-nowrap transition-all ${
-                activeTab === 'all'
+              className={`px-4 py-2 rounded-lg flex items-center gap-2 whitespace-nowrap transition-all ${activeTab === 'all'
                   ? 'bg-blue-600 text-white font-medium'
                   : 'bg-neutral-200 dark:bg-neutral-700 text-neutral-800 dark:text-white'
-              }`}
+                }`}
             >
               <FaHistory /> All Archives
             </button>
           </div>
-          
+
           {zipsLoading ? (
             <div className="flex justify-center items-center py-16">
               <FaSpinner className="animate-spin text-4xl" />
@@ -485,7 +459,7 @@ const EditorDash: React.FC = () => {
               {zips
                 .filter(zip => activeTab === 'all' || zip.season === seasonInfo.season)
                 .map(zip => (
-                  <motion.div 
+                  <motion.div
                     key={zip._id}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -511,7 +485,7 @@ const EditorDash: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                    
+
                     <motion.button
                       onClick={() => { saveAs(zip.url); }}
                       whileHover={{ scale: 1.1 }}
@@ -526,7 +500,7 @@ const EditorDash: React.FC = () => {
             </div>
           )}
         </motion.div>
-        
+
       </div>
     </div>
   );

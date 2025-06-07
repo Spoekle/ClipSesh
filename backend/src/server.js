@@ -100,6 +100,8 @@ const zipsRoute = require('./routes/Zips');
 const discordRoute = require('./routes/Discord');
 const configRoute = require('./routes/Config');
 const notificationsRoute = require('./routes/Notifications'); // Add notifications route
+const profilesRoute = require('./routes/Profiles');
+const searchRoute = require('./routes/Search'); // Add unified search route
 
 // Register API routes
 app.use('/api/admin', adminRoute);
@@ -111,6 +113,8 @@ app.use('/api/zips', zipsRoute);
 app.use('/api/discord', discordRoute);
 app.use('/api/config', configRoute);
 app.use('/api/notifications', notificationsRoute); // Register notifications route
+app.use('/api/profiles', profilesRoute);
+app.use('/api/search', searchRoute); // Register unified search route
 
 // Configure WebSocket event handlers
 io.on('connection', (socket) => {

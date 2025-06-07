@@ -44,6 +44,56 @@ const mongoose = require('mongoose');
  *         discordUsername:
  *           type: string
  *           description: The Discord username of the user
+ *         bio:
+ *           type: string
+ *           description: User's biography
+ *           maxLength: 500
+ *           default: ''
+ *         website:
+ *           type: string
+ *           description: User's website URL
+ *           default: ''
+ *         socialLinks:
+ *           type: object
+ *           properties:
+ *             youtube:
+ *               type: string
+ *               default: ''
+ *             twitch:
+ *               type: string
+ *               default: ''
+ *             twitter:
+ *               type: string
+ *               default: ''
+ *             instagram:
+ *               type: string
+ *               default: ''
+ *             github:
+ *               type: string
+ *               default: ''
+ *         isPublic:
+ *           type: boolean
+ *           description: Whether the user's profile is public
+ *           default: true
+ *         lastActive:
+ *           type: string
+ *           format: date-time
+ *           description: When the user was last active
+ *         joinDate:
+ *           type: string
+ *           format: date-time
+ *           description: When the user joined
+ *         trophies:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               trophyName:
+ *                 type: string
+ *               dateEarned:
+ *                 type: string
+ *               description:
+ *                 type: string
  *       required:
  *         - username
  *         - password
@@ -56,6 +106,14 @@ const trophiesSchema = new mongoose.Schema({
   description: { type: String, required: true },
 });
 
+const socialLinksSchema = new mongoose.Schema({
+  youtube: { type: String, default: '' },
+  twitch: { type: String, default: '' },
+  twitter: { type: String, default: '' },
+  instagram: { type: String, default: '' },
+  github: { type: String, default: '' }
+});
+
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   email: { type: String, unique: true, sparse: true },
@@ -66,6 +124,13 @@ const userSchema = new mongoose.Schema({
   discordId: { type: String, unique: true, sparse: true },
   discordUsername: { type: String },
   trophies: { type: [trophiesSchema], default: [] },
+  // Profile fields - directly in user schema
+  bio: { type: String, default: '', maxlength: 500 },
+  website: { type: String, default: '' },
+  socialLinks: { type: socialLinksSchema, default: () => ({}) },
+  isPublic: { type: Boolean, default: true },
+  lastActive: { type: Date, default: Date.now },
+  joinDate: { type: Date, default: Date.now }
 });
 
 const User = mongoose.model('User', userSchema);

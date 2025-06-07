@@ -37,6 +37,9 @@ const mongoose = require('mongoose');
  *           type: string
  *           description: The name of the submitter
  *           required: true
+ *         discordSubmitterId:
+ *           type: string
+ *           description: Discord user ID of the submitter (if uploaded via Discord bot)
  *         title:
  *           type: string
  *           description: The title of the clip
@@ -121,7 +124,8 @@ const clipSchema = new mongoose.Schema({
   title: { type: String, required: true },
   upvotes: { type: Number, default: 0 },
   downvotes: { type: Number, default: 0 },
-  comments: { type: [commentSchema], default: [] }
+  comments: { type: [commentSchema], default: [] },
+  discordSubmitterId: { type: String }
 }, { timestamps: true });
 
 const Clip = mongoose.model('Clip', clipSchema);

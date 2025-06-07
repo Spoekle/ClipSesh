@@ -6,28 +6,19 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FaSearch, FaArrowUp, FaArrowDown, FaFilter, 
   FaTimes, FaPlay, FaCalendarAlt, FaSortAmountDown,
-  FaAngleLeft, FaAngleRight, FaAngleDoubleLeft, FaAngleDoubleRight
+  FaAngleLeft, FaAngleRight, FaAngleDoubleLeft, FaAngleDoubleRight,
+  FaUser, FaDiscord, FaGlobe, FaYoutube, FaTwitch, FaTwitter, FaInstagram, FaGithub
 } from 'react-icons/fa';
 import { format } from 'timeago.js';
 import axios from 'axios';
 import debounce from 'lodash.debounce';
 import LoadingBar from 'react-top-loading-bar';
 import { Clip } from '../types/adminTypes';
+import { unifiedSearch } from '../services/searchService';
+import { UnifiedSearchResponse, SearchProfile } from '../types/searchTypes';
 
 function useQuery() {
   return new URLSearchParams(useLocation().search);
-}
-
-// Response type from API
-interface SearchResponse {
-  clips: Clip[];
-  totalClips: number;
-  totalPages: number;
-  currentPage: number;
-  appliedFilters?: {
-    sort: string;
-    [key: string]: any;
-  };
 }
 
 // Filter options response type
@@ -47,11 +38,13 @@ const ClipSearch: React.FC = () => {
   const sortOptionParam = (query.get('sort') as SortOption) || 'newest';
   
   const [clips, setClips] = useState<Clip[]>([]);
+  const [profiles, setProfiles] = useState<SearchProfile[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
-  const [totalClips, setTotalClips] = useState<number>(0);
+  const [totalResults, setTotalResults] = useState<number>(0);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [currentPage, setCurrentPage] = useState<number>(pageParam);
+  const [searchType, setSearchType] = useState<'all' | 'clips' | 'profiles'>('all');
   
   const [streamerFilter, setStreamerFilter] = useState<string>(streamerFilterParam);
   const [submitterFilter, setSubmitterFilter] = useState<string>(submitterFilterParam);
@@ -62,6 +55,7 @@ const ClipSearch: React.FC = () => {
   const [searchInput, setSearchInput] = useState<string>(searchTerm);
   const [streamers, setStreamers] = useState<string[]>([]);
   const [submitters, setSubmitters] = useState<string[]>([]);
+  const [searchResults, setSearchResults] = useState<UnifiedSearchResponse | null>(null);
   
   const location = useLocation();
   const navigate = useNavigate();
@@ -79,12 +73,13 @@ const ClipSearch: React.FC = () => {
     }
   }, []);
 
-  // Main fetch function for clips
-  const fetchClips = useCallback(async (): Promise<void> => {
+  // Main fetch function for unified search
+  const fetchResults = useCallback(async (): Promise<void> => {
     if (!searchTerm.trim()) {
       setClips([]);
+      setProfiles([]);
       setLoading(false);
-      setTotalClips(0);
+      setTotalResults(0);
       return;
     }
     
@@ -93,22 +88,25 @@ const ClipSearch: React.FC = () => {
       setError('');
       setProgress(30);
       
-      const params = {
+      const searchParams = {
         q: searchTerm,
+        type: searchType,
         page: currentPage,
-        streamer: streamerFilter,
-        submitter: submitterFilter,
-        sort: sortOption,
-        limit: 12 // Consistent page size
+        limit: 12,
+        ...(searchType !== 'profiles' && {
+          streamer: streamerFilter,
+          submitter: submitterFilter,
+          sort: sortOption
+        })
       };
 
-      const response = await axios.get<SearchResponse>(`${apiUrl}/api/clips/search`, { params });
+      const response = await unifiedSearch(searchParams);
       setProgress(70);
       
-      // Trust the backend sort, don't re-sort in frontend
-      setClips(response.data.clips || []);
-      setTotalClips(response.data.totalClips || 0);
-      setTotalPages(response.data.totalPages || 1);
+      setClips(response.clips || []);
+      setProfiles(response.profiles || []);
+      setTotalResults(response.total || 0);
+      setTotalPages(response.totalPages || 1);
       
       if (!streamers.length || !submitters.length) {
         fetchFilterOptions();
@@ -117,27 +115,24 @@ const ClipSearch: React.FC = () => {
       setProgress(100);
     } catch (err) {
       console.error('Error fetching search results:', err);
-      if (axios.isAxiosError(err)) {
-        setError(err.response?.data?.message || 'An error occurred while fetching clips.');
-      } else {
-        setError('An error occurred while fetching clips.');
-      }
+      setError('An error occurred while fetching search results.');
       setProgress(100);
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, currentPage, streamerFilter, submitterFilter, sortOption, fetchFilterOptions, streamers.length, submitters.length]);
+  }, [searchTerm, searchType, currentPage, streamerFilter, submitterFilter, sortOption, fetchFilterOptions, streamers.length, submitters.length]);
 
   // Initial load and parameter changes
   useEffect(() => {
-    fetchClips();
-  }, [fetchClips]);
+    fetchResults();
+  }, [fetchResults]);
 
   // Update URL when filters change
   useEffect(() => {
     const params = new URLSearchParams();
     if (searchTerm) params.set('query', searchTerm);
     if (currentPage > 1) params.set('page', currentPage.toString());
+    if (searchType !== 'all') params.set('type', searchType);
     if (streamerFilter) params.set('streamer', streamerFilter);
     if (submitterFilter) params.set('submitter', submitterFilter);
     if (sortOption !== 'newest') params.set('sort', sortOption);
@@ -146,9 +141,9 @@ const ClipSearch: React.FC = () => {
     
     // Only fetch if searchTerm exists
     if (searchTerm) {
-      fetchClips();
+      fetchResults();
     }
-  }, [searchTerm, currentPage, streamerFilter, submitterFilter, sortOption, navigate, fetchClips]);
+  }, [searchTerm, searchType, currentPage, streamerFilter, submitterFilter, sortOption, navigate, fetchResults]);
 
   // Debounced search handler
   const debouncedSearch = useCallback(
@@ -211,6 +206,135 @@ const ClipSearch: React.FC = () => {
     }
   };
 
+  const handleSearch = useCallback(async (page: number = 1, resetResults: boolean = false) => {
+    if (!searchInput.trim()) return;
+
+    setProgress(10);
+    setLoading(true);
+    
+    if (resetResults) {
+      setSearchResults(null);
+    }
+
+    try {
+      const params = {
+        q: searchInput,
+        type: searchType,
+        page,
+        limit: 12,
+        ...(searchType === 'clips' && streamerFilter && { streamer: streamerFilter }),
+        ...(searchType === 'clips' && submitterFilter && { submitter: submitterFilter }),
+        ...(searchType === 'clips' && { sort: sortOption })
+      };
+
+      setProgress(50);
+      const results = await unifiedSearch(params);
+      setSearchResults(results);
+      setCurrentPage(page);
+      
+      setProgress(100);
+    } catch (error) {
+      console.error('Search error:', error);
+      setSearchResults(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [searchInput, searchType, streamerFilter, submitterFilter, sortOption]);
+
+  // Add the ProfileCard component if it's missing
+  const ProfileCard: React.FC<{ profile: SearchProfile }> = ({ profile }) => {
+    const getSocialIcon = (platform: string) => {
+      switch (platform) {
+        case 'youtube': return <FaYoutube className="text-red-500" />;
+        case 'twitch': return <FaTwitch className="text-purple-500" />;
+        case 'twitter': return <FaTwitter className="text-blue-400" />;
+        case 'instagram': return <FaInstagram className="text-pink-500" />;
+        case 'github': return <FaGithub className="text-gray-600 dark:text-gray-400" />;
+        default: return <FaGlobe />;
+      }
+    };
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        whileHover={{ scale: 1.02 }}
+        className="bg-white dark:bg-neutral-800 rounded-xl p-6 shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer"
+        onClick={() => window.open(`/profile/${profile._id}`, '_blank')}
+      >
+        <div className="flex items-start gap-4">
+          <img
+            src={profile.profilePicture}
+            alt={profile.username}
+            className="w-16 h-16 rounded-full object-cover border-2 border-neutral-200 dark:border-neutral-700"
+          />
+          
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2">
+              <h3 className="text-lg font-bold text-neutral-900 dark:text-white truncate">
+                {profile.username}
+              </h3>
+              {profile.roles && profile.roles.length > 0 && (
+                <div className="flex gap-1">
+                  {profile.roles.slice(0, 2).map((role) => (
+                    <span
+                      key={role}
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        role === 'admin'
+                          ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                          : role === 'editor'
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                          : role === 'clipteam'
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                          : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                      }`}
+                    >
+                      {role}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            {profile.discordUsername && (
+              <div className="flex items-center gap-2 mb-2">
+                <FaDiscord className="text-indigo-500" />
+                <span className="text-sm text-neutral-600 dark:text-neutral-400">
+                  {profile.discordUsername}
+                </span>
+              </div>
+            )}
+            
+            {profile.bio && (
+              <p className="text-sm text-neutral-700 dark:text-neutral-300 mb-3 line-clamp-2">
+                {profile.bio}
+              </p>
+            )}
+            
+            <div className="flex items-center justify-between text-sm text-neutral-500 dark:text-neutral-400">
+              <div className="flex items-center gap-4">
+                <span>{profile.stats.clipsSubmitted} clips</span>
+                <span>Joined {new Date(profile.joinDate).getFullYear()}</span>
+              </div>
+              
+              {profile.socialLinks && Object.values(profile.socialLinks).some(link => link) && (
+                <div className="flex items-center gap-2">
+                  {Object.entries(profile.socialLinks).slice(0, 3).map(([platform, url]) => (
+                    url && (
+                      <div key={platform} className="text-lg">
+                        {getSocialIcon(platform)}
+                      </div>
+                    )
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    );
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -255,45 +379,63 @@ const ClipSearch: React.FC = () => {
               {searchTerm && !loading && (
                 <div className="flex-grow text-sm md:text-base mb-2 md:mb-0">
                   <span>
-                    Found <strong>{totalClips}</strong> clip{totalClips !== 1 ? 's' : ''}
+                    Found <strong>{totalResults}</strong> result{totalResults !== 1 ? 's' : ''}
                     {(streamerFilter || submitterFilter) && ' matching your filters'}
                   </span>
                 </div>
               )}
               
               <div className="flex items-center space-x-2">
-                {/* Fixed sort dropdown */}
+                {/* Search type filter */}
                 <div className="relative inline-block">
                   <select
-                    value={sortOption}
-                    onChange={handleSortChange}
+                    value={searchType}
+                    onChange={(e) => setSearchType(e.target.value as 'all' | 'clips' | 'profiles')}
                     className="appearance-none bg-white/20 hover:bg-white/30 text-white rounded px-4 py-2 pr-8 cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/50"
                   >
-                    <option className="text-neutral-900" value="newest">Newest First</option>
-                    <option className="text-neutral-900" value="oldest">Oldest First</option>
-                    <option className="text-neutral-900" value="upvotes">Most Upvotes</option>
-                    <option className="text-neutral-900" value="downvotes">Most Downvotes</option>
+                    <option className="text-neutral-900" value="all">All Results</option>
+                    <option className="text-neutral-900" value="clips">Clips Only</option>
+                    <option className="text-neutral-900" value="profiles">Profiles Only</option>
                   </select>
-                  <FaSortAmountDown className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
+                  <FaSearch className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
                 </div>
                 
-                {/* Filter button */}
-                <button
-                  onClick={() => setFilterOpen(!filterOpen)}
-                  className={`flex items-center space-x-1 px-4 py-2 rounded ${
-                    filterOpen || streamerFilter || submitterFilter
-                      ? 'bg-white/30 hover:bg-white/40'
-                      : 'bg-white/20 hover:bg-white/30'
-                  }`}
-                >
-                  <FaFilter />
-                  <span>Filter</span>
-                  {(streamerFilter || submitterFilter) && (
-                    <span className="bg-blue-500 text-xs px-1.5 py-0.5 rounded-full ml-1">
-                      {(streamerFilter ? 1 : 0) + (submitterFilter ? 1 : 0)}
-                    </span>
-                  )}
-                </button>
+                {/* Sort dropdown - only show for clips */}
+                {searchType !== 'profiles' && (
+                  <div className="relative inline-block">
+                    <select
+                      value={sortOption}
+                      onChange={handleSortChange}
+                      className="appearance-none bg-white/20 hover:bg-white/30 text-white rounded px-4 py-2 pr-8 cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/50"
+                    >
+                      <option className="text-neutral-900" value="newest">Newest First</option>
+                      <option className="text-neutral-900" value="oldest">Oldest First</option>
+                      <option className="text-neutral-900" value="upvotes">Most Upvotes</option>
+                      <option className="text-neutral-900" value="downvotes">Most Downvotes</option>
+                    </select>
+                    <FaSortAmountDown className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
+                  </div>
+                )}
+                
+                {/* Filter button - only show for clips */}
+                {searchType !== 'profiles' && (
+                  <button
+                    onClick={() => setFilterOpen(!filterOpen)}
+                    className={`flex items-center space-x-1 px-4 py-2 rounded ${
+                      filterOpen || streamerFilter || submitterFilter
+                        ? 'bg-white/30 hover:bg-white/40'
+                        : 'bg-white/20 hover:bg-white/30'
+                    }`}
+                  >
+                    <FaFilter />
+                    <span>Filter</span>
+                    {(streamerFilter || submitterFilter) && (
+                      <span className="bg-blue-500 text-xs px-1.5 py-0.5 rounded-full ml-1">
+                        {(streamerFilter ? 1 : 0) + (submitterFilter ? 1 : 0)}
+                      </span>
+                    )}
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -382,94 +524,159 @@ const ClipSearch: React.FC = () => {
       
       {/* Main Content Area */}
       <div className="container mx-auto px-4 py-8">
-        {loading && !clips.length ? (
+        {loading && !clips.length && !profiles.length ? (
           <div className="flex flex-col items-center justify-center py-20">
             <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-            <p className="text-neutral-600 dark:text-neutral-400">Searching for clips...</p>
+            <p className="text-neutral-600 dark:text-neutral-400">Searching...</p>
           </div>
         ) : error ? (
           <div className="bg-red-100 dark:bg-red-900/30 border-l-4 border-red-500 p-4 rounded-md">
             <p className="text-red-700 dark:text-red-400">{error}</p>
           </div>
-        ) : clips.length > 0 ? (
+        ) : (clips.length > 0 || profiles.length > 0) ? (
           <>
-            {/* Grid of Clips - Use clips directly, not sortedClips */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {clips.map((clip, index) => (
-                <motion.div
-                  key={clip._id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: index * 0.05 }}
-                  className="bg-white dark:bg-neutral-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
-                >
-                  <Link
-                    to={`/clips/${clip._id}`}
-                    state={{ from: location }}
-                    className="block relative aspect-video bg-neutral-200 dark:bg-neutral-900"
-                  >
-                    {/* Static thumbnail, no hover interaction */}
-                    {clip.thumbnail ? (
-                      <img 
-                        src={clip.thumbnail} 
-                        alt={clip.title} 
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <video
-                        src={clip.url}
-                        className="w-full h-full object-cover"
-                        poster={clip.thumbnail}
-                        preload="none"
-                        muted
-                      />
-                    )}
-                    
-                    {/* Play indicator always visible */}
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                      <div className="bg-white/20 backdrop-blur-sm p-3 rounded-full">
-                        <FaPlay className="text-white text-2xl" />
+            {/* Display profiles first if any */}
+            {profiles.length > 0 && (
+              <div className="mb-8">
+                <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-4 flex items-center">
+                  <FaUser className="mr-2" />
+                  Profiles ({profiles.length})
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {profiles.map((profile, index) => (
+                    <motion.div
+                      key={profile._id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: index * 0.05 }}
+                      className="bg-white dark:bg-neutral-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+                    >
+                      <Link
+                        to={`/profile/${profile._id}`}
+                        className="block p-6 text-center"
+                      >
+                        <div className="relative w-20 h-20 mx-auto mb-4">
+                          {profile.profilePicture ? (
+                            <img 
+                              src={profile.profilePicture} 
+                              alt={profile.username} 
+                              className="w-full h-full object-cover rounded-full"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-neutral-300 dark:bg-neutral-600 rounded-full flex items-center justify-center">
+                              <FaUser className="text-neutral-500 dark:text-neutral-400 text-2xl" />
+                            </div>
+                          )}
+                        </div>
+                        
+                        <h3 className="font-semibold text-neutral-900 dark:text-white mb-2">
+                          {highlightSearchTerm(profile.username)}
+                        </h3>
+                        
+                        {profile.bio && (
+                          <p className="text-sm text-neutral-600 dark:text-neutral-400 line-clamp-2">
+                            {highlightSearchTerm(profile.bio)}
+                          </p>
+                        )}
+                        
+                        <div className="text-xs text-neutral-500 dark:text-neutral-400 mt-2">
+                          Joined {format(new Date(profile.createdAt))}
+                        </div>
+                      </Link>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Display clips if any */}
+            {clips.length > 0 && (
+              <div>
+                {profiles.length > 0 && (
+                  <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-4 flex items-center">
+                    <FaPlay className="mr-2" />
+                    Clips ({clips.length})
+                  </h2>
+                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {clips.map((clip, index) => (
+                    <motion.div
+                      key={clip._id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: index * 0.05 }}
+                      className="bg-white dark:bg-neutral-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+                    >
+                      <Link
+                        to={`/clips/${clip._id}`}
+                        state={{ from: location }}
+                        className="block relative aspect-video bg-neutral-200 dark:bg-neutral-900"
+                      >
+                        {/* Static thumbnail, no hover interaction */}
+                        {clip.thumbnail ? (
+                          <img 
+                            src={clip.thumbnail} 
+                            alt={clip.title} 
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <video
+                            src={clip.url}
+                            className="w-full h-full object-cover"
+                            poster={clip.thumbnail}
+                            preload="none"
+                            muted
+                          />
+                        )}
+                        
+                        {/* Play indicator always visible */}
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                          <div className="bg-white/20 backdrop-blur-sm p-3 rounded-full">
+                            <FaPlay className="text-white text-2xl" />
+                          </div>
+                        </div>
+                        
+                        {/* Streamer badge */}
+                        <div className="absolute top-2 left-2 bg-black/70 text-white text-sm px-2 py-1 rounded backdrop-blur-sm">
+                          {clip.streamer}
+                        </div>
+                      </Link>
+                      
+                      <div className="p-4">
+                        <h3 className="font-semibold text-neutral-900 dark:text-white mb-1 line-clamp-2 h-12">
+                          {highlightSearchTerm(clip.title)}
+                        </h3>
+                        
+                        <div className="flex items-center justify-between text-sm text-neutral-500 dark:text-neutral-400 mt-2">
+                          <div className="flex items-center space-x-4">
+                            <span className="flex items-center">
+                              <FaArrowUp className="text-green-500 mr-1" />
+                              {clip.upvotes}
+                            </span>
+                            <span className="flex items-center">
+                              <FaArrowDown className="text-red-500 mr-1" />
+                              {clip.downvotes}
+                            </span>
+                          </div>
+                          <span className="flex items-center" title={new Date(clip.createdAt).toLocaleDateString()}>
+                            <FaCalendarAlt className="mr-1" />
+                            {format(new Date(clip.createdAt))}
+                          </span>
+                        </div>
+                        
+                        {clip.submitter !== 'Legacy(no data)' && (
+                          <div className="text-xs text-neutral-500 dark:text-neutral-400 mt-2 truncate">
+                            Submitted by: <span className="font-medium">{clip.submitter}</span>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                    
-                    {/* Streamer badge */}
-                    <div className="absolute top-2 left-2 bg-black/70 text-white text-sm px-2 py-1 rounded backdrop-blur-sm">
-                      {clip.streamer}
-                    </div>
-                  </Link>
-                  
-                  <div className="p-4">
-                    <h3 className="font-semibold text-neutral-900 dark:text-white mb-1 line-clamp-2 h-12">
-                      {highlightSearchTerm(clip.title)}
-                    </h3>
-                    
-                    <div className="flex items-center justify-between text-sm text-neutral-500 dark:text-neutral-400 mt-2">
-                      <div className="flex items-center space-x-4">
-                        <span className="flex items-center">
-                          <FaArrowUp className="text-green-500 mr-1" />
-                          {clip.upvotes}
-                        </span>
-                        <span className="flex items-center">
-                          <FaArrowDown className="text-red-500 mr-1" />
-                          {clip.downvotes}
-                        </span>
-                      </div>
-                      <span className="flex items-center" title={new Date(clip.createdAt).toLocaleDateString()}>
-                        <FaCalendarAlt className="mr-1" />
-                        {format(new Date(clip.createdAt))}
-                      </span>
-                    </div>
-                    
-                    {clip.submitter !== 'Legacy(no data)' && (
-                      <div className="text-xs text-neutral-500 dark:text-neutral-400 mt-2 truncate">
-                        Submitted by: <span className="font-medium">{clip.submitter}</span>
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            )}
             
             {/* Pagination */}
             {totalPages > 1 && (
@@ -539,9 +746,9 @@ const ClipSearch: React.FC = () => {
             <div className="w-24 h-24 bg-neutral-200 dark:bg-neutral-800 rounded-full flex items-center justify-center mb-4">
               <FaSearch size={32} className="text-neutral-400" />
             </div>
-            <h3 className="text-xl font-semibold text-neutral-900 dark:text-white mb-2">No clips found</h3>
+            <h3 className="text-xl font-semibold text-neutral-900 dark:text-white mb-2">No results found</h3>
             <p className="text-neutral-600 dark:text-neutral-400 text-center max-w-md">
-              We couldn't find any clips matching "{searchTerm}". Please try different keywords or filters.
+              We couldn't find any {searchType === 'clips' ? 'clips' : searchType === 'profiles' ? 'profiles' : 'results'} matching "{searchTerm}". Please try different keywords or filters.
             </p>
             {(streamerFilter || submitterFilter) && (
               <button
@@ -557,9 +764,9 @@ const ClipSearch: React.FC = () => {
             <div className="w-24 h-24 bg-neutral-200 dark:bg-neutral-800 rounded-full flex items-center justify-center mb-4">
               <FaSearch size={32} className="text-neutral-400" />
             </div>
-            <h3 className="text-xl font-semibold text-neutral-900 dark:text-white mb-2">Search for clips</h3>
+            <h3 className="text-xl font-semibold text-neutral-900 dark:text-white mb-2">Search for content</h3>
             <p className="text-neutral-600 dark:text-neutral-400 text-center max-w-md">
-              Enter a search term above to find clips by streamer, title, or submitter.
+              Enter a search term above to find clips by streamer, title, submitter, or search for user profiles.
             </p>
           </div>
         )}

@@ -49,6 +49,7 @@ export interface Clip {
   thumbnail?: string;
   streamer: string;
   submitter: string;
+  discordSubmitterId?: string;
   link?: string;
   status?: string;
   upvotes: number;

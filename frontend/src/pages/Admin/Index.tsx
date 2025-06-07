@@ -53,13 +53,13 @@ function AdminDash() {
   const [activeTab, setActiveTab] = useState<TabName>('overview');
   
   const [allUsers, setAllUsers] = useState<User[]>([]);
-  const [otherRoles, setOtherRoles] = useState<User[]>([]);
-  const [allActiveUsers, setAllActiveUsers] = useState<User[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
+  const [, setOtherRoles] = useState<User[]>([]);
+  const [, setAllActiveUsers] = useState<User[]>([]);
+  const [, setUsers] = useState<User[]>([]);
   const [admins, setAdmins] = useState<User[]>([]);
   const [clipTeam, setClipTeam] = useState<User[]>([]);
-  const [editors, setEditors] = useState<User[]>([]);
-  const [uploader, setUploader] = useState<User[]>([]);
+  const [, setEditors] = useState<User[]>([]);
+  const [, setUploader] = useState<User[]>([]);
   const [disabledUsers, setDisabledUsers] = useState<User[]>([]);
   const [config, setConfig] = useState<Config>({ denyThreshold: 5, latestVideoLink: '' });
   const [clips, setClips] = useState<Clip[]>([]);
@@ -249,7 +249,7 @@ function AdminDash() {
           limit: 1000, // Get a large number of clips for admin view
           sortBy: 'createdAt',
           sortOrder: 'desc',
-          includeRatings: true // Request ratings to be included with clips
+          includeRatings: true
         },
         headers
       });
@@ -389,10 +389,6 @@ function AdminDash() {
       });
 
     const clipLength = Object.keys(ratings).length;
-    setSeasonInfo(prevSeasonInfo => ({
-      ...prevSeasonInfo,
-      clipAmount: clipLength
-    }));
 
     Object.keys(ratings).forEach(clipId => {
       const clipRatingCounts = ratings[clipId].ratingCounts;
@@ -410,7 +406,7 @@ function AdminDash() {
                 userRatingCount[user.username][ratingData.rating]++;
                 userRatingCount[user.username].total++;
               }
-              userRatingCount[user.username].percentageRated = (userRatingCount[user.username].total / clipLength) * 100;
+              userRatingCount[user.username].percentageRated = (userRatingCount[user.username].total / (seasonInfo.clipAmount || clipLength)) * 100;
             }
           });
         }

@@ -72,9 +72,7 @@ function ClipViewer() {
   const [filterStreamer, setFilterStreamer] = useState<string>(searchParams.get('streamer') || '');
   // Track if initial data load has happened
   const [initialDataLoaded, setInitialDataLoaded] = useState<boolean>(false);
-  // Track when manual refetch is needed
-  const [refetchTrigger, setRefetchTrigger] = useState<number>(0);
-  const [totalPages, setTotalPages] = useState<number>(1);
+  const [, setTotalPages] = useState<number>(1);
 
   // Define fetchConfig function with default values for when response data is undefined
   const fetchConfig = useCallback(async () => {
@@ -88,7 +86,7 @@ function ClipViewer() {
         clipAmount: 0
       };
 
-      // First fetch public config - available to all users
+      // First fetch public config
       const publicResponse = await axios.get(`${apiUrl}/api/config/public`);
 
       // Get public config which contains clipAmount
@@ -97,11 +95,12 @@ function ClipViewer() {
       // Initialize with defaults and public config
       let configData = {
         ...defaultConfig,
-        clipAmount: publicConfig.clipAmount || 0
+        clipAmount: publicConfig.clipAmount
       };
 
       // Update total pages based on clipAmount for pagination
       if (publicConfig.clipAmount) {
+        console.log(`Public config clipAmount: ${publicConfig.clipAmount}`);
         const totalPagesCount = Math.ceil(publicConfig.clipAmount / itemsPerPage);
         setTotalPages(totalPagesCount);
       }
@@ -126,21 +125,12 @@ function ClipViewer() {
         }
       }
 
-      // Set the final config
       setConfig(configData);
-      setProgress(30); // Update progress
+      setProgress(30);
 
     } catch (error) {
       console.error('Error fetching config:', error);
       showError("Could not load configuration settings, using defaults");
-
-      // Set default config on error
-      setConfig({
-        denyThreshold: 3,
-        allowedFileTypes: ['video/mp4', 'video/webm'],
-        clipAmount: 0
-      });
-      setProgress(40); // Update progress despite error
     }
   }, [token, user, showError, itemsPerPage]);
 

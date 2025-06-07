@@ -2,14 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
-import { useNotification } from '../../context/NotificationContext';
-import logo from '../../media/CC_Logo_250px.png';
+import { useNotification } from '../context/NotificationContext';
+import logo from '../media/CC_Logo_250px.png';
 import MobileNavbar from './navbar/MobileNav';
 import DesktopNavbar from './navbar/DefaultNav';
 import LoginModal from './LoginModal';
-import useWindowWidth from '../../hooks/useWindowWidth';
-import apiUrl from '../../config/config';
-import { User } from '../../types/adminTypes';
+import useWindowWidth from '../hooks/useWindowWidth';
+import apiUrl from '../config/config';
+import { User } from '../types/adminTypes';
 
 interface NavbarProps {
   user: User | null;

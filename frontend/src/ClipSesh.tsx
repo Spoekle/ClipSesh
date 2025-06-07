@@ -1,8 +1,8 @@
 import { useState, useEffect, ReactNode } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import axios from 'axios';
-import Navbar from './pages/components/Navbar';
-import Footer from './pages/components/Footer';
+import Navbar from './components/Navbar';
+import Footer from './components/Footer';
 import EditorDash from './pages/EditorDash';
 import ClipViewer from './pages/Clips/Index'
 import ClipSearch from './pages/ClipSearch';
@@ -10,7 +10,7 @@ import Home from './pages/Home';
 import AdminDash from './pages/Admin/Index';
 import ResetPassword from './pages/ResetPassword';
 import PrivacyStatement from './pages/PrivacyStatement';
-import ProfilePage from './pages/ProfilePage';
+import ProfilePage from './pages/Profile/Index';
 import Stats from './pages/Stats/Index';
 import background from './media/background.jpg';
 import apiUrl from './config/config';
@@ -245,6 +245,11 @@ function ClipSesh() {
               <Route path="/search" element={<ClipSearch />} />
               <Route path="/admin" element={<RequireAuth isAdminRequired={true}><AdminDash /></RequireAuth>} />
               <Route path="/profile" element={
+                <RequireAuth>
+                  {user && <ProfilePage user={user} setUser={setUser} />}
+                </RequireAuth>
+              } />
+              <Route path="/profile/:userId" element={
                 <RequireAuth>
                   {user && <ProfilePage user={user} setUser={setUser} />}
                 </RequireAuth>

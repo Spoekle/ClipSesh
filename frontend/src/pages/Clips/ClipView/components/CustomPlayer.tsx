@@ -1,8 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { FaPlay, FaPause, FaExpand, FaVolumeUp, FaVolumeMute, FaRedo, FaCompress } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Clip } from '../../../../types/adminTypes';
 
-const CustomPlayer = ({ currentClip }) => {
+const CustomPlayer = ({ currentClip }: { currentClip: Clip }) => {
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const playerRef = useRef(null);
     const progressRef = useRef(null);

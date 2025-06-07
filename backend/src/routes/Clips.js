@@ -50,6 +50,196 @@ async function updateClipCount() {
  *   description: API for managing clips
  */
 
+// Helper functions for aggregation pipeline
+function createRatioField() {
+    return {
+        ratio: {
+            $cond: {
+                if: { $eq: [{ $add: ['$upvotes', '$downvotes'] }, 0] },
+                then: 0,
+                else: { 
+                    $multiply: [
+                        { $divide: ['$upvotes', { $add: ['$upvotes', '$downvotes'] }] },
+                        100
+                    ]
+                }
+            }
+        }
+    };
+}
+
+function createAverageRatingField() {
+    return {
+        averageRating: {
+            $cond: {
+                if: { $eq: [{ $size: '$ratingData' }, 0] },
+                then: 999, // No ratings - sort to end
+                else: {
+                    $let: {
+                        vars: { rating: { $arrayElemAt: ['$ratingData', 0] } },
+                        in: {
+                            $cond: {
+                                if: { $not: { $ifNull: ['$$rating.ratings', false] } },
+                                then: 999,
+                                else: {
+                                    $let: {
+                                        vars: {
+                                            counts: {
+                                                r1: { $size: { $ifNull: ['$$rating.ratings.1', []] } },
+                                                r2: { $size: { $ifNull: ['$$rating.ratings.2', []] } },
+                                                r3: { $size: { $ifNull: ['$$rating.ratings.3', []] } },
+                                                r4: { $size: { $ifNull: ['$$rating.ratings.4', []] } }
+                                            }
+                                        },
+                                        in: {
+                                            $let: {
+                                                vars: {
+                                                    total: { $add: ['$$counts.r1', '$$counts.r2', '$$counts.r3', '$$counts.r4'] }
+                                                },
+                                                in: {
+                                                    $cond: {
+                                                        if: { $eq: ['$$total', 0] },
+                                                        then: 1000, // Deny-only clips
+                                                        else: {
+                                                            $divide: [
+                                                                {
+                                                                    $add: [
+                                                                        { $multiply: [1, '$$counts.r1'] },
+                                                                        { $multiply: [2, '$$counts.r2'] },
+                                                                        { $multiply: [3, '$$counts.r3'] },
+                                                                        { $multiply: [4, '$$counts.r4'] }
+                                                                    ]
+                                                                },
+                                                                '$$total'
+                                                            ]
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    };
+}
+
+function createRatingCountField() {
+    return {
+        ratingCount: {
+            $cond: {
+                if: { $eq: [{ $size: '$ratingData' }, 0] },
+                then: 0,
+                else: {
+                    $let: {
+                        vars: { rating: { $arrayElemAt: ['$ratingData', 0] } },
+                        in: {
+                            $cond: {
+                                if: { $not: { $ifNull: ['$$rating.ratings', false] } },
+                                then: 0,
+                                else: {
+                                    $add: [
+                                        { $size: { $ifNull: ['$$rating.ratings.1', []] } },
+                                        { $size: { $ifNull: ['$$rating.ratings.2', []] } },
+                                        { $size: { $ifNull: ['$$rating.ratings.3', []] } },
+                                        { $size: { $ifNull: ['$$rating.ratings.4', []] } },
+                                        { $size: { $ifNull: ['$$rating.ratings.deny', []] } }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    };
+}
+
+function createSortPipeline(sortBy, sortOrder, query) {
+    const pipeline = [{ $match: query }];
+    
+    // Add computed fields based on sort type
+    const addFields = {};
+    
+    if (sortBy === 'ratio') {
+        Object.assign(addFields, createRatioField());
+    }
+    
+    if (sortBy === 'averageRating' || sortBy === 'ratingCount') {
+        pipeline.push({
+            $lookup: {
+                from: 'ratings',
+                localField: '_id',
+                foreignField: 'clipId',
+                as: 'ratingData'
+            }
+        });
+        
+        if (sortBy === 'averageRating') {
+            Object.assign(addFields, createAverageRatingField());
+        } else {
+            Object.assign(addFields, createRatingCountField());
+        }
+    }
+    
+    if (Object.keys(addFields).length > 0) {
+        pipeline.push({ $addFields: addFields });
+    }
+    
+    // Handle sorting
+    if (sortBy === 'averageRating') {
+        // Special handling for average rating - lower is better, deny clips always last
+        pipeline.push({
+            $addFields: {
+                sortPriority: {
+                    $cond: {
+                        if: { $gte: ['$averageRating', 1000] },
+                        then: 1, // Deny/no-rating clips last
+                        else: 0
+                    }
+                }
+            }
+        });
+        pipeline.push({
+            $sort: {
+                sortPriority: 1,
+                [sortBy]: sortOrder === 'asc' ? -1 : 1 // Inverted for ratings
+            }
+        });
+    } else {
+        pipeline.push({
+            $sort: { [sortBy]: sortOrder === 'asc' ? 1 : -1 }
+        });
+    }
+    
+    return pipeline;
+}
+
+async function getUserRatedClipIds(userId) {
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+        return [];
+    }
+    
+    try {
+        const ratings = await Rating.find({});
+        return ratings.filter(rating => {
+            const categories = ['1', '2', '3', '4', 'deny'];
+            return categories.some(cat => {
+                const ratingsInCategory = rating.ratings?.[cat];
+                return Array.isArray(ratingsInCategory) && 
+                       ratingsInCategory.some(r => r.userId?.toString() === userId.toString());
+            });
+        }).map(rating => rating.clipId);
+    } catch (error) {
+        console.error('Error fetching user ratings:', error);
+        return [];
+    }
+}
+
 /**
  * @swagger
  * /api/clips:
@@ -72,7 +262,7 @@ async function updateClipCount() {
  *         name: sortBy
  *         schema:
  *           type: string
- *         description: Field to sort by (createdAt, upvotes, downvotes)
+ *         description: Field to sort by (createdAt, upvotes, downvotes, ratio, averageRating, ratingCount)
  *       - in: query
  *         name: sortOrder
  *         schema:
@@ -93,11 +283,6 @@ async function updateClipCount() {
  *         schema:
  *           type: string
  *         description: User ID to exclude clips rated by this user
- *       - in: query
- *         name: excludeDeniedClips
- *         schema:
- *           type: boolean
- *         description: Exclude denied clips
  *     responses:
  *       200:
  *         description: OK
@@ -114,284 +299,58 @@ router.get('/', async (req, res) => {
             streamer = '',
             search = '',
             excludeRatedByUser = '',
-            includeRatings = false
         } = req.query;
 
-        // Parse numeric values and boolean flags
+        // Parse and validate inputs
         page = Math.max(1, parseInt(page) || 1);
-        limit = Math.min(Math.max(1, parseInt(limit) || 12), 100);
+        limit = Math.min(Math.max(1, parseInt(limit) || 12)); // Cap at 100
         
         console.log(`Clips query: page=${page}, limit=${limit}, sortBy=${sortBy}, sortOrder=${sortOrder}, streamer=${streamer}, search=${search}, excludeRatedByUser=${excludeRatedByUser}`);
         
-        // Basic query object
+        // Build base query
         const query = {};
         
-        // Add streamer filter if provided
-        if (streamer && streamer.trim()) {
+        if (streamer?.trim()) {
             query.streamer = { $regex: new RegExp(streamer.trim(), 'i') };
         }
 
-        // Add search term filter if provided
-        if (search && search.trim()) {
+        if (search?.trim()) {
             query.$or = [
                 { title: { $regex: new RegExp(search.trim(), 'i') } },
                 { streamer: { $regex: new RegExp(search.trim(), 'i') } }
             ];
         }
 
-        // Get total count of all clips (for overall pagination)
-        const totalClipsBeforeFiltering = await Clip.countDocuments({});
-
-        // Find all ratings by the user if excludeRatedByUser is specified
-        let userRatedClipIds = [];
-        if (excludeRatedByUser && mongoose.Types.ObjectId.isValid(excludeRatedByUser)) {
-            try {
-                // More efficient approach: Find only ratings where this specific user has rated
-                const ratings = await Rating.find({});
-                
-                // Filter to find clips rated by this specific user
-                userRatedClipIds = ratings.filter(rating => {
-                    // Check each rating category (1-4 and deny)
-                    const categories = ['1', '2', '3', '4', 'deny'];
-                    for (const cat of categories) {
-                        if (rating.ratings && 
-                            rating.ratings[cat] && 
-                            Array.isArray(rating.ratings[cat])) {
-                            // Check if user has rated in this category
-                            const userRated = rating.ratings[cat].some(r => 
-                                r.userId && r.userId.toString() === excludeRatedByUser.toString()
-                            );
-                            if (userRated) return true;
-                        }
-                    }
-                    return false;
-                }).map(rating => rating.clipId);
-                
-                console.log(`Found ${userRatedClipIds.length} clips rated by user ${excludeRatedByUser}`);
-                
-                // Add to query to exclude these clips
-                if (userRatedClipIds.length > 0) {
-                    query._id = { $nin: userRatedClipIds };
-                }
-            } catch (error) {
-                console.error('Error fetching user ratings:', error);
-            }
+        // Handle user exclusion
+        const userRatedClipIds = await getUserRatedClipIds(excludeRatedByUser);
+        if (userRatedClipIds.length > 0) {
+            query._id = { $nin: userRatedClipIds };
+            console.log(`Excluding ${userRatedClipIds.length} clips rated by user ${excludeRatedByUser}`);
         }
-        
-        // Count clips after all filters applied
+
+        // Get total counts
+        const totalClipsBeforeFiltering = await Clip.countDocuments({});
         const totalClipsAfterAllFilters = await Clip.countDocuments(query);
         
-        // Calculate total pages based on filtered clips
+        // Calculate pagination
         const totalPages = Math.max(1, Math.ceil(totalClipsAfterAllFilters / limit));
-        
-        // Ensure page doesn't exceed total pages
         const validPage = Math.min(page, totalPages);
-        
-        // Calculate skip value for pagination
         const skip = (validPage - 1) * limit;
         
-        console.log(`Pagination: totalClips=${totalClipsAfterAllFilters}, totalPages=${totalPages}, requestedPage=${page}, validPage=${validPage}, skip=${skip}, limit=${limit}`);
+        console.log(`Pagination: totalClips=${totalClipsAfterAllFilters}, totalPages=${totalPages}, page=${validPage}, skip=${skip}`);
         
-        // Handle special sorting cases that require aggregation
+        // Execute query
         let clips;
+        const complexSortFields = ['ratio', 'averageRating', 'ratingCount'];
         
-        if (sortBy === 'ratio' || sortBy === 'averageRating' || sortBy === 'ratingCount') {
-            // Use aggregation pipeline for complex sorting
-            const pipeline = [
-                { $match: query },
-                {
-                    $addFields: {
-                        // Calculate vote ratio as percentage (upvotes / (upvotes + downvotes) * 100)
-                        ratio: {
-                            $cond: {
-                                if: { $eq: [{ $add: ['$upvotes', '$downvotes'] }, 0] },
-                                then: 0,
-                                else: { 
-                                    $multiply: [
-                                        { $divide: ['$upvotes', { $add: ['$upvotes', '$downvotes'] }] },
-                                        100
-                                    ]
-                                }
-                            }
-                        }
-                    }
-                }
-            ];
-
-            // Add rating-related calculations if needed
-            if (sortBy === 'averageRating' || sortBy === 'ratingCount') {
-                pipeline.push({
-                    $lookup: {
-                        from: 'ratings',
-                        localField: '_id',
-                        foreignField: 'clipId',
-                        as: 'ratingData'
-                    }
-                });
-
-                if (sortBy === 'averageRating') {
-                    pipeline.push({
-                        $addFields: {
-                            averageRating: {
-                                $cond: {
-                                    if: { 
-                                        $or: [
-                                            { $eq: [{ $size: '$ratingData' }, 0] },
-                                            { $eq: [{ $arrayElemAt: ['$ratingData', 0] }, null] }
-                                        ]
-                                    },
-                                    then: 999, // Put clips with no ratings at the end
-                                    else: {
-                                        $let: {
-                                            vars: {
-                                                rating: { $arrayElemAt: ['$ratingData', 0] }
-                                            },
-                                            in: {
-                                                $cond: {
-                                                    if: {
-                                                        $or: [
-                                                            { $eq: ['$$rating', null] },
-                                                            { $not: { $ifNull: ['$$rating.ratings', false] } }
-                                                        ]
-                                                    },
-                                                    then: 999,
-                                                    else: {
-                                                        $let: {
-                                                            vars: {
-                                                                // Get counts for each rating category
-                                                                rating1Count: { $size: { $ifNull: ['$$rating.ratings.1', []] } },
-                                                                rating2Count: { $size: { $ifNull: ['$$rating.ratings.2', []] } },
-                                                                rating3Count: { $size: { $ifNull: ['$$rating.ratings.3', []] } },
-                                                                rating4Count: { $size: { $ifNull: ['$$rating.ratings.4', []] } },
-                                                                denyCount: { $size: { $ifNull: ['$$rating.ratings.deny', []] } }
-                                                            },
-                                                            in: {
-                                                                $let: {
-                                                                    vars: {
-                                                                        totalValidRatings: { 
-                                                                            $add: ['$$rating1Count', '$$rating2Count', '$$rating3Count', '$$rating4Count'] 
-                                                                        }
-                                                                    },
-                                                                    in: {
-                                                                        $cond: {
-                                                                            if: { $eq: ['$$totalValidRatings', 0] },
-                                                                            then: 1000, // Use 1000 for deny-only clips to ensure they're always at the end regardless of sort direction
-                                                                            else: {
-                                                                                // Calculate weighted average: (1*count1 + 2*count2 + 3*count3 + 4*count4) / total valid ratings
-                                                                                $divide: [
-                                                                                    {
-                                                                                        $add: [
-                                                                                            { $multiply: [1, '$$rating1Count'] },
-                                                                                            { $multiply: [2, '$$rating2Count'] },
-                                                                                            { $multiply: [3, '$$rating3Count'] },
-                                                                                            { $multiply: [4, '$$rating4Count'] }
-                                                                                        ]
-                                                                                    },
-                                                                                    '$$totalValidRatings'
-                                                                                ]
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    });
-                }
-
-                if (sortBy === 'ratingCount') {
-                    pipeline.push({
-                        $addFields: {
-                            ratingCount: {
-                                $cond: {
-                                    if: { 
-                                        $or: [
-                                            { $eq: [{ $size: '$ratingData' }, 0] },
-                                            { $eq: [{ $arrayElemAt: ['$ratingData', 0] }, null] }
-                                        ]
-                                    },
-                                    then: 0,
-                                    else: {
-                                        $let: {
-                                            vars: {
-                                                rating: { $arrayElemAt: ['$ratingData', 0] }
-                                            },
-                                            in: {
-                                                $cond: {
-                                                    if: {
-                                                        $or: [
-                                                            { $eq: ['$$rating', null] },
-                                                            { $not: { $ifNull: ['$$rating.ratings', false] } }
-                                                        ]
-                                                    },
-                                                    then: 0,
-                                                    else: {
-                                                        // Count ALL ratings including denies
-                                                        $add: [
-                                                            { $size: { $ifNull: ['$$rating.ratings.1', []] } },
-                                                            { $size: { $ifNull: ['$$rating.ratings.2', []] } },
-                                                            { $size: { $ifNull: ['$$rating.ratings.3', []] } },
-                                                            { $size: { $ifNull: ['$$rating.ratings.4', []] } },
-                                                            { $size: { $ifNull: ['$$rating.ratings.deny', []] } }
-                                                        ]
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    });
-                }
-            }
-
-            // Add sorting
-            const sortStage = {};
-            // For average rating, we need to invert the sort direction since lower numbers are better
-            // Also ensure deny-only clips (1000) always go to end regardless of sort direction
-            if (sortBy === 'averageRating') {
-                sortStage[sortBy] = sortOrder === 'asc' ? -1 : 1; // Inverted: asc becomes -1, desc becomes 1
-                // Add a secondary sort to ensure deny-only clips (value 1000) always go to end
-                pipeline.push({ 
-                    $addFields: {
-                        sortPriority: {
-                            $cond: {
-                                if: { $gte: ['$averageRating', 1000] },
-                                then: 1, // Deny-only clips get priority 1 (last)
-                                else: 0  // Regular clips get priority 0 (first)
-                            }
-                        }
-                    }
-                });
-                pipeline.push({ 
-                    $sort: { 
-                        sortPriority: 1,        // Sort by priority first (deny clips always last)
-                        [sortBy]: sortStage[sortBy] // Then by average rating
-                    } 
-                });
-            } else {
-                sortStage[sortBy] = sortOrder === 'asc' ? 1 : -1; // Normal sorting for other fields
-                pipeline.push({ $sort: sortStage });
-            }
-
-            // Add pagination
-            pipeline.push({ $skip: skip });
-            pipeline.push({ $limit: limit });
-
-            console.log(`Aggregation pipeline for ${sortBy}:`, JSON.stringify(pipeline, null, 2));
+        if (complexSortFields.includes(sortBy)) {
+            // Use aggregation for complex sorting
+            const pipeline = createSortPipeline(sortBy, sortOrder, query);
+            pipeline.push({ $skip: skip }, { $limit: limit });
             clips = await Clip.aggregate(pipeline);
         } else {
             // Simple sorting for basic fields
             const sortObj = { [sortBy]: sortOrder === 'asc' ? 1 : -1 };
-            
             clips = await Clip.find(query)
                 .sort(sortObj)
                 .skip(skip)
@@ -401,38 +360,10 @@ router.get('/', async (req, res) => {
         
         console.log(`Query executed: found ${clips.length} clips for page ${validPage}`);
         
-        // Prepare ratings data if requested
-        let ratingsData = {};
-        if (clips.length > 0) {
-            const clipIds = clips.map(clip => clip._id);
-            
-            // Fetch ratings for all clips on this page
-            const ratings = await Rating.find({ clipId: { $in: clipIds } });
-            
-            // Organize ratings by clip ID - ensure we convert ObjectId to string for consistent key access
-            ratingsData = ratings.reduce((acc, rating) => {
-                acc[rating.clipId.toString()] = rating;
-                return acc;
-            }, {});
-            
-            // Make sure each clip has an entry in the ratings data, even if empty
-            clipIds.forEach(clipId => {
-                const clipIdStr = clipId.toString();
-                if (!ratingsData[clipIdStr]) {
-                    ratingsData[clipIdStr] = {
-                        clipId: clipIdStr,
-                        ratingCounts: []
-                    };
-                }
-                
-                // Ensure the ratingCounts array exists
-                if (!ratingsData[clipIdStr].ratingCounts) {
-                    ratingsData[clipIdStr].ratingCounts = [];
-                }
-            });
-        }
+        // Fetch ratings data
+        const ratingsData = await fetchRatingsData(clips);
         
-        // Send the response with comprehensive metadata
+        // Send response
         const response = {
             clips,
             ratings: ratingsData,
@@ -454,6 +385,35 @@ router.get('/', async (req, res) => {
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
+
+async function fetchRatingsData(clips) {
+    if (clips.length === 0) return {};
+    
+    const clipIds = clips.map(clip => clip._id);
+    const ratings = await Rating.find({ clipId: { $in: clipIds } });
+    
+    const ratingsData = ratings.reduce((acc, rating) => {
+        acc[rating.clipId.toString()] = rating;
+        return acc;
+    }, {});
+    
+    // Ensure all clips have rating entries
+    clipIds.forEach(clipId => {
+        const clipIdStr = clipId.toString();
+        if (!ratingsData[clipIdStr]) {
+            ratingsData[clipIdStr] = {
+                clipId: clipIdStr,
+                ratingCounts: []
+            };
+        }
+        
+        if (!ratingsData[clipIdStr].ratingCounts) {
+            ratingsData[clipIdStr].ratingCounts = [];
+        }
+    });
+    
+    return ratingsData;
+}
 
 /**
  * @swagger
@@ -1144,8 +1104,8 @@ async function downloadClipFromUrl(url) {
 router.post('/', authorizeRoles(['uploader', 'admin']), clipUpload.single('clip'), async (req, res) => {
     console.log("=== Handling new clip upload ===");
     try {
-        const { streamer, submitter, title, link } = req.body;
-        console.log("Request body:", { streamer, submitter, title, link });
+        const { streamer, submitter, title, link, discordSubmitterId } = req.body;
+        console.log("Request body:", { streamer, submitter, title, link, discordSubmitterId });
 
         let fileUrl;
         let thumbnailUrl;
@@ -1255,7 +1215,8 @@ router.post('/', authorizeRoles(['uploader', 'admin']), clipUpload.single('clip'
             streamer, 
             submitter, 
             title: finalTitle || title, 
-            link 
+            link,
+            discordSubmitterId 
         });
         await newClip.save();
 

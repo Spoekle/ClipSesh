@@ -235,7 +235,7 @@ async def on_message(message):
             try:
                 with open(filename, 'rb') as f:
                     files = {'clip': f}
-                    data = {'streamer': streamer, 'title': title, 'link': link, 'submitter': submitter}
+                    data = {'streamer': streamer, 'title': title, 'link': link, 'submitter': submitter, 'discordSubmitterId': message.author.id}
                     headers = {'Authorization': f'Bearer {BACKEND_TOKEN}'}
                     response = requests.post(f'{BACKEND_URL}/api/clips', files=files, data=data, headers=headers, timeout=30)
                     logging.debug(f'Response from server: {response.text}')

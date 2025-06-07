@@ -123,15 +123,21 @@ const RatingPanel: React.FC<RatingPanelProps> = ({
         }
     };
 
-    const isUserStreamerOrSubmitter = () => {
+    const isUserStreamerOrSubmitter = (): boolean => {
         if (!user) return false;
 
         const username = user.username.toLowerCase();
         const currentClipSubmitter = currentClip.submitter.toLowerCase();
         const currentClipStreamer = currentClip.streamer.toLowerCase();
-        return (
+        
+        // Check if user submitted this clip via Discord
+        const userDiscordId = user.discordId;
+        const clipDiscordSubmitterId = currentClip.discordSubmitterId;
+        
+        return Boolean(
             username === currentClipSubmitter ||
-            username === currentClipStreamer
+            username === currentClipStreamer ||
+            (userDiscordId && clipDiscordSubmitterId && userDiscordId === clipDiscordSubmitterId)
         );
     };
 
