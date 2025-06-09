@@ -1,0 +1,25 @@
+# Admin credentials
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=
+
+# Discord OAuth2 credentials
+DISCORD_CLIENT_ID=
+DISCORD_CLIENT_SECRET=
+
+# JWT Secret Key
+SECRET_KEY=
+
+# JWT token expiration times
+JWT_EXPIRES_IN=7 days
+BOT_TOKEN_EXPIRES_IN=30 days
+
+# Mail settings
+MAIL_EMAIL=
+MAIL_PASSWORD=
+
+# MongoDB connection
+MONGODB_URI=
+
+# URL
+FRONTEND_URL=
+BACKEND_URL=

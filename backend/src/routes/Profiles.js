@@ -33,44 +33,41 @@ const auth = require('./middleware/VerifyToken');
  *         description: Internal Server Error
  */
 router.get('/public/:userId', async (req, res) => {
-    try {
-        const { userId } = req.params;
-
-        // Find user with all profile fields - only return if profile is public
+    try {        
+        const { userId } = req.params;        
+        // Find user - get everything except password
         const user = await User.findById(userId)
-            .select('username profilePicture roles discordUsername discordId joinDate status bio website socialLinks isPublic lastActive trophies')
+            .select('-password')
             .lean();
 
-        if (!user || user.status !== 'active' || !user.isPublic) {
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        if (user.status !== 'active') {
             return res.status(404).json({ error: 'Profile not found' });
+        }
+
+        // Check if profile is public - default to true if profile object doesn't exist
+        const isPublic = user.profile?.isPublic !== false; // Default to true if undefined
+        if (!isPublic) {
+            return res.status(404).json({ error: 'Profile is private' });
         }
 
         // Calculate clips submitted
         let clipsSubmitted = 0;
         if (user.discordId) {
             clipsSubmitted = await Clip.countDocuments({ discordId: user.discordId });
-        }
-
-        // Build response
-        const publicProfile = {
-            _id: user._id,
-            username: user.username,
-            profilePicture: user.profilePicture,
-            roles: user.roles,
-            discordUsername: user.discordUsername,
-            joinDate: user.joinDate,
-            bio: user.bio,
-            website: user.website,
-            socialLinks: user.socialLinks,
-            lastActive: user.lastActive,
-            trophies: user.trophies,
+        }        // Add stats to user object
+        const userWithStats = {
+            ...user,
             stats: {
                 clipsSubmitted,
-                joinDate: user.joinDate
+                joinDate: user.createdAt
             }
         };
 
-        res.json(publicProfile);
+        res.json(userWithStats);
     } catch (error) {
         console.error('Error fetching public profile:', error);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -95,11 +92,10 @@ router.get('/public/:userId', async (req, res) => {
  */
 router.get('/me', auth, async (req, res) => {
     try {
-        const userId = req.user.id;
-        
-        // Get user with all profile fields
+        const userId = req.user.id;        
+        // Get user - everything except password
         const user = await User.findById(userId)
-            .select('username email profilePicture roles discordUsername discordId joinDate bio website socialLinks isPublic lastActive trophies status')
+            .select('-password')
             .lean();
         
         if (!user) {
@@ -110,22 +106,20 @@ router.get('/me', auth, async (req, res) => {
         let clipsSubmitted = 0;
         if (user.discordId) {
             clipsSubmitted = await Clip.countDocuments({ discordId: user.discordId });
-        }
-
-        // Update last active
-        await User.findByIdAndUpdate(userId, { lastActive: new Date() });
-
-        const profile = {
+        }        // Update last active
+        await User.findByIdAndUpdate(userId, { 'profile.lastActive': new Date() });        
+        // Add stats to user object
+        const userWithStats = {
             ...user,
             stats: {
                 clipsSubmitted,
-                joinDate: user.joinDate
+                joinDate: user.createdAt
             }
         };
 
         res.json({
             success: true,
-            profile
+            profile: userWithStats
         });
     } catch (error) {
         console.error('Error fetching user profile:', error);
@@ -154,6 +148,8 @@ router.get('/me', auth, async (req, res) => {
  *                 type: string
  *               socialLinks:
  *                 type: object
+ *               vrheadset:
+ *                 type: string
  *               isPublic:
  *                 type: boolean
  *     responses:
@@ -165,7 +161,7 @@ router.get('/me', auth, async (req, res) => {
 router.put('/me', auth, async (req, res) => {
     try {
         const userId = req.user.id;
-        const { bio, website, socialLinks, isPublic } = req.body;
+        const { bio, website, socialLinks, vrheadset, isPublic } = req.body;
 
         // Validate URLs if provided
         if (website && !isValidUrl(website)) {
@@ -178,21 +174,20 @@ router.put('/me', auth, async (req, res) => {
                     return res.status(400).json({ error: `Invalid URL for ${platform}` });
                 }
             }
-        }
-
+        }        
         const updateData = {
-            bio: bio || '',
-            website: website || '',
-            socialLinks: socialLinks || {},
-            isPublic: Boolean(isPublic),
-            lastActive: new Date()
+            'profile.bio': bio || '',
+            'profile.website': website || '',
+            'profile.socialLinks': socialLinks || {},
+            'profile.vrheadset': vrheadset || 'Other',
+            'profile.isPublic': Boolean(isPublic),
+            'profile.lastActive': new Date()
         };
-
         const updatedUser = await User.findByIdAndUpdate(
             userId,
             updateData,
             { new: true }
-        ).select('username email profilePicture roles discordUsername discordId joinDate bio website socialLinks isPublic lastActive trophies status');
+        ).select('-password');
 
         if (!updatedUser) {
             return res.status(404).json({ error: 'User not found' });
@@ -202,20 +197,20 @@ router.put('/me', auth, async (req, res) => {
         let clipsSubmitted = 0;
         if (updatedUser.discordId) {
             clipsSubmitted = await Clip.countDocuments({ discordId: updatedUser.discordId });
-        }
-
-        const profile = {
+        }        
+        // Add stats to user object
+        const userWithStats = {
             ...updatedUser.toObject(),
             stats: {
                 clipsSubmitted,
-                joinDate: updatedUser.joinDate
+                joinDate: updatedUser.createdAt
             }
         };
 
         res.json({
             success: true,
             message: 'Profile updated successfully',
-            profile
+            profile: userWithStats
         });
     } catch (error) {
         console.error('Error updating profile:', error);

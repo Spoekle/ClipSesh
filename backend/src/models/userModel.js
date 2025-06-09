@@ -1,9 +1,70 @@
 const mongoose = require('mongoose');
+const backendUrl = process.env.BACKEND_URL || 'https://api.spoekle.com';
 
 /**
  * @swagger
  * components:
  *   schemas:
+ *     SocialLinks:
+ *       type: object
+ *       properties:
+ *         website:
+ *           type: string
+ *           default: ''
+ *         youtube:
+ *           type: string
+ *           default: ''
+ *         twitch:
+ *           type: string
+ *           default: ''
+ *         twitter:
+ *           type: string
+ *           default: ''
+ *         instagram:
+ *           type: string
+ *           default: ''
+ *         github:
+ *           type: string
+ *           default: ''
+ *     Trophy:
+ *       type: object
+ *       properties:
+ *         trophyName:
+ *           type: string
+ *           required: true
+ *         dateEarned:
+ *           type: string
+ *           required: true
+ *         description:
+ *           type: string
+ *           required: true
+ *     Profile:
+ *       type: object
+ *       properties:
+ *         bio:
+ *           type: string
+ *           default: ''
+ *           maxLength: 500
+ *         website:
+ *           type: string
+ *           default: ''
+ *         socialLinks:
+ *           $ref: '#/components/schemas/SocialLinks'
+ *         isPublic:
+ *           type: boolean
+ *           default: true
+ *         lastActive:
+ *           type: string
+ *           format: date-time
+ *           default: Date.now
+ *         trophies:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/Trophy'
+ *           default: []       
+ *         vrheadset:
+ *           type: string
+ *           default: 'Other'
  *     User:
  *       type: object
  *       properties:
@@ -44,93 +105,91 @@ const mongoose = require('mongoose');
  *         discordUsername:
  *           type: string
  *           description: The Discord username of the user
- *         bio:
- *           type: string
- *           description: User's biography
- *           maxLength: 500
- *           default: ''
- *         website:
- *           type: string
- *           description: User's website URL
- *           default: ''
- *         socialLinks:
- *           type: object
- *           properties:
- *             youtube:
- *               type: string
- *               default: ''
- *             twitch:
- *               type: string
- *               default: ''
- *             twitter:
- *               type: string
- *               default: ''
- *             instagram:
- *               type: string
- *               default: ''
- *             github:
- *               type: string
- *               default: ''
- *         isPublic:
- *           type: boolean
- *           description: Whether the user's profile is public
- *           default: true
- *         lastActive:
- *           type: string
- *           format: date-time
- *           description: When the user was last active
  *         joinDate:
  *           type: string
  *           format: date-time
  *           description: When the user joined
- *         trophies:
- *           type: array
- *           items:
- *             type: object
- *             properties:
- *               trophyName:
- *                 type: string
- *               dateEarned:
- *                 type: string
- *               description:
- *                 type: string
+ *           default: Date.now
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           description: When the user was created (auto-generated)
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *           description: When the user was last updated (auto-generated)
+ *         profile:
+ *           $ref: '#/components/schemas/Profile'
  *       required:
  *         - username
  *         - password
  *         - roles
  */
 
+const headsets = [
+  'Oculus Quest',
+  'Oculus Quest 2',
+  'Oculus Quest Pro',
+  'Oculus Quest 3',
+  'Oculus Quest 3S',
+  'Oculus Rift CV1',
+  'Oculus Rift S', 
+  'HTC Vive',
+  'HTC Vive Pro',
+  'HTC Vive Cosmos', 
+  'Valve Index', 
+  'Bigscreen Beyond',
+  'Pico Neo 2',
+  'Pico Neo 3',
+  'Pico Neo 4', 
+  'Other',
+  'None'
+];
+
 const trophiesSchema = new mongoose.Schema({
   trophyName: { type: String, required: true },
   dateEarned: { type: String, required: true },
   description: { type: String, required: true },
-});
+}, { _id: false });
 
 const socialLinksSchema = new mongoose.Schema({
+  website: { type: String, default: '' },
   youtube: { type: String, default: '' },
   twitch: { type: String, default: '' },
   twitter: { type: String, default: '' },
   instagram: { type: String, default: '' },
   github: { type: String, default: '' }
-});
+}, { _id: false });
+
+const profileSchema = new mongoose.Schema({
+  bio: { type: String, default: '', maxlength: 500 },
+  website: { type: String, default: '' },
+  socialLinks: { type: socialLinksSchema, default: () => ({}) },
+  vrheadset: { type: String, enum: headsets, default: 'Other' },
+  isPublic: { type: Boolean, default: true },
+  lastActive: { type: Date, default: Date.now },
+  trophies: { type: [trophiesSchema], default: [] },
+}, { _id: false });
 
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   email: { type: String, unique: true, sparse: true },
   password: { type: String, required: true },
-  profilePicture: { type: String, default: 'https://api.spoekle.com/profilePictures/profile_placeholder.png' },
+  profilePicture: { type: String, default: `${backendUrl}/profilePictures/profile_placeholder.png` },
   roles: { type: [String], enum: ['admin', 'user', 'clipteam', 'editor', 'uploader'], default: ['user'], required: true },
   status: { type: String, enum: ['disabled', 'active'], default: 'active' },
   discordId: { type: String, unique: true, sparse: true },
   discordUsername: { type: String },
-  trophies: { type: [trophiesSchema], default: [] },
-  // Profile fields - directly in user schema
-  bio: { type: String, default: '', maxlength: 500 },
-  website: { type: String, default: '' },
-  socialLinks: { type: socialLinksSchema, default: () => ({}) },
-  isPublic: { type: Boolean, default: true },
-  lastActive: { type: Date, default: Date.now },
-  joinDate: { type: Date, default: Date.now }
+  joinDate: { type: Date, default: Date.now },
+  profile: { type: profileSchema, default: () => ({}) },
+}, { timestamps: true });
+
+// Pre-save middleware to ensure profile object exists
+userSchema.pre('save', function(next) {
+  if (!this.profile) {
+    this.profile = {};
+  }
+  next();
 });
 
 const User = mongoose.model('User', userSchema);

@@ -11,7 +11,6 @@ import AdminDash from './pages/Admin/Index';
 import ResetPassword from './pages/ResetPassword';
 import PrivacyStatement from './pages/PrivacyStatement';
 import ProfilePage from './pages/Profile/Index';
-import Stats from './pages/Stats/Index';
 import background from './media/background.jpg';
 import apiUrl from './config/config';
 import { motion } from 'framer-motion';
@@ -243,22 +242,12 @@ function ClipSesh() {
               <Route path="/clips" element={<ClipViewer />} />
               <Route path="/clips/:clipId" element={<ClipViewer />} />
               <Route path="/search" element={<ClipSearch />} />
-              <Route path="/admin" element={<RequireAuth isAdminRequired={true}><AdminDash /></RequireAuth>} />
-              <Route path="/profile" element={
+              <Route path="/admin" element={<RequireAuth isAdminRequired={true}><AdminDash /></RequireAuth>} />              <Route path="/profile" element={
                 <RequireAuth>
-                  {user && <ProfilePage user={user} setUser={setUser} />}
+                  <ProfilePage currentUser={user || undefined} />
                 </RequireAuth>
               } />
-              <Route path="/profile/:userId" element={
-                <RequireAuth>
-                  {user && <ProfilePage user={user} setUser={setUser} />}
-                </RequireAuth>
-              } />
-              <Route path="/stats" element={
-                <RequireAuth isVerifiedRequired={true}>
-                  {user && <Stats user={user} setUser={setUser} />}
-                </RequireAuth>
-              } />
+              <Route path="/profile/:userId" element={<ProfilePage currentUser={user || undefined} />} />
               <Route path="/notifications" element={
                 <RequireAuth>
                   <NotificationsPage />

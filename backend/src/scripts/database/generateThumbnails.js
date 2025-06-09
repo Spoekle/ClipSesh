@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const ffmpeg = require('fluent-ffmpeg');
 const Clip = require('../../models/clipModel');
+const backendUrl = process.env.BACKEND_URL || 'https://api.spoekle.com';
 
 mongoose.connect('mongodb://mongo:27017/clipsDB', {
   useNewUrlParser: true,
@@ -16,7 +17,7 @@ async function generateThumbnails() {
     const clips = await Clip.find({ thumbnail: { $exists: true } });
 
     for (const clip of clips) {
-      if (clip.url && clip.url.includes('https://api.spoekle.com/uploads/')) {
+      if (clip.url && clip.url.includes(`${backendUrl}/uploads/`)) {
         const filename = path.basename(clip.url);
         const inputPath = path.join(__dirname, '..', '..', 'uploads', filename);
 
@@ -40,7 +41,7 @@ async function generateThumbnails() {
             .on('error', reject);
         });
 
-        clip.thumbnail = `https://api.spoekle.com/uploads/${thumbnailFilename}`;
+        clip.thumbnail = `${backendUrl}/uploads/${thumbnailFilename}`;
         await clip.save();
 
         console.log(`Thumbnail generated for clip ${clip._id}: ${clip.thumbnail}`);

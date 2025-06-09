@@ -238,11 +238,22 @@ router.put('/users/:id', authorizeRoles(['admin']), async (req, res) => {
  *         description: Internal server error
  */
 router.get('/users/:id', authorizeRoles(['admin']), async (req, res) => {
-  try {
-    const user = await User.findById(req.params.id).select('-password');
+  try {    const user = await User.findById(req.params.id).select('-password');
     if (!user) return res.status(404).json({ error: 'User not found' });
     
-    res.json(user);
+    // Flatten profile data for frontend compatibility
+    const userObj = user.toObject();
+    const flattenedUser = {
+      ...userObj,
+      bio: userObj.profile?.bio || '',
+      website: userObj.profile?.socialLinks?.website || '',
+      socialLinks: userObj.profile?.socialLinks || {},
+      isPublic: userObj.profile?.isPublic !== false,
+      lastActive: userObj.profile?.lastActive || userObj.createdAt,
+      trophies: userObj.profile?.trophies || [],
+    };
+    
+    res.json(flattenedUser);
   } catch (error) {
     console.error('Error fetching user:', error);
     res.status(500).json({ error: 'Internal Server Error', details: error.message });
@@ -309,9 +320,23 @@ router.get('/users', authorizeRoles(['admin']), async (req, res) => {
     if (status) {
       query.status = status;
     }
+      const users = await User.find(query).select('-password');
     
-    const users = await User.find(query).select('-password');
-    res.json(users);
+    // Flatten profile data for frontend compatibility
+    const flattenedUsers = users.map(user => {
+      const userObj = user.toObject();
+      return {
+        ...userObj,
+        bio: userObj.profile?.bio || '',
+        website: userObj.profile?.socialLinks?.website || '',
+        socialLinks: userObj.profile?.socialLinks || {},
+        isPublic: userObj.profile?.isPublic !== false,
+        lastActive: userObj.profile?.lastActive || userObj.createdAt,
+        trophies: userObj.profile?.trophies || [],
+      };
+    });
+    
+    res.json(flattenedUsers);
   } catch (error) {
     console.error('Error fetching users:', error);
     res.status(500).json({ error: 'Internal Server Error', details: error.message });
@@ -633,23 +658,41 @@ router.post('/users/:userId/trophies', authorizeRoles(['admin']), async (req, re
         success: false,
         message: 'User not found'
       });
-    }
-
-    // Create the trophy object
+    }    // Create the trophy object
     const trophy = {
       trophyName,
       description,
       dateEarned: `${season} ${year}`
     };
 
-    // Add trophy to user's trophies array
-    user.trophies.push(trophy);
+    // Ensure user has profile object
+    if (!user.profile) {
+      user.profile = {};
+    }
+    
+    // Ensure user has trophies array
+    if (!user.profile.trophies) {
+      user.profile.trophies = [];
+    }    // Add trophy to user's trophies array
+    user.profile.trophies.push(trophy);
     await user.save();
+
+    // Flatten user data for frontend compatibility
+    const userObj = user.toObject();
+    const flattenedUser = {
+      ...userObj,
+      bio: userObj.profile?.bio || '',
+      website: userObj.profile?.socialLinks?.website || '',
+      socialLinks: userObj.profile?.socialLinks || {},
+      isPublic: userObj.profile?.isPublic !== false,
+      lastActive: userObj.profile?.lastActive || userObj.createdAt,
+      trophies: userObj.profile?.trophies || [],
+    };
 
     res.status(200).json({
       success: true,
       message: 'Trophy awarded successfully',
-      user: user
+      user: flattenedUser
     });
   } catch (error) {
     console.error('Error awarding trophy:', error);
@@ -716,24 +759,40 @@ router.delete('/users/:userId/trophies/:trophyId', authorizeRoles(['admin']), as
         success: false,
         message: 'User not found'
       });
+    }    // Ensure user has profile and trophies array
+    if (!user.profile) {
+      user.profile = {};
+    }
+    if (!user.profile.trophies) {
+      user.profile.trophies = [];
     }
 
     // Find and remove the trophy
-    const trophyIndex = user.trophies.findIndex(trophy => trophy._id.toString() === trophyId);
+    const trophyIndex = user.profile.trophies.findIndex(trophy => trophy._id.toString() === trophyId);
     if (trophyIndex === -1) {
       return res.status(400).json({
         success: false,
         message: 'Trophy not found'
       });
-    }
-
-    user.trophies.splice(trophyIndex, 1);
+    }    user.profile.trophies.splice(trophyIndex, 1);
     await user.save();
+
+    // Flatten user data for frontend compatibility
+    const userObj = user.toObject();
+    const flattenedUser = {
+      ...userObj,
+      bio: userObj.profile?.bio || '',
+      website: userObj.profile?.socialLinks?.website || '',
+      socialLinks: userObj.profile?.socialLinks || {},
+      isPublic: userObj.profile?.isPublic !== false,
+      lastActive: userObj.profile?.lastActive || userObj.createdAt,
+      trophies: userObj.profile?.trophies || [],
+    };
 
     res.status(200).json({
       success: true,
       message: 'Trophy removed successfully',
-      user: user
+      user: flattenedUser
     });
   } catch (error) {
     console.error('Error removing trophy:', error);
@@ -798,9 +857,7 @@ router.delete('/users/:userId/trophies/:trophyId', authorizeRoles(['admin']), as
 router.put('/users/:userId/trophies/:trophyId', authorizeRoles(['admin']), async (req, res) => {
   try {
     const { userId, trophyId } = req.params;
-    const { trophyName, description, season, year } = req.body;
-
-    // Find the user
+    const { trophyName, description, season, year } = req.body;    // Find the user
     const user = await User.findById(userId);
     if (!user) {
       return res.status(400).json({
@@ -809,8 +866,16 @@ router.put('/users/:userId/trophies/:trophyId', authorizeRoles(['admin']), async
       });
     }
 
+    // Ensure user has profile and trophies array
+    if (!user.profile) {
+      user.profile = {};
+    }
+    if (!user.profile.trophies) {
+      user.profile.trophies = [];
+    }
+
     // Find the trophy to update
-    const trophy = user.trophies.id(trophyId);
+    const trophy = user.profile.trophies.id(trophyId);
     if (!trophy) {
       return res.status(400).json({
         success: false,
@@ -821,14 +886,24 @@ router.put('/users/:userId/trophies/:trophyId', authorizeRoles(['admin']), async
     // Update trophy fields if provided
     if (trophyName) trophy.trophyName = trophyName;
     if (description) trophy.description = description;
-    if (season && year) trophy.dateEarned = `${season} ${year}`;
+    if (season && year) trophy.dateEarned = `${season} ${year}`;    await user.save();
 
-    await user.save();
+    // Flatten user data for frontend compatibility
+    const userObj = user.toObject();
+    const flattenedUser = {
+      ...userObj,
+      bio: userObj.profile?.bio || '',
+      website: userObj.profile?.socialLinks?.website || '',
+      socialLinks: userObj.profile?.socialLinks || {},
+      isPublic: userObj.profile?.isPublic !== false,
+      lastActive: userObj.profile?.lastActive || userObj.createdAt,
+      trophies: userObj.profile?.trophies || [],
+    };
 
     res.status(200).json({
       success: true,
       message: 'Trophy updated successfully',
-      user: user
+      user: flattenedUser
     });
   } catch (error) {
     console.error('Error updating trophy:', error);

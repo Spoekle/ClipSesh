@@ -4,6 +4,7 @@ import { PublicProfile } from './profileTypes';
 
 // SearchProfile now extends PublicProfile for consistency
 export interface SearchProfile extends PublicProfile {
+  createdAt?: string;
   stats: {
     clipsSubmitted: number;
     joinDate: string;

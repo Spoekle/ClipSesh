@@ -6,6 +6,8 @@ const secretKey = process.env.SECRET_KEY;
 const adminUsername = process.env.ADMIN_USERNAME;
 const mailEmail = process.env.MAIL_EMAIL;
 const mailPassword = process.env.MAIL_PASSWORD;
+const frontendUrl = process.env.FRONTEND_URL || 'https://clipsesh.cube.community';
+const backendUrl = process.env.BACKEND_URL || 'https://api.spoekle.com';
 const fs = require('fs');
 const nodemailer = require('nodemailer');
 const path = require('path');
@@ -80,7 +82,7 @@ router.post('/resetPassword', async (req, res) => {
         if (!user) return res.status(404).json({ error: 'User not found or no email linked' });
 
         const resetToken = jwt.sign({ id: user._id }, secretKey, { expiresIn: '1h' });
-        const resetLink = `https://clipsesh.cube.community/reset-password?token=${resetToken}`;
+        const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
 
         let transporter = nodemailer.createTransport({
             host: 'smtp.mail.me.com',
@@ -151,7 +153,7 @@ router.post('/resetPassword/confirm', async (req, res) => {
 
 router.post('/uploadProfilePicture', authorizeRoles(['user', 'clipteam', 'editor', 'uploader', 'admin']), profilePictureUpload.single('profilePicture'), async (req, res) => {
     try {
-        const profilePictureUrl = `https://api.spoekle.com/profilePictures/${req.file.filename}`;
+        const profilePictureUrl = `${backendUrl}/profilePictures/${req.file.filename}`;
         const userId = req.user.id;
 
         const user = await User.findById(userId);

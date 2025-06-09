@@ -24,6 +24,8 @@ const User = require('../models/userModel');
 const Rating = require('../models/ratingModel');
 const { getClipPath, getDailyDirectory, isLegacyPath } = require('../utils/seasonHelpers');
 
+const backendUrl = process.env.BACKEND_URL || 'https://api.spoekle.com';
+
 /**
  * Update the clip count in the public config
  */
@@ -1131,7 +1133,7 @@ router.post('/', authorizeRoles(['uploader', 'admin']), clipUpload.single('clip'
             }
 
             // Use relative path for URL to support both legacy and new structure
-            fileUrl = `https://api.spoekle.com/uploads/${relativePath.replace(/\\/g, '/')}`;
+            fileUrl = `${backendUrl}/uploads/${relativePath.replace(/\\/g, '/')}`;
 
             // Generate thumbnail in the same directory as the video
             const thumbnailFilename = `${path.parse(req.file.filename).name}_thumbnail.png`;
@@ -1153,7 +1155,7 @@ router.post('/', authorizeRoles(['uploader', 'admin']), clipUpload.single('clip'
                     .on('error', reject);
             });
 
-            thumbnailUrl = `https://api.spoekle.com/uploads/${thumbnailRelativePath.replace(/\\/g, '/')}`;
+            thumbnailUrl = `${backendUrl}/uploads/${thumbnailRelativePath.replace(/\\/g, '/')}`;
             console.log("Thumbnail URL:", thumbnailUrl);
         } 
         // Case 2: URL-based clip from YouTube, Twitch, etc.
@@ -1170,7 +1172,7 @@ router.post('/', authorizeRoles(['uploader', 'admin']), clipUpload.single('clip'
                 }
                 
                 // Use the relative path for the URL
-                fileUrl = `https://api.spoekle.com/uploads/${downloadResult.relativePath.replace(/\\/g, '/')}`;
+                fileUrl = `${backendUrl}/uploads/${downloadResult.relativePath.replace(/\\/g, '/')}`;
                 
                 // Generate thumbnail for the downloaded file in the same directory
                 const thumbnailFilename = `${path.parse(downloadResult.fileName).name}_thumbnail.png`;
@@ -1191,7 +1193,7 @@ router.post('/', authorizeRoles(['uploader', 'admin']), clipUpload.single('clip'
                         .on('error', reject);
                 });
                 
-                thumbnailUrl = `https://api.spoekle.com/uploads/${thumbnailRelativePath.replace(/\\/g, '/')}`;
+                thumbnailUrl = `${backendUrl}/uploads/${thumbnailRelativePath.replace(/\\/g, '/')}`;
                 console.log("Downloaded and processed URL-based clip:", fileUrl);
             } catch (error) {
                 console.error("Error downloading from URL:", error);
@@ -1615,6 +1617,81 @@ router.delete('/:clipId/comment/:commentId/reply/:replyId', authorizeRoles(['use
     console.error('Error deleting reply:', error);
     res.status(500).json({ error: 'Internal Server Error' });
   }
+});
+
+/**
+ * @swagger
+ * /api/clips/user/{discordId}:
+ *   get:
+ *     tags:
+ *       - clips
+ *     summary: Get clips submitted by a specific user
+ *     parameters:
+ *       - in: path
+ *         name: discordId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Discord ID of the user
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of clips per page
+ *     responses:
+ *       200:
+ *         description: List of clips submitted by the user
+ *       404:
+ *         description: No clips found for this user
+ *       500:
+ *         description: Internal Server Error
+ */
+router.get('/user/:discordId', async (req, res) => {
+    try {
+        const { discordId } = req.params;
+        const { page = 1, limit = 10 } = req.query;
+        
+        const pageNumber = parseInt(page);
+        const limitNumber = parseInt(limit);
+        const skip = (pageNumber - 1) * limitNumber;
+        
+        // Build query to find clips by Discord submitter ID
+        const query = { discordSubmitterId: discordId };
+        
+        // Get total count for pagination
+        const totalClips = await Clip.countDocuments(query);
+        
+        // Get clips with pagination
+        const clips = await Clip.find(query)
+            .sort({ createdAt: -1 }) // Most recent first
+            .skip(skip)
+            .limit(limitNumber)
+            .lean();
+        
+        const totalPages = Math.ceil(totalClips / limitNumber);
+        
+        res.json({
+            clips,
+            pagination: {
+                currentPage: pageNumber,
+                totalPages,
+                totalClips,
+                limit: limitNumber,
+                hasNext: pageNumber < totalPages,
+                hasPrev: pageNumber > 1
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching user clips:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
 });
 
 module.exports = router;

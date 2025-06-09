@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Clip = require('../../models/clipModel');
+const backendUrl = process.env.BACKEND_URL || 'https://api.spoekle.com';
 
 mongoose.connect('mongodb://mongo:27017/clipsDB', { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log('Connected to MongoDB'))
@@ -8,7 +9,7 @@ mongoose.connect('mongodb://mongo:27017/clipsDB', { useNewUrlParser: true, useUn
 async function updateClips() {
   const result = await Clip.updateMany(
     { url: { $regex: /^\/uploads\// } },
-    [{ $set: { url: { $concat: ["https://api.spoekle.com", "$url"] } } }]
+    [{ $set: { url: { $concat: [backendUrl, "$url"] } } }]
   );
 
   console.log(result);

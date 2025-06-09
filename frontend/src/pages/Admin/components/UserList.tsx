@@ -429,9 +429,8 @@ const UserList: React.FC<UserListProps> = ({ fetchUsers, AVAILABLE_ROLES, apiUrl
                               </div>
                               <div>
                                 <div className="flex items-center gap-2">
-                                  <h3 className="font-bold text-lg">{user.username}</h3>
-                                  {user.trophies && user.trophies.length > 0 && (
-                                    <TrophyIndicator trophies={user.trophies} size="small" />
+                                  <h3 className="font-bold text-lg">{user.username}</h3>                                  {user.profile?.trophies && user.profile.trophies.length > 0 && (
+                                    <TrophyIndicator trophies={user.profile.trophies} size="small" />
                                   )}
                                 </div>
                                 <div className="flex items-center">

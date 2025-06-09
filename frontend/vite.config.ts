@@ -11,6 +11,10 @@ export default defineConfig({
   server: {
     watch: {
         usePolling: true
-    }
+    },
+    allowedHosts: [
+      'localhost',
+      'dev.spoekle.com'
+    ]
 },
 })

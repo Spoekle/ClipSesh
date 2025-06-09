@@ -9,6 +9,7 @@ const swaggerJsDoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
 const fs = require('fs');
 require('dotenv').config();
+const backendUrl = process.env.BACKEND_URL || 'https://api.spoekle.com';
 
 console.log('Environment variables loaded...');
 
@@ -144,7 +145,7 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: `https://api.spoekle.com`,
+        url: `${backendUrl}`,
       },
     ],
     components: {

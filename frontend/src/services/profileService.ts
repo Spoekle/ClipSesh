@@ -15,8 +15,14 @@ export const getPublicProfile = async (userId: string): Promise<PublicProfile> =
   try {
     const response = await axios.get(`${apiUrl}/api/profiles/public/${userId}`);
     return response.data;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching public profile:', error);
+    
+    if (error.response?.status === 404) {
+      const errorMessage = error.response?.data?.error || 'Profile not found';
+      throw new Error(errorMessage);
+    }
+    
     throw new Error('Failed to fetch profile');
   }
 };

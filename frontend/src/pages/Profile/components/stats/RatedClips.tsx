@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FaPlay } from 'react-icons/fa';
-import { useNotification } from '../../../context/NotificationContext';
-import { Rating, Clip } from '../../../types/adminTypes';
+import { useNotification } from '../../../../context/NotificationContext';
+import { Rating, Clip } from '../../../../types/adminTypes';
 
 // Extended Clip interface to include user rating
 interface ExtendedClip extends Clip {
@@ -13,7 +13,10 @@ interface ExtendedClip extends Clip {
 interface RatedClipsProps {
     ratingsData: Record<string, Rating>;
     clipsData: Clip[];
-    location?: any;
+    location?: {
+        pathname: string;
+        state?: unknown;
+    };
 }
 
 const RatedClips: React.FC<RatedClipsProps> = ({ ratingsData, clipsData, location }) => {
@@ -102,16 +105,14 @@ const RatedClips: React.FC<RatedClipsProps> = ({ ratingsData, clipsData, locatio
     // Handle page change
     const paginate = (pageNumber: number) => {
         setCurrentPage(pageNumber);
-    };
-
-    // Rating badge color
+    };    // Rating badge color with modern gradients
     const getRatingColor = (rating: string | number) => {
-        if (rating === 1 || rating === '1') return "bg-blue-600";
-        if (rating === 2 || rating === '2') return "bg-green-600";
-        if (rating === 3 || rating === '3') return "bg-amber-500";
-        if (rating === 4 || rating === '4') return "bg-orange-500";
-        if (rating === "deny") return "bg-red-600";
-        return "bg-neutral-600";
+        if (rating === 1 || rating === '1') return "bg-gradient-to-r from-blue-500 to-blue-600";
+        if (rating === 2 || rating === '2') return "bg-gradient-to-r from-green-500 to-green-600";
+        if (rating === 3 || rating === '3') return "bg-gradient-to-r from-amber-500 to-amber-600";
+        if (rating === 4 || rating === '4') return "bg-gradient-to-r from-orange-500 to-orange-600";
+        if (rating === "deny") return "bg-gradient-to-r from-red-500 to-red-600";
+        return "bg-gradient-to-r from-neutral-500 to-neutral-600";
     };
 
     return (
@@ -124,23 +125,28 @@ const RatedClips: React.FC<RatedClipsProps> = ({ ratingsData, clipsData, locatio
                             className="aspect-video bg-neutral-800/20 animate-pulse rounded-lg overflow-hidden shadow-md"
                         />
                     ))}
-                </div>
-            ) : ratedClips.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <div className="text-6xl mb-4">🎬</div>
-                    <h3 className="text-xl font-medium text-neutral-800 dark:text-neutral-200 mb-2">
+                </div>            ) : ratedClips.length === 0 ? (
+                <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex flex-col items-center justify-center py-16 text-center bg-gradient-to-br from-neutral-50 to-neutral-100 dark:from-neutral-800 dark:to-neutral-700 rounded-2xl border border-neutral-200 dark:border-neutral-600 shadow-sm"
+                >
+                    <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
+                        <div className="text-4xl">🎬</div>
+                    </div>
+                    <h3 className="text-2xl font-bold text-neutral-800 dark:text-neutral-200 mb-3">
                         No rated clips found
                     </h3>
-                    <p className="text-neutral-500 dark:text-neutral-400 max-w-md">
+                    <p className="text-neutral-600 dark:text-neutral-400 max-w-md mb-8 leading-relaxed">
                         You haven't rated any clips yet. Visit the clip browser to start rating clips and help the team!
                     </p>
                     <Link
                         to="/clips"
-                        className="mt-6 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
+                        className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-8 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
                     >
                         Browse Clips
                     </Link>
-                </div>
+                </motion.div>
             ) : (
                 <>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 p-4">
@@ -149,23 +155,20 @@ const RatedClips: React.FC<RatedClipsProps> = ({ ratingsData, clipsData, locatio
                                 key={clip._id}
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.3 }}
-                                whileHover={{ scale: 1.03 }}
-                                className="relative group aspect-video rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition duration-200"
+                                transition={{ duration: 0.3 }}                                whileHover={{ scale: 1.03, y: -5 }}
+                                className="relative group aspect-video rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 border border-neutral-200 dark:border-neutral-700"
                             >
                                 <Link 
                                     to={`/clips/${clip._id}`}
                                     state={{ from: location }}
                                     className="block w-full h-full"
-                                >
-                                    {/* Rating badge */}
-                                    <div className="absolute z-30 top-2 right-2 backdrop-blur-sm text-white px-2 py-1 rounded-md flex items-center font-bold text-sm shadow-md"
-                                         style={{ backgroundColor: getRatingColor(clip.userRating || 'unknown') }}>
+                                >                                    {/* Rating badge */}
+                                    <div className={`absolute z-30 top-3 right-3 backdrop-blur-sm text-white px-3 py-2 rounded-xl flex items-center font-bold text-sm shadow-lg border border-white/20 ${getRatingColor(clip.userRating || 'unknown')}`}>
                                         {clip.userRating === "deny" ? "Denied" : `Rated ${clip.userRating || 'Unknown'}`}
                                     </div>
                                     
                                     {/* Streamer name */}
-                                    <div className="absolute z-30 top-2 left-2 bg-neutral-800/80 backdrop-blur-sm text-white px-3 py-1 font-bold rounded-md text-sm">
+                                    <div className="absolute z-30 top-3 left-3 bg-black/70 backdrop-blur-sm text-white px-4 py-2 font-bold rounded-xl text-sm border border-white/10">
                                         {clip.streamer}
                                     </div>
                                     
@@ -182,12 +185,14 @@ const RatedClips: React.FC<RatedClipsProps> = ({ ratingsData, clipsData, locatio
                                                 <span className="text-neutral-400 text-sm px-2 text-center">{clip.title}</span>
                                             </div>
                                         )}
-                                        
-                                        {/* Play overlay */}
-                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                            <div className="bg-blue-600/80 p-4 rounded-full">
-                                                <FaPlay className="text-xl text-white" />
-                                            </div>
+                                          {/* Play overlay */}
+                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all duration-300">
+                                            <motion.div 
+                                                whileHover={{ scale: 1.2 }}
+                                                className="bg-gradient-to-r from-blue-500 to-purple-600 p-4 rounded-full shadow-xl border-2 border-white/20"
+                                            >
+                                                <FaPlay className="text-2xl text-white ml-1" />
+                                            </motion.div>
                                         </div>
                                     </div>
                                     
@@ -199,48 +204,55 @@ const RatedClips: React.FC<RatedClipsProps> = ({ ratingsData, clipsData, locatio
                             </motion.div>
                         ))}
                     </div>
-                    
-                    {/* Pagination */}
+                      {/* Modern Pagination */}
                     {totalPages > 1 && (
-                        <div className="flex justify-center mt-6 mb-2">
-                            <div className="flex space-x-1">
-                                <button
+                        <div className="flex justify-center mt-8 mb-4">
+                            <div className="flex items-center space-x-2 bg-white dark:bg-neutral-800 rounded-2xl p-2 shadow-lg border border-neutral-200 dark:border-neutral-700">
+                                <motion.button
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
                                     onClick={() => paginate(Math.max(1, currentPage - 1))}
                                     disabled={currentPage === 1}
-                                    className={`px-3 py-1 rounded-md ${
+                                    className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 ${
                                         currentPage === 1
-                                            ? 'bg-neutral-300 dark:bg-neutral-700 text-neutral-500 cursor-not-allowed'
-                                            : 'bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600'
+                                            ? 'bg-neutral-100 dark:bg-neutral-700 text-neutral-400 cursor-not-allowed'
+                                            : 'bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-700 dark:text-neutral-300'
                                     }`}
                                 >
-                                    Prev
-                                </button>
+                                    Previous
+                                </motion.button>
+
+                                <div className="flex flex-wrap justify-center gap-1 max-w-lg mx-2">
+                                    {[...Array(totalPages).keys()].map(number => (
+                                        <motion.button
+                                            key={number + 1}
+                                            whileHover={{ scale: 1.1 }}
+                                            whileTap={{ scale: 0.9 }}
+                                            onClick={() => paginate(number + 1)}
+                                            className={`w-10 h-10 rounded-xl flex items-center justify-center font-semibold transition-all duration-200 ${
+                                                currentPage === number + 1
+                                                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                                                    : 'bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-700 dark:text-neutral-300'
+                                            }`}
+                                        >
+                                            {number + 1}
+                                        </motion.button>
+                                    ))}
+                                </div>
                                 
-                                {[...Array(totalPages).keys()].map(number => (
-                                    <button
-                                        key={number + 1}
-                                        onClick={() => paginate(number + 1)}
-                                        className={`w-8 h-8 rounded-md flex items-center justify-center ${
-                                            currentPage === number + 1
-                                                ? 'bg-blue-600 text-white'
-                                                : 'bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600'
-                                        }`}
-                                    >
-                                        {number + 1}
-                                    </button>
-                                ))}
-                                
-                                <button
+                                <motion.button
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
                                     onClick={() => paginate(Math.min(totalPages, currentPage + 1))}
                                     disabled={currentPage === totalPages}
-                                    className={`px-3 py-1 rounded-md ${
+                                    className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 ${
                                         currentPage === totalPages
-                                            ? 'bg-neutral-300 dark:bg-neutral-700 text-neutral-500 cursor-not-allowed'
-                                            : 'bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600'
+                                            ? 'bg-neutral-100 dark:bg-neutral-700 text-neutral-400 cursor-not-allowed'
+                                            : 'bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-700 dark:text-neutral-300'
                                     }`}
                                 >
                                     Next
-                                </button>
+                                </motion.button>
                             </div>
                         </div>
                     )}

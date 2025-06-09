@@ -304,22 +304,20 @@ const ClipSearch: React.FC = () => {
                 </span>
               </div>
             )}
-            
-            {profile.bio && (
+              {profile.profile?.bio && (
               <p className="text-sm text-neutral-700 dark:text-neutral-300 mb-3 line-clamp-2">
-                {profile.bio}
+                {profile.profile.bio}
               </p>
             )}
             
             <div className="flex items-center justify-between text-sm text-neutral-500 dark:text-neutral-400">
               <div className="flex items-center gap-4">
                 <span>{profile.stats.clipsSubmitted} clips</span>
-                <span>Joined {new Date(profile.joinDate).getFullYear()}</span>
+                <span>Joined {new Date(profile.createdAt || profile.joinDate).getFullYear()}</span>
               </div>
-              
-              {profile.socialLinks && Object.values(profile.socialLinks).some(link => link) && (
+                {profile.profile?.socialLinks && Object.values(profile.profile.socialLinks).some(link => link) && (
                 <div className="flex items-center gap-2">
-                  {Object.entries(profile.socialLinks).slice(0, 3).map(([platform, url]) => (
+                  {Object.entries(profile.profile.socialLinks).slice(0, 3).map(([platform, url]) => (
                     url && (
                       <div key={platform} className="text-lg">
                         {getSocialIcon(platform)}
@@ -573,15 +571,14 @@ const ClipSearch: React.FC = () => {
                         <h3 className="font-semibold text-neutral-900 dark:text-white mb-2">
                           {highlightSearchTerm(profile.username)}
                         </h3>
-                        
-                        {profile.bio && (
+                          {profile.profile?.bio && (
                           <p className="text-sm text-neutral-600 dark:text-neutral-400 line-clamp-2">
-                            {highlightSearchTerm(profile.bio)}
+                            {highlightSearchTerm(profile.profile.bio)}
                           </p>
                         )}
                         
                         <div className="text-xs text-neutral-500 dark:text-neutral-400 mt-2">
-                          Joined {format(new Date(profile.createdAt))}
+                          Joined {format(new Date(profile.createdAt || profile.joinDate))}
                         </div>
                       </Link>
                     </motion.div>

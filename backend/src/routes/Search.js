@@ -103,22 +103,25 @@ router.get('/', searchLimiter, async (req, res) => {
         }
 
         // Search profiles if type is 'all' or 'profiles'
-        if (type === 'all' || type === 'profiles') {
-            try {
+        if (type === 'all' || type === 'profiles') {            try {
                 // Find users by username, discordUsername, or bio
                 const userQuery = {
                     $or: [
                         { username: { $regex: q, $options: 'i' } },
                         { discordUsername: { $regex: q, $options: 'i' } },
-                        { bio: { $regex: q, $options: 'i' } }
+                        { 'profile.bio': { $regex: q, $options: 'i' } }
                     ],
                     status: 'active',
-                    isPublic: true
-                };
-
-                const users = await User.find(userQuery)
-                    .select('_id username profilePicture roles discordUsername discordId createdAt bio website socialLinks isPublic lastActive joinDate')
+                    'profile.isPublic': true
+                };                const users = await User.find(userQuery)
+                    .select('_id username profilePicture roles discordUsername discordId createdAt profile joinDate')
                     .lean();
+
+                console.log(`User query:`, JSON.stringify(userQuery, null, 2));
+                console.log(`Found ${users.length} users matching search criteria`);
+                if (users.length > 0) {
+                    console.log('Sample user:', JSON.stringify(users[0], null, 2));
+                }
 
                 // Calculate clips submitted for each user
                 const profilesWithStats = await Promise.all(
@@ -135,20 +138,18 @@ router.get('/', searchLimiter, async (req, res) => {
                                 console.error('Error counting clips for user:', user._id, clipCountError);
                                 clipsSubmitted = 0;
                             }
-                        }
-
-                        return {
+                        }                        return {
                             _id: user._id,
                             username: user.username,
                             profilePicture: user.profilePicture,
                             roles: user.roles,
                             discordUsername: user.discordUsername,
-                            bio: user.bio,
-                            website: user.website,
-                            socialLinks: user.socialLinks,
+                            bio: user.profile?.bio || '',
+                            website: user.profile?.socialLinks?.website || '',
+                            socialLinks: user.profile?.socialLinks || {},
                             joinDate: user.joinDate || user.createdAt,
-                            lastActive: user.lastActive,
-                            isPublic: user.isPublic,
+                            lastActive: user.profile?.lastActive || user.createdAt,
+                            isPublic: user.profile?.isPublic !== false,
                             stats: {
                                 clipsSubmitted,
                                 joinDate: user.joinDate || user.createdAt

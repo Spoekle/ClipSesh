@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaSearch, FaTimes, FaUserCircle, FaRegChartBar } from 'react-icons/fa';
+import { FaSearch, FaTimes, FaUserCircle } from 'react-icons/fa';
 import { MdLogin, MdLogout, MdDashboard, MdNotifications } from "react-icons/md";
 import { User } from '../../types/adminTypes';
 import NotificationBadge from '../Notification/NotificationBadge';
@@ -163,25 +163,7 @@ function DesktopNavbar({
                   </>
                 )}
               </NavLink>
-            </motion.div>
-          )}
-          
-          {user && (user.roles.includes('admin') || user.roles.includes('clipteam')) && (
-            <motion.div
-              whileHover="hover"
-              whileTap="tap"
-              variants={navItemVariants}
-            >
-              <NavLink to="/stats" className={navLinkClass}>
-                {(props) => (
-                  <>
-                    {navLinkEffect(props)}
-                    <span>Stats</span>
-                  </>
-                )}
-              </NavLink>
-            </motion.div>
-          )}
+            </motion.div>          )}
         </motion.div>
         
         {/* Search bar with animations */}
@@ -362,21 +344,7 @@ function DesktopNavbar({
                             <MdDashboard className="mr-3 text-neutral-500" />
                             <span>Admin Dashboard</span>
                           </NavLink>
-                        </motion.div>
-                      )}
-                      
-                      {(user.roles.includes('admin') || user.roles.includes('clipteam')) && (
-                        <motion.div whileHover={{ x: 3 }} transition={{ duration: 0.2 }}>
-                          <NavLink
-                            to="/stats"
-                            onClick={() => setIsDropdownOpen(false)}
-                            className="flex items-center px-4 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700"
-                          >
-                            <FaRegChartBar className="mr-3 text-neutral-500" />
-                            <span>Statistics</span>
-                          </NavLink>
-                        </motion.div>
-                      )}
+                        </motion.div>                      )}
                     </div>
                     
                     <div className="border-t border-neutral-200 dark:border-neutral-700 py-1">

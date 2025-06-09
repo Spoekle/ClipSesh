@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaSearch, FaBars, FaTimes, FaUserCircle, FaRegChartBar } from 'react-icons/fa';
+import { FaSearch, FaBars, FaTimes, FaUserCircle } from 'react-icons/fa';
 import { MdLogin, MdLogout, MdDashboard, MdHome, MdNotifications } from "react-icons/md";
 import { User } from '../../types/adminTypes';
 import NotificationBadge from '../Notification/NotificationBadge';
@@ -451,27 +451,7 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
                         >
                           <FaUserCircle size={18} className="mr-3" />
                           <span>Profile</span>
-                        </NavLink>
-                      </motion.li>
-                      {(user.roles?.includes('admin') || user.roles?.includes('clipteam')) && (
-                        <motion.li 
-                          variants={menuItemVariants}
-                          whileHover={{ x: 3 }}
-                        >
-                          <NavLink
-                            to="/stats"
-                            className={({isActive}) => `flex items-center p-2 rounded-lg ${
-                              isActive 
-                                ? 'bg-blue-500 text-white' 
-                                : 'text-neutral-800 dark:text-white hover:bg-neutral-200 dark:hover:bg-neutral-700'
-                            }`}
-                            onClick={() => setMenuOpen(false)}
-                          >
-                            <FaRegChartBar size={18} className="mr-3" />
-                            <span>Statistics</span>
-                          </NavLink>
-                        </motion.li>
-                      )}
+                        </NavLink>                      </motion.li>
                     </ul>
                     
                     <motion.button

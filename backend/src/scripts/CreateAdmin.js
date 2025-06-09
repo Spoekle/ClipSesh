@@ -4,6 +4,7 @@ const crypto = require('crypto');
 require('dotenv').config();
 
 const adminUsername = process.env.ADMIN_USERNAME || 'admin';
+const backendUrl = process.env.BACKEND_URL || 'https://api.spoekle.com';
 
 adminPassword = crypto.randomBytes(15).toString('hex').match(/.{1,5}/g).join('-');
 process.env.ADMIN_PASSWORD = adminPassword;
@@ -20,7 +21,7 @@ const createAdminUser = async () => {
                 password: hashedPassword,
                 role: 'admin',
                 status: 'active',
-                profilePicture: 'https://api.spoekle.com/profilePictures/profile_placeholder.png'
+                profilePicture: `${backendUrl}/profilePictures/profile_placeholder.png`
             });
             await adminUser.save();
         } else {
@@ -28,7 +29,7 @@ const createAdminUser = async () => {
             existingAdmin.password = hashedPassword;
             existingAdmin.role = 'admin';
             existingAdmin.status = 'active';
-            existingAdmin.profilePicture = 'https://api.spoekle.com/profilePictures/profile_placeholder.png';
+            existingAdmin.profilePicture = `${backendUrl}/profilePictures/profile_placeholder.png`;
             await existingAdmin.save();
         }
     } catch (error) {

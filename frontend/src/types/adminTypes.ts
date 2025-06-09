@@ -1,6 +1,6 @@
 // User-related types
 export interface Trophy {
-  _id: string;
+  _id?: string;
   trophyName: string;
   description: string;
   dateEarned: string;
@@ -16,7 +16,23 @@ export interface User {
   discordId?: string;
   discordUsername?: string;
   status?: string;
+  joinDate?: string;
   createdAt?: string;
+  profile?: {
+    bio?: string;
+    website?: string;    socialLinks?: {
+      youtube?: string;
+      twitch?: string;
+      twitter?: string;
+      instagram?: string;
+      github?: string;
+    };
+    vrheadset?: string;
+    isPublic?: boolean;
+    lastActive?: string;
+    trophies?: Trophy[];
+  };
+  // Keep trophies at root level for backward compatibility
   trophies?: Trophy[];
 }
 

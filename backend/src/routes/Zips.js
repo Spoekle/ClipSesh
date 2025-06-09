@@ -8,6 +8,7 @@ const path = require('path');
 const authorizeRoles = require('./middleware/AuthorizeRoles');
 const Zip = require('../models/zipModel');
 const { clipsZipUpload, chunkUpload, downloadDir, chunksDir, ensureDirectoryExists } = require('./storage/ClipsZipUpload');
+const backendUrl = process.env.BACKEND_URL || 'https://api.spoekle.com';
 
 // In-memory storage for tracking chunk uploads
 const uploadSessions = {};
@@ -210,7 +211,7 @@ router.post('/finalize-upload', authorizeRoles(['clipteam', 'admin']), async (re
             // Save to database
             const stats = fs.statSync(outputPath);
             const seasonZip = new Zip({
-                url: `https://api.spoekle.com/download/${finalFilename}`,
+                url: `${backendUrl}/download/${finalFilename}`,
                 season: session.season,
                 year: parseInt(session.year),
                 name: finalFilename,
@@ -289,7 +290,7 @@ router.post('/upload', authorizeRoles(['clipteam', 'admin']), (req, res) => {
                 
                 // Save to database
                 const seasonZip = new Zip({
-                    url: `https://api.spoekle.com/download/${zip.filename}`,
+                    url: `${backendUrl}/download/${zip.filename}`,
                     season,
                     year: parseInt(year),
                     name: zip.filename,
@@ -555,7 +556,7 @@ async function processClipsAsync(jobId, clips, season, year) {
                     // Create database entry
                     logAndEmit('Creating database entry...', 'info', 'database');
                     const seasonZip = new Zip({
-                        url: `https://api.spoekle.com/download/${zipFilename}`,
+                        url: `${backendUrl}/download/${zipFilename}`,
                         season: season,
                         year: parseInt(year),
                         name: zipFilename,
@@ -586,7 +587,7 @@ async function processClipsAsync(jobId, clips, season, year) {
                             zipFilename,
                             zipId: seasonZip._id,
                             size: formatBytes(size),
-                            url: `https://api.spoekle.com/download/${zipFilename}`
+                            url: `${backendUrl}/download/${zipFilename}`
                         }, totalProcessingTime);
                     }
                     
@@ -760,7 +761,7 @@ async function processClipsAsync(jobId, clips, season, year) {
                     fs.writeFileSync(placeholderPath, 'This is a placeholder file because the actual zip generation timed out');
                     
                     const seasonZip = new Zip({
-                        url: `https://api.spoekle.com/download/${placeholderFilename}`,
+                        url: `${backendUrl}/download/${placeholderFilename}`,
                         season: season,
                         year: parseInt(year),
                         name: placeholderFilename,
@@ -874,7 +875,7 @@ router.post('/force-complete/:jobId', authorizeRoles(['admin']), async (req, res
             
             // Save empty zip entry to database to complete the job
             const seasonZip = new Zip({
-                url: `https://api.spoekle.com/download/${zipFilename}`,
+                url: `${backendUrl}/download/${zipFilename}`,
                 season: job.season,
                 year: parseInt(job.year),
                 name: zipFilename,

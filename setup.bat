@@ -26,14 +26,14 @@ goto :MENU
 
 :DEPENDENCIES
 echo.
-echo Installing server dependencies...
-cd server
+echo Installing backend dependencies...
+cd backend
 call npm install
 cd ..
 
 echo.
-echo Installing client dependencies...
-cd client
+echo Installing frontend dependencies...
+cd frontend
 call npm install
 cd ..
 
@@ -59,4 +59,3 @@ goto :MENU
 
 :END
 echo.
-
