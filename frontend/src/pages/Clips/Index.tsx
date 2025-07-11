@@ -1,10 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Helmet } from 'react-helmet';
-import apiUrl from '../../config/config';
 import { useParams, useSearchParams } from 'react-router-dom';
-import axios from 'axios';
 import { motion } from 'framer-motion';
-import { useNotification } from '../../context/NotificationContext';
+import { useNotification } from '../../context/AlertContext';
 import LoadingBar from 'react-top-loading-bar';
 
 // Component imports
@@ -13,6 +11,12 @@ import ClipViewerContent from './components/ClipViewerContent';
 
 // Import shared types
 import { User, Clip, Rating } from '../../types/adminTypes';
+
+// Import services
+import { getClips, getClipById } from '../../services/clipService';
+import { getCombinedConfig } from '../../services/configService';
+import { getCurrentUser } from '../../services/userService';
+import { getBulkRatings } from '../../services/ratingService';
 
 interface RatingMap {
   [clipId: string]: Rating;
@@ -73,77 +77,33 @@ function ClipViewer() {
   // Track if initial data load has happened
   const [initialDataLoaded, setInitialDataLoaded] = useState<boolean>(false);
   const [, setTotalPages] = useState<number>(1);
-
   // Define fetchConfig function with default values for when response data is undefined
   const fetchConfig = useCallback(async () => {
     try {
       setProgress(10);
 
-      // Default config values
-      const defaultConfig = {
-        denyThreshold: 3,
-        allowedFileTypes: ['video/mp4', 'video/webm'],
-        clipAmount: 0
-      };
-
-      // First fetch public config
-      const publicResponse = await axios.get(`${apiUrl}/api/config/public`);
-
-      // Get public config which contains clipAmount
-      const publicConfig = publicResponse.data || {};
-
-      // Initialize with defaults and public config
-      let configData = {
-        ...defaultConfig,
-        clipAmount: publicConfig.clipAmount
-      };
-
-      // Update total pages based on clipAmount for pagination
-      if (publicConfig.clipAmount) {
-        console.log(`Public config clipAmount: ${publicConfig.clipAmount}`);
-        const totalPagesCount = Math.ceil(publicConfig.clipAmount / itemsPerPage);
+      const configData = await getCombinedConfig(user);
+        // Update total pages based on clipAmount for pagination
+      if (configData.clipAmount) {
+        const totalPagesCount = Math.ceil(configData.clipAmount / itemsPerPage);
         setTotalPages(totalPagesCount);
-      }
-
-      // Only fetch admin config if user is logged in and has admin or clipteam role
-      if (token && user && (user.roles?.includes('admin') || user.roles?.includes('clipteam'))) {
-        try {
-          const adminResponse = await axios.get(`${apiUrl}/api/admin/config`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-
-          if (adminResponse.data && adminResponse.data[0]) {
-            // Merge admin config with our current config
-            configData = {
-              ...configData,
-              ...adminResponse.data[0]
-            };
-          }
-        } catch (adminError) {
-          console.warn('Could not fetch admin config - user may not have permission:', adminError);
-          // Continue with just public config
-        }
       }
 
       setConfig(configData);
       setProgress(30);
-
     } catch (error) {
       console.error('Error fetching config:', error);
       showError("Could not load configuration settings, using defaults");
     }
-  }, [token, user, showError, itemsPerPage]);
-
+  }, [user, showError, itemsPerPage]);
   // Fetch user data
   const fetchUser = useCallback(async () => {
     if (token) {
       try {
-        const response = await axios.get(`${apiUrl}/api/users/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const userData = await getCurrentUser();
         setIsLoggedIn(true);
-        setUser(response.data);
-        return response.data;
+        setUser(userData);
+        return userData;
       } catch (error) {
         console.error('Error fetching user:', error);
         setIsLoggedIn(false);
@@ -260,23 +220,15 @@ function ClipViewer() {
       // If filterRated is true and user is logged in, exclude clips rated by user
       if (shouldFilterRated && currentUser?._id) {
         params.append('excludeRatedByUser', currentUser._id);
+      }      // Only include ratings for users with clipteam role or higher
+      if (currentUser && (currentUser.roles?.includes('admin') || currentUser.roles?.includes('clipteam'))) {
+        params.append('includeRatings', 'true');
       }
 
-      // Always include ratings for efficient processing
-      params.append('includeRatings', 'true');
-
-      // Debug logs
-      console.log(`Fetching clips: ${apiUrl}/api/clips?${params.toString()}`);
-
       // Get paginated clips with filters and sorting applied by the backend
-      const clipResponse = await axios.get(`${apiUrl}/api/clips`, {
-        params,
-        headers: currentUser ? { Authorization: `Bearer ${token}` } : undefined
-      });
-
-      // Process the response data
-      if (clipResponse.data) {
-        const { clips = [], ratings = {}, totalClips, totalPages: newTotalPages, currentPage: newCurrentPage } = clipResponse.data;
+      const clipResponse = await getClips(Object.fromEntries(params));// Process the response data
+      if (clipResponse) {
+        const { clips = [], total: totalClips, page: newCurrentPage, pages: newTotalPages } = clipResponse;
 
         // Update pagination state
         if (newTotalPages !== undefined) {
@@ -285,9 +237,7 @@ function ClipViewer() {
 
         if (newCurrentPage !== undefined) {
           setCurrentPage(newCurrentPage);
-        }
-
-        // Update config's clipAmount
+        }        // Update config's clipAmount
         if (totalClips !== undefined) {
           setConfig(current => ({
             ...current,
@@ -295,25 +245,14 @@ function ClipViewer() {
           }));
         }
 
-        // Update ratings data from response
-        if (Object.keys(ratings).length > 0) {
-          setRatings(ratings);
-        } else if (currentUser && (currentUser.roles?.includes('admin') || currentUser.roles?.includes('clipteam'))) {
+        // For now, let's check if ratings are included in the response in the future
+        // but for now fetch them separately if user has permission
+        if (currentUser && (currentUser.roles?.includes('admin') || currentUser.roles?.includes('clipteam'))) {
           const fetchRatings = async () => {
             try {
               // Only fetch ratings for the current page of clips
-              const ratingPromises = clips.map((clip: Clip) =>
-                axios.get(`${apiUrl}/api/ratings/${clip._id}`, {
-                  headers: { Authorization: `Bearer ${token}` },
-                })
-              );
-
-              const ratingResponses = await Promise.all(ratingPromises);
-              const ratingsData = ratingResponses.reduce((acc: RatingMap, res, index) => {
-                acc[clips[index]._id] = res.data;
-                return acc;
-              }, {});
-
+              const clipIds = clips.map((clip: Clip) => clip._id);
+              const ratingsData = await getBulkRatings(clipIds);
               setRatings(ratingsData);
             } catch (error) {
               console.error('Error fetching ratings:', error);
@@ -324,25 +263,20 @@ function ClipViewer() {
         }
 
         // Use the server-filtered clips directly
-        setUnratedClips(clips);
-
-        // Even with server-side filtering, track which clips have been rated by the user for UI purposes
+        setUnratedClips(clips);        // Even with server-side filtering, track which clips have been rated by the user for UI purposes
         if (currentUser && ratings && Object.keys(ratings).length > 0) {
           const rated: Clip[] = [];
 
           clips.forEach((clip: Clip) => {
-            let hasUserRating = false;
-
             // Check if the user has rated this clip
             const clipRating = ratings[clip._id];
             if (clipRating && clipRating.ratings) {
               // Check each rating category (1-4 and deny)
-              const allRatingCategories = ['1', '2', '3', '4', 'deny'];
+              const allRatingCategories = ['1', '2', '3', '4', 'deny'] as const;
 
               for (const category of allRatingCategories) {
                 const ratingUsers = clipRating.ratings[category] || [];
                 if (ratingUsers.some((u: any) => u && u.userId === currentUser._id)) {
-                  hasUserRating = true;
                   rated.push(clip);
                   break;
                 }
@@ -389,7 +323,7 @@ function ClipViewer() {
     } finally {
       setIsLoading(false);
     }
-  }, [itemsPerPage, token, config.denyThreshold, showError, user, filterRatedClips, currentPage]);
+  }, [itemsPerPage, token, config.denyThreshold, showError]);
 
   // Simplified effect for URL parameter changes
   useEffect(() => {
@@ -402,7 +336,6 @@ function ClipViewer() {
       return () => clearTimeout(timer);
     }
   }, [currentPage, sortOption, searchTerm, filterStreamer, initialDataLoaded, fetchClipsAndRatings, user, filterRatedClips]);
-
   // When filterRatedClips changes, update localStorage and trigger a refetch
   useEffect(() => {
     localStorage.setItem('filterRatedClips', filterRatedClips.toString());
@@ -411,7 +344,7 @@ function ClipViewer() {
       fetchClipsAndRatings(user, filterRatedClips, 1);
       setCurrentPage(1);
     }
-  }, [filterRatedClips, user, initialDataLoaded]);
+  }, [filterRatedClips, user, initialDataLoaded, fetchClipsAndRatings]);
 
   // When filterDeniedClips changes, update localStorage and trigger a refetch
   useEffect(() => {
@@ -421,7 +354,7 @@ function ClipViewer() {
       fetchClipsAndRatings(user, filterRatedClips, 1);
       setCurrentPage(1);
     }
-  }, [filterDeniedClips, user, initialDataLoaded]);
+  }, [filterDeniedClips, user, initialDataLoaded, fetchClipsAndRatings, filterRatedClips]);
 
   // Initial data fetch - runs just once
   const fetchInitialData = useCallback(async () => {
@@ -470,37 +403,29 @@ function ClipViewer() {
       window.history.pushState({}, '', url);
     }
   }, [expandedClip, clipId, searchParams]);
-
   // Fetch clip data when expanded clip changes
   useEffect(() => {
     if (expandedClip && expandedClip !== 'new') {
       setIsClipLoading(true);
-      
-      // Fetch both clip data and ratings concurrently
-      const fetchClipData = axios.get(`${apiUrl}/api/clips/${expandedClip}`);
-      const fetchRatings = user && (user.roles.includes('admin') || user.roles.includes('clipteam')) 
-        ? axios.get(`${apiUrl}/api/ratings/${expandedClip}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          })
-        : Promise.resolve(null);
-
-      Promise.all([fetchClipData, fetchRatings])
-        .then(([clipResponse, ratingsResponse]) => {
-          setCurrentClip(clipResponse.data);
+        // Fetch both clip data and ratings concurrently
+      const fetchClipData = getClipById(expandedClip);
+      // Always fetch ratings for individual clips as they contain public aggregate data
+      const fetchRatings = getBulkRatings([expandedClip]);      Promise.all([fetchClipData, fetchRatings])
+        .then(([clipData, ratingsData]) => {
+          setCurrentClip(clipData);
           
-          if (ratingsResponse && ratingsResponse.data) {
+          if (ratingsData && ratingsData[expandedClip]) {
             setRatings(prevRatings => ({
               ...prevRatings,
-              [expandedClip]: ratingsResponse.data
+              [expandedClip]: ratingsData[expandedClip]
             }));
-            console.log(`Fetched ratings for clip ${expandedClip}:`, ratingsResponse.data);
           }
           
           setIsClipLoading(false);
         })
         .catch((error) => {
           console.error('Error fetching clip data or ratings:', error);
-          if (error.response?.status === 404) {
+          if (error.message?.includes('404') || error.message?.includes('not found')) {
             showError("Clip not found. It may have been deleted or is unavailable.");
           } else {
             showError("Could not load clip. Please try again later.");
@@ -539,21 +464,17 @@ function ClipViewer() {
           shadow={true}
           height={3}
         />
-      </div>
-
-      {/* Seasonal header */}
-      <ClipViewerHeader season={seasonInfo.season} />
+      </div>      {/* Seasonal header */}
+      <ClipViewerHeader season={(seasonInfo.season as 'Winter' | 'Spring' | 'Summer' | 'Fall') || 'Winter'} />
 
       {/* Main content container */}
-      <div className="container mx-auto px-4 py-8 bg-neutral-200 dark:bg-neutral-900 transition duration-200">
-        <ClipViewerContent
+      <div className="container mx-auto px-4 py-8 bg-neutral-200 dark:bg-neutral-900 transition duration-200">        <ClipViewerContent
           expandedClip={expandedClip}
           setExpandedClip={setExpandedClip}
           isClipLoading={isClipLoading}
           currentClip={currentClip}
           isLoggedIn={isLoggedIn}
           user={user}
-          token={token}
           fetchClipsAndRatings={triggerClipRefetch}
           ratings={ratings}
           searchParams={searchParams}

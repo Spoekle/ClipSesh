@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { FaBell } from 'react-icons/fa';
-import axios from 'axios';
-import apiUrl from '../../config/config';
-import { UserNotificationResponse, UnreadCountResponse } from '../../types/notificationTypes';
+import { UserNotificationResponse } from '../../types/notificationTypes';
 import NotificationDropdown from './NotificationDropdown';
+import * as notificationService from '../../services/notificationService';
 
 interface NotificationBadgeProps {
   isOpen?: boolean;
@@ -22,33 +21,69 @@ const NotificationBadge: React.FC<NotificationBadgeProps> = ({ isOpen, onToggle 
 
   // Use external state if provided, otherwise use internal state
   const dropdownOpen = isOpen !== undefined ? isOpen : internalDropdownOpen;
-  const setDropdownOpen = onToggle !== undefined ? onToggle : setInternalDropdownOpen;
-
-  // Pre-fetch notifications data on component mount and periodically
+  const setDropdownOpen = onToggle !== undefined ? onToggle : setInternalDropdownOpen;  // Pre-fetch notifications data on component mount and periodically
   useEffect(() => {
-    // Check if notifications API is available
-    checkApiAvailability();
-    
-    // Only set up intervals if the API is available
-    if (apiAvailable) {
-      fetchUnreadCount();
-      fetchNotifications(); // Pre-fetch on component mount
-      
-      const countInterval = setInterval(fetchUnreadCount, 60000);
-      const notificationsInterval = setInterval(fetchNotifications, 120000);
-      
-      return () => {
-        clearInterval(countInterval);
-        clearInterval(notificationsInterval);
-        if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
-      };
+    let countInterval: NodeJS.Timeout;
+    let notificationsInterval: NodeJS.Timeout;
+
+    // Only proceed if user is authenticated
+    if (!notificationService.isAuthenticated()) {
+      setApiAvailable(false);
+      return;
     }
+
+    // Check if notifications API is available and initialize
+    const initializeNotifications = async () => {
+      try {
+        const isAvailable = await notificationService.checkNotificationsApiAvailability();
+        setApiAvailable(isAvailable);
+        
+        if (isAvailable) {
+          fetchUnreadCount();
+          fetchNotifications(); // Pre-fetch on component mount
+
+          countInterval = setInterval(fetchUnreadCount, 60000);
+          notificationsInterval = setInterval(fetchNotifications, 120000);
+        }
+      } catch (error) {
+        setApiAvailable(false);
+      }
+    };
+
+    initializeNotifications();
+    
+    return () => {
+      if (countInterval) clearInterval(countInterval);
+      if (notificationsInterval) clearInterval(notificationsInterval);
+      if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);    };
+  }, []); // Empty dependency array - run only on mount
+
+  // Listen for authentication changes (e.g., login/logout)
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'token') {
+        if (e.newValue) {
+          // User logged in - reinitialize notifications
+          if (!apiAvailable) {
+            window.location.reload(); // Simple approach - reload to reinitialize
+          }
+        } else {
+          // User logged out - disable notifications
+          setApiAvailable(false);
+          setUnreadCount(0);
+          setNotifications(null);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, [apiAvailable]);
 
   // Close dropdown when clicking outside (only for internal state management)
   useEffect(() => {
     if (onToggle) return; // Don't handle outside clicks if using external state management
-    
+
     const handleOutsideClick = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setInternalDropdownOpen(false);
@@ -58,55 +93,25 @@ const NotificationBadge: React.FC<NotificationBadgeProps> = ({ isOpen, onToggle 
     document.addEventListener("mousedown", handleOutsideClick);
     return () => {
       document.removeEventListener("mousedown", handleOutsideClick);
-    };
-  }, [onToggle]);
-
-  // Check if notifications API endpoints exist
-  const checkApiAvailability = async (): Promise<void> => {
-    try {
-      // Try to access the notification endpoint with HEAD request
-      await axios.head(`${apiUrl}/api/notifications`);
-      setApiAvailable(true);
-    } catch (error: any) {
-      // If we get 404, the API doesn't exist
-      if (error.response && error.response.status === 404) {
-        console.log('Notifications API not available, disabling notification features');
-        setApiAvailable(false);
-      }
-    }
-  };
+    };  }, [onToggle]);
 
   const fetchUnreadCount = async (): Promise<void> => {
-    if (!apiAvailable) return;
-    
-    const token = localStorage.getItem('token');
-    if (!token) return;
+    if (!apiAvailable || !notificationService.isAuthenticated()) return;
 
     try {
-      const response = await axios.get<UnreadCountResponse>(
-        `${apiUrl}/api/notifications/unread-count`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setUnreadCount(response.data.unreadCount);
+      const count = await notificationService.fetchUnreadCount();
+      setUnreadCount(count);
     } catch (error) {
       console.log('Could not fetch notification count - API may not be implemented yet');
       // Don't show errors for missing notification API
     }
-  };
-
-  // Fetch notifications data in the background
+  };  // Fetch notifications data in the background
   const fetchNotifications = async (): Promise<void> => {
-    if (!apiAvailable) return;
-    
-    const token = localStorage.getItem('token');
-    if (!token) return;
+    if (!apiAvailable || !notificationService.isAuthenticated()) return;
 
     try {
-      const response = await axios.get<UserNotificationResponse>(
-        `${apiUrl}/api/notifications`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setNotifications(response.data);
+      const response = await notificationService.fetchNotifications();
+      setNotifications(response);
     } catch (error) {
       console.log('Could not fetch notifications - API may not be implemented yet');
       // Don't show errors for missing notification API
@@ -115,13 +120,13 @@ const NotificationBadge: React.FC<NotificationBadgeProps> = ({ isOpen, onToggle 
 
   const toggleDropdown = () => {
     if (!apiAvailable) return;
-    
+
     if (!dropdownOpen && !notifications) {
       // If opening and we don't have data yet
       setIsLoading(true);
       fetchNotifications().finally(() => setIsLoading(false));
     }
-    
+
     if (onToggle) {
       // Use external toggle function
       onToggle();
@@ -134,10 +139,10 @@ const NotificationBadge: React.FC<NotificationBadgeProps> = ({ isOpen, onToggle 
   // Force a refresh after actions in dropdown (mark as read, delete)
   const handleNotificationsUpdate = useCallback(() => {
     if (!apiAvailable) return;
-    
+
     // Don't fetch immediately - wait a little to avoid flickering
     if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
-    
+
     fetchTimeoutRef.current = setTimeout(() => {
       fetchUnreadCount();
       fetchNotifications();
@@ -162,16 +167,16 @@ const NotificationBadge: React.FC<NotificationBadgeProps> = ({ isOpen, onToggle 
         aria-expanded={dropdownOpen}
       >
         <FaBell className="text-neutral-600 dark:text-neutral-300" size={20} />
-        
+
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
       </motion.button>
-      
-      <NotificationDropdown 
-        isOpen={dropdownOpen} 
+
+      <NotificationDropdown
+        isOpen={dropdownOpen}
         onClose={() => setDropdownOpen(false)}
         prefetchedData={notifications}
         onNotificationUpdate={handleNotificationsUpdate}

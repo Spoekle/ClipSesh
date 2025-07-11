@@ -3,13 +3,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaSpinner, FaTimes, FaCheck, FaCog, FaExclamationTriangle } from 'react-icons/fa';
 import ConfirmationDialog from '../common/ConfirmationDialog';
 import LiveProcessingView from './LiveProcessingView';
-import axios from 'axios';
-import apiUrl from '../../config/config';
+import { forceCompleteProcessJob } from '../../services/adminService';
 
 interface ProcessClipsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onProcess: (season: string, year: number) => void;
+  onProcessingComplete?: () => void; // New prop for handling completion
   processing: boolean;
   progress: number;
   currentSeason: string;
@@ -22,6 +22,7 @@ const ProcessClipsModal: React.FC<ProcessClipsModalProps> = ({
   isOpen,
   onClose,
   onProcess,
+  onProcessingComplete,
   processing,
   progress,
   currentSeason,
@@ -119,7 +120,6 @@ const ProcessClipsModal: React.FC<ProcessClipsModalProps> = ({
   const handleForceComplete = () => {
     setShowForceCompleteConfirmation(true);
   };
-
   const confirmForceComplete = async () => {
     setShowForceCompleteConfirmation(false);
     if (!processJobId) return;
@@ -127,23 +127,12 @@ const ProcessClipsModal: React.FC<ProcessClipsModalProps> = ({
     const action = retryCount > 0 ? 'retry completion' : 'force complete';
 
     try {
-      const response = await axios.post(
-        `${apiUrl}/api/zips/force-complete/${processJobId}`,
-        {},
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-        }
-      );
-
-      if (response.status === 200) {
-        alert('Job marked as completed. Check the zip list for the entry.');
-        onClose();
-      } else {
-        alert(`Failed to ${action} the job.`);
-      }
+      await forceCompleteProcessJob(processJobId);
+      onProcessingComplete?.(); // Refresh zip list
+      onClose();
     } catch (error) {
       console.error(`Error ${action} job:`, error);
-      alert(`Error ${action} job. See console for details.`);
+      setErrorMessage(`Failed to ${action} job. Please check the console for details.`);
       // Increment retry count for next attempt
       setRetryCount(prev => prev + 1);
     }
@@ -152,8 +141,8 @@ const ProcessClipsModal: React.FC<ProcessClipsModalProps> = ({
   const cancelForceComplete = () => {
     setShowForceCompleteConfirmation(false);
   };
-
   const handleProcessingComplete = () => {
+    onProcessingComplete?.(); // Call the completion callback to refresh zip list
     onClose();
   };
 

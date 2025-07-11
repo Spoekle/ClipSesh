@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
-import apiUrl from '../config/config';
-import axios from 'axios';
 import { saveAs } from 'file-saver';
 import LoadingBar from 'react-top-loading-bar';
 import background from '../media/editor.webp';
@@ -11,14 +9,16 @@ import {
   FaCalendarAlt,
   FaClipboard,
   FaBan,
-  FaSpinner,
   FaFileArchive,
   FaHistory,
   FaCheck,
   FaInfoCircle
 } from 'react-icons/fa';
 import { getCurrentSeason } from '../utils/seasonHelpers';
-import { useNotification } from '../context/NotificationContext';
+import { getConfig } from '../services/configService';
+import { getClipsWithRatings } from '../services/clipService';
+import { getZips } from '../services/adminService';
+import { useNotification } from '../context/AlertContext';
 import { Clip, Rating, Zip } from '../types/adminTypes';
 
 interface Config {
@@ -73,106 +73,48 @@ const EditorDash: React.FC = () => {
       console.error('Error fetching initial data:', error);
       showError('Failed to load data. Please try again.');
     }
-  };
-
-  const fetchConfig = async (): Promise<void> => {
+  };  const fetchConfig = async (): Promise<void> => {
     try {
-      const response = await axios.get<{ public: Config, admin: any }>(`${apiUrl}/api/config`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
+      const configData = await getConfig();
 
-      if (response.data) {
-        const publicConfig = response.data.public || {};
-        const adminConfig = response.data.admin || {};
+      if (configData) {
+        const publicConfig = configData.public || {};
+        const adminConfig = configData.admin || {};
 
         // Merge configs and set clip count
         setConfig({
-          denyThreshold: adminConfig.denyThreshold ?? 5,
-          latestVideoLink: publicConfig.latestVideoLink ?? '',
-          clipAmount: publicConfig.clipAmount ?? 0
+          denyThreshold: (adminConfig as any).denyThreshold ?? 5,
+          latestVideoLink: (publicConfig as any).latestVideoLink ?? '',
+          clipAmount: (publicConfig as any).clipAmount ?? 0
         });
 
         // Update total clip count for pagination
-        if (publicConfig.clipAmount) {
+        if ((publicConfig as any).clipAmount) {
           setSeasonInfo(prevSeasonInfo => ({
             ...prevSeasonInfo,
-            clipAmount: publicConfig.clipAmount
+            clipAmount: (publicConfig as any).clipAmount
           }));
         }
 
-        console.log("Fetched config with clip amount:", publicConfig.clipAmount);
+        console.log("Fetched config with clip amount:", (publicConfig as any).clipAmount);
       }
     } catch (error) {
       console.error('Error fetching config:', error);
     }
-  };
-
-  const fetchClipsAndRatings = async (): Promise<void> => {
+  };const fetchClipsAndRatings = async (): Promise<void> => {
     try {
-      // Use query parameters for backend filtering/sorting
-      const token = localStorage.getItem('token');
-      const headers = { Authorization: `Bearer ${token}` };
-
-      // Request clips with pagination and sorting from the backend
-      const clipResponse = await axios.get(`${apiUrl}/api/clips`, {
-        params: {
-          limit: 1000, // Get a large number of clips for admin view
-          sortBy: 'createdAt',
-          sortOrder: 'desc',
-          includeRatings: true // Request ratings to be included with clips
-        },
-        headers
-      });
-
-      // Process the response data
-      let clipsData: Clip[] = [];
-      let ratingsData: Record<string, Rating> = {};
-
-      if (clipResponse.data) {
-        // Check for clips in various response formats
-        if (Array.isArray(clipResponse.data)) {
-          clipsData = clipResponse.data;
-        } else if (clipResponse.data.clips && Array.isArray(clipResponse.data.clips)) {
-          clipsData = clipResponse.data.clips;
-        } else if (clipResponse.data.data && Array.isArray(clipResponse.data.data)) {
-          clipsData = clipResponse.data.data;
-        }
-
-        // Check for included ratings in the response
-        if (clipResponse.data.ratings && typeof clipResponse.data.ratings === 'object') {
-          ratingsData = clipResponse.data.ratings;
-        }
-      }
+      // Use the service function which already handles the API call
+      const { clips: clipsData, ratings: ratingsData } = await getClipsWithRatings();
 
       // Update state with fetched data
       setClips(clipsData);
-
-      // If ratings weren't included in the response, fetch them separately
-      if (Object.keys(ratingsData).length === 0 && clipsData.length > 0) {
-        setProgress(65);
-
-        // Make individual requests for ratings if not included in the clips response
-        const ratingPromises = clipsData.map(clip =>
-          axios.get<Rating>(`${apiUrl}/api/ratings/${clip._id}`, { headers })
-        );
-
-        setProgress(80);
-        const ratingResponses = await Promise.all(ratingPromises);
-
-        ratingsData = ratingResponses.reduce<Record<string, Rating>>((acc, res, index) => {
-          acc[clipsData[index]._id] = res.data;
-          setProgress(90);
-          return acc;
-        }, {});
-      }
 
       // Transform ratings to ensure they have the expected format for the frontend
       const transformedRatings = transformRatings(ratingsData);
       setRatings(transformedRatings);
 
     } catch (error) {
-      console.error('Error fetching clips and ratings:', error);
-    }
+      console.error('Error fetching clips and ratings:', error);    }
   };
 
   // Utility function to transform backend rating format to frontend expected format
@@ -233,13 +175,10 @@ const EditorDash: React.FC = () => {
         rateData.rating === 'deny' && rateData.count >= config.denyThreshold
       );
   }).length;
-
   const fetchZips = async (): Promise<void> => {
     try {
-      const response = await axios.get<Zip[]>(`${apiUrl}/api/zips`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` }
-      });
-      setZips(response.data);
+      const zipData = await getZips();
+      setZips(zipData);
       setZipsLoading(false);
     } catch (error) {
       console.error('Error fetching zips:', error);
@@ -269,43 +208,10 @@ const EditorDash: React.FC = () => {
     if (!seasonInfo.clipAmount || seasonInfo.clipAmount === 0) return '0.0';
     return ((deniedClips / seasonInfo.clipAmount) * 100).toFixed(1);
   };
-
-  // Loading state
-  if (loading) {
-    return (
-      <div className="min-h-screen text-white flex flex-col items-center bg-neutral-200 dark:bg-neutral-900 transition duration-200">
-        <Helmet>
-          <title>Editor Dashboard | ClipSesh</title>
-          <meta
-            name="description"
-            content="ClipSesh Editor Dashboard - Process and download clip collections"
-          />
-        </Helmet>
-        <div className='w-full'>
-          <LoadingBar color='#3b82f6' height={4} progress={progress} onLoaderFinished={() => setProgress(0)} />
-        </div>
-        <div
-          className="w-full flex h-96 justify-center items-center animate-fade"
-          style={{
-            backgroundImage: `url(${background})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            clipPath: 'polygon(0 0, 100% 0, 100% 80%, 0 100%)'
-          }}
-        >
-          <div className="flex bg-gradient-to-b from-neutral-900/80 to-bg-black/40 backdrop-blur-md justify-center items-center w-full h-full">
-            <div className="flex flex-col justify-center items-center">
-              <h1 className="text-4xl font-bold mb-4 text-center">Editor Dashboard</h1>
-              <div className="flex items-center gap-3">
-                <FaSpinner className="animate-spin text-xl" />
-                <h2 className="text-xl">Loading season data...</h2>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Skeleton component for loading states
+  const SkeletonBox = ({ className = "" }: { className?: string }) => (
+    <div className={`animate-pulse bg-neutral-400 dark:bg-neutral-600 rounded ${className}`}></div>
+  );
 
   return (
     <div className="min-h-screen text-white flex flex-col items-center bg-neutral-200 dark:bg-neutral-900 transition duration-200">
@@ -364,8 +270,7 @@ const EditorDash: React.FC = () => {
             Current Season Overview
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Season */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">            {/* Season */}
             <motion.div
               whileHover={{ scale: 1.02 }}
               className="p-5 bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-neutral-700 dark:to-neutral-600 rounded-lg shadow"
@@ -374,10 +279,12 @@ const EditorDash: React.FC = () => {
                 <FaCalendarAlt size={28} />
               </div>
               <h3 className="text-lg font-medium mb-2 text-center">Season</h3>
-              <h2 className="text-3xl font-bold text-center">{seasonInfo.season}</h2>
-            </motion.div>
-
-            {/* Approved Clips */}
+              {loading ? (
+                <SkeletonBox className="h-9 w-24 mx-auto" />
+              ) : (
+                <h2 className="text-3xl font-bold text-center">{seasonInfo.season}</h2>
+              )}
+            </motion.div>            {/* Approved Clips */}
             <motion.div
               whileHover={{ scale: 1.02 }}
               className="p-5 bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-neutral-700 dark:to-neutral-600 rounded-lg shadow"
@@ -386,13 +293,20 @@ const EditorDash: React.FC = () => {
                 <FaCheck size={28} />
               </div>
               <h3 className="text-lg font-medium mb-2 text-center">Approved Clips</h3>
-              <h2 className="text-3xl font-bold text-center">{approvedClips}</h2>
-              <p className="text-center mt-1 text-green-600 dark:text-green-400 font-medium">
-                {getApprovedPercentage()}% of total
-              </p>
-            </motion.div>
-
-            {/* Denied Clips */}
+              {loading ? (
+                <>
+                  <SkeletonBox className="h-9 w-16 mx-auto mb-2" />
+                  <SkeletonBox className="h-5 w-20 mx-auto" />
+                </>
+              ) : (
+                <>
+                  <h2 className="text-3xl font-bold text-center">{approvedClips}</h2>
+                  <p className="text-center mt-1 text-green-600 dark:text-green-400 font-medium">
+                    {getApprovedPercentage()}% of total
+                  </p>
+                </>
+              )}
+            </motion.div>            {/* Denied Clips */}
             <motion.div
               whileHover={{ scale: 1.02 }}
               className="p-5 bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-neutral-700 dark:to-neutral-600 rounded-lg shadow"
@@ -401,10 +315,19 @@ const EditorDash: React.FC = () => {
                 <FaBan size={28} />
               </div>
               <h3 className="text-lg font-medium mb-2 text-center">Denied Clips</h3>
-              <h2 className="text-3xl font-bold text-center">{deniedClips}</h2>
-              <p className="text-center mt-1 text-red-600 dark:text-red-400 font-medium">
-                {getDeniedPercentage()}% of total
-              </p>
+              {loading ? (
+                <>
+                  <SkeletonBox className="h-9 w-16 mx-auto mb-2" />
+                  <SkeletonBox className="h-5 w-20 mx-auto" />
+                </>
+              ) : (
+                <>
+                  <h2 className="text-3xl font-bold text-center">{deniedClips}</h2>
+                  <p className="text-center mt-1 text-red-600 dark:text-red-400 font-medium">
+                    {getDeniedPercentage()}% of total
+                  </p>
+                </>
+              )}
             </motion.div>
           </div>
         </motion.div>
@@ -441,11 +364,30 @@ const EditorDash: React.FC = () => {
             >
               <FaHistory /> All Archives
             </button>
-          </div>
-
-          {zipsLoading ? (
-            <div className="flex justify-center items-center py-16">
-              <FaSpinner className="animate-spin text-4xl" />
+          </div>          {zipsLoading ? (
+            <div className="space-y-4">
+              {/* Skeleton for archive items */}
+              {[1, 2, 3].map((index) => (
+                <div
+                  key={index}
+                  className="flex justify-between items-center bg-neutral-200 dark:bg-neutral-700 p-4 rounded-lg shadow-md"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-amber-100 dark:bg-amber-900/30 rounded-full">
+                      <SkeletonBox className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <SkeletonBox className="h-6 w-32 mb-2" />
+                      <div className="flex items-center gap-6 mt-1">
+                        <SkeletonBox className="h-4 w-20" />
+                        <SkeletonBox className="h-4 w-16" />
+                        <SkeletonBox className="h-4 w-12" />
+                      </div>
+                    </div>
+                  </div>
+                  <SkeletonBox className="w-12 h-12 rounded-full" />
+                </div>
+              ))}
             </div>
           ) : zips.length === 0 ? (
             <div className="bg-neutral-200 dark:bg-neutral-700 rounded-lg p-8 text-center">

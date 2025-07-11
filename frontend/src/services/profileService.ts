@@ -1,6 +1,6 @@
 import axios from 'axios';
-import apiUrl from '../config/config';
 import { ProfileFormData, PublicProfile } from '../types/profileTypes';
+const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://api.spoekle.com';
 
 // Utility function to get auth headers
 const getAuthHeaders = () => {
@@ -13,7 +13,7 @@ const getAuthHeaders = () => {
  */
 export const getPublicProfile = async (userId: string): Promise<PublicProfile> => {
   try {
-    const response = await axios.get(`${apiUrl}/api/profiles/public/${userId}`);
+    const response = await axios.get(`${backendUrl}/api/profiles/public/${userId}`);
     return response.data;
   } catch (error: any) {
     console.error('Error fetching public profile:', error);
@@ -33,7 +33,7 @@ export const getPublicProfile = async (userId: string): Promise<PublicProfile> =
 export const getMyProfile = async (): Promise<PublicProfile> => {
   try {
     const headers = getAuthHeaders();
-    const response = await axios.get(`${apiUrl}/api/profiles/me`, { headers });
+    const response = await axios.get(`${backendUrl}/api/profiles/me`, { headers });
     return response.data.profile;
   } catch (error) {
     console.error('Error fetching my profile:', error);
@@ -47,7 +47,7 @@ export const getMyProfile = async (): Promise<PublicProfile> => {
 export const updateProfile = async (profileData: ProfileFormData): Promise<PublicProfile> => {
   try {
     const headers = getAuthHeaders();
-    const response = await axios.put(`${apiUrl}/api/profiles/me`, profileData, { headers });
+    const response = await axios.put(`${backendUrl}/api/profiles/me`, profileData, { headers });
     return response.data.profile;
   } catch (error: any) {
     console.error('Error updating profile:', error);

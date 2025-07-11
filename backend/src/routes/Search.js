@@ -4,20 +4,21 @@ const Fuse = require('fuse.js');
 const Clip = require('../models/clipModel');
 const User = require('../models/userModel');
 const searchLimiter = require('./middleware/SearchLimiter');
+const { getCurrentSeason } = require('../utils/seasonHelpers');
 
 /**
  * @swagger
  * tags:
  *   name: Search
- *   description: Unified search API for clips and profiles
+ *   description: Unified search API for clips and profiles with seasonal filtering
  */
 
 /**
  * @swagger
  * /api/search:
  *   get:
- *     summary: Unified search for clips and profiles
- *     description: Search across clips and public profiles
+ *     summary: Unified search for clips and profiles with seasonal filtering
+ *     description: Search across clips and public profiles, prioritizing current season
  *     tags: [Search]
  *     parameters:
  *       - in: query
@@ -34,6 +35,17 @@ const searchLimiter = require('./middleware/SearchLimiter');
  *           default: all
  *         description: Type of content to search
  *       - in: query
+ *         name: season
+ *         schema:
+ *           type: string
+ *           enum: [spring, summer, fall, winter]
+ *         description: Filter by specific season (optional)
+ *       - in: query
+ *         name: year
+ *         schema:
+ *           type: integer
+ *         description: Filter by specific year (optional)
+ *       - in: query
  *         name: page
  *         schema:
  *           type: integer
@@ -45,16 +57,43 @@ const searchLimiter = require('./middleware/SearchLimiter');
  *           type: integer
  *           default: 12
  *         description: Results per page
+ *       - in: query
+ *         name: sort
+ *         schema:
+ *           type: string
+ *           enum: [newest, oldest, upvotes, downvotes, ratio]
+ *           default: newest
+ *         description: Sort order for clips
+ *       - in: query
+ *         name: streamer
+ *         schema:
+ *           type: string
+ *         description: Filter clips by streamer name
+ *       - in: query
+ *         name: submitter
+ *         schema:
+ *           type: string
+ *         description: Filter clips by submitter name
  *     responses:
  *       200:
- *         description: Search results
+ *         description: Search results with seasonal organization
  *       400:
  *         description: Missing or invalid parameters
  *       500:
  *         description: Internal Server Error
  */
 router.get('/', searchLimiter, async (req, res) => {
-    let { q, type = 'all', page = 1, limit = 12 } = req.query;
+    let { 
+        q, 
+        type = 'all', 
+        season, 
+        year, 
+        page = 1, 
+        limit = 12, 
+        sort = 'newest',
+        streamer,
+        submitter 
+    } = req.query;
 
     if (!q || q.trim() === '') {
         return res.status(400).json({ error: 'Missing search query parameter `q`.' });
@@ -62,14 +101,21 @@ router.get('/', searchLimiter, async (req, res) => {
 
     page = parseInt(page);
     limit = parseInt(limit);
+    year = year ? parseInt(year) : null;
     const skip = (page - 1) * limit;
 
     try {
-        console.log(`Unified search request: q=${q}, type=${type}, page=${page}, limit=${limit}`);
+        console.log(`Search request: q=${q}, type=${type}, season=${season}, year=${year}, page=${page}, limit=${limit}, sort=${sort}`);
+        
+        const currentSeason = getCurrentSeason();
         
         let results = {
             clips: [],
             profiles: [],
+            currentSeasonClips: [],
+            otherSeasonsClips: {},
+            availableSeasons: [],
+            currentSeason: currentSeason,
             total: 0,
             totalPages: 0,
             currentPage: page,
@@ -79,7 +125,33 @@ router.get('/', searchLimiter, async (req, res) => {
         // Search clips if type is 'all' or 'clips'
         if (type === 'all' || type === 'clips') {
             try {
-                const allClips = await Clip.find({}).lean();
+                // Build clip filter query
+                let clipFilter = { };
+                
+                // Apply streamer filter if specified
+                if (streamer) {
+                    clipFilter.streamer = { $regex: streamer, $options: 'i' };
+                }
+                
+                // Apply submitter filter if specified
+                if (submitter) {
+                    clipFilter.submitter = { $regex: submitter, $options: 'i' };
+                }
+                
+                // If specific season/year requested, filter for that
+                if (season && year) {
+                    clipFilter.season = { $regex: `^${season}$`, $options: 'i' };
+                    clipFilter.year = year;
+                } else if (season) {
+                    clipFilter.season = { $regex: `^${season}$`, $options: 'i' };
+                } else if (year) {
+                    clipFilter.year = year;
+                }
+                
+                console.log('Clip filter:', clipFilter);
+                
+                const allClips = await Clip.find(clipFilter).lean();
+                console.log(`Found ${allClips.length} clips matching filter criteria`);
                 
                 const clipOptions = {
                     keys: ['title', 'streamer', 'submitter'],
@@ -90,20 +162,87 @@ router.get('/', searchLimiter, async (req, res) => {
                 const clipFuse = new Fuse(allClips, clipOptions);
                 const clipSearchResults = clipFuse.search(q);
                 
-                // Sort clips by newest by default
-                const sortedClips = clipSearchResults
-                    .map(result => result.item)
-                    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                let searchedClips = clipSearchResults.map(result => result.item);
+                console.log(`Found ${searchedClips.length} clips matching search query`);
                 
-                results.clips = sortedClips;
-                console.log(`Found ${sortedClips.length} matching clips`);
+                // Sort clips based on sort parameter
+                searchedClips = searchedClips.sort((a, b) => {
+                    switch (sort) {
+                        case 'oldest':
+                            return new Date(a.createdAt) - new Date(b.createdAt);
+                        case 'upvotes':
+                            return (b.upvotes || 0) - (a.upvotes || 0);
+                        case 'downvotes':
+                            return (b.downvotes || 0) - (a.downvotes || 0);
+                        case 'ratio':
+                            const aRatio = (a.upvotes || 0) / Math.max((a.downvotes || 0), 1);
+                            const bRatio = (b.upvotes || 0) / Math.max((b.downvotes || 0), 1);
+                            return bRatio - aRatio;
+                        case 'newest':
+                        default:
+                            return new Date(b.createdAt) - new Date(a.createdAt);
+                    }
+                });
+                
+                if (season && year) {
+                    // If filtering for specific season/year, just return those clips
+                    results.clips = searchedClips;
+                } else {
+                    // Organize clips by season for the new UI
+                    const currentSeasonClips = [];
+                    const otherSeasonsClips = {};
+                    const availableSeasons = new Set();
+                    
+                    searchedClips.forEach(clip => {
+                        const clipSeason = (clip.season || 'unknown').toLowerCase();
+                        const clipYear = clip.year || new Date(clip.createdAt).getFullYear();
+                        const seasonKey = `${clipSeason}-${clipYear}`;
+                        
+                        availableSeasons.add(seasonKey);
+                        
+                        // Check if this clip is from current season
+                        if (clipSeason === currentSeason.season.toLowerCase() && clipYear === currentSeason.year) {
+                            currentSeasonClips.push(clip);
+                        } else {
+                            if (!otherSeasonsClips[seasonKey]) {
+                                otherSeasonsClips[seasonKey] = {
+                                    season: clipSeason,
+                                    year: clipYear,
+                                    clips: []
+                                };
+                            }
+                            otherSeasonsClips[seasonKey].clips.push(clip);
+                        }
+                    });
+                    
+                    // Sort seasons by year/season order (newest first)
+                    const sortedSeasons = Array.from(availableSeasons).sort((a, b) => {
+                        const [aSeason, aYear] = a.split('-');
+                        const [bSeason, bYear] = b.split('-');
+                        
+                        if (aYear !== bYear) {
+                            return parseInt(bYear) - parseInt(aYear);
+                        }
+                        
+                        const seasonOrder = { 'winter': 0, 'spring': 1, 'summer': 2, 'fall': 3 };
+                        return (seasonOrder[bSeason] || 0) - (seasonOrder[aSeason] || 0);
+                    });
+                    
+                    results.currentSeasonClips = currentSeasonClips;
+                    results.otherSeasonsClips = otherSeasonsClips;
+                    results.availableSeasons = sortedSeasons;
+                    results.clips = searchedClips; // For backward compatibility
+                }
+                
+                console.log(`Organized clips: ${results.currentSeasonClips?.length || 0} current season, ${Object.keys(results.otherSeasonsClips || {}).length} other seasons`);
             } catch (error) {
                 console.error('Error searching clips:', error);
             }
         }
 
         // Search profiles if type is 'all' or 'profiles'
-        if (type === 'all' || type === 'profiles') {            try {
+        if (type === 'all' || type === 'profiles') {
+            try {
                 // Find users by username, discordUsername, or bio
                 const userQuery = {
                     $or: [
@@ -113,15 +252,13 @@ router.get('/', searchLimiter, async (req, res) => {
                     ],
                     status: 'active',
                     'profile.isPublic': true
-                };                const users = await User.find(userQuery)
+                };
+
+                const users = await User.find(userQuery)
                     .select('_id username profilePicture roles discordUsername discordId createdAt profile joinDate')
                     .lean();
 
-                console.log(`User query:`, JSON.stringify(userQuery, null, 2));
                 console.log(`Found ${users.length} users matching search criteria`);
-                if (users.length > 0) {
-                    console.log('Sample user:', JSON.stringify(users[0], null, 2));
-                }
 
                 // Calculate clips submitted for each user
                 const profilesWithStats = await Promise.all(
@@ -132,13 +269,15 @@ router.get('/', searchLimiter, async (req, res) => {
                         if (user.discordId) {
                             try {
                                 clipsSubmitted = await Clip.countDocuments({
-                                    discordId: user.discordId
+                                    discordSubmitterId: user.discordId
                                 });
                             } catch (clipCountError) {
                                 console.error('Error counting clips for user:', user._id, clipCountError);
                                 clipsSubmitted = 0;
                             }
-                        }                        return {
+                        }
+
+                        return {
                             _id: user._id,
                             username: user.username,
                             profilePicture: user.profilePicture,
@@ -167,39 +306,32 @@ router.get('/', searchLimiter, async (req, res) => {
             }
         }
 
-        results.total = results.clips.length + results.profiles.length;
+        // Calculate totals
+        const totalClips = results.clips?.length || 0;
+        const totalProfiles = results.profiles?.length || 0;
+        results.total = totalClips + totalProfiles;
         results.totalPages = Math.ceil(results.total / limit);
 
-        // Apply pagination to combined results
-        if (type === 'all') {
-            // For combined search, interleave results and paginate
-            const combinedResults = [];
-            const maxResults = Math.max(results.clips.length, results.profiles.length);
-            
-            for (let i = 0; i < maxResults; i++) {
-                if (i < results.clips.length) {
-                    combinedResults.push({ type: 'clip', data: results.clips[i] });
-                }
-                if (i < results.profiles.length) {
-                    combinedResults.push({ type: 'profile', data: results.profiles[i] });
-                }
-            }
+        results.currentSeason = {
+            season: currentSeason.season.charAt(0).toUpperCase() + currentSeason.season.slice(1),
+            year: currentSeason.year
+        };
 
+        if (type === 'all') {
+            // For combined search, paginate profiles only (clips are organized by season)
             const startIndex = skip;
             const endIndex = startIndex + limit;
-            const paginatedResults = combinedResults.slice(startIndex, endIndex);
-
-            results.clips = paginatedResults.filter(r => r.type === 'clip').map(r => r.data);
-            results.profiles = paginatedResults.filter(r => r.type === 'profile').map(r => r.data);
-        } else {
-            // For specific type searches, paginate normally
-            if (type === 'clips') {
-                results.clips = results.clips.slice(skip, skip + limit);
-                results.profiles = [];
-            } else if (type === 'profiles') {
-                results.profiles = results.profiles.slice(skip, skip + limit);
-                results.clips = [];
-            }
+            results.profiles = results.profiles.slice(startIndex, endIndex);
+        } else if (type === 'clips') {
+            // For clips-only search, apply normal pagination
+            results.clips = results.clips.slice(skip, skip + limit);
+            results.profiles = [];
+        } else if (type === 'profiles') {
+            // For profiles-only search, paginate normally
+            results.profiles = results.profiles.slice(skip, skip + limit);
+            results.clips = [];
+            results.currentSeasonClips = [];
+            results.otherSeasonsClips = {};
         }
 
         res.json(results);

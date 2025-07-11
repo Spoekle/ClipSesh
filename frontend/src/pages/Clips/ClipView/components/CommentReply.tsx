@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaReply, FaTrash, FaAngleDown, FaAngleUp } from 'react-icons/fa';
 import { format } from 'timeago.js';
-import apiUrl from '../../../../config/config';
-import { useNotification } from '../../../../context/NotificationContext';
+import { useNotification } from '../../../../context/AlertContext';
 import { User, Clip, Reply } from '../../../../types/adminTypes';
 import ConfirmationDialog from '../../../../components/common/ConfirmationDialog';
+import { addReplyToComment, deleteReplyFromComment } from '../../../../services/clipService';
 
 interface CommentReplyProps {
   clipId: string;
@@ -32,9 +31,7 @@ const CommentReply: React.FC<CommentReplyProps> = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false);
   const [replyToDelete, setReplyToDelete] = useState<string | null>(null);
   
-  const { showSuccess, showError } = useNotification();
-
-  const handleSubmitReply = async (e: React.FormEvent) => {
+  const { showSuccess, showError } = useNotification();  const handleSubmitReply = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!replyContent.trim()) return;
@@ -42,22 +39,13 @@ const CommentReply: React.FC<CommentReplyProps> = ({
     setIsSubmitting(true);
     
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.post<Clip>(
-        `${apiUrl}/api/clips/${clipId}/comment/${commentId}/reply`,
-        { 
-          replyText: replyContent, // Changed from 'content' to 'replyText' to match backend schema
-          userId: user._id,
-          username: user.username
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const updatedClip = await addReplyToComment(clipId, commentId, replyContent);
       
       setReplyContent('');
       setShowReplyInput(false);
       setShowReplies(true);
       
-      onReplyAdded(response.data);
+      onReplyAdded(updatedClip);
       showSuccess('Reply added successfully');
       
     } catch (error: any) {
@@ -67,16 +55,10 @@ const CommentReply: React.FC<CommentReplyProps> = ({
       setIsSubmitting(false);
     }
   };
-
   const deleteReply = async (replyId: string) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.delete<Clip>(
-        `${apiUrl}/api/clips/${clipId}/comment/${commentId}/reply/${replyId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      
-      onReplyAdded(response.data);
+      const updatedClip = await deleteReplyFromComment(clipId, commentId, replyId);
+      onReplyAdded(updatedClip);
       showSuccess('Reply deleted');
     } catch (error: any) {
       console.error('Error deleting reply:', error);

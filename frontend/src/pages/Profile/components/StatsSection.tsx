@@ -11,8 +11,7 @@ import {
 import { User, Clip, Rating } from '../../../types/adminTypes';
 import { getCurrentSeason } from '../../../utils/seasonHelpers';
 import { getClipsWithRatings } from '../../../services/clipService';
-import apiUrl from '../../../config/config';
-import axios from 'axios';
+import { getConfig } from '../../../services/configService';
 import RatedClips from './stats/RatedClips';
 import ActivityTracker from './stats/ActivityTracker';
 
@@ -50,14 +49,10 @@ const StatsSection: React.FC<StatsSectionProps> = ({ user, viewSwitchTimestamp }
             // Fetch clips and ratings
             const { clips: clipsData, ratings: ratingsData } = await getClipsWithRatings();
             setClips(clipsData);
-            setRatings(ratingsData);
-
-            // Fetch config for clip amount
+            setRatings(ratingsData);            // Fetch config for clip amount
             try {
-                const response = await axios.get(`${apiUrl}/api/config`, {
-                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-                });
-                setClipAmount(response.data?.public?.clipAmount || Object.keys(ratingsData).length);
+                const configData = await getConfig();
+                setClipAmount(configData?.public?.clipAmount || Object.keys(ratingsData).length);
             } catch (error) {
                 setClipAmount(Object.keys(ratingsData).length);
             }

@@ -13,11 +13,11 @@ import {
   FaUserShield,
   FaExclamationTriangle
 } from 'react-icons/fa';
-import axios from 'axios';
-import { useNotification } from '../../../context/NotificationContext';
+import * as adminService from '../../../services/adminService';
+import { useNotification } from '../../../context/AlertContext';
 import generateAvatar from '../../../utils/generateAvatar';
 import UserEditForm from './UserEditForm';
-import TrophyIndicator from '../components/TrophyIndicator';
+import TrophyIndicator from './TrophyIndicator';
 import { User } from '../../../types/adminTypes';
 import ConfirmationDialog from '../../../components/common/ConfirmationDialog';
 
@@ -26,10 +26,9 @@ interface UserListProps {
   disabledUsers: User[];
   setDisabledUsers: React.Dispatch<React.SetStateAction<User[]>>;
   AVAILABLE_ROLES: string[];
-  apiUrl: string;
 }
 
-const UserList: React.FC<UserListProps> = ({ fetchUsers, AVAILABLE_ROLES, apiUrl }) => {
+const UserList: React.FC<UserListProps> = ({ fetchUsers, AVAILABLE_ROLES }) => {
   const [filter, setFilter] = useState<string>('all');
   const [search, setSearch] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -49,24 +48,13 @@ const UserList: React.FC<UserListProps> = ({ fetchUsers, AVAILABLE_ROLES, apiUrl
   useEffect(() => {
     fetchFilteredUsers();
   }, [filter, roleFilter]);
-
   const fetchFilteredUsers = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      let queryParams = '?status=active';
-      
-      // Only add role filter if it's not 'all'
-      if (filter !== 'all') {
-        queryParams += `&role=${filter}`;
-      }
-      
-      const response = await axios.get(`${apiUrl}/api/users`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const allUsers = await adminService.getAllUsers();
       
       // Filter users client-side based on active status
-      const activeUsers = response.data.filter((user: User) => user.status === 'active');
+      const activeUsers = allUsers.filter((user: User) => user.status === 'active');
       setUsers(activeUsers);
       setError(null);
     } catch (error: any) {
@@ -140,14 +128,10 @@ const UserList: React.FC<UserListProps> = ({ fetchUsers, AVAILABLE_ROLES, apiUrl
       });
     }
   };
-
   const handleDisableUser = async (userId: string) => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(`${apiUrl}/api/users/disable`, { userId }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await adminService.disableUser(userId);
       showSuccess('User disabled successfully');
       fetchUsers();
     } catch (error: any) {
@@ -180,10 +164,8 @@ const UserList: React.FC<UserListProps> = ({ fetchUsers, AVAILABLE_ROLES, apiUrl
     e.preventDefault();
     if (!editUser) return;
     
-    setIsLoading(true);
-    
+    setIsLoading(true);    
     try {
-      const token = localStorage.getItem('token');
       const dataToSubmit = { ...editUser };
 
       // Don't send empty password
@@ -191,9 +173,7 @@ const UserList: React.FC<UserListProps> = ({ fetchUsers, AVAILABLE_ROLES, apiUrl
         delete dataToSubmit.password;
       }
 
-      await axios.put(`${apiUrl}/api/admin/users/${editUser._id}`, dataToSubmit, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await adminService.updateUser(editUser._id, dataToSubmit);
       
       showSuccess('User updated successfully');
       setEditUser(null);

@@ -9,7 +9,7 @@ const authorizeRoles = require('./middleware/AuthorizeRoles');
  */
 async function updateClipCount() {
   try {
-    const count = await Clip.countDocuments();
+    const count = await Clip.countDocuments({ archived: { $ne: true } });
     await PublicConfig.findOneAndUpdate(
       {}, 
       { clipAmount: count }, 

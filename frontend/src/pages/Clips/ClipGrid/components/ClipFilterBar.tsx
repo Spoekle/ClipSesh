@@ -6,26 +6,43 @@ import {
   FaArrowUp, FaArrowDown
 } from 'react-icons/fa';
 import UploadClipModal from './UploadClipModal';
+import { User } from '../../../../types/adminTypes';
 
-const ClipFilterBar = ({ 
+interface ClipFilterBarProps {
+  sortOptionState: string;
+  setSortOptionState: (option: string) => void;
+  handleSortChange: (option: string) => void;
+  filterRatedClips: boolean;
+  setFilterRatedClips: (filter: boolean) => void;
+  filterDeniedClips: boolean;
+  setFilterDeniedClips: (filter: boolean) => void;
+  user: User | null;
+  setExpandedClip: (clip: string | null) => void;
+  isLoggedIn: boolean;
+  searchTerm: string;
+  setSearchTerm: (term: string) => void;
+  filterStreamer: string;  setFilterStreamer: (streamer: string) => void;
+  streamers: string[];
+  handleFilterReset: () => void;
+  fetchClipsAndRatings: (user: User | null) => Promise<void>;
+  setSearchParams: (params: any) => void;
+}
+
+const ClipFilterBar: React.FC<ClipFilterBarProps> = ({ 
   sortOptionState,
-  setSortOptionState,
   handleSortChange,
   filterRatedClips,
   setFilterRatedClips,
   filterDeniedClips,
   setFilterDeniedClips,
   user,
-  setExpandedClip,
   isLoggedIn,
   searchTerm,
   setSearchTerm,
   filterStreamer,
   setFilterStreamer,
   streamers,
-  handleFilterReset,
   fetchClipsAndRatings,
-  token,
   setSearchParams
 }) => {
   const [showFilters, setShowFilters] = useState(false);
@@ -33,7 +50,7 @@ const ClipFilterBar = ({
   const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [activeFiltersCount, setActiveFiltersCount] = useState(0);
-  const searchInputRef = useRef(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   
   // Update local search term when prop changes
   useEffect(() => {
@@ -48,11 +65,10 @@ const ClipFilterBar = ({
     if (filterDeniedClips) count++;
     setActiveFiltersCount(count);
   }, [searchTerm, filterStreamer, filterDeniedClips]);
-  
-  // Focus search input when filters panel opens
+    // Focus search input when filters panel opens
   useEffect(() => {
     if (showFilters && searchInputRef.current) {
-      setTimeout(() => searchInputRef.current.focus(), 300);
+      setTimeout(() => searchInputRef.current?.focus(), 300);
     }
   }, [showFilters]);
 
@@ -61,14 +77,13 @@ const ClipFilterBar = ({
     const newValue = !filterRatedClips;
     localStorage.setItem('filterRatedClips', newValue.toString());
     setFilterRatedClips(newValue);
-    
-    // Reset to page 1 when changing filters to prevent potential empty pages
+      // Reset to page 1 when changing filters to prevent potential empty pages
     setSearchParams({ 
       sort: sortOptionState, 
       page: "1",
       ...(searchTerm && { q: searchTerm }),
       ...(filterStreamer && { streamer: filterStreamer }) 
-    }, { replace: true });
+    });
 
     // The parent component will handle the refetch via useEffect
   };
@@ -87,7 +102,7 @@ const ClipFilterBar = ({
           page: "1", // Reset to page 1 on search
           ...(localSearchTerm && { q: localSearchTerm }),
           ...(filterStreamer && { streamer: filterStreamer })
-        }, { replace: true });
+        });
       
         // The parent component will handle the refetch via useEffect
       }
@@ -100,14 +115,13 @@ const ClipFilterBar = ({
   const handleStreamerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newStreamer = e.target.value;
     setFilterStreamer(newStreamer);
-    
-    // Update URL params
+      // Update URL params
     setSearchParams({
       sort: sortOptionState,
       page: "1", // Reset to page 1 when filtering
       ...(searchTerm && { q: searchTerm }),
       ...(newStreamer && { streamer: newStreamer })
-    }, { replace: true });
+    });
     
     // The parent component will handle the refetch via useEffect
   };
@@ -116,13 +130,12 @@ const ClipFilterBar = ({
   const handleClearSearch = () => {
     setLocalSearchTerm('');
     setSearchTerm('');
-    
-    // Update URL params
+      // Update URL params
     setSearchParams({
       sort: sortOptionState,
       page: "1",
       ...(filterStreamer && { streamer: filterStreamer })
-    }, { replace: true });
+    });
     
     // The parent component will handle the refetch via useEffect
   };
@@ -133,19 +146,17 @@ const ClipFilterBar = ({
     setSearchTerm('');
     setFilterStreamer('');
     setFilterDeniedClips(false);
-    
-    // Reset URL params but keep sort
+      // Reset URL params but keep sort
     setSearchParams({
       sort: sortOptionState,
       page: "1",
-    }, { replace: true });
+    });
     
     // The parent component will handle the refetch via useEffect
   };
-
   // Handle successful clip upload
   const handleUploadSuccess = () => {
-    fetchClipsAndRatings(user, filterRatedClips); // Remove the third parameter since it expects (user, filterRated, page)
+    fetchClipsAndRatings(user);
   };
 
   const isAdmin = user?.roles?.includes('admin');
@@ -568,7 +579,6 @@ const ClipFilterBar = ({
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
         onSuccess={handleUploadSuccess}
-        token={token}
       />
     </div>
   );

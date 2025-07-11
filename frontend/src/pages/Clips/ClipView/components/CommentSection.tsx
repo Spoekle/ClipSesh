@@ -1,19 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AiOutlineDelete } from 'react-icons/ai';
 import { format } from 'timeago.js';
-import apiUrl from '../../../../config/config';
 import CommentReply from './CommentReply';
-import { useNotification } from '../../../../context/NotificationContext';
+import { useNotification } from '../../../../context/AlertContext';
 import { User, Clip } from '../../../../types/adminTypes';
 import { useLocation } from 'react-router-dom';
+import { getClipById, addCommentToClip, deleteCommentFromClip } from '../../../../services/clipService';
 
 interface CommentSectionProps {
     clipId: string;
     comments: any[];
     user: User | null;
-    token: string;
     fetchClipsAndRatings: (user: User | null) => Promise<void>;
     highlightedMessageId?: string | null;
     setHighlightedMessageId: (id: string | null) => void;
@@ -25,7 +23,6 @@ interface CommentSectionProps {
 const CommentSection: React.FC<CommentSectionProps> = ({
     clipId,
     user,
-    token,
     fetchClipsAndRatings
 }) => {
     const [currentClip, setCurrentClip] = useState<Clip | null>(null);
@@ -35,16 +32,12 @@ const CommentSection: React.FC<CommentSectionProps> = ({
     const { showSuccess, showError } = useNotification();
     const location = useLocation();
     
-    const highlightCommentId = location.state?.highlightComment;
-
-    // Fetch the current clip data
+    const highlightCommentId = location.state?.highlightComment;    // Fetch the current clip data
     useEffect(() => {
         const fetchClip = async () => {
             try {
-                const response = await axios.get<Clip>(`${apiUrl}/api/clips/${clipId}`, {
-                    headers: token ? { Authorization: `Bearer ${token}` } : undefined
-                });
-                setCurrentClip(response.data);
+                const clipData = await getClipById(clipId);
+                setCurrentClip(clipData);
             } catch (error) {
                 console.error('Error fetching clip:', error);
             }
@@ -53,20 +46,14 @@ const CommentSection: React.FC<CommentSectionProps> = ({
         if (clipId) {
             fetchClip();
         }
-    }, [clipId, token]);
-
-    const handleAddComment = async (e: React.FormEvent): Promise<void> => {
+    }, [clipId]);    const handleAddComment = async (e: React.FormEvent): Promise<void> => {
         e.preventDefault();
         if (!newComment.trim()) return;
 
         try {
             setIsLoading(true);
-            const response = await axios.post<Clip>(
-                `${apiUrl}/api/clips/${clipId}/comment`,
-                { comment: newComment },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-            setCurrentClip(response.data);
+            const updatedClip = await addCommentToClip(clipId, newComment);
+            setCurrentClip(updatedClip);
             setNewComment('');
             showSuccess('Comment added successfully!');
             
@@ -75,23 +62,14 @@ const CommentSection: React.FC<CommentSectionProps> = ({
                 await fetchClipsAndRatings(user);
             }
         } catch (error: any) {
-            showError('Failed to add comment: ' + (error.response?.data?.message || 'Unknown error'));
+            showError('Failed to add comment: ' + (error.message || 'Unknown error'));
         } finally {
             setIsLoading(false);
         }
-    };
-
-    const handleDeleteComment = async (commentId: string): Promise<void> => {
+    };    const handleDeleteComment = async (commentId: string): Promise<void> => {
         try {
-            await axios.delete(
-                `${apiUrl}/api/clips/${clipId}/comment/${commentId}`,
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-
-            const response = await axios.get<Clip>(`${apiUrl}/api/clips/${clipId}`, {
-                headers: token ? { Authorization: `Bearer ${token}` } : undefined
-            });
-            setCurrentClip(response.data);
+            const updatedClip = await deleteCommentFromClip(clipId, commentId);
+            setCurrentClip(updatedClip);
 
             showSuccess('Comment deleted successfully!');
             
@@ -100,7 +78,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({
                 await fetchClipsAndRatings(user);
             }
         } catch (error: any) {
-            showError('Error deleting comment: ' + (error.response?.data?.message || 'Unknown error'));
+            showError('Error deleting comment: ' + (error.message || 'Unknown error'));
         }
     };
 

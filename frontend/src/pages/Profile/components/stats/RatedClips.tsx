@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FaPlay } from 'react-icons/fa';
-import { useNotification } from '../../../../context/NotificationContext';
+import { useNotification } from '../../../../context/AlertContext';
 import { Rating, Clip } from '../../../../types/adminTypes';
 
 // Extended Clip interface to include user rating

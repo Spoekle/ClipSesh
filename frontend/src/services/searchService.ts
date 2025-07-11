@@ -1,6 +1,6 @@
 import axios from 'axios';
-import apiUrl from '../config/config';
 import { UnifiedSearchResponse, SearchParams } from '../types/searchTypes';
+const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://api.spoekle.com';
 
 // Utility function to get auth headers
 const getAuthHeaders = () => {
@@ -14,7 +14,7 @@ const getAuthHeaders = () => {
 export const unifiedSearch = async (params: SearchParams): Promise<UnifiedSearchResponse> => {
   try {
     const headers = getAuthHeaders();
-    const response = await axios.get(`${apiUrl}/api/search`, {
+    const response = await axios.get(`${backendUrl}/api/search`, {
       params,
       headers
     });

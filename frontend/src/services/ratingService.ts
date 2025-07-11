@@ -1,6 +1,7 @@
 import axios from 'axios';
-import apiUrl from '../config/config';
 import { Rating } from '../types/adminTypes';
+import { RatingQueryParams, MyRatingsResponse } from '../types/ratingTypes';
+const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://api.spoekle.com';
 
 // Utility function to get auth headers
 const getAuthHeaders = () => {
@@ -8,38 +9,13 @@ const getAuthHeaders = () => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-// Interface for user rating data from API
-export interface UserRatingData {
-  _id: string;
-  clipId: string;
-  userId: string;
-  rating: '1' | '2' | '3' | '4' | 'deny';
-  timestamp: string;
-}
-
-// Interface for rating query parameters
-export interface RatingQueryParams {
-  startDate?: string;
-  endDate?: string;
-  limit?: number;
-  page?: number;
-}
-
-// Interface for my ratings response
-export interface MyRatingsResponse {
-  ratings: UserRatingData[];
-  total?: number;
-  page?: number;
-  pages?: number;
-}
-
 /**
  * Get user's own ratings with optional date filtering
  */
 export const getMyRatings = async (params: RatingQueryParams = {}): Promise<MyRatingsResponse> => {
   try {
     const headers = getAuthHeaders();
-    const response = await axios.get(`${apiUrl}/api/ratings/my-ratings`, {
+    const response = await axios.get(`${backendUrl}/api/ratings/my-ratings`, {
       headers,
       params
     });
@@ -62,7 +38,7 @@ export const getMyRatings = async (params: RatingQueryParams = {}): Promise<MyRa
 export const getRatingById = async (clipId: string): Promise<Rating> => {
   try {
     const headers = getAuthHeaders();
-    const response = await axios.get(`${apiUrl}/api/ratings/${clipId}`, { headers });
+    const response = await axios.get(`${backendUrl}/api/ratings/${clipId}`, { headers });
     return response.data;
   } catch (error) {
     console.error('Error fetching rating:', error);
@@ -76,7 +52,7 @@ export const getRatingById = async (clipId: string): Promise<Rating> => {
 export const submitRating = async (clipId: string, rating: '1' | '2' | '3' | '4' | 'deny'): Promise<Rating> => {
   try {
     const headers = getAuthHeaders();
-    const response = await axios.post(`${apiUrl}/api/ratings/${clipId}`, { rating }, { headers });
+    const response = await axios.post(`${backendUrl}/api/ratings/${clipId}`, { rating }, { headers });
     return response.data;
   } catch (error) {
     console.error('Error submitting rating:', error);
@@ -90,7 +66,7 @@ export const submitRating = async (clipId: string, rating: '1' | '2' | '3' | '4'
 export const updateRating = async (clipId: string, rating: '1' | '2' | '3' | '4' | 'deny'): Promise<Rating> => {
   try {
     const headers = getAuthHeaders();
-    const response = await axios.put(`${apiUrl}/api/ratings/${clipId}`, { rating }, { headers });
+    const response = await axios.put(`${backendUrl}/api/ratings/${clipId}`, { rating }, { headers });
     return response.data;
   } catch (error) {
     console.error('Error updating rating:', error);
@@ -104,7 +80,7 @@ export const updateRating = async (clipId: string, rating: '1' | '2' | '3' | '4'
 export const deleteRating = async (clipId: string): Promise<void> => {
   try {
     const headers = getAuthHeaders();
-    await axios.delete(`${apiUrl}/api/ratings/${clipId}`, { headers });
+    await axios.delete(`${backendUrl}/api/ratings/${clipId}`, { headers });
   } catch (error) {
     console.error('Error deleting rating:', error);
     throw new Error('Failed to delete rating');
@@ -118,7 +94,7 @@ export const getBulkRatings = async (clipIds: string[]): Promise<Record<string, 
   try {
     const headers = getAuthHeaders();
     const ratingPromises = clipIds.map(clipId =>
-      axios.get<Rating>(`${apiUrl}/api/ratings/${clipId}`, { headers })
+      axios.get<Rating>(`${backendUrl}/api/ratings/${clipId}`, { headers })
     );
     
     const ratingResponses = await Promise.all(ratingPromises);
@@ -143,13 +119,33 @@ export const getUserRatingStats = async (userId?: string): Promise<{
   try {
     const headers = getAuthHeaders();
     const url = userId 
-      ? `${apiUrl}/api/ratings/stats/${userId}`
-      : `${apiUrl}/api/ratings/stats`;
+      ? `${backendUrl}/api/ratings/stats/${userId}`
+      : `${backendUrl}/api/ratings/stats`;
     
     const response = await axios.get(url, { headers });
     return response.data;
   } catch (error) {
     console.error('Error fetching rating stats:', error);
     throw new Error('Failed to fetch rating statistics');
+  }
+};
+
+/**
+ * Get rating activity data for charts/statistics
+ */
+export const getRatingActivity = async (params: {
+  startDate?: string;
+  endDate?: string;
+}): Promise<any> => {
+  try {
+    const headers = getAuthHeaders();
+    const response = await axios.get(`${backendUrl}/api/ratings/activity`, {
+      headers,
+      params
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching rating activity:', error);
+    throw new Error('Failed to fetch rating activity');
   }
 };

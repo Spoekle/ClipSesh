@@ -23,10 +23,10 @@ import {
 } from 'react-icons/fa';
 import LoadingBar from 'react-top-loading-bar';
 import { getMyProfile, updateProfile } from '../../services/profileService';
-import { updateMyBasicInfo, uploadProfilePicture } from '../../services/userService';
+import { updateMyBasicInfo, updateMyBasicInfoWithPassword, uploadProfilePicture } from '../../services/userService';
 import { linkDiscordAccount, unlinkDiscordAccount } from '../../services/discordService';
 import { PublicProfile, ProfileFormData, BasicUserInfo, VR_HEADSETS } from '../../types/profileTypes';
-import { useNotification } from '../../context/NotificationContext';
+import { useNotification } from '../../context/AlertContext';
 
 type TabType = 'user-info' | 'profile' | 'social-links' | 'privacy';
 
@@ -56,11 +56,23 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSuccess 
     vrheadset: 'Other',
     isPublic: true
   });
-
   // User basic info form state
   const [userInfo, setUserInfo] = useState<BasicUserInfo>({
     username: '',
     email: ''
+  });
+
+  // Password change state
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false
   });
 
   const [profilePictureFile, setProfilePictureFile] = useState<File | null>(null);
@@ -186,7 +198,6 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSuccess 
 
     fetchProfile();
   }, [onClose, showError]);
-
   const validateForm = (): boolean => {
     const newErrors: { [key: string]: string } = {};
 
@@ -200,6 +211,24 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSuccess 
     // Validate email
     if (userInfo.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userInfo.email)) {
       newErrors.email = 'Please enter a valid email address';
+    }
+
+    // Validate password fields if any password field is filled
+    const isChangingPassword = passwordData.currentPassword || passwordData.newPassword || passwordData.confirmPassword;
+    if (isChangingPassword) {
+      if (!passwordData.currentPassword) {
+        newErrors.currentPassword = 'Current password is required';
+      }
+      if (!passwordData.newPassword) {
+        newErrors.newPassword = 'New password is required';
+      } else if (passwordData.newPassword.length < 6) {
+        newErrors.newPassword = 'New password must be at least 6 characters';
+      }
+      if (!passwordData.confirmPassword) {
+        newErrors.confirmPassword = 'Please confirm your new password';
+      } else if (passwordData.newPassword !== passwordData.confirmPassword) {
+        newErrors.confirmPassword = 'Passwords do not match';
+      }
     }
 
     // Validate bio
@@ -222,7 +251,6 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSuccess 
       socialLinks: cleanedSocialLinks
     };
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -238,15 +266,33 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSuccess 
       if (profilePictureFile) {
         setProgress(30);
         await uploadProfilePicture(profilePictureFile);
-      }      // Update user basic info
+      }      // Update user basic info (with or without password)
       setProgress(50);
-      await updateMyBasicInfo(userInfo);
+      const isChangingPassword = passwordData.currentPassword || passwordData.newPassword || passwordData.confirmPassword;
+      
+      if (isChangingPassword) {
+        await updateMyBasicInfoWithPassword({
+          ...userInfo,
+          password: passwordData.newPassword
+        });
+      } else {
+        await updateMyBasicInfo(userInfo);
+      }
 
       // Update profile data with cleaned social links
       setProgress(70);
       const cleanedFormData = cleanFormDataForSubmission();
       await updateProfile(cleanedFormData); setProgress(100);
       showSuccess('Profile updated successfully');
+
+      // Clear password fields after successful update
+      if (isChangingPassword) {
+        setPasswordData({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+      }
 
       // Fetch updated profile and pass to parent
       const updatedProfile = await getMyProfile();
@@ -282,7 +328,6 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSuccess 
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
   };
-
   const handleUserInfoChange = (field: keyof BasicUserInfo, value: string) => {
     setUserInfo(prev => ({
       ...prev,
@@ -293,6 +338,25 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSuccess 
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
+  };
+
+  const handlePasswordChange = (field: 'currentPassword' | 'newPassword' | 'confirmPassword', value: string) => {
+    setPasswordData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
+
+  const togglePasswordVisibility = (field: 'current' | 'new' | 'confirm') => {
+    setShowPasswords(prev => ({
+      ...prev,
+      [field]: !prev[field]
+    }));
   };
 
   const handleLinkDiscord = () => {
@@ -520,10 +584,9 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSuccess 
                 </motion.button>
               ))}
             </nav>
-          </div>
-          {/* Tab Content */}
+          </div>          {/* Tab Content */}
           <div className="flex-1 flex flex-col min-h-0">
-            <div className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto scroll-smooth scrollbar-thin scrollbar-track-neutral-100 scrollbar-thumb-neutral-300 dark:scrollbar-track-neutral-800 dark:scrollbar-thumb-neutral-600 hover:scrollbar-thumb-neutral-400 dark:hover:scrollbar-thumb-neutral-500">
+            <div className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto scroll-smooth scrollbar-thin scrollbar-track-neutral-100 scrollbar-thumb-neutral-300 dark:scrollbar-track-neutral-800 dark:scrollbar-thumb-neutral-600 hover:scrollbar-thumb-neutral-400 dark:hover:scrollbar-thumb-neutral-500 pb-32 sm:pb-24">
               <form onSubmit={handleSubmit} className="h-full flex flex-col">
                 <div className="flex-1 min-h-[500px] max-w-4xl mx-auto w-full">
                   <AnimatePresence mode="wait">
@@ -630,9 +693,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSuccess 
                               {errors.email}
                             </motion.span>
                           )}
-                        </div>
-
-                        {/* Discord Linking */}
+                        </div>                        {/* Discord Linking */}
                         <div>
                           <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
                             Discord Account
@@ -688,6 +749,118 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSuccess 
                               </div>
                             </div>
                           )}
+                        </div>
+
+                        {/* Password Change Section */}
+                        <div className="border-t border-neutral-200 dark:border-neutral-700 pt-8">
+                          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">
+                            Change Password
+                          </h3>
+                          <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-6">
+                            Leave these fields empty if you don't want to change your password.
+                          </p>
+
+                          {/* Current Password */}
+                          <div className="space-y-3 mb-6">
+                            <label className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300">
+                              Current Password
+                            </label>
+                            <div className="relative">
+                              <input
+                                type={showPasswords.current ? 'text' : 'password'}
+                                value={passwordData.currentPassword}
+                                onChange={(e) => handlePasswordChange('currentPassword', e.target.value)}
+                                className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white transition-all duration-200 pr-12 ${errors.currentPassword ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : 'border-neutral-200 dark:border-neutral-600 hover:border-neutral-300 dark:hover:border-neutral-500'
+                                  }`}
+                                placeholder="Enter your current password"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => togglePasswordVisibility('current')}
+                                className="absolute inset-y-0 right-0 flex items-center pr-4 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
+                              >
+                                {showPasswords.current ? <FaEyeSlash /> : <FaEye />}
+                              </button>
+                            </div>
+                            {errors.currentPassword && (
+                              <motion.span
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="text-red-500 text-sm flex items-center gap-2"
+                              >
+                                <FaExclamationTriangle className="text-xs" />
+                                {errors.currentPassword}
+                              </motion.span>
+                            )}
+                          </div>
+
+                          {/* New Password */}
+                          <div className="space-y-3 mb-6">
+                            <label className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300">
+                              New Password
+                            </label>
+                            <div className="relative">
+                              <input
+                                type={showPasswords.new ? 'text' : 'password'}
+                                value={passwordData.newPassword}
+                                onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
+                                className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white transition-all duration-200 pr-12 ${errors.newPassword ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : 'border-neutral-200 dark:border-neutral-600 hover:border-neutral-300 dark:hover:border-neutral-500'
+                                  }`}
+                                placeholder="Enter your new password"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => togglePasswordVisibility('new')}
+                                className="absolute inset-y-0 right-0 flex items-center pr-4 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
+                              >
+                                {showPasswords.new ? <FaEyeSlash /> : <FaEye />}
+                              </button>
+                            </div>
+                            {errors.newPassword && (
+                              <motion.span
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="text-red-500 text-sm flex items-center gap-2"
+                              >
+                                <FaExclamationTriangle className="text-xs" />
+                                {errors.newPassword}
+                              </motion.span>
+                            )}
+                          </div>
+
+                          {/* Confirm Password */}
+                          <div className="space-y-3">
+                            <label className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300">
+                              Confirm New Password
+                            </label>
+                            <div className="relative">
+                              <input
+                                type={showPasswords.confirm ? 'text' : 'password'}
+                                value={passwordData.confirmPassword}
+                                onChange={(e) => handlePasswordChange('confirmPassword', e.target.value)}
+                                className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white transition-all duration-200 pr-12 ${errors.confirmPassword ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : 'border-neutral-200 dark:border-neutral-600 hover:border-neutral-300 dark:hover:border-neutral-500'
+                                  }`}
+                                placeholder="Confirm your new password"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => togglePasswordVisibility('confirm')}
+                                className="absolute inset-y-0 right-0 flex items-center pr-4 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
+                              >
+                                {showPasswords.confirm ? <FaEyeSlash /> : <FaEye />}
+                              </button>
+                            </div>
+                            {errors.confirmPassword && (
+                              <motion.span
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="text-red-500 text-sm flex items-center gap-2"
+                              >
+                                <FaExclamationTriangle className="text-xs" />
+                                {errors.confirmPassword}
+                              </motion.span>
+                            )}
+                          </div>
                         </div>
                       </motion.div>
                     )}
@@ -816,19 +989,6 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSuccess 
                           <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-3">
                             Social Media Links
                           </h2>
-                          <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 dark:from-blue-900/20 dark:via-indigo-900/20 dark:to-purple-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-6 mb-8">
-                            <div className="flex items-start gap-3">
-                              <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <FaInfoCircle className="text-white text-sm" />
-                              </div>
-                              <div>
-                                <h3 className="font-semibold text-blue-800 dark:text-blue-300 mb-1">How it works</h3>
-                                <p className="text-sm text-blue-700 dark:text-blue-400">
-                                  Just enter your username for each platform. We'll automatically format the links with the proper platform prefix when displaying your profile.
-                                </p>
-                              </div>
-                            </div>
-                          </div>
                         </div>
                         {/* Social Links */}
                         <div className="grid gap-8">
@@ -954,46 +1114,48 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSuccess 
                         </div>
                       </motion.div>
                     )}
-                  </AnimatePresence>
-                </div>
-                {/* Modal Footer */}
-                <div className="flex-shrink-0 border-t border-neutral-200/50 dark:border-neutral-700/50 mt-20 p-4 sm:p-6">
-                  <div className="flex justify-end gap-3 sm:gap-4 max-w-4xl mx-auto">
-                  <motion.button
-                    type="button"
-                    onClick={onClose}
-                    whileHover={{ scale: 1.02, y: -1 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="px-6 sm:px-8 py-3 border-2 border-neutral-200 dark:border-neutral-600 text-neutral-700 dark:text-neutral-300 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-500 transition-all duration-200 font-medium shadow-sm hover:shadow-md"
-                  >
-                    Cancel
-                  </motion.button>
-                  <motion.button
-                    type="submit"
-                    disabled={saving}
-                    whileHover={{ scale: saving ? 1 : 1.02, y: saving ? 0 : -1 }}
-                    whileTap={{ scale: saving ? 1 : 0.98 }}
-                    className="bg-blue-500 hover:bg-blue-600 text-white px-8 sm:px-10 py-3 rounded-xl transition-all duration-200 flex items-center justify-center font-semibold shadow-lg hover:shadow-xl disabled:cursor-not-allowed disabled:shadow-md"
-                  >
-                    {saving ? (
-                    <>
-                      <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-                      className="w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2"
-                      />
-                      Saving...
-                    </>
-                    ) : (
-                    <>
-                      <FaSave className="mr-2" />
-                      Save Changes
-                    </>
-                    )}
-                  </motion.button>
-                  </div>
-                </div>
+                  </AnimatePresence>                </div>
               </form>
+            </div>
+            
+            {/* Modal Footer - Fixed at bottom */}
+            <div className="flex-shrink-0 border-t border-neutral-200/50 dark:border-neutral-700/50 bg-white/95 dark:bg-neutral-800/95 backdrop-blur-sm p-4 sm:p-6">
+              <div className="flex justify-end gap-3 sm:gap-4 max-w-4xl mx-auto">
+                <motion.button
+                  type="button"
+                  onClick={onClose}
+                  whileHover={{ scale: 1.02, y: -1 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="px-6 sm:px-8 py-3 border-2 border-neutral-200 dark:border-neutral-600 text-neutral-700 dark:text-neutral-300 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-500 transition-all duration-200 font-medium shadow-sm hover:shadow-md"
+                >
+                  Cancel
+                </motion.button>
+                
+                <motion.button
+                  type="submit"
+                  disabled={saving}
+                  whileHover={{ scale: saving ? 1 : 1.02, y: saving ? 0 : -1 }}
+                  whileTap={{ scale: saving ? 1 : 0.98 }}
+                  className="bg-blue-500 hover:bg-blue-600 text-white px-8 sm:px-10 py-3 rounded-xl transition-all duration-200 flex items-center justify-center font-semibold shadow-lg hover:shadow-xl disabled:cursor-not-allowed disabled:shadow-md"
+                  onClick={handleSubmit}
+                >
+                  {saving ? (
+                  <>
+                    <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                    className="w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2"
+                    />
+                    Saving...
+                  </>
+                  ) : (
+                  <>
+                    <FaSave className="mr-2" />
+                    Save Changes
+                  </>
+                  )}
+                </motion.button>
+              </div>
             </div>
           </div>
         </motion.div>

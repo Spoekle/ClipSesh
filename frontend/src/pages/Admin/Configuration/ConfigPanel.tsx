@@ -1,7 +1,6 @@
 import { motion } from 'framer-motion';
 import React, { useState } from 'react';
-import axios from 'axios';
-import apiUrl from '../../../config/config';
+import * as adminService from '../../../services/adminService';
 
 interface ConfigPanelProps {
   config: {
@@ -45,10 +44,8 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, handleConfigChange })
   const handleChannelIdsChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setChannelIdsText(e.target.value);
   };
-  
-  const submitConfig = async (e: React.FormEvent) => {
+    const submitConfig = async (e: React.FormEvent) => {
     e.preventDefault();
-    const token = localStorage.getItem('token');
     
     // Parse channel IDs from textarea (one ID per line)
     const clipChannelIds = channelIdsText
@@ -68,13 +65,8 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, handleConfigChange })
       };
       
       // Make two separate API calls to update both configs
-      await axios.put(`${apiUrl}/api/config/admin`, adminConfig, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      await axios.put(`${apiUrl}/api/config/public`, publicConfig, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await adminService.updateAdminConfig(adminConfig);
+      await adminService.updatePublicConfig(publicConfig);
       
       alert('Configuration saved successfully');
     } catch (error) {

@@ -1,6 +1,7 @@
 import axios from 'axios';
-import apiUrl from '../config/config';
 import { Clip, Rating, RatingCount } from '../types/adminTypes';
+import { ClipQueryParams, ClipResponse } from '../types/clipTypes';
+const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://api.spoekle.com';
 
 // Utility function to get auth headers
 const getAuthHeaders = () => {
@@ -8,36 +9,13 @@ const getAuthHeaders = () => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-// Interface for clip query parameters
-export interface ClipQueryParams {
-  limit?: number;
-  page?: number;
-  sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
-  includeRatings?: boolean;
-  streamer?: string;
-  submitter?: string;
-  status?: string;
-  search?: string;
-}
-
-// Interface for clip response
-export interface ClipResponse {
-  clips?: Clip[];
-  data?: Clip[];
-  ratings?: Record<string, Rating>;
-  total?: number;
-  page?: number;
-  pages?: number;
-}
-
 /**
  * Fetch clips with optional parameters for sorting, filtering, and pagination
  */
 export const getClips = async (params: ClipQueryParams = {}): Promise<ClipResponse> => {
   try {
     const headers = getAuthHeaders();
-    const response = await axios.get(`${apiUrl}/api/clips`, {
+    const response = await axios.get(`${backendUrl}/api/clips`, {
       params,
       headers
     });
@@ -55,7 +33,7 @@ export const getClips = async (params: ClipQueryParams = {}): Promise<ClipRespon
 export const getClipsWithRatings = async (): Promise<{ clips: Clip[], ratings: Record<string, Rating> }> => {
   try {
     const headers = getAuthHeaders();
-    const response = await axios.get(`${apiUrl}/api/clips`, {
+    const response = await axios.get(`${backendUrl}/api/clips`, {
       params: {
         limit: 1000,
         sortBy: 'createdAt',
@@ -86,7 +64,7 @@ export const getClipsWithRatings = async (): Promise<{ clips: Clip[], ratings: R
     // If ratings weren't included in the response, fetch them separately
     if (Object.keys(ratingsData).length === 0 && clipsData.length > 0) {
       const ratingPromises = clipsData.map(clip =>
-        axios.get<Rating>(`${apiUrl}/api/ratings/${clip._id}`, { headers })
+        axios.get<Rating>(`${backendUrl}/api/ratings/${clip._id}`, { headers })
       );
       
       const ratingResponses = await Promise.all(ratingPromises);
@@ -112,7 +90,7 @@ export const getClipsWithRatings = async (): Promise<{ clips: Clip[], ratings: R
 export const searchClips = async (query: string, params: Omit<ClipQueryParams, 'search'> = {}): Promise<ClipResponse> => {
   try {
     const headers = getAuthHeaders();
-    const response = await axios.get(`${apiUrl}/api/clips/search`, {
+    const response = await axios.get(`${backendUrl}/api/clips/search`, {
       params: {
         ...params,
         q: query
@@ -133,7 +111,7 @@ export const searchClips = async (query: string, params: Omit<ClipQueryParams, '
 export const getClipById = async (clipId: string): Promise<Clip> => {
   try {
     const headers = getAuthHeaders();
-    const response = await axios.get(`${apiUrl}/api/clips/${clipId}`, { headers });
+    const response = await axios.get(`${backendUrl}/api/clips/${clipId}`, { headers });
     return response.data;
   } catch (error) {
     console.error('Error fetching clip:', error);
@@ -147,7 +125,7 @@ export const getClipById = async (clipId: string): Promise<Clip> => {
 export const getAdjacentClips = async (clipId: string): Promise<{ previous?: Clip, next?: Clip }> => {
   try {
     const headers = getAuthHeaders();
-    const response = await axios.get(`${apiUrl}/api/clips/clip-navigation/adjacent`, {
+    const response = await axios.get(`${backendUrl}/api/clips/clip-navigation/adjacent`, {
       params: { clipId },
       headers
     });
@@ -164,7 +142,7 @@ export const getAdjacentClips = async (clipId: string): Promise<{ previous?: Cli
 export const getClipFilterOptions = async (): Promise<{ streamers: string[], submitters: string[] }> => {
   try {
     const headers = getAuthHeaders();
-    const response = await axios.get(`${apiUrl}/api/clips/filters`, { headers });
+    const response = await axios.get(`${backendUrl}/api/clips/filter-options`, { headers });
     return response.data;
   } catch (error) {
     console.error('Error fetching clip filter options:', error);
@@ -178,7 +156,7 @@ export const getClipFilterOptions = async (): Promise<{ streamers: string[], sub
 export const deleteClip = async (clipId: string): Promise<void> => {
   try {
     const headers = getAuthHeaders();
-    await axios.delete(`${apiUrl}/api/clips/${clipId}`, { headers });
+    await axios.delete(`${backendUrl}/api/clips/${clipId}`, { headers });
   } catch (error) {
     console.error('Error deleting clip:', error);
     throw new Error('Failed to delete clip');
@@ -191,7 +169,7 @@ export const deleteClip = async (clipId: string): Promise<void> => {
 export const updateClip = async (clipId: string, updateData: Partial<Clip>): Promise<Clip> => {
   try {
     const headers = getAuthHeaders();
-    const response = await axios.put(`${apiUrl}/api/clips/${clipId}`, updateData, { headers });
+    const response = await axios.put(`${backendUrl}/api/clips/${clipId}`, updateData, { headers });
     return response.data;
   } catch (error) {
     console.error('Error updating clip:', error);
@@ -205,7 +183,7 @@ export const updateClip = async (clipId: string, updateData: Partial<Clip>): Pro
 export const addCommentToClip = async (clipId: string, comment: string): Promise<Clip> => {
   try {
     const headers = getAuthHeaders();
-    const response = await axios.post(`${apiUrl}/api/clips/${clipId}/comments`, { comment }, { headers });
+    const response = await axios.post(`${backendUrl}/api/clips/${clipId}/comments`, { comment }, { headers });
     return response.data;
   } catch (error) {
     console.error('Error adding comment:', error);
@@ -219,7 +197,7 @@ export const addCommentToClip = async (clipId: string, comment: string): Promise
 export const voteOnClip = async (clipId: string, voteType: 'upvote' | 'downvote'): Promise<Clip> => {
   try {
     const headers = getAuthHeaders();
-    const response = await axios.post(`${apiUrl}/api/clips/${clipId}/vote`, { voteType }, { headers });
+    const response = await axios.post(`${backendUrl}/api/clips/${clipId}/vote`, { voteType }, { headers });
     return response.data;
   } catch (error) {
     console.error('Error voting on clip:', error);
@@ -283,7 +261,7 @@ export const transformRatings = (ratings: Record<string, any>): Record<string, R
  */
 export const getClipsByUser = async (discordId: string, page: number = 1, limit: number = 10): Promise<ClipResponse> => {
   try {
-    const response = await axios.get(`${apiUrl}/api/clips/user/${discordId}`, {
+    const response = await axios.get(`${backendUrl}/api/clips/user/${discordId}`, {
       params: { page, limit }
     });
     
@@ -296,5 +274,153 @@ export const getClipsByUser = async (discordId: string, page: number = 1, limit:
   } catch (error) {
     console.error('Error fetching user clips:', error);
     throw new Error('Failed to fetch user clips');
+  }
+};
+
+/**
+ * Get video info from URL for clip upload
+ */
+export const getVideoInfo = async (url: string): Promise<{ title: string; author: string; platform: string }> => {
+  try {
+    const headers = getAuthHeaders();
+    const response = await axios.get(`${backendUrl}/api/clips/info`, {
+      params: { url },
+      headers
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching video info:', error);
+    throw new Error('Failed to fetch video info');
+  }
+};
+
+/**
+ * Upload clip via file
+ */
+export const uploadClipFile = async (
+  file: File, 
+  title: string, 
+  streamer: string, 
+  submitter: string,
+  onUploadProgress?: (percentCompleted: number) => void
+): Promise<void> => {
+  try {
+    const formData = new FormData();
+    formData.append('clip', file);
+    formData.append('title', title);
+    formData.append('streamer', streamer);
+    formData.append('submitter', submitter);
+      const authHeaders = getAuthHeaders();
+    const headers = {
+      ...authHeaders,
+      'Content-Type': 'multipart/form-data'
+    };
+    
+    await axios.post(`${backendUrl}/api/clips`, formData, {
+      headers,
+      onUploadProgress: (progressEvent) => {
+        if (onUploadProgress && progressEvent.total) {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          onUploadProgress(percentCompleted);
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error uploading clip file:', error);
+    throw new Error('Failed to upload clip file');
+  }
+};
+
+/**
+ * Upload clip via link
+ */
+export const uploadClipLink = async (
+  title: string, 
+  streamer: string, 
+  submitter: string, 
+  link: string
+): Promise<void> => {
+  try {
+    const headers = getAuthHeaders();
+    const clipData = { title, streamer, submitter, link };
+    
+    await axios.post(`${backendUrl}/api/clips`, clipData, { headers });
+  } catch (error) {
+    console.error('Error uploading clip link:', error);
+    throw new Error('Failed to upload clip link');
+  }
+};
+
+/**
+ * Get vote status for a clip
+ */
+export const getClipVoteStatus = async (clipId: string): Promise<{ hasVoted: boolean; voteType?: 'upvote' | 'downvote' }> => {
+  try {
+    const headers = getAuthHeaders();
+    const response = await axios.get(`${backendUrl}/api/clips/${clipId}/vote/status`, { headers });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching vote status:', error);
+    return { hasVoted: false };
+  }
+};
+
+/**
+ * Delete a comment from a clip
+ */
+export const deleteCommentFromClip = async (clipId: string, commentId: string): Promise<Clip> => {
+  try {
+    const headers = getAuthHeaders();
+    await axios.delete(`${backendUrl}/api/clips/${clipId}/comments/${commentId}`, { headers });
+    
+    // Fetch updated clip data
+    const response = await axios.get(`${backendUrl}/api/clips/${clipId}`, { headers });
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting comment:', error);
+    throw new Error('Failed to delete comment');
+  }
+};
+
+/**
+ * Add a reply to a comment
+ */
+export const addReplyToComment = async (
+  clipId: string, 
+  commentId: string, 
+  content: string
+): Promise<Clip> => {
+  try {
+    const headers = getAuthHeaders();
+    const response = await axios.post(
+      `${backendUrl}/api/clips/${clipId}/comments/${commentId}/replies`,
+      { content },
+      { headers }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error adding reply:', error);
+    throw new Error('Failed to add reply');
+  }
+};
+
+/**
+ * Delete a reply from a comment
+ */
+export const deleteReplyFromComment = async (
+  clipId: string, 
+  commentId: string, 
+  replyId: string
+): Promise<Clip> => {
+  try {
+    const headers = getAuthHeaders();
+    const response = await axios.delete(
+      `${backendUrl}/api/clips/${clipId}/comments/${commentId}/replies/${replyId}`,
+      { headers }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting reply:', error);
+    throw new Error('Failed to delete reply');
   }
 };

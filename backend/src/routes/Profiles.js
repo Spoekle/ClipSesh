@@ -57,7 +57,7 @@ router.get('/public/:userId', async (req, res) => {
         // Calculate clips submitted
         let clipsSubmitted = 0;
         if (user.discordId) {
-            clipsSubmitted = await Clip.countDocuments({ discordId: user.discordId });
+            clipsSubmitted = await Clip.countDocuments({ discordId: user.discordId, archived: { $ne: true } });
         }        // Add stats to user object
         const userWithStats = {
             ...user,
@@ -105,7 +105,7 @@ router.get('/me', auth, async (req, res) => {
         // Calculate clips submitted
         let clipsSubmitted = 0;
         if (user.discordId) {
-            clipsSubmitted = await Clip.countDocuments({ discordId: user.discordId });
+            clipsSubmitted = await Clip.countDocuments({ discordId: user.discordId, archived: { $ne: true } });
         }        // Update last active
         await User.findByIdAndUpdate(userId, { 'profile.lastActive': new Date() });        
         // Add stats to user object
@@ -196,7 +196,7 @@ router.put('/me', auth, async (req, res) => {
         // Calculate clips submitted
         let clipsSubmitted = 0;
         if (updatedUser.discordId) {
-            clipsSubmitted = await Clip.countDocuments({ discordId: updatedUser.discordId });
+            clipsSubmitted = await Clip.countDocuments({ discordId: updatedUser.discordId, archived: { $ne: true } });
         }        
         // Add stats to user object
         const userWithStats = {

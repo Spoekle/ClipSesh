@@ -1,6 +1,6 @@
 // User-related types
 export interface Trophy {
-  _id?: string;
+  _id: string;
   trophyName: string;
   description: string;
   dateEarned: string;
@@ -32,8 +32,6 @@ export interface User {
     lastActive?: string;
     trophies?: Trophy[];
   };
-  // Keep trophies at root level for backward compatibility
-  trophies?: Trophy[];
 }
 
 export interface RatingDistributionProps {
@@ -71,6 +69,10 @@ export interface Clip {
   upvotes: number;
   downvotes: number;
   comments: Comment[];
+  season?: string;
+  year?: number;
+  archived?: boolean;
+  archivedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -149,4 +151,153 @@ export interface Zip {
 export interface PieData {
   name: string;
   value: number;
+}
+
+// Admin configuration interfaces
+export interface AdminConfig {
+  denyThreshold: number;
+  latestVideoLink: string;
+  clipChannelIds?: string[];
+}
+
+// Admin statistics interface
+export interface AdminStats {
+  userCount: number;
+  activeUserCount: number;
+  clipCount: number;
+  ratedClipsCount: number;
+  deniedClipsCount: number;
+}
+
+// Config response interface
+export interface ConfigResponse {
+  public?: {
+    latestVideoLink?: string;
+    clipAmount?: number;
+  };
+  admin?: {
+    denyThreshold?: number;
+    clipChannelIds?: string[];
+  };
+}
+
+// Process clips request interface
+export interface ProcessClipsRequest {
+  clips: Array<Clip & { rating: string; index: number }>;
+  season: string;
+  year: number;
+}
+
+// Process job status interface
+export interface ProcessJobStatus {
+  progress: number;
+  status: 'processing' | 'completed' | 'error';
+  message?: string;
+}
+
+// Trophy criteria types
+export interface TrophyCriteria {
+  _id?: string;
+  name: string;
+  description: string;
+  criteriaType: string;
+  customCriteria?: CustomCriteriaConfig;
+  isActive: boolean;
+  season?: string;
+  year?: number;
+  awardLimit?: number;
+  minValue?: number;
+  priority?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CustomCriteriaConfig {
+  type: string;
+  [key: string]: any;
+}
+
+export interface CustomCriteriaTemplate {
+  id: string;
+  name: string;
+  description: string;
+  fields: CustomCriteriaField[];
+  example: CustomCriteriaConfig;
+}
+
+export interface CustomCriteriaField {
+  key: string;
+  label: string;
+  type: 'text' | 'number' | 'select' | 'multiselect' | 'checkbox' | 'json' | 'object';
+  options?: Array<{ value: string; label: string }>;
+  required?: boolean;
+  default?: any;
+  min?: number;
+  max?: number;
+  step?: number;
+  suffix?: string;
+  description?: string;
+  placeholder?: string;
+  fields?: CustomCriteriaField[]; // For nested object types
+}
+
+export interface CustomCriteriaValidationResult {
+  valid: boolean;
+  error?: string;
+  message?: string;
+  previewResults?: Array<{
+    userId: string;
+    value: number;
+    details?: any;
+  }>;
+  resultCount?: number;
+  details?: string;
+}
+
+export interface CriteriaType {
+  value: string;
+  label: string;
+  description: string;
+}
+
+// Trophy assignment result
+export interface TrophyAssignmentResult {
+  success: boolean;
+  message: string;
+  trophiesAwarded: number;
+  details: Array<{
+    userId: string;
+    username: string;
+    criteriaName: string;
+    value?: number;
+  }>;
+}
+
+// Trophy preview results
+export interface TrophyPreviewResult {
+  criteriaId?: string;
+  criteriaName: string;
+  criteriaType: string;
+  winners: Array<{
+    userId: string;
+    value: number;
+    details?: any;
+    user?: {
+      username: string;
+      profilePicture?: string;
+      discordUsername?: string;
+    };
+  }>;
+  totalWinners: number;
+  season?: string;
+  year?: number;
+  error?: string;
+}
+
+export interface AllTrophyPreviewResult {
+  season: string;
+  year: number;
+  criteria: TrophyPreviewResult[];
+  totalCriteria: number;
+  totalTrophies: number;
 }

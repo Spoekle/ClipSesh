@@ -1,15 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaTimes, FaUpload, FaCheck, FaSpinner, FaLink, FaFileVideo, FaInfoCircle } from 'react-icons/fa';
-import axios from 'axios';
-import apiUrl from '../../../../config/config';
-import { useNotification } from '../../../../context/NotificationContext';
+import { useNotification } from '../../../../context/AlertContext';
+import { getVideoInfo, uploadClipFile, uploadClipLink } from '../../../../services/clipService';
 
 interface UploadClipModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  token: string;
 }
 
 interface VideoInfo {
@@ -18,7 +16,7 @@ interface VideoInfo {
   platform: string;
 }
 
-const UploadClipModal: React.FC<UploadClipModalProps> = ({ isOpen, onClose, onSuccess, token }) => {
+const UploadClipModal: React.FC<UploadClipModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const [title, setTitle] = useState('');
   const [streamer, setStreamer] = useState('');
   const [link, setLink] = useState(''); 
@@ -98,16 +96,11 @@ const UploadClipModal: React.FC<UploadClipModalProps> = ({ isOpen, onClose, onSu
       setVideoInfo(null);
     }
   };
-
   const fetchVideoInfo = async (url: string) => {
     try {
       setFetchingInfo(true);
-      const response = await axios.get(`${apiUrl}/api/clips/info`, {
-        params: { url },
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const info = await getVideoInfo(url);
       
-      const info = response.data;
       setVideoInfo(info);
       
       // Auto-fill title and streamer if they're empty
@@ -142,48 +135,23 @@ const UploadClipModal: React.FC<UploadClipModalProps> = ({ isOpen, onClose, onSu
 
     if (uploadMethod === 'link' && !link) {
       showError('Please enter a video link from YouTube, Twitch, or another platform.');
-      return;
-    }
+      return;    }
     
     try {
       setUploading(true);
       
       if (uploadMethod === 'file' && file) {
         // File upload
-        const formData = new FormData();
-        formData.append('clip', file);
-        formData.append('title', title);
-        formData.append('streamer', streamer);
-        formData.append('submitter', submitter);
-        
-        await axios.post(
-          `${apiUrl}/api/clips`, 
-          formData, 
-          {
-            headers: { 
-              'Content-Type': 'multipart/form-data',
-              'Authorization': `Bearer ${token}`
-            },
-            onUploadProgress: (progressEvent) => {
-              const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total ?? 1));
-              setFileUploadProgress(percentCompleted);
-            }
-          }
-        );
-      } else {
-        // Link-based upload
-        const clipData = {
+        await uploadClipFile(
+          file,
           title,
           streamer,
           submitter,
-          link,
-        };
-        
-        await axios.post(
-          `${apiUrl}/api/clips`, 
-          clipData,
-          { headers: { Authorization: `Bearer ${token}` } }
+          (percentCompleted) => setFileUploadProgress(percentCompleted)
         );
+      } else {
+        // Link-based upload
+        await uploadClipLink(title, streamer, submitter, link);
       }
       
       showSuccess('Clip uploaded successfully!');

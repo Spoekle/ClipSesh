@@ -1,20 +1,18 @@
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo, useEffect, useState, useRef } from 'react';
 import ClipSearch from '../../ClipSearch';
 import ClipContent from '../ClipView/Index';
 import ClipFilterBar from '../ClipGrid/components/ClipFilterBar';
 import ClipGrid from '../ClipGrid/Index';
 import { Clip, User, Rating } from '../../../types/adminTypes';
-import apiUrl from '../../../config/config';
-import axios from 'axios';
+import { getClipFilterOptions } from '../../../services/clipService';
 
 interface ClipViewerContentProps {
   expandedClip: string | 'new' | null;
-  setExpandedClip: (clip: string | 'new' | null) => void;
+  setExpandedClip: React.Dispatch<React.SetStateAction<string | null>>;
   isClipLoading: boolean;
   currentClip: Clip | null;
   isLoggedIn: boolean;
   user: User | null;
-  token: string | null;
   fetchClipsAndRatings: (user: User | null) => Promise<void>;
   ratings: Record<string, Rating>;
   searchParams: URLSearchParams;
@@ -48,7 +46,6 @@ const ClipViewerContent: React.FC<ClipViewerContentProps> = ({
   currentClip,
   isLoggedIn,
   user,
-  token,
   fetchClipsAndRatings,
   ratings,
   searchParams,
@@ -72,14 +69,20 @@ const ClipViewerContent: React.FC<ClipViewerContentProps> = ({
   sortOption,
 }) => {
   const [allStreamers, setAllStreamers] = useState<string[]>([]);
-
+  const fetchAttempted = useRef(false);
+  
   // Fetch all unique streamers for the filter dropdown
   useEffect(() => {
+    if (fetchAttempted.current) {
+      return; // Prevent multiple attempts
+    }
+    
     const fetchStreamers = async () => {
+      fetchAttempted.current = true;
       try {
-        const response = await axios.get(`${apiUrl}/api/clips/filter-options`);
-        if (response.data && response.data.streamers) {
-          setAllStreamers(response.data.streamers);
+        const filterOptions = await getClipFilterOptions();
+        if (filterOptions && filterOptions.streamers) {
+          setAllStreamers(filterOptions.streamers);
         }
       } catch (error) {
         console.error('Error fetching streamers:', error);
@@ -101,7 +104,6 @@ const ClipViewerContent: React.FC<ClipViewerContentProps> = ({
     const uniqueStreamers = [...new Set(unratedClips.map(clip => clip.streamer))];
     return uniqueStreamers;
   }, [allStreamers, unratedClips]);
-
   // We're not filtering clips client-side anymore since it's done on the server
   const filteredClips = unratedClips;
   
@@ -110,7 +112,6 @@ const ClipViewerContent: React.FC<ClipViewerContentProps> = ({
   const totalPages = useMemo(() => {
     // Get the clip amount from config, or fall back to calculating from the current page
     const totalClips = config.clipAmount || filteredClips.length;
-    console.log(`Total clips: ${totalClips}, itemsPerPage: ${itemsPerPage}, calculated pages: ${Math.ceil(totalClips / itemsPerPage)}`);
     return Math.max(1, Math.ceil(totalClips / itemsPerPage));
   }, [config.clipAmount, filteredClips.length, itemsPerPage]);
 
@@ -156,9 +157,8 @@ const ClipViewerContent: React.FC<ClipViewerContentProps> = ({
     // Scroll to top of grid when paginating
     document.querySelector('.clip-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
-
   if (expandedClip === 'new') {
-    return <ClipSearch setExpandedPost={setExpandedClip} fetchClips={fetchClipsAndRatings} />;
+    return <ClipSearch />;
   }
 
   if (expandedClip) {
@@ -168,22 +168,18 @@ const ClipViewerContent: React.FC<ClipViewerContentProps> = ({
           <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500"></div>
         </div>
       );
-    } 
-    
-    if (currentClip) {
+    }    if (currentClip) {
       return (
         <ClipContent
           clip={currentClip}
           setExpandedClip={setExpandedClip}
-          isLoggedIn={isLoggedIn}
           user={user}
-          token={token}
           fetchClipsAndRatings={fetchClipsAndRatings}
           ratings={ratings}
           searchParams={searchParams}
         />
       );
-    } 
+    }
     
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] bg-white dark:bg-neutral-800 p-8 rounded-xl shadow-lg">
@@ -197,16 +193,11 @@ const ClipViewerContent: React.FC<ClipViewerContentProps> = ({
           Back to All Clips
         </button>
       </div>
-    );
-  }
-
-  // Debug output for pagination
-  console.log(`Rendering pagination: currentPage=${currentPage}, totalPages=${totalPages}, clipAmount=${config.clipAmount}`);
+    );  }
 
   // Default view - clip grid with filters
   return (
-    <div className="animate-fade-in">
-      <ClipFilterBar
+    <div className="animate-fade-in">      <ClipFilterBar
         sortOptionState={sortOptionState}
         setSortOptionState={setSortOptionState}
         handleSortChange={handleSortChange}
@@ -224,7 +215,6 @@ const ClipViewerContent: React.FC<ClipViewerContentProps> = ({
         streamers={streamers}
         handleFilterReset={handleFilterReset}
         fetchClipsAndRatings={fetchClipsAndRatings}
-        token={token || ''}
         setSearchParams={setSearchParams}
       />
       

@@ -269,7 +269,7 @@ function DesktopNavbar({
                   whileTap={{ scale: 0.95 }}
                   transition={{ type: "spring", stiffness: 400, damping: 17 }}
                   onClick={toggleDropdown}
-                  className="flex items-center space-x-2 p-1.5 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                  className="flex items-center p-1.5 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
                   aria-expanded={isDropdownOpen}
                   aria-haspopup="true"
                 >
@@ -280,7 +280,7 @@ function DesktopNavbar({
                     whileHover={{ rotate: 10 }}
                     transition={{ duration: 0.2 }}
                   />
-                  <span className="hidden lg:block font-medium">{user.username}</span>
+                  <span className="hidden lg:block ml-2 font-medium">{user.username}</span>
                 </motion.button>
               </div>
               

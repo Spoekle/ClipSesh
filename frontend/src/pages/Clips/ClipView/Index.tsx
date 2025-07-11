@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Helmet } from 'react-helmet';
-import apiUrl from '../../../config/config';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
 import { motion } from 'framer-motion';
 import {
     FaThumbsUp,
@@ -21,16 +19,22 @@ import RatingsComponent from './components/clipteam/RatingsPopup';
 import EditModal from './components/EditClipModal';
 import ConfirmationDialog from '../../../components/common/ConfirmationDialog';
 import CustomPlayer from './components/CustomPlayer';
-import { useNotification } from '../../../context/NotificationContext';
-import { Clip, User, Rating, RatingUser } from '../../../types/adminTypes';
+import { useNotification } from '../../../context/AlertContext';
+import { Clip, User, Rating } from '../../../types/adminTypes';
 import RatingPanel from './components/clipteam/RatingPanel';
 import CommentSection from './components/CommentSection';
+import { 
+  getAdjacentClips, 
+  getClipById, 
+  getClipVoteStatus, 
+  voteOnClip,
+  deleteClip 
+} from '../../../services/clipService';
 
 interface ClipContentProps {
     clip: Clip;
     setExpandedClip: React.Dispatch<React.SetStateAction<string | null>>;
     user: User | null;
-    token: string;
     fetchClipsAndRatings: (user: User | null) => Promise<void>;
     ratings: Record<string, Rating>;
     searchParams: URLSearchParams;
@@ -52,7 +56,6 @@ const ClipContent: React.FC<ClipContentProps> = ({
     clip,
     setExpandedClip,
     user,
-    token,
     fetchClipsAndRatings,
     ratings,
     searchParams
@@ -197,20 +200,15 @@ const ClipContent: React.FC<ClipContentProps> = ({
             const streamerFilter = searchParams.get('streamer');
             if (streamerFilter) {
                 queryParams.append('streamer', streamerFilter);
-            }
+            }            // Make a single API call to get both previous and next clips
+            const adjacentData = await getAdjacentClips(currentClip._id);
 
-            // Make a single API call to get both previous and next clips
-            const response = await axios.get(`${apiUrl}/api/clips/clip-navigation/adjacent`, {
-                params: queryParams,
-                headers: token ? { Authorization: `Bearer ${token}` } : undefined
-            });
-
-            console.log("Adjacent clips response:", response.data);
+            console.log("Adjacent clips response:", adjacentData);
 
             // Set the prev and next clips from response
-            if (response.data) {
-                setPrevClip(response.data.prevClip || null);
-                setNextClip(response.data.nextClip || null);
+            if (adjacentData) {
+                setPrevClip(adjacentData.previous || null);
+                setNextClip(adjacentData.next || null);
             }
         } catch (error) {
             console.error('Error fetching adjacent clips:', error);
@@ -247,17 +245,15 @@ const ClipContent: React.FC<ClipContentProps> = ({
         navigate(`/clips/${clipId}`, {
             state: { from: cleanFromState },
             replace: true // Replace current history entry to avoid back button issues
-        });
-
-        // Fetch the new clip data
+        });        // Fetch the new clip data
         const fetchNewClip = async () => {
             try {
                 // Fetch the new clip directly
-                const response = await axios.get(`${apiUrl}/api/clips/${clipId}`);
+                const clipData = await getClipById(clipId);
 
-                if (response.data) {
+                if (clipData) {
                     // Update current clip with the new data
-                    setCurrentClip(response.data);
+                    setCurrentClip(clipData);
 
                     // After setting the current clip, update expandedClip in parent component
                     setExpandedClip(clipId);
@@ -305,17 +301,15 @@ const ClipContent: React.FC<ClipContentProps> = ({
     };
 
     // Add a state to track the user's current vote
-    const [userVote, setUserVote] = useState<'upvote' | 'downvote' | null>(null);
-
-    // Check user's current vote status when clip changes
+    const [userVote, setUserVote] = useState<'upvote' | 'downvote' | null>(null);    // Check user's current vote status when clip changes
     useEffect(() => {
         const checkVoteStatus = async () => {
             if (!currentClip?._id) return;
 
             try {
-                const response = await axios.get(`${apiUrl}/api/clips/${currentClip._id}/vote/status`);
-                if (response.data.hasVoted) {
-                    setUserVote(response.data.voteType);
+                const voteStatusData = await getClipVoteStatus(currentClip._id);
+                if (voteStatusData.hasVoted) {
+                    setUserVote(voteStatusData.voteType || null);
                 } else {
                     setUserVote(null);
                 }
@@ -328,21 +322,24 @@ const ClipContent: React.FC<ClipContentProps> = ({
     }, [currentClip?._id]);
 
     const handleVote = async (voteType: 'upvote' | 'downvote'): Promise<void> => {
-        try {
-            const response = await axios.post<Clip>(
-                `${apiUrl}/api/clips/${currentClip._id}/vote/${voteType}`
-            );
-            setCurrentClip(prev => ({
-                ...prev,
-                upvotes: response.data.upvotes,
-                downvotes: response.data.downvotes,
-            }));
+        if (!currentClip?._id) return;
 
+        try {
+            // If user already voted the same way, remove the vote
             if (userVote === voteType) {
+                // TODO: Add remove vote functionality if API supports it
                 setUserVote(null);
             } else {
-                // New vote or changed vote
+                // Vote on the clip using the service
+                const updatedClip = await voteOnClip(currentClip._id, voteType);
+                
+                // Update the current clip with new vote counts
+                setCurrentClip(updatedClip);
+                
+                // Update user's vote status
                 setUserVote(voteType);
+                
+                showSuccess(`Clip ${voteType}d successfully!`);
             }
         } catch (error: any) {
             showError(`Error ${voteType}ing clip: ${error.response?.data?.message || 'Unknown error'}`);
@@ -352,15 +349,12 @@ const ClipContent: React.FC<ClipContentProps> = ({
     const handleUpvote = (): Promise<void> => handleVote('upvote');
     const handleDownvote = (): Promise<void> => handleVote('downvote');
 
-
-
     const handleDeleteClip = async (): Promise<void> => {
-        const token = localStorage.getItem('token');
+        if (!currentClip?._id) return;
+
         try {
             setIsLoading(true);
-            await axios.delete(`${apiUrl}/api/clips/${currentClip._id}`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            await deleteClip(currentClip._id);
             showSuccess('Clip deleted successfully!');
             closeExpandedClip();
         } catch (error: any) {
@@ -385,30 +379,6 @@ const ClipContent: React.FC<ClipContentProps> = ({
     const handleCopyShareLink = (): void => {
         showSuccess('Share link copied to clipboard!');
     };
-
-    // Updated code to get user's current rating from the ratings object structure
-    const getUserCurrentRating = () => {
-        if (!ratings || !ratings[clip._id] || !user) return null;
-
-        // Handle case where ratings structure might have changed or is different from expected
-        const ratingData = ratings[clip._id];
-        if (!ratingData.ratings) return null;
-
-        // Get the rating categories
-        const ratingCategories = ratingData.ratings;
-
-        // Check each rating category (1-4) to see if the user is in it
-        for (const rating of ['1', '2', '3', '4'] as const) {
-            const usersInRating = ratingCategories[rating] || [];
-            if (usersInRating.some((u: RatingUser) => u.userId === user._id)) {
-                return rating;
-            }
-        }
-
-        return null;
-    };
-
-    const userCurrentRating = getUserCurrentRating();
 
     return (
         <motion.div
@@ -679,17 +649,13 @@ const ClipContent: React.FC<ClipContentProps> = ({
                                             ))}
                                         </div>
                                     </div>
-                                </div>
-
-                                {/* Team rating buttons */}
-                                {user && (user.roles.includes('admin') || user.roles.includes('clipteam')) && (
+                                </div>                                {/* Rating panel for all logged-in users */}
+                                {user && (
                                     <RatingPanel
                                         clip={currentClip}
                                         currentClip={currentClip}
                                         user={user}
-                                        token={token}
                                         isLoading={isLoading}
-                                        userCurrentRating={userCurrentRating}
                                         ratings={ratings}
                                         fetchClipsAndRatings={fetchClipsAndRatings}
                                     />
@@ -717,14 +683,11 @@ const ClipContent: React.FC<ClipContentProps> = ({
                                 )}
                             </button>
                         )}
-                    </div>
-
-                    {/* Comments section */}
+                    </div>                    {/* Comments section */}
                     <CommentSection
                         clipId={currentClip._id}
                         comments={currentClip.comments || []}
                         user={user}
-                        token={token}
                         fetchClipsAndRatings={fetchClipsAndRatings}
                         highlightedMessageId={highlightedMessageId}
                         setHighlightedMessageId={setHighlightedMessageId}
@@ -776,14 +739,12 @@ const ClipContent: React.FC<ClipContentProps> = ({
                 <RatingsComponent clip={clip} ratings={ratings} setPopout={setPopout} />
             ) : null}
 
-            {/* Edit Modal */}
-            {isEditModalOpen && (
+            {/* Edit Modal */}            {isEditModalOpen && (
                 <EditModal
                     isEditModalOpen={isEditModalOpen}
                     setIsEditModalOpen={toggleEditModal}
                     clip={currentClip}
                     setCurrentClip={setCurrentClip}
-                    token={token}
                 />
             )}
 

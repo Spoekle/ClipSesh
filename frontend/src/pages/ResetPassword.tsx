@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
-import apiUrl from '../config/config';
 import background from '../media/editor.webp';
 import { motion } from 'framer-motion';
 import { FaLock, FaShieldAlt, FaExclamationTriangle, FaCheckCircle } from 'react-icons/fa';
-import { useNotification } from '../context/NotificationContext';
+import { useNotification } from '../context/AlertContext';
+import { confirmPasswordReset } from '../services/userService';
 
 const ResetPassword: React.FC = () => {
     const [password, setPassword] = useState<string>('');
@@ -57,12 +56,11 @@ const ResetPassword: React.FC = () => {
         if (passwordStrength < 2) {
             setError('Password is too weak. Include uppercase, lowercase, numbers, or special characters.');
             return;
-        }
-
-        setLoading(true);
+        }        setLoading(true);
         try {
-            const response = await axios.post(`${apiUrl}/api/users/resetPassword/confirm`, { token, password });
-            setMessage(response.data.message);
+            if (!token) throw new Error('Invalid token');
+            const response = await confirmPasswordReset(token, password);
+            setMessage(response.message || 'Password reset successful');
             setError('');
             showSuccess('Password reset successful! Redirecting...');
             setTimeout(() => {

@@ -1,10 +1,10 @@
-import apiUrl from '../config/config';
+const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://api.spoekle.com';
 
 /**
  * Start Discord OAuth linking process
  */
 export const linkDiscordAccount = (userId: string): void => {
-  const discordAuthUrl = `${apiUrl}/api/discord/auth?siteUserId=${encodeURIComponent(userId)}`;
+  const discordAuthUrl = `${backendUrl}/api/discord/auth?siteUserId=${encodeURIComponent(userId)}`;
   window.location.href = discordAuthUrl;
 };
 
@@ -17,7 +17,7 @@ export const unlinkDiscordAccount = async (userId: string): Promise<void> => {
     throw new Error('Authentication required');
   }
 
-  const response = await fetch(`${apiUrl}/api/users/${userId}`, {
+  const response = await fetch(`${backendUrl}/api/users/${userId}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',

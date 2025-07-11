@@ -1,33 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
-import apiUrl from '../../config/config';
-import axios from 'axios';
-import { BiLoaderCircle } from 'react-icons/bi';
 import LoadingBar from 'react-top-loading-bar';
 import background from '../../media/admin.jpg';
 import { FaDiscord, FaUserClock, FaUsers, FaCog, FaThumbsDown, FaChartBar, FaTrophy } from "react-icons/fa";
 import { useLocation } from 'react-router-dom';
-import DeniedClips from './components/DeniedClips';
-import UserList from './components/UserList';
-import Statistics from './components/Statistics';
-import CreateUser from './components/CreateUser';
-import ConfigPanel from './components/ConfigPanel';
-import AdminActions from './components/AdminActions';
-import ZipManager from './components/ZipManager';
+import DeniedClips from './ContentManagement/DeniedClips';
+import UserList from './UserManagement/UserList';
+import Statistics from './Overview/Statistics';
+import CreateUser from './UserManagement/CreateUser';
+import ConfigPanel from './Configuration/ConfigPanel';
+import AdminActions from './ContentManagement/AdminActions';
+import ZipManager from './ContentManagement/ZipManager';
 import SeasonInfo from './components/SeasonInfo';
-import TrophyManagement from './components/TrophyManagement';
+import TrophyManagement from './Trophies/TrophyManagement';
 import { getCurrentSeason } from '../../utils/seasonHelpers';
 import ProcessClipsModal from '../../components/admin/ProcessClipsModal';
 import useSocket from '../../hooks/useSocket';
 import ConfirmationDialog from '../../components/common/ConfirmationDialog';
+import * as adminService from '../../services/adminService';
 
-import { 
-  Clip, 
-  Rating, 
-  User, 
-  UserRating, 
-  Zip, 
-  SeasonInfo as SeasonInfoType 
+import {
+  Clip,
+  Rating,
+  User,
+  UserRating,
+  Zip,
+  SeasonInfo as SeasonInfoType,
+  AdminStats
 } from '../../types/adminTypes';
 
 // Define interfaces for local app's data types
@@ -37,21 +36,13 @@ interface Config {
   clipChannelIds?: string[];
 }
 
-interface AdminStats {
-  userCount: number;
-  activeUserCount: number;
-  clipCount: number;
-  ratedClipsCount: number;
-  deniedClipsCount: number;
-}
-
 // Tab names for the admin dashboard
 type TabName = 'overview' | 'users' | 'content' | 'config' | 'clips' | 'stats' | 'trophies';
 
 function AdminDash() {
   // Tab state - default to overview tab
   const [activeTab, setActiveTab] = useState<TabName>('overview');
-  
+
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [, setOtherRoles] = useState<User[]>([]);
   const [, setAllActiveUsers] = useState<User[]>([]);
@@ -117,101 +108,77 @@ function AdminDash() {
       console.error('Error fetching initial data:', error);
     }
   };
-
   const fetchZips = async (): Promise<void> => {
     try {
-      const response = await axios.get<Zip[]>(`${apiUrl}/api/zips`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-      });
-      setZips(response.data);
+      const zipsData = await adminService.getZips();
+      setZips(zipsData);
       setZipsLoading(false);
     } catch (error) {
       console.error('Error fetching zips:', error);
       setZipsLoading(false);
     }
-  };
-
-  const deleteZip = async (zipId: string): Promise<void> => {
+  };  const deleteZip = async (zipId: string): Promise<void> => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.delete(`${apiUrl}/api/zips/${zipId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await adminService.deleteZip(zipId);
       setZips(zips.filter(zip => zip._id !== zipId));
-      alert('Zip deleted successfully');
     } catch (error) {
       console.error('Error deleting zip:', error);
-      alert('Failed to delete zip. Please try again.');
+      throw error;
     }
   };
-
   const fetchUsers = async (): Promise<void> => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get<User[]>(`${apiUrl}/api/users`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const everyUser = response.data;
+      const everyUser = await adminService.getAllUsers();
       setAllUsers(everyUser);
 
       // Filter active users from the fetched data
-      const activeUsers = everyUser.filter(user => user.status === 'active');
+      const activeUsers = everyUser.filter((user: User) => user.status === 'active');
       setAllActiveUsers(activeUsers);
 
       // Further filter users based on roles array
-      setUsers(activeUsers.filter(user => user.roles.includes('user')));
-      setOtherRoles(activeUsers.filter(user => !user.roles.includes('user')));
-      setAdmins(activeUsers.filter(user => user.roles.includes('admin')));
-      setClipTeam(activeUsers.filter(user => user.roles.includes('clipteam')));
-      setEditors(activeUsers.filter(user => user.roles.includes('editor')));
-      setUploader(activeUsers.filter(user => user.roles.includes('uploader')));
-      setDisabledUsers(everyUser.filter(user => user.status === 'disabled'));
+      setUsers(activeUsers.filter((user: User) => user.roles.includes('user')));
+      setOtherRoles(activeUsers.filter((user: User) => !user.roles.includes('user')));
+      setAdmins(activeUsers.filter((user: User) => user.roles.includes('admin')));
+      setClipTeam(activeUsers.filter((user: User) => user.roles.includes('clipteam')));
+      setEditors(activeUsers.filter((user: User) => user.roles.includes('editor')));
+      setUploader(activeUsers.filter((user: User) => user.roles.includes('uploader')));
+      setDisabledUsers(everyUser.filter((user: User) => user.status === 'disabled'));
     } catch (error) {
       console.error('Error fetching users:', error);
-      if (axios.isAxiosError(error) && error.response && error.response.status === 403) {
+      if (error instanceof Error && error.message.includes('403')) {
         window.location.href = '/clips';
         alert('You do not have permission to view this page.');
       }
     }
   };
-
   const handleApproveUser = async (userId: string): Promise<void> => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(`${apiUrl}/api/users/approve`, { userId }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await adminService.approveUser(userId);
       setDisabledUsers(disabledUsers.filter(user => user._id !== userId));
       fetchUsers();
     } catch (error) {
       console.error('Error approving user:', error);
     }
   };
-
   const fetchConfig = async (): Promise<void> => {
     try {
-      // Use the correct endpoint for config data
-      const response = await axios.get<any>(`${apiUrl}/api/config`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      
+      const response = await adminService.getConfig();
+
       // Extract config from the combined object returned by the API
-      if (response.data) {
-        const publicConfig = response.data.public || {};
-        const adminConfig = response.data.admin || {};
-        
+      if (response) {
+        const publicConfig = response.public || {};
+        const adminConfig = response.admin || {};
+
         // Merge admin and public configs into a single config object
         setConfig({
           denyThreshold: adminConfig.denyThreshold ?? 5,
           latestVideoLink: publicConfig.latestVideoLink ?? '',
           clipChannelIds: adminConfig.clipChannelIds ?? []
-        });
-        
-        // Update season info with clip amount from config if available
-        if (publicConfig.clipAmount !== undefined) {
+        });        // Update season info with clip amount from config if available
+        if (typeof publicConfig.clipAmount === 'number') {
           setSeasonInfo(prevState => ({
             ...prevState,
-            clipAmount: publicConfig.clipAmount
+            clipAmount: publicConfig.clipAmount as number
           }));
           console.log(`Retrieved clipAmount from config: ${publicConfig.clipAmount}`);
         }
@@ -224,144 +191,43 @@ function AdminDash() {
       // Keep using default values on error
     }
   };
-
   const fetchAdminStats = async (): Promise<void> => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get<AdminStats>(`${apiUrl}/api/admin/stats`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setAdminStats(response.data);
+      const stats = await adminService.getAdminStats();
+      setAdminStats(stats);
     } catch (error) {
       console.error('Error fetching admin stats:', error);
     }
   };
-
   const fetchClipsAndRatings = async (): Promise<void> => {
     try {
-      // Use query parameters for backend filtering/sorting
-      const token = localStorage.getItem('token');
-      const headers = { Authorization: `Bearer ${token}` };
-      
-      // Request clips with pagination and sorting from the backend
-      const clipResponse = await axios.get(`${apiUrl}/api/clips`, {
-        params: {
-          limit: 1000, // Get a large number of clips for admin view
-          sortBy: 'createdAt',
-          sortOrder: 'desc',
-          includeRatings: true
-        },
-        headers
+      const { clips: clipsData, ratings: ratingsData } = await adminService.getClipsWithRatings({
+        limit: 1000,
+        sortBy: 'createdAt',
+        sortOrder: 'desc',
+        includeRatings: true
       });
-      
-      // Process the response data
-      let clipsData: Clip[] = [];
-      let ratingsData: Record<string, Rating> = {};
-      
-      if (clipResponse.data) {
-        // Check for clips in various response formats
-        if (Array.isArray(clipResponse.data)) {
-          clipsData = clipResponse.data;
-        } else if (clipResponse.data.clips && Array.isArray(clipResponse.data.clips)) {
-          clipsData = clipResponse.data.clips;
-        } else if (clipResponse.data.data && Array.isArray(clipResponse.data.data)) {
-          clipsData = clipResponse.data.data;
-        }
-        
-        // Check for included ratings in the response
-        if (clipResponse.data.ratings && typeof clipResponse.data.ratings === 'object') {
-          ratingsData = clipResponse.data.ratings;
-        }
-      }
-      
+
       // Update state with fetched data
       setClips(clipsData);
-      
-      // If ratings weren't included in the response, fetch them separately
-      if (Object.keys(ratingsData).length === 0 && clipsData.length > 0) {
-        setProgress(65);
-        
-        // Make individual requests for ratings if not included in the clips response
-        const ratingPromises = clipsData.map(clip =>
-          axios.get<Rating>(`${apiUrl}/api/ratings/${clip._id}`, { headers })
-        );
-        
-        setProgress(80);
-        const ratingResponses = await Promise.all(ratingPromises);
-        
-        ratingsData = ratingResponses.reduce<Record<string, Rating>>((acc, res, index) => {
-          acc[clipsData[index]._id] = res.data;
-          setProgress(90);
-          return acc;
-        }, {});
-      }
-      
+
       // Transform ratings to ensure they have the expected format for the frontend
-      const transformedRatings = transformRatings(ratingsData);
+      const transformedRatings = adminService.transformRatings(ratingsData);
       setRatings(transformedRatings);
-      
+
     } catch (error) {
       console.error('Error fetching clips and ratings:', error);
     }
   };
 
-  // Utility function to transform backend rating format to frontend expected format
-  const transformRatings = (ratings: Record<string, any>): Record<string, Rating> => {
-    const transformed: Record<string, Rating> = {};
-    
-    Object.entries(ratings).forEach(([clipId, ratingData]) => {
-      // Check if we need to transform this rating data
-      if (ratingData && !ratingData.ratingCounts && ratingData.ratings) {
-        // Transform from backend format to frontend expected format
-        const ratingCounts = [
-          { 
-            rating: '1', 
-            count: Array.isArray(ratingData.ratings['1']) ? ratingData.ratings['1'].length : 0,
-            users: Array.isArray(ratingData.ratings['1']) ? ratingData.ratings['1'] : []
-          },
-          { 
-            rating: '2', 
-            count: Array.isArray(ratingData.ratings['2']) ? ratingData.ratings['2'].length : 0,
-            users: Array.isArray(ratingData.ratings['2']) ? ratingData.ratings['2'] : []
-          },
-          { 
-            rating: '3', 
-            count: Array.isArray(ratingData.ratings['3']) ? ratingData.ratings['3'].length : 0,
-            users: Array.isArray(ratingData.ratings['3']) ? ratingData.ratings['3'] : [] 
-          },
-          { 
-            rating: '4', 
-            count: Array.isArray(ratingData.ratings['4']) ? ratingData.ratings['4'].length : 0,
-            users: Array.isArray(ratingData.ratings['4']) ? ratingData.ratings['4'] : []
-          },
-          { 
-            rating: 'deny', 
-            count: Array.isArray(ratingData.ratings['deny']) ? ratingData.ratings['deny'].length : 0,
-            users: Array.isArray(ratingData.ratings['deny']) ? ratingData.ratings['deny'] : []
-          }
-        ];
-        
-        transformed[clipId] = {
-          ...ratingData,
-          ratingCounts: ratingCounts
-        };
-      } else {
-        // Rating is already in the right format or is null/undefined
-        transformed[clipId] = ratingData;
-      }
-    });
-    
-    return transformed;
-  };
-
   const deniedClips = clips.filter(clip => {
     const ratingData = ratings[clip._id];
-    return ratingData && 
-           ratingData.ratingCounts && 
-           Array.isArray(ratingData.ratingCounts) &&
-           ratingData.ratingCounts.some(rateData => 
-             rateData.rating === 'deny' && rateData.count >= config.denyThreshold
-           );
+    return ratingData &&
+      ratingData.ratingCounts &&
+      Array.isArray(ratingData.ratingCounts) &&
+      ratingData.ratingCounts.some(rateData =>
+        rateData.rating === 'deny' && rateData.count >= config.denyThreshold
+      );
   }).length;
 
   const ratedClips = clips.filter(clip => {
@@ -383,7 +249,7 @@ function AdminDash() {
     const userRatingCount: Record<string, any> = {};
 
     [...clipTeam, ...admins]
-      .filter(user => user.username !== 'UploadBot' )
+      .filter(user => user.username !== 'UploadBot')
       .forEach(user => {
         userRatingCount[user.username] = { '1': 0, '2': 0, '3': 0, '4': 0, 'deny': 0, total: 0, percentageRated: 0 };
       });
@@ -430,14 +296,10 @@ function AdminDash() {
       [name]: name === 'denyThreshold' ? Number(value) : value
     });
   };
-
   const handleConfigSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
-      await axios.put(`${apiUrl}/api/admin/config`, config, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await adminService.updateConfig(config);
       alert('Config updated successfully');
     } catch (error) {
       console.error('Error updating config:', error);
@@ -449,16 +311,12 @@ function AdminDash() {
     setUserToDelete(id);
     setShowDeleteUserConfirmation(true);
   };
-
   const confirmDeleteUser = async (): Promise<void> => {
     if (!userToDelete) return;
-    
+
     setShowDeleteUserConfirmation(false);
     try {
-      const token = localStorage.getItem('token');
-      await axios.delete(`${apiUrl}/api/users/${userToDelete}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await adminService.deleteUser(userToDelete);
       setUsers(allUsers.filter(user => user._id !== userToDelete));
       alert('User deleted successfully');
       fetchUsers();
@@ -490,7 +348,6 @@ function AdminDash() {
       setClipAmount(clipAmount);
     }
   };
-
   const handleZipSubmit = async (e: React.FormEvent | null, refresh?: boolean): Promise<void> => {
     if (e) e.preventDefault();
     if (!zipFile && !refresh) {
@@ -501,22 +358,9 @@ function AdminDash() {
       fetchZips();
       return;
     }
-    
-    const formData = new FormData();
-
-    formData.append('clipsZip', zipFile as Blob);
-    formData.append('clipAmount', clipAmount.toString());
-    formData.append('season', seasonInfo.season || '');
 
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(`${apiUrl}/api/zips/upload`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          Authorization: `Bearer ${token}`,
-          'Cross-Origin-Opener-Policy': 'same-origin',
-        },
-      });
+      await adminService.uploadZip(zipFile as File, clipAmount, seasonInfo.season || '');
       alert('Zip file uploaded successfully');
       fetchZips();
     } catch (error) {
@@ -560,43 +404,33 @@ function AdminDash() {
       setProcessingClips(false);
       setProcessModalOpen(false);
       return;
-    }
-
-    try {
+    } try {
       console.log(`Starting clip processing for ${season} ${year} with ${filteredClips.length} clips`);
-      
+
       // Send the processing request
-      const response = await axios.post(
-        `${apiUrl}/api/zips/process`,
-        {
-          clips: filteredClips.map((clip, index) => {
-            const ratingData = ratings[clip._id];
-            
-            // Add a safety check to make sure ratingData and ratingCounts exist
-            if (!ratingData || !ratingData.ratingCounts || !Array.isArray(ratingData.ratingCounts) || !ratingData.ratingCounts.length) {
-              // Default to rating '1' if no ratings exist
-              return { ...clip, rating: '1', index };
-            }
-            
-            const mostChosenRating = ratingData.ratingCounts.reduce(
-              (max, rateData) => (rateData.count > max.count ? rateData : max),
-              ratingData.ratingCounts[0]
-            );
-            return { ...clip, rating: mostChosenRating.rating, index }; // Include index for tracking
-          }),
-          season: season,
-          year: year
-        },
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-        }
-      );
+      const processData = {
+        clips: filteredClips.map((clip, index) => {
+          const ratingData = ratings[clip._id];
 
-      if (response.status !== 200) {
-        throw new Error('Failed to process clips');
-      }
+          // Add a safety check to make sure ratingData and ratingCounts exist
+          if (!ratingData || !ratingData.ratingCounts || !Array.isArray(ratingData.ratingCounts) || !ratingData.ratingCounts.length) {
+            // Default to rating '1' if no ratings exist
+            return { ...clip, rating: '1', index };
+          }
 
-      const { jobId } = response.data;
+          const mostChosenRating = ratingData.ratingCounts.reduce(
+            (max, rateData) => (rateData.count > max.count ? rateData : max),
+            ratingData.ratingCounts[0]
+          );
+          return { ...clip, rating: mostChosenRating.rating, index }; // Include index for tracking
+        }),
+        season: season,
+        year: year
+      };
+
+      const response = await adminService.processClips(processData);
+
+      const { jobId } = response;
       console.log(`Process job started with ID: ${jobId}`);
       setProcessJobId(jobId);
 
@@ -604,19 +438,13 @@ function AdminDash() {
       // but we'll keep a simplified version as a fallback
       if (!isConnected) {
         let pollFrequency = 3000;
-        
         const checkProgress = async () => {
           try {
-            const statusResponse = await axios.get(
-              `${apiUrl}/api/zips/process-status/${jobId}`,
-              {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-              }
-            );
-            
-            const { progress, status } = statusResponse.data;
+            const statusData = await adminService.getProcessStatus(jobId);
+
+            const { progress, status } = statusData;
             setProcessProgress(progress);
-            
+
             if (status === 'completed') {
               clearTimeout(timeoutId);
               setProcessingClips(false);
@@ -626,21 +454,21 @@ function AdminDash() {
             } else if (status === 'error') {
               clearTimeout(timeoutId);
               setProcessingClips(false);
-              alert(`Error: ${statusResponse.data.error || 'Unknown error'}`);
+              alert(`Error: ${statusData.message || 'Unknown error'}`);
               return;
             }
-            
+
             timeoutId = setTimeout(checkProgress, pollFrequency);
           } catch (error) {
             console.error('Error checking process status:', error);
             timeoutId = setTimeout(checkProgress, 5000);
           }
         };
-        
+
         // Start polling only as fallback
         let timeoutId = setTimeout(checkProgress, pollFrequency);
       }
-      
+
     } catch (error) {
       console.error('Error processing clips:', error);
       setProcessingClips(false);
@@ -651,14 +479,10 @@ function AdminDash() {
   const handleDeleteAllClips = (): void => {
     setShowDeleteAllClipsConfirmation(true);
   };
-
   const confirmDeleteAllClips = async (): Promise<void> => {
     setShowDeleteAllClipsConfirmation(false);
     try {
-      const token = localStorage.getItem('token');
-      await axios.delete(`${apiUrl}/api/clips`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await adminService.deleteAllClips();
       fetchClipsAndRatings();
       console.log('All clips deleted successfully');
     } catch (error) {
@@ -690,27 +514,22 @@ function AdminDash() {
     setProcessModalOpen(true);
   };
 
-  // Tab content rendering
+  // Tab content rendering  // Skeleton component for loading states
+  const SkeletonBox = ({ className = "" }: { className?: string }) => (
+    <div className={`animate-pulse bg-neutral-400 dark:bg-neutral-600 rounded ${className}`}></div>
+  );
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'overview':
         return (
-          <>
-            <Statistics
-              clipTeam={clipTeam}
-              userRatings={userRatings}
-              seasonInfo={seasonInfo}
-              adminStats={adminStats}
-            />
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
-              <AdminActions
-                openProcessModal={openProcessModal}
-                handleDeleteAllClips={async () => handleDeleteAllClips()}
-                downloading={downloading}
-              />
-            </div>
-          </>
+          <Statistics
+            clipTeam={clipTeam}
+            userRatings={userRatings}
+            seasonInfo={seasonInfo}
+            adminStats={adminStats}
+            loading={loading}
+          />
         );
       case 'users':
         return (
@@ -721,7 +540,6 @@ function AdminDash() {
               disabledUsers={disabledUsers}
               setDisabledUsers={setDisabledUsers}
               AVAILABLE_ROLES={AVAILABLE_ROLES}
-              apiUrl={apiUrl}
             />
 
             {/* Create User and Disabled Users Row */}
@@ -729,7 +547,6 @@ function AdminDash() {
               <CreateUser
                 fetchUsers={fetchUsers}
                 AVAILABLE_ROLES={AVAILABLE_ROLES}
-                apiUrl={apiUrl}
               />
 
               <div className="w-full bg-neutral-300 dark:bg-neutral-800 text-neutral-900 dark:text-white transition duration-200 p-6 md:p-8 rounded-xl shadow-lg hover:shadow-xl">
@@ -737,8 +554,23 @@ function AdminDash() {
                   <FaUserClock className="mr-3 text-yellow-500" />
                   Disabled Users
                 </h2>
-                
-                {!disabledUsers.length ? (
+
+                {loading ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((index) => (
+                      <div key={index} className="bg-neutral-200 dark:bg-neutral-700 p-4 rounded-lg flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                          <SkeletonBox className="w-10 h-10 rounded-full" />
+                          <div>
+                            <SkeletonBox className="h-5 w-32 mb-2" />
+                            <SkeletonBox className="h-4 w-20" />
+                          </div>
+                        </div>
+                        <SkeletonBox className="w-20 h-8 rounded" />
+                      </div>
+                    ))}
+                  </div>
+                ) : !disabledUsers.length ? (
                   <div className="flex flex-col items-center justify-center p-8 bg-neutral-200 dark:bg-neutral-700 rounded-lg">
                     <p className="text-lg text-neutral-600 dark:text-neutral-300">
                       No disabled users at this time
@@ -754,9 +586,9 @@ function AdminDash() {
                         <div className="flex items-center">
                           <div className="w-10 h-10 rounded-full overflow-hidden mr-3 bg-neutral-300 dark:bg-neutral-600">
                             {user.profilePicture ? (
-                              <img 
-                                src={user.profilePicture} 
-                                alt={user.username} 
+                              <img
+                                src={user.profilePicture}
+                                alt={user.username}
                                 className="w-full h-full object-cover"
                               />
                             ) : (
@@ -768,9 +600,9 @@ function AdminDash() {
                           <div>
                             <p className="font-semibold">{user.username}</p>
                             <div className="flex items-center text-xs text-neutral-500 dark:text-neutral-400">
-                              <FaDiscord 
-                                className="mr-1" 
-                                style={{ color: user.discordId ? '#7289da' : 'currentColor' }} 
+                              <FaDiscord
+                                className="mr-1"
+                                style={{ color: user.discordId ? '#7289da' : 'currentColor' }}
                               />
                               <span>{user.discordUsername || 'Not connected'}</span>
                             </div>
@@ -797,10 +629,17 @@ function AdminDash() {
               </div>
             </div>
           </div>
-        );
-      case 'content':
+        ); case 'content':
         return (
           <>
+            <AdminActions
+              openProcessModal={openProcessModal}
+              handleDeleteAllClips={async () => handleDeleteAllClips()}
+              downloading={downloading}
+              loading={loading}
+              SkeletonBox={SkeletonBox}
+            />
+
             <ZipManager
               zips={zips}
               zipsLoading={zipsLoading}
@@ -811,7 +650,6 @@ function AdminDash() {
               handleClipAmountChange={handleClipAmountChange}
               handleZipSubmit={handleZipSubmit}
               seasonInfo={seasonInfo}
-              apiUrl={apiUrl}
             />
 
             <DeniedClips
@@ -823,12 +661,11 @@ function AdminDash() {
           </>
         );
       case 'config':
-        return (
-          <ConfigPanel
-            config={config}
-            handleConfigChange={handleConfigChange}
-            handleConfigSubmit={handleConfigSubmit}
-          />
+        return (<ConfigPanel
+          config={config}
+          handleConfigChange={handleConfigChange}
+          handleConfigSubmit={handleConfigSubmit}
+        />
         );
       case 'trophies':
         return (
@@ -851,114 +688,100 @@ function AdminDash() {
     <div className="min-h-screen text-white flex flex-col items-center bg-neutral-200 dark:bg-neutral-900 transition duration-200">
       <Helmet>
         <title>Admin Dashboard | ClipSesh</title>
-        <meta 
-          name="description" 
+        <meta
+          name="description"
           content="Admin dashboard for ClipSesh - manage users, clips, and system configuration."
         />
       </Helmet>
-      
+
       {/* Progress bar */}
       <div className='w-full'>
         <LoadingBar color='#f11946' height={4} progress={progress} onLoaderFinished={() => setProgress(0)} />
       </div>
-      
+
       {/* Header banner */}
-      <div className="w-full flex h-96 justify-center items-center animate-fade" 
-        style={{ 
-          backgroundImage: `url(${background})`, 
-          backgroundSize: 'cover', 
-          backgroundPosition: 'center', 
-          clipPath: 'polygon(0 0, 100% 0, 100% 80%, 0 100%)' 
+      <div className="w-full flex h-96 justify-center items-center animate-fade"
+        style={{
+          backgroundImage: `url(${background})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          clipPath: 'polygon(0 0, 100% 0, 100% 80%, 0 100%)'
         }}>
         <div className="flex bg-gradient-to-b from-neutral-900 to-black/20 backdrop-blur-lg justify-center items-center w-full h-full">
           <div className="flex flex-col justify-center items-center">
             <h1 className="text-4xl font-bold mb-4 text-center">Admin Dashboard</h1>
             <h2 className="text-3xl mb-4 text-center">Manage the unmanaged...</h2>
-          </div>
-        </div>
+          </div>        </div>
       </div>
 
-      {/* Loading state */}
-      {loading ? (
-        <div className="container max-w-7xl px-4 pt-20 pb-20 text-neutral-900 dark:text-white bg-neutral-200 dark:bg-neutral-900 flex flex-col items-center justify-center animate-fade">
-          <h1 className="text-5xl font-bold mb-8 text-center">Loading Dashboard</h1>
-          <BiLoaderCircle className="animate-spin text-7xl" />
-        </div>
-      ) : (
-        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-20 text-neutral-900 dark:text-white bg-neutral-200 dark:bg-neutral-900 transition duration-200 animate-fade">
-          {/* Season Info - Always visible */}
-          <SeasonInfo 
-            seasonInfo={seasonInfo} 
-            deniedClips={deniedClips}
-            ratedClips={ratedClips}
-          />
-          
-          {/* Tabs Navigation */}
-          <div className="mt-8 mb-6">
-            <div className="flex flex-wrap gap-2 border-b border-neutral-400 dark:border-neutral-700 pb-2">
-              <button
-                onClick={() => setActiveTab('overview')}
-                className={`px-4 py-2 rounded-t-lg flex items-center gap-2 transition-all ${
-                  activeTab === 'overview'
-                    ? 'bg-blue-600 text-white font-medium'
-                    : 'bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-400 dark:hover:bg-neutral-600 text-neutral-800 dark:text-white'
-                }`}
-              >
-                <FaChartBar /> Overview
-              </button>
-              <button
-                onClick={() => setActiveTab('users')}
-                className={`px-4 py-2 rounded-t-lg flex items-center gap-2 transition-all ${
-                  activeTab === 'users'
-                    ? 'bg-blue-600 text-white font-medium'
-                    : 'bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-400 dark:hover:bg-neutral-600 text-neutral-800 dark:text-white'
-                }`}
-              >
-                <FaUsers /> User Management
-              </button>
-              <button
-                onClick={() => setActiveTab('content')}
-                className={`px-4 py-2 rounded-t-lg flex items-center gap-2 transition-all ${
-                  activeTab === 'content'
-                    ? 'bg-blue-600 text-white font-medium'
-                    : 'bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-400 dark:hover:bg-neutral-600 text-neutral-800 dark:text-white'
-                }`}
-              >
-                <FaThumbsDown /> Content Management
-              </button>
-              <button
-                onClick={() => setActiveTab('config')}
-                className={`px-4 py-2 rounded-t-lg flex items-center gap-2 transition-all ${
-                  activeTab === 'config'
-                    ? 'bg-blue-600 text-white font-medium'
-                    : 'bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-400 dark:hover:bg-neutral-600 text-neutral-800 dark:text-white'
-                }`}
-              >
-                <FaCog /> Configuration
-              </button>
-              <button
-                onClick={() => setActiveTab('trophies')}
-                className={`px-4 py-2 rounded-t-lg flex items-center gap-2 transition-all ${
-                  activeTab === 'trophies'
-                    ? 'bg-blue-600 text-white font-medium'
-                    : 'bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-400 dark:hover:bg-neutral-600 text-neutral-800 dark:text-white'
-                }`}
-              >
-                <FaTrophy /> Trophies
-              </button>
-            </div>
-          </div>
+      {/* Main content with skeleton states */}
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-20 text-neutral-900 dark:text-white bg-neutral-200 dark:bg-neutral-900 transition duration-200 animate-fade">
+        {/* Season Info - Always visible */}
+        <SeasonInfo
+          seasonInfo={seasonInfo}
+          deniedClips={deniedClips}
+          ratedClips={ratedClips}
+        />
 
-          {/* Tab Content */}
-          <div className="mt-8 space-y-10">
-            {renderTabContent()}
+        {/* Tabs Navigation */}
+        <div className="mt-8 mb-6">
+          <div className="flex flex-wrap gap-2 border-b border-neutral-400 dark:border-neutral-700 pb-2">
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={`px-4 py-2 rounded-t-lg flex items-center gap-2 transition-all ${activeTab === 'overview'
+                ? 'bg-blue-600 text-white font-medium'
+                : 'bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-400 dark:hover:bg-neutral-600 text-neutral-800 dark:text-white'
+                }`}
+            >
+              <FaChartBar /> Overview
+            </button>
+            <button
+              onClick={() => setActiveTab('users')}
+              className={`px-4 py-2 rounded-t-lg flex items-center gap-2 transition-all ${activeTab === 'users'
+                ? 'bg-blue-600 text-white font-medium'
+                : 'bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-400 dark:hover:bg-neutral-600 text-neutral-800 dark:text-white'
+                }`}
+            >
+              <FaUsers /> User Management
+            </button>
+            <button
+              onClick={() => setActiveTab('content')}
+              className={`px-4 py-2 rounded-t-lg flex items-center gap-2 transition-all ${activeTab === 'content'
+                ? 'bg-blue-600 text-white font-medium'
+                : 'bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-400 dark:hover:bg-neutral-600 text-neutral-800 dark:text-white'
+                }`}
+            >
+              <FaThumbsDown /> Content Management
+            </button>
+            <button
+              onClick={() => setActiveTab('config')}
+              className={`px-4 py-2 rounded-t-lg flex items-center gap-2 transition-all ${activeTab === 'config'
+                ? 'bg-blue-600 text-white font-medium'
+                : 'bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-400 dark:hover:bg-neutral-600 text-neutral-800 dark:text-white'
+                }`}
+            >
+              <FaCog /> Configuration
+            </button>
+            <button
+              onClick={() => setActiveTab('trophies')}
+              className={`px-4 py-2 rounded-t-lg flex items-center gap-2 transition-all ${activeTab === 'trophies'
+                ? 'bg-blue-600 text-white font-medium'
+                : 'bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-400 dark:hover:bg-neutral-600 text-neutral-800 dark:text-white'
+                }`}
+            >
+              <FaTrophy /> Trophies
+            </button>
           </div>
         </div>
-      )}
-      <ProcessClipsModal
+        {/* Tab Content */}
+        <div className="mt-8 space-y-10">
+          {renderTabContent()}
+        </div>
+      </div>      <ProcessClipsModal
         isOpen={processModalOpen}
         onClose={() => setProcessModalOpen(false)}
         onProcess={processClips}
+        onProcessingComplete={fetchZips}
         processing={processingClips}
         progress={processProgress}
         currentSeason={seasonInfo.season || ''}
@@ -966,8 +789,8 @@ function AdminDash() {
         clipCount={clips.filter(clip => {
           const ratingData = ratings[clip._id];
           return (
-            ratingData && 
-            ratingData.ratingCounts && 
+            ratingData &&
+            ratingData.ratingCounts &&
             Array.isArray(ratingData.ratingCounts) &&
             ratingData.ratingCounts.every(
               (rateData) => rateData.rating !== 'deny' || rateData.count < config.denyThreshold

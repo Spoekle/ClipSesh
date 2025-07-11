@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaAngleDown, FaTimes } from 'react-icons/fa';
 import { AiOutlineClose } from 'react-icons/ai';
-import axios from 'axios';
-import apiUrl from '../../../../../config/config';
+import { getRatingById } from '../../../../../services/ratingService';
 
 const RatingsPopup = ({ clip, ratings, setPopout }) => {
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -12,21 +11,14 @@ const RatingsPopup = ({ clip, ratings, setPopout }) => {
 
   // If ratings prop is not provided or missing data, fetch them directly
   useEffect(() => {
-    const fetchRatings = async () => {
-      if (!ratings || !ratings[clip._id]) {
+    const fetchRatings = async () => {      if (!ratings || !ratings[clip._id]) {
         setIsLoading(true);
         try {
-          const token = localStorage.getItem('token');
-          const response = await axios.get(`${apiUrl}/api/ratings/${clip._id}`, {
-            headers: token ? { Authorization: `Bearer ${token}` } : undefined
-          });
-          
-          if (response.data) {
-            const fetchedRatings = {
-              [clip._id]: response.data
-            };
-            setLocalRatings(fetchedRatings);
-          }
+          const ratingData = await getRatingById(clip._id);
+          const fetchedRatings = {
+            [clip._id]: ratingData
+          };
+          setLocalRatings(fetchedRatings);
         } catch (error) {
           console.error('Error fetching ratings:', error);
         } finally {
@@ -49,7 +41,7 @@ const RatingsPopup = ({ clip, ratings, setPopout }) => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 20 }}
-        className="fixed bottom-0 right-4 w-96 z-30 bg-neutral-900 text-white rounded-t-xl shadow-2xl"
+        className="fixed bottom-18 right-0 md:right-4 md:bottom-0 w-full md:w-96 z-30 bg-neutral-900 text-white rounded-t-xl shadow-2xl"
       >
         <div className="flex justify-between items-center p-3 border-b border-neutral-700">
           <h3 className="text-xl font-bold">Ratings</h3>
@@ -73,7 +65,7 @@ const RatingsPopup = ({ clip, ratings, setPopout }) => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 20 }}
-        className="fixed bottom-0 right-4 w-96 z-30 bg-neutral-900 text-white rounded-t-xl shadow-2xl"
+        className="fixed bottom-18 right-0 md:right-4 md:bottom-0 w-full md:w-96 z-30 bg-neutral-900 text-white rounded-t-xl shadow-2xl"
       >
         <div className="flex justify-between items-center p-3 border-b border-neutral-700">
           <h3 className="text-xl font-bold">Ratings</h3>
@@ -136,7 +128,7 @@ const RatingsPopup = ({ clip, ratings, setPopout }) => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
-      className="fixed bottom-0 right-4 w-96 z-30 bg-neutral-900 text-white rounded-t-xl shadow-2xl"
+      className="fixed bottom-18 right-0 md:right-4 md:bottom-0 w-full md:w-96 z-30 bg-neutral-900 text-white rounded-t-xl shadow-2xl"
     >
       <div className="flex justify-between items-center p-3 border-b border-neutral-700">
         <h3 className="text-xl font-bold">Ratings</h3>

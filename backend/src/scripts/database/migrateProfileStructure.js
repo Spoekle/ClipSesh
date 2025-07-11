@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const User = require('../models/userModel');
+const User = require('../../models/userModel');
 
 // Connect to MongoDB
 const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/clipsesh';

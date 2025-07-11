@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
-import apiUrl from '../config/config';
-import axios from 'axios';
 import { 
   FaYoutube, 
   FaPlay, 
@@ -16,6 +14,7 @@ import {
 } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import banner1 from '../media/banner1.png';
+import { getPublicConfig } from '../services/configService';
 
 interface Config {
   latestVideoLink?: string;
@@ -30,16 +29,15 @@ function HomePage() {
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
   const [, setIsVideoPlaying] = useState(false);
-
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const response = await axios.get(`${apiUrl}/api/config/public`);
-        if (response.data) {
+        const configData = await getPublicConfig();
+        if (configData) {
           // Merge with defaults to ensure all required properties exist
           setConfig(prevConfig => ({
             ...prevConfig,
-            ...response.data
+            ...configData
           }));
         } else {
           console.warn('Config data is empty or malformed, using default values');
@@ -227,10 +225,8 @@ function HomePage() {
               transition={{ duration: 0.8, type: "spring" }}
               className="mb-6 inline-block"
             >
-              <h1 className="text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight">
-                <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-red-500">
-                  ClipSesh!
-                </span>
+              <h1 className="text-6xl md:text-7xl lg:text-8xl font-bold text-cc-red tracking-tight">
+                ClipSesh!
               </h1>
             </motion.div>
             

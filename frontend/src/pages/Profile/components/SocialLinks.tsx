@@ -74,7 +74,7 @@ const SocialLinks: React.FC<SocialLinksProps> = ({ socialLinks, website }) => {
       className="bg-white/80 dark:bg-neutral-800/80 backdrop-blur-sm rounded-2xl shadow-lg border border-neutral-200/50 dark:border-neutral-700/50 p-6 hover:shadow-xl transition-all duration-300"
     >
       <h2 className="text-xl font-bold text-neutral-900 dark:text-white mb-5 flex items-center group">
-        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
+        <div className="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
           <FaGlobe className="text-white text-sm" />
         </div>
         Social Links

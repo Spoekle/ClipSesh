@@ -7,11 +7,31 @@ const path = require('path');
 
 const authorizeRoles = require('./middleware/AuthorizeRoles');
 const Zip = require('../models/zipModel');
+const Clip = require('../models/clipModel');
+const { PublicConfig } = require('../models/configModel');
+const TrophyService = require('../services/trophyService');
 const { clipsZipUpload, chunkUpload, downloadDir, chunksDir, ensureDirectoryExists } = require('./storage/ClipsZipUpload');
 const backendUrl = process.env.BACKEND_URL || 'https://api.spoekle.com';
 
 // In-memory storage for tracking chunk uploads
 const uploadSessions = {};
+
+// Function to update clip count in database
+async function updateClipCount() {
+  try {
+    const count = await Clip.countDocuments({ archived: { $ne: true } });
+    await PublicConfig.findOneAndUpdate(
+      {}, 
+      { clipAmount: count }, 
+      { upsert: true, new: true }
+    );
+    console.log(`Updated clipAmount in config: ${count} clips`);
+    return count;
+  } catch (error) {
+    console.error('Error updating clip count:', error);
+    return null;
+  }
+}
 
 // Helper function to format file sizes
 function formatBytes(bytes, decimals = 2) {
@@ -562,12 +582,49 @@ async function processClipsAsync(jobId, clips, season, year) {
                         name: zipFilename,
                         size: size,
                         clipAmount: clips.length,
-                    });
-
+                    });                    
                     // Save to database
                     logAndEmit('Saving to database...', 'info');
                     await seasonZip.save();
                     logAndEmit(`Saved to database with ID ${seasonZip._id}`, 'info');
+                    
+                    // Archive clips after successful zip creation
+                    logAndEmit('Archiving processed clips...', 'info', 'archiving_clips');
+                    try {                        
+                        const clipIds = clips.map(clip => clip._id);
+                        const archiveResult = await Clip.updateMany(
+                            { _id: { $in: clipIds } },
+                            { 
+                                $set: { 
+                                    archived: true,
+                                    archivedAt: new Date(),
+                                    season: season,
+                                    year: parseInt(year)
+                                }
+                            }
+                        );
+                        logAndEmit(`Archived ${archiveResult.modifiedCount} clips`, 'info');
+                    } catch (archiveError) {
+                        logAndEmit(`Error archiving clips: ${archiveError.message}`, 'warning');
+                    }
+                    
+                    // Update clip count after archiving
+                    logAndEmit('Updating clip count...', 'info', 'updating_count');
+                    try {
+                        const newClipCount = await updateClipCount();
+                        logAndEmit(`Updated clip count to ${newClipCount} active clips`, 'info');
+                    } catch (countError) {
+                        logAndEmit(`Error updating clip count: ${countError.message}`, 'warning');
+                    }
+                    
+                    // Assign trophies for this season
+                    logAndEmit('Assigning trophies...', 'info', 'trophy_assignment');
+                    try {
+                        const trophyAssignments = await TrophyService.assignTrophiesForSeason(season, parseInt(year));
+                        logAndEmit(`Assigned ${trophyAssignments.length} trophies`, 'info');
+                    } catch (trophyError) {
+                        logAndEmit(`Error assigning trophies: ${trophyError.message}`, 'warning');
+                    }
                     
                     // Update job status
                     job.zipFilename = zipFilename;
@@ -662,7 +719,7 @@ async function processClipsAsync(jobId, clips, season, year) {
         archive.pipe(zipStream);
 
         // Process clips in batches to avoid memory issues - use smaller batches
-        const batchSize = 5; // Reduced from 10 to 5 for better stability
+        const batchSize = 10;
         const batches = Math.ceil(clips.length / batchSize);
 
         logAndEmit(`Starting processing of ${clips.length} clips in ${batches} batches`, 'info', 'processing');

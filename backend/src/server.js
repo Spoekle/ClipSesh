@@ -26,12 +26,11 @@ const chunksDir = path.join(__dirname, 'download/tmp');
   }
 });
 
-// Improved MongoDB connection to use the correct remote MongoDB server IP
-// This setup mirrors the working approach from OV-Tikkertje
+// Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI || "mongodb://mongo:27017/clipsDB", {
-  serverSelectionTimeoutMS: 30000, // Increase timeout to 30 seconds
-  socketTimeoutMS: 45000, // Increase socket timeout
-  connectTimeoutMS: 30000, // Increase connect timeout
+  serverSelectionTimeoutMS: 30000,
+  socketTimeoutMS: 45000,
+  connectTimeoutMS: 30000,
 })
 .then(() => {
   console.log(`Connected to MongoDB at ${process.env.MONGODB_URI || "mongodb://mongo:27017/clipsDB"}`);
@@ -44,7 +43,6 @@ mongoose.connect(process.env.MONGODB_URI || "mongodb://mongo:27017/clipsDB", {
 .catch(err => {
   console.error('MongoDB connection error:', err);
   console.error(`Please check if MongoDB is running at ${process.env.MONGODB_URI || "mongodb://mongo:27017/clipsDB"}`);
-  // Don't exit the process, let the application continue without DB
 });
 
 const app = express();
@@ -74,14 +72,13 @@ app.use(express.json({ limit: '3072mb' }));
 
 // Increase request timeout for large uploads
 app.use((_req, _res, next) => {
-  // Set timeout to 2 hours to prevent timeouts during large uploads
   _req.setTimeout(7200000);
   next();
 });
 
 // Configure CORS with more detailed settings
 app.use(cors({
-  origin: "*", // In production, restrict to your domain
+  origin: "*",
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
@@ -100,9 +97,10 @@ const ratingsRoute = require('./routes/Ratings');
 const zipsRoute = require('./routes/Zips');
 const discordRoute = require('./routes/Discord');
 const configRoute = require('./routes/Config');
-const notificationsRoute = require('./routes/Notifications'); // Add notifications route
+const notificationsRoute = require('./routes/Notifications');
 const profilesRoute = require('./routes/Profiles');
-const searchRoute = require('./routes/Search'); // Add unified search route
+const searchRoute = require('./routes/Search');
+const trophiesRoute = require('./routes/Trophies');
 
 // Register API routes
 app.use('/api/admin', adminRoute);
@@ -113,9 +111,10 @@ app.use('/api/ratings', ratingsRoute);
 app.use('/api/zips', zipsRoute);
 app.use('/api/discord', discordRoute);
 app.use('/api/config', configRoute);
-app.use('/api/notifications', notificationsRoute); // Register notifications route
+app.use('/api/notifications', notificationsRoute);
 app.use('/api/profiles', profilesRoute);
-app.use('/api/search', searchRoute); // Register unified search route
+app.use('/api/search', searchRoute);
+app.use('/api/trophies', trophiesRoute);
 
 // Configure WebSocket event handlers
 io.on('connection', (socket) => {
@@ -123,8 +122,6 @@ io.on('connection', (socket) => {
   
   // Authenticate socket connection
   socket.on('authenticate', (token) => {
-    // In a real implementation, you would verify the token here
-    // For now, we'll assume it's valid
     console.log('Client authenticated:', socket.id);
     socket.join('authenticated');
   });
@@ -186,11 +183,9 @@ server.listen(5000, () => {
 // Handle uncaught exceptions
 process.on('uncaughtException', (err) => {
   console.error('Uncaught Exception:', err);
-  // Keep the server running
 });
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  // Keep the server running
 });

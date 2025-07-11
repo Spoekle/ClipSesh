@@ -12,6 +12,8 @@ import {
   FaVrCardboard
 } from 'react-icons/fa';
 import { PublicProfile } from '../../../types/profileTypes';
+const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://api.spoekle.com';
+
 
 interface ProfileHeaderProps {
   profile: PublicProfile;
@@ -94,7 +96,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
                     className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
-                      target.src = `${process.env.REACT_APP_API_URL || 'https://api.spoekle.com'}/profilePictures/profile_placeholder.png`;
+                      target.src = `${backendUrl || 'https://api.spoekle.com'}/profilePictures/profile_placeholder.png`;
                     }}
                   />
                 </div>

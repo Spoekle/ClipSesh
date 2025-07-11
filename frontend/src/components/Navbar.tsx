@@ -1,14 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { motion } from 'framer-motion';
-import { useNotification } from '../context/NotificationContext';
+import { useNotification } from '../context/AlertContext';
 import logo from '../media/CC_Logo_250px.png';
 import MobileNavbar from './navbar/MobileNav';
 import DesktopNavbar from './navbar/DefaultNav';
 import LoginModal from './LoginModal';
 import useWindowWidth from '../hooks/useWindowWidth';
-import apiUrl from '../config/config';
+import { getCurrentUser } from '../services/userService';
 import { User } from '../types/adminTypes';
 
 interface NavbarProps {
@@ -48,17 +47,13 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
 
   const toggleLoginModal = (): void => {
     setIsLoginModalOpen(!isLoginModalOpen);
-  };
-
-  const fetchUser = async (): Promise<User | null> => {
+  };  const fetchUser = useCallback(async (): Promise<User | null> => {
     const token = localStorage.getItem('token');
     if (token) {
       try {
-        const response = await axios.get<User>(`${apiUrl}/api/users/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setUser(response.data);
-        return response.data;
+        const userData = await getCurrentUser();
+        setUser(userData);
+        return userData;
       } catch (error) {
         localStorage.removeItem('token');
         console.error('Error fetching user:', error);
@@ -66,12 +61,12 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
       }
     }
     return null;
-  };
+  }, [setUser]);
 
   useEffect(() => {
     fetchUser();
     setRecentSearches(JSON.parse(localStorage.getItem('recentSearches') || '[]'));
-  }, []);
+  }, [fetchUser]);
 
   const handleSearch = (e: React.FormEvent): void => {
     e.preventDefault();

@@ -1,33 +1,26 @@
-import { useEffect, useState, useCallback, ReactNode } from 'react';
+import { useEffect, useState, useCallback, ReactNode, useRef } from 'react';
 import { Helmet } from 'react-helmet';
-import apiUrl from '../config/config';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FaSearch, FaArrowUp, FaArrowDown, FaFilter, 
   FaTimes, FaPlay, FaCalendarAlt, FaSortAmountDown,
-  FaAngleLeft, FaAngleRight, FaAngleDoubleLeft, FaAngleDoubleRight,
-  FaUser, FaDiscord, FaGlobe, FaYoutube, FaTwitch, FaTwitter, FaInstagram, FaGithub
+  FaUser, FaDiscord, FaGlobe, FaYoutube, FaTwitch, FaTwitter, FaInstagram, FaGithub,
+  FaChevronDown, FaChevronUp
 } from 'react-icons/fa';
 import { format } from 'timeago.js';
-import axios from 'axios';
 import debounce from 'lodash.debounce';
 import LoadingBar from 'react-top-loading-bar';
-import { Clip } from '../types/adminTypes';
+import { getClipFilterOptions } from '../services/clipService';
 import { unifiedSearch } from '../services/searchService';
-import { UnifiedSearchResponse, SearchProfile } from '../types/searchTypes';
+import { Clip } from '../types/adminTypes';
+import { SearchProfile, SeasonGroup } from '../types/searchTypes';
 
 function useQuery() {
   return new URLSearchParams(useLocation().search);
 }
 
-// Filter options response type
-interface FilterOptionsResponse {
-  streamers: string[];
-  submitters: string[];
-}
-
-type SortOption = 'newest' | 'oldest' | 'upvotes' | 'downvotes';
+type SortOption = 'newest' | 'oldest' | 'upvotes' | 'downvotes' | 'ratio';
 
 const ClipSearch: React.FC = () => {
   const query = useQuery();
@@ -36,38 +29,51 @@ const ClipSearch: React.FC = () => {
   const streamerFilterParam = query.get('streamer') || '';
   const submitterFilterParam = query.get('submitter') || '';
   const sortOptionParam = (query.get('sort') as SortOption) || 'newest';
+  const seasonFilterParam = query.get('season') || '';
+  const yearFilterParam = query.get('year') || '';
   
+  // Core state
   const [clips, setClips] = useState<Clip[]>([]);
   const [profiles, setProfiles] = useState<SearchProfile[]>([]);
+  const [currentSeasonClips, setCurrentSeasonClips] = useState<Clip[]>([]);
+  const [otherSeasonsClips, setOtherSeasonsClips] = useState<Record<string, SeasonGroup>>({});
+  const [availableSeasons, setAvailableSeasons] = useState<string[]>([]);
+  const [currentSeason, setCurrentSeason] = useState<{ season: string; year: number }>({ season: '', year: 2025 });
+  
+  // UI state
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
   const [totalResults, setTotalResults] = useState<number>(0);
-  const [totalPages, setTotalPages] = useState<number>(1);
   const [currentPage, setCurrentPage] = useState<number>(pageParam);
   const [searchType, setSearchType] = useState<'all' | 'clips' | 'profiles'>('all');
   
+  // Filter state
   const [streamerFilter, setStreamerFilter] = useState<string>(streamerFilterParam);
   const [submitterFilter, setSubmitterFilter] = useState<string>(submitterFilterParam);
   const [sortOption, setSortOption] = useState<SortOption>(sortOptionParam);
+  const [seasonFilter, setSeasonFilter] = useState<string>(seasonFilterParam);
+  const [yearFilter, setYearFilter] = useState<string>(yearFilterParam);
   
+  // UI controls
   const [progress, setProgress] = useState<number>(0);
   const [filterOpen, setFilterOpen] = useState<boolean>(false);
   const [searchInput, setSearchInput] = useState<string>(searchTerm);
   const [streamers, setStreamers] = useState<string[]>([]);
   const [submitters, setSubmitters] = useState<string[]>([]);
-  const [searchResults, setSearchResults] = useState<UnifiedSearchResponse | null>(null);
+  
+  // Seasonal tabs state
+  const [expandedSeasons, setExpandedSeasons] = useState<Set<string>>(new Set());
+  const [currentSeasonDisplayCount, setCurrentSeasonDisplayCount] = useState<number>(8);
   
   const location = useLocation();
   const navigate = useNavigate();
-
+  const isInitialLoad = useRef(true);
   // Fetch unique streamers and submitters for filters
   const fetchFilterOptions = useCallback(async (): Promise<void> => {
     try {
-      const response = await axios.get<FilterOptionsResponse>(`${apiUrl}/api/clips/filter-options`);
-      if (response.data) {
-        setStreamers(response.data.streamers || []);
-        setSubmitters(response.data.submitters || []);
-      }
+      const filterData = await getClipFilterOptions();
+      setStreamers(filterData.streamers || []);
+      setSubmitters(filterData.submitters || []);
     } catch (err) {
       console.error('Error fetching filter options:', err);
     }
@@ -78,6 +84,9 @@ const ClipSearch: React.FC = () => {
     if (!searchTerm.trim()) {
       setClips([]);
       setProfiles([]);
+      setCurrentSeasonClips([]);
+      setOtherSeasonsClips({});
+      setAvailableSeasons([]);
       setLoading(false);
       setTotalResults(0);
       return;
@@ -96,21 +105,23 @@ const ClipSearch: React.FC = () => {
         ...(searchType !== 'profiles' && {
           streamer: streamerFilter,
           submitter: submitterFilter,
-          sort: sortOption
+          sort: sortOption,
+          ...(seasonFilter && { season: seasonFilter }),
+          ...(yearFilter && { year: parseInt(yearFilter) })
         })
       };
 
       const response = await unifiedSearch(searchParams);
       setProgress(70);
       
+      // Set the new seasonal data
       setClips(response.clips || []);
       setProfiles(response.profiles || []);
+      setCurrentSeasonClips(response.currentSeasonClips || []);
+      setOtherSeasonsClips(response.otherSeasonsClips || {});
+      setAvailableSeasons(response.availableSeasons || []);
+      setCurrentSeason(response.currentSeason || { season: '', year: 2000 });
       setTotalResults(response.total || 0);
-      setTotalPages(response.totalPages || 1);
-      
-      if (!streamers.length || !submitters.length) {
-        fetchFilterOptions();
-      }
       
       setProgress(100);
     } catch (err) {
@@ -120,15 +131,32 @@ const ClipSearch: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, searchType, currentPage, streamerFilter, submitterFilter, sortOption, fetchFilterOptions, streamers.length, submitters.length]);
+  }, [searchTerm, searchType, currentPage, streamerFilter, submitterFilter, sortOption, seasonFilter, yearFilter]);
 
   // Initial load and parameter changes
   useEffect(() => {
     fetchResults();
   }, [fetchResults]);
 
-  // Update URL when filters change
+  // Fetch filter options once on mount
   useEffect(() => {
+    fetchFilterOptions();
+  }, [fetchFilterOptions]);
+
+  // Reset current season display count when search changes
+  useEffect(() => {
+    setCurrentSeasonDisplayCount(8);
+  }, [searchTerm, searchType, streamerFilter, submitterFilter, sortOption, seasonFilter, yearFilter]);
+
+  // Sync state with URL parameters and update URL when state changes
+  useEffect(() => {
+    // Skip URL update on initial load to prevent double fetch
+    if (isInitialLoad.current) {
+      isInitialLoad.current = false;
+      return;
+    }
+    
+    // Update URL when state changes
     const params = new URLSearchParams();
     if (searchTerm) params.set('query', searchTerm);
     if (currentPage > 1) params.set('page', currentPage.toString());
@@ -136,23 +164,30 @@ const ClipSearch: React.FC = () => {
     if (streamerFilter) params.set('streamer', streamerFilter);
     if (submitterFilter) params.set('submitter', submitterFilter);
     if (sortOption !== 'newest') params.set('sort', sortOption);
+    if (seasonFilter) params.set('season', seasonFilter);
+    if (yearFilter) params.set('year', yearFilter);
     
-    navigate(`/search?${params.toString()}`, { replace: true });
+    const newUrl = `/search?${params.toString()}`;
+    const currentUrl = `${location.pathname}${location.search}`;
     
-    // Only fetch if searchTerm exists
-    if (searchTerm) {
-      fetchResults();
+    // Only update URL if it's different to prevent unnecessary re-renders
+    if (newUrl !== currentUrl) {
+      navigate(newUrl, { replace: true });
     }
-  }, [searchTerm, searchType, currentPage, streamerFilter, submitterFilter, sortOption, navigate, fetchResults]);
+  }, [searchTerm, searchType, currentPage, streamerFilter, submitterFilter, sortOption, seasonFilter, yearFilter, navigate, location.pathname, location.search]);
 
   // Debounced search handler
   const debouncedSearch = useCallback(
     debounce((term: string) => {
       const params = new URLSearchParams(location.search);
-      params.set('query', term);
+      if (term.trim()) {
+        params.set('query', term);
+      } else {
+        params.delete('query');
+      }
       params.delete('page'); // Reset to page 1 on new search
       navigate(`/search?${params.toString()}`);
-    }, 500),
+    }, 800),
     [location.search, navigate]
   );
 
@@ -163,11 +198,14 @@ const ClipSearch: React.FC = () => {
     debouncedSearch(value);
   };
 
-  // Handle page change
-  const handlePageChange = (newPage: number): void => {
-    if (newPage < 1 || newPage > totalPages || newPage === currentPage) return;
-    setCurrentPage(newPage);
-    window.scrollTo(0, 0);
+  // Handle clearing search
+  const handleClearSearch = (): void => {
+    setSearchInput('');
+    // Direct URL update instead of using debounced search
+    const params = new URLSearchParams(location.search);
+    params.delete('query');
+    params.delete('page'); // Reset to page 1
+    navigate(`/search?${params.toString()}`);
   };
 
   // Reset filters
@@ -175,11 +213,13 @@ const ClipSearch: React.FC = () => {
     setStreamerFilter('');
     setSubmitterFilter('');
     setSortOption('newest');
+    setSeasonFilter('');
+    setYearFilter('');
+    setCurrentPage(1); // Reset to page 1 when filters are reset
   };
 
-  // Fix the applyFilters function to actually trigger a search
+  // Apply filters (just close the filter panel since filters are applied automatically)
   const applyFilters = (): void => {
-    setCurrentPage(1); // Reset to page 1 when filters change
     setFilterOpen(false);
   };
 
@@ -206,43 +246,113 @@ const ClipSearch: React.FC = () => {
     }
   };
 
-  const handleSearch = useCallback(async (page: number = 1, resetResults: boolean = false) => {
-    if (!searchInput.trim()) return;
-
-    setProgress(10);
-    setLoading(true);
-    
-    if (resetResults) {
-      setSearchResults(null);
+  // Helper function to get season emoji/color
+  const getSeasonInfo = (season: string) => {
+    switch (season.toLowerCase()) {
+      case 'spring':
+        return { emoji: '🌸', color: 'text-green-500', bgColor: 'bg-green-100 dark:bg-green-900' };
+      case 'summer':
+        return { emoji: '☀️', color: 'text-yellow-500', bgColor: 'bg-yellow-100 dark:bg-yellow-900' };
+      case 'fall':
+        return { emoji: '🍂', color: 'text-orange-500', bgColor: 'bg-orange-100 dark:bg-orange-900' };
+      case 'winter':
+        return { emoji: '❄️', color: 'text-blue-500', bgColor: 'bg-blue-100 dark:bg-blue-900' };
+      default:
+        return { emoji: '📅', color: 'text-gray-500', bgColor: 'bg-gray-100 dark:bg-gray-900' };
     }
+  };
 
-    try {
-      const params = {
-        q: searchInput,
-        type: searchType,
-        page,
-        limit: 12,
-        ...(searchType === 'clips' && streamerFilter && { streamer: streamerFilter }),
-        ...(searchType === 'clips' && submitterFilter && { submitter: submitterFilter }),
-        ...(searchType === 'clips' && { sort: sortOption })
-      };
+  // Toggle season expansion
+  const toggleSeasonExpansion = (seasonKey: string) => {
+    const newExpanded = new Set(expandedSeasons);
+    if (newExpanded.has(seasonKey)) {
+      newExpanded.delete(seasonKey);
+    } else {
+      newExpanded.add(seasonKey);
+    }
+    setExpandedSeasons(newExpanded);
+  };
 
-      setProgress(50);
-      const results = await unifiedSearch(params);
-      setSearchResults(results);
-      setCurrentPage(page);
+  // Show more current season clips
+  const showMoreCurrentSeasonClips = () => {
+    setCurrentSeasonDisplayCount(prev => prev + 8);
+  };
+
+  // Clip Card Component for reusability
+  const ClipCard: React.FC<{ clip: Clip; index?: number }> = ({ clip, index = 0 }) => (
+    <motion.div
+      key={clip._id}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, delay: index * 0.05 }}
+      className="bg-white dark:bg-neutral-800 rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-all duration-200 group"
+    >
+      <Link
+        to={`/clips/${clip._id}`}
+        state={{ from: location }}
+        className="block relative aspect-video bg-neutral-200 dark:bg-neutral-900"
+      >
+        {clip.thumbnail ? (
+          <img 
+            src={clip.thumbnail} 
+            alt={clip.title} 
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <video
+            src={clip.url}
+            className="w-full h-full object-cover"
+            poster={clip.thumbnail}
+            preload="none"
+            muted
+          />
+        )}
+        
+        <div className="absolute inset-0 flex items-center justify-center bg-black/40 group-hover:bg-black/50 transition-colors">
+          <div className="bg-white/20 backdrop-blur-sm p-3 rounded-full group-hover:scale-110 transition-transform">
+            <FaPlay className="text-white text-2xl" />
+          </div>
+        </div>
+        
+        <div className="absolute top-2 left-2 bg-black/70 text-white text-sm px-2 py-1 rounded backdrop-blur-sm">
+          {clip.streamer}
+        </div>
+      </Link>
       
-      setProgress(100);
-    } catch (error) {
-      console.error('Search error:', error);
-      setSearchResults(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [searchInput, searchType, streamerFilter, submitterFilter, sortOption]);
+      <div className="p-4">
+        <h3 className="font-semibold text-neutral-900 dark:text-white mb-1 line-clamp-2 h-12">
+          {highlightSearchTerm(clip.title)}
+        </h3>
+        
+        <div className="flex items-center justify-between text-sm text-neutral-500 dark:text-neutral-400 mt-2">
+          <div className="flex items-center space-x-4">
+            <span className="flex items-center">
+              <FaArrowUp className="text-green-500 mr-1" />
+              {clip.upvotes}
+            </span>
+            <span className="flex items-center">
+              <FaArrowDown className="text-red-500 mr-1" />
+              {clip.downvotes}
+            </span>
+          </div>
+          <span className="flex items-center" title={new Date(clip.createdAt).toLocaleDateString()}>
+            <FaCalendarAlt className="mr-1" />
+            {format(new Date(clip.createdAt))}
+          </span>
+        </div>
+        
+        {clip.submitter !== 'Legacy(no data)' && (
+          <div className="text-xs text-neutral-500 dark:text-neutral-400 mt-2 truncate">
+            Submitted by: <span className="font-medium">{clip.submitter}</span>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
 
-  // Add the ProfileCard component if it's missing
-  const ProfileCard: React.FC<{ profile: SearchProfile }> = ({ profile }) => {
+  // Profile Card Component
+  const ProfileCard: React.FC<{ profile: SearchProfile; index?: number }> = ({ profile, index = 0 }) => {
     const getSocialIcon = (platform: string) => {
       switch (platform) {
         case 'youtube': return <FaYoutube className="text-red-500" />;
@@ -256,23 +366,24 @@ const ClipSearch: React.FC = () => {
 
     return (
       <motion.div
+        key={profile._id}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        whileHover={{ scale: 1.02 }}
-        className="bg-white dark:bg-neutral-800 rounded-xl p-6 shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer"
+        transition={{ duration: 0.3, delay: index * 0.05 }}
+        className="bg-white dark:bg-neutral-800 rounded-xl p-6 shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer group"
         onClick={() => window.open(`/profile/${profile._id}`, '_blank')}
       >
         <div className="flex items-start gap-4">
           <img
             src={profile.profilePicture}
             alt={profile.username}
-            className="w-16 h-16 rounded-full object-cover border-2 border-neutral-200 dark:border-neutral-700"
+            className="w-16 h-16 rounded-full object-cover border-2 border-neutral-200 dark:border-neutral-700 group-hover:border-blue-400 transition-colors"
           />
           
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">
-              <h3 className="text-lg font-bold text-neutral-900 dark:text-white truncate">
-                {profile.username}
+              <h3 className="text-lg font-bold text-neutral-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                {highlightSearchTerm(profile.username)}
               </h3>
               {profile.roles && profile.roles.length > 0 && (
                 <div className="flex gap-1">
@@ -304,22 +415,23 @@ const ClipSearch: React.FC = () => {
                 </span>
               </div>
             )}
-              {profile.profile?.bio && (
+            
+            {profile.profile?.bio && (
               <p className="text-sm text-neutral-700 dark:text-neutral-300 mb-3 line-clamp-2">
-                {profile.profile.bio}
+                {highlightSearchTerm(profile.profile.bio)}
               </p>
             )}
             
             <div className="flex items-center justify-between text-sm text-neutral-500 dark:text-neutral-400">
               <div className="flex items-center gap-4">
                 <span>{profile.stats.clipsSubmitted} clips</span>
-                <span>Joined {new Date(profile.createdAt || profile.joinDate).getFullYear()}</span>
+                <span>Joined {new Date(profile.createdAt || profile.stats.joinDate).getFullYear()}</span>
               </div>
-                {profile.profile?.socialLinks && Object.values(profile.profile.socialLinks).some(link => link) && (
+              {profile.profile?.socialLinks && Object.values(profile.profile.socialLinks).some(link => link) && (
                 <div className="flex items-center gap-2">
                   {Object.entries(profile.profile.socialLinks).slice(0, 3).map(([platform, url]) => (
                     url && (
-                      <div key={platform} className="text-lg">
+                      <div key={platform} className="text-lg opacity-70 group-hover:opacity-100 transition-opacity">
                         {getSocialIcon(platform)}
                       </div>
                     )
@@ -353,167 +465,230 @@ const ClipSearch: React.FC = () => {
         height={4}
       />
       
-      {/* Search Hero Section */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-        <div className="container mx-auto px-4 py-8 md:py-12">
-          <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4 text-center">
-            {searchTerm ? 'Search Results' : 'Search Clips'}
-          </h1>
-          
-          <div className="max-w-2xl mx-auto">
-            <div className="relative">
-              <FaSearch className="absolute top-1/2 left-4 transform -translate-y-1/2 text-neutral-500 dark:text-neutral-400" size={18} />
-              <input
-                type="text"
-                value={searchInput}
-                onChange={handleSearchChange}
-                placeholder="Search for clips, streamers, or titles..."
-                className="w-full py-3 pl-12 pr-4 bg-white dark:bg-neutral-800 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-neutral-900 dark:text-white border border-transparent focus:border-blue-500"
-              />
-            </div>
-            
-            <div className="flex flex-wrap items-center justify-between mt-4">
-              {/* Fixed: Show total clips count */}
-              {searchTerm && !loading && (
-                <div className="flex-grow text-sm md:text-base mb-2 md:mb-0">
-                  <span>
-                    Found <strong>{totalResults}</strong> result{totalResults !== 1 ? 's' : ''}
-                    {(streamerFilter || submitterFilter) && ' matching your filters'}
-                  </span>
-                </div>
-              )}
-              
-              <div className="flex items-center space-x-2">
-                {/* Search type filter */}
-                <div className="relative inline-block">
-                  <select
-                    value={searchType}
-                    onChange={(e) => setSearchType(e.target.value as 'all' | 'clips' | 'profiles')}
-                    className="appearance-none bg-white/20 hover:bg-white/30 text-white rounded px-4 py-2 pr-8 cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/50"
-                  >
-                    <option className="text-neutral-900" value="all">All Results</option>
-                    <option className="text-neutral-900" value="clips">Clips Only</option>
-                    <option className="text-neutral-900" value="profiles">Profiles Only</option>
-                  </select>
-                  <FaSearch className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
-                </div>
-                
-                {/* Sort dropdown - only show for clips */}
-                {searchType !== 'profiles' && (
-                  <div className="relative inline-block">
-                    <select
-                      value={sortOption}
-                      onChange={handleSortChange}
-                      className="appearance-none bg-white/20 hover:bg-white/30 text-white rounded px-4 py-2 pr-8 cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/50"
-                    >
-                      <option className="text-neutral-900" value="newest">Newest First</option>
-                      <option className="text-neutral-900" value="oldest">Oldest First</option>
-                      <option className="text-neutral-900" value="upvotes">Most Upvotes</option>
-                      <option className="text-neutral-900" value="downvotes">Most Downvotes</option>
-                    </select>
-                    <FaSortAmountDown className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
-                  </div>
-                )}
-                
-                {/* Filter button - only show for clips */}
-                {searchType !== 'profiles' && (
+      {/* Modern Filter Bar */}
+      <div className="bg-white dark:bg-neutral-800 sticky top-14 z-10 shadow-md">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+            <div className="flex-1 max-w-2xl">
+              <div className="relative">
+                <FaSearch className="absolute top-1/2 left-4 transform -translate-y-1/2 text-neutral-400" size={18} />
+                <input
+                  type="text"
+                  value={searchInput}
+                  onChange={handleSearchChange}
+                  placeholder="Search for clips, streamers, titles, or user profiles..."
+                  className="w-full py-3 pl-12 pr-4 bg-neutral-100 dark:bg-neutral-700 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-neutral-600 text-neutral-900 dark:text-white border border-transparent focus:border-blue-500 transition-all duration-200"
+                />
+                {searchInput && (
                   <button
-                    onClick={() => setFilterOpen(!filterOpen)}
-                    className={`flex items-center space-x-1 px-4 py-2 rounded ${
-                      filterOpen || streamerFilter || submitterFilter
-                        ? 'bg-white/30 hover:bg-white/40'
-                        : 'bg-white/20 hover:bg-white/30'
-                    }`}
+                    onClick={handleClearSearch}
+                    className="absolute top-1/2 right-4 transform -translate-y-1/2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors"
                   >
-                    <FaFilter />
-                    <span>Filter</span>
-                    {(streamerFilter || submitterFilter) && (
-                      <span className="bg-blue-500 text-xs px-1.5 py-0.5 rounded-full ml-1">
-                        {(streamerFilter ? 1 : 0) + (submitterFilter ? 1 : 0)}
-                      </span>
-                    )}
+                    <FaTimes />
                   </button>
                 )}
               </div>
             </div>
+            
+            <div className="flex items-center gap-3 flex-wrap">
+              {/* Search Type Toggle */}
+              <div className="flex bg-neutral-100 dark:bg-neutral-700 rounded-lg p-1">
+                {(['all', 'clips', 'profiles'] as const).map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => setSearchType(type)}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                      searchType === type
+                        ? 'bg-blue-500 text-white shadow-sm'
+                        : 'text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white'
+                    }`}
+                  >
+                    {type === 'all' ? 'All Results' : type === 'clips' ? 'Clips Only' : 'Profiles Only'}
+                  </button>
+                ))}
+              </div>
+              
+              {/* Filter Toggle */}
+              {searchType !== 'profiles' && (
+                <button
+                  onClick={() => setFilterOpen(!filterOpen)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                    filterOpen || streamerFilter || submitterFilter || seasonFilter || yearFilter
+                      ? 'bg-blue-500 text-white shadow-md'
+                      : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-600'
+                  }`}
+                >
+                  <FaFilter />
+                  <span>Filters</span>
+                  {(streamerFilter || submitterFilter || seasonFilter || yearFilter) && (
+                    <span className="bg-white/20 text-xs px-2 py-1 rounded-full">
+                      {(streamerFilter ? 1 : 0) + (submitterFilter ? 1 : 0) + (seasonFilter ? 1 : 0) + (yearFilter ? 1 : 0)}
+                    </span>
+                  )}
+                </button>
+              )}
+              
+              {/* Sort Dropdown */}
+              {searchType !== 'profiles' && (
+                <div className="relative inline-block">
+                  <select
+                    value={sortOption}
+                    onChange={handleSortChange}
+                    className="appearance-none bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 rounded-lg px-4 py-2 pr-10 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+                  >
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="upvotes">Most Upvotes</option>
+                    <option value="downvotes">Most Downvotes</option>
+                    <option value="ratio">Best Ratio</option>
+                  </select>
+                  <FaSortAmountDown className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-neutral-400" />
+                </div>
+              )}
+            </div>
           </div>
+          
+          {/* Results Summary */}
+          {searchTerm && !loading && (
+            <div className="mt-4 text-sm text-neutral-600 dark:text-neutral-400">
+              Found <strong>{totalResults}</strong> result{totalResults !== 1 ? 's' : ''} for "{searchTerm}"
+              {(streamerFilter || submitterFilter || seasonFilter || yearFilter) && ' with active filters'}
+            </div>
+          )}
         </div>
       </div>
       
-      {/* Filter Panel */}
+      {/* Enhanced Filter Panel */}
       <AnimatePresence>
         {filterOpen && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3 }}
-            className="bg-white dark:bg-neutral-800 border-t border-b border-neutral-200 dark:border-neutral-700 overflow-hidden"
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="overflow-hidden border-t border-neutral-200 dark:border-neutral-700"
           >
-            <div className="container mx-auto px-4 py-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">Filter Results</h2>
-                <button
-                  onClick={() => setFilterOpen(false)}
-                  className="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
-                >
-                  <FaTimes size={18} />
-                </button>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Streamer Filter */}
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
-                    Streamer
-                  </label>
-                  <select
-                    value={streamerFilter}
-                    onChange={(e) => setStreamerFilter(e.target.value)}
-                    className="w-full p-2 rounded-md border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
+            <div className="bg-neutral-50 dark:bg-neutral-800">
+              <div className="container mx-auto px-4 py-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
+                    Advanced Filters
+                  </h3>
+                  <button
+                    onClick={() => setFilterOpen(false)}
+                    className="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors"
                   >
-                    <option value="">All Streamers</option>
-                    {streamers.map((streamer) => (
-                      <option key={streamer} value={streamer}>
-                        {streamer}
-                      </option>
-                    ))}
-                  </select>
+                    <FaTimes size={18} />
+                  </button>
                 </div>
                 
-                {/* Submitter Filter */}
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
-                    Submitter
-                  </label>
-                  <select
-                    value={submitterFilter}
-                    onChange={(e) => setSubmitterFilter(e.target.value)}
-                    className="w-full p-2 rounded-md border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
-                  >
-                    <option value="">All Submitters</option>
-                    {submitters.map((submitter) => (
-                      <option key={submitter} value={submitter}>
-                        {submitter}
-                      </option>
-                    ))}
-                  </select>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                  {/* Streamer Filter */}
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                      Filter by Streamer
+                    </label>
+                    <select
+                      value={streamerFilter}
+                      onChange={(e) => setStreamerFilter(e.target.value)}
+                      className="w-full p-3 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                    >
+                      <option value="">All Streamers</option>
+                      {streamers.map((streamer) => (
+                        <option key={streamer} value={streamer}>
+                          {streamer}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {/* Submitter Filter */}
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                      Filter by Submitter
+                    </label>
+                    <select
+                      value={submitterFilter}
+                      onChange={(e) => setSubmitterFilter(e.target.value)}
+                      className="w-full p-3 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                    >
+                      <option value="">All Submitters</option>
+                      {submitters.map((submitter) => (
+                        <option key={submitter} value={submitter}>
+                          {submitter}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Season Filter */}
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                      Filter by Season
+                    </label>
+                    <select
+                      value={seasonFilter}
+                      onChange={(e) => setSeasonFilter(e.target.value)}
+                      className="w-full p-3 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                    >
+                      <option value="">All Seasons</option>
+                      <option value="spring">Spring</option>
+                      <option value="summer">Summer</option>
+                      <option value="fall">Fall</option>
+                      <option value="winter">Winter</option>
+                    </select>
+                  </div>
+
+                  {/* Year Filter */}
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                      Filter by Year
+                    </label>
+                    <select
+                      value={yearFilter}
+                      onChange={(e) => setYearFilter(e.target.value)}
+                      className="w-full p-3 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                    >
+                      <option value="">All Years</option>
+                      <option value="2025">2025</option>
+                      <option value="2024">2024</option>
+                      <option value="2023">2023</option>
+                    </select>
+                  </div>
+                  
+                  {/* Sort Options */}
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                      Sort Order
+                    </label>
+                    <select
+                      value={sortOption}
+                      onChange={handleSortChange}
+                      className="w-full p-3 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                    >
+                      <option value="newest">Newest First</option>
+                      <option value="oldest">Oldest First</option>
+                      <option value="upvotes">Most Upvotes</option>
+                      <option value="downvotes">Most Downvotes</option>
+                      <option value="ratio">Best Ratio</option>
+                    </select>
+                  </div>
                 </div>
-              </div>
-              
-              <div className="flex justify-end mt-6 space-x-3">
-                <button
-                  onClick={resetFilters}
-                  className="px-4 py-2 border border-neutral-300 dark:border-neutral-600 rounded-md text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700"
-                >
-                  Reset Filters
-                </button>
-                <button
-                  onClick={applyFilters}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                >
-                  Apply Filters
-                </button>
+                
+                <div className="flex justify-end mt-6 space-x-3">
+                  <button
+                    onClick={resetFilters}
+                    className="px-6 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-all duration-200 font-medium"
+                  >
+                    Reset Filters
+                  </button>
+                  <button
+                    onClick={applyFilters}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium shadow-sm"
+                  >
+                    Apply Filters
+                  </button>
+                </div>
               </div>
             </div>
           </motion.div>
@@ -531,211 +706,211 @@ const ClipSearch: React.FC = () => {
           <div className="bg-red-100 dark:bg-red-900/30 border-l-4 border-red-500 p-4 rounded-md">
             <p className="text-red-700 dark:text-red-400">{error}</p>
           </div>
-        ) : (clips.length > 0 || profiles.length > 0) ? (
+        ) : (currentSeasonClips.length > 0 || Object.keys(otherSeasonsClips).length > 0 || profiles.length > 0 || clips.length > 0) ? (
           <>
             {/* Display profiles first if any */}
             {profiles.length > 0 && (
-              <div className="mb-8">
-                <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-4 flex items-center">
-                  <FaUser className="mr-2" />
-                  Profiles ({profiles.length})
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+                className="mb-12"
+              >
+                <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-md p-6 mb-6">
+                  <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1 flex items-center">
+                    <FaUser className="mr-3 text-blue-500" />
+                    Profiles
+                  </h2>
+                  <p className="text-neutral-600 dark:text-neutral-400 mb-4">
+                    Found {profiles.length} profile{profiles.length !== 1 ? 's' : ''} matching your search
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                   {profiles.map((profile, index) => (
-                    <motion.div
-                      key={profile._id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: index * 0.05 }}
-                      className="bg-white dark:bg-neutral-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
-                    >
-                      <Link
-                        to={`/profile/${profile._id}`}
-                        className="block p-6 text-center"
-                      >
-                        <div className="relative w-20 h-20 mx-auto mb-4">
-                          {profile.profilePicture ? (
-                            <img 
-                              src={profile.profilePicture} 
-                              alt={profile.username} 
-                              className="w-full h-full object-cover rounded-full"
-                              loading="lazy"
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-neutral-300 dark:bg-neutral-600 rounded-full flex items-center justify-center">
-                              <FaUser className="text-neutral-500 dark:text-neutral-400 text-2xl" />
-                            </div>
-                          )}
-                        </div>
-                        
-                        <h3 className="font-semibold text-neutral-900 dark:text-white mb-2">
-                          {highlightSearchTerm(profile.username)}
-                        </h3>
-                          {profile.profile?.bio && (
-                          <p className="text-sm text-neutral-600 dark:text-neutral-400 line-clamp-2">
-                            {highlightSearchTerm(profile.profile.bio)}
-                          </p>
-                        )}
-                        
-                        <div className="text-xs text-neutral-500 dark:text-neutral-400 mt-2">
-                          Joined {format(new Date(profile.createdAt || profile.joinDate))}
-                        </div>
-                      </Link>
-                    </motion.div>
+                    <ProfileCard key={profile._id} profile={profile} index={index} />
                   ))}
                 </div>
-              </div>
+              </motion.div>
             )}
 
-            {/* Display clips if any */}
-            {clips.length > 0 && (
-              <div>
-                {profiles.length > 0 && (
-                  <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-4 flex items-center">
-                    <FaPlay className="mr-2" />
-                    Clips ({clips.length})
-                  </h2>
-                )}
+            {/* Filtered Clips (when season/year filters are applied) */}
+            {(seasonFilter || yearFilter) && clips.length > 0 && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: profiles.length > 0 ? 0.2 : 0 }}
+                className="mb-12"
+              >
+                <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl shadow-lg p-6 mb-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-2xl font-bold mb-1 flex items-center">
+                        <FaSearch className="mr-3" />
+                        <span>Filtered Results</span>
+                        {seasonFilter && (
+                          <>
+                            <span className="ml-2">- {getSeasonInfo(seasonFilter).emoji}</span>
+                            <span className="ml-1 capitalize">{seasonFilter}</span>
+                          </>
+                        )}
+                        {yearFilter && <span className="ml-1">{yearFilter}</span>}
+                      </h2>
+                      <p className="text-blue-100">
+                        {clips.length} clip{clips.length !== 1 ? 's' : ''} matching your filters
+                      </p>
+                    </div>
+                    <div className="text-4xl opacity-20">
+                      {seasonFilter ? getSeasonInfo(seasonFilter).emoji : '🔍'}
+                    </div>
+                  </div>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                   {clips.map((clip, index) => (
-                    <motion.div
-                      key={clip._id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: index * 0.05 }}
-                      className="bg-white dark:bg-neutral-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
-                    >
-                      <Link
-                        to={`/clips/${clip._id}`}
-                        state={{ from: location }}
-                        className="block relative aspect-video bg-neutral-200 dark:bg-neutral-900"
-                      >
-                        {/* Static thumbnail, no hover interaction */}
-                        {clip.thumbnail ? (
-                          <img 
-                            src={clip.thumbnail} 
-                            alt={clip.title} 
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <video
-                            src={clip.url}
-                            className="w-full h-full object-cover"
-                            poster={clip.thumbnail}
-                            preload="none"
-                            muted
-                          />
-                        )}
-                        
-                        {/* Play indicator always visible */}
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                          <div className="bg-white/20 backdrop-blur-sm p-3 rounded-full">
-                            <FaPlay className="text-white text-2xl" />
-                          </div>
-                        </div>
-                        
-                        {/* Streamer badge */}
-                        <div className="absolute top-2 left-2 bg-black/70 text-white text-sm px-2 py-1 rounded backdrop-blur-sm">
-                          {clip.streamer}
-                        </div>
-                      </Link>
-                      
-                      <div className="p-4">
-                        <h3 className="font-semibold text-neutral-900 dark:text-white mb-1 line-clamp-2 h-12">
-                          {highlightSearchTerm(clip.title)}
-                        </h3>
-                        
-                        <div className="flex items-center justify-between text-sm text-neutral-500 dark:text-neutral-400 mt-2">
-                          <div className="flex items-center space-x-4">
-                            <span className="flex items-center">
-                              <FaArrowUp className="text-green-500 mr-1" />
-                              {clip.upvotes}
-                            </span>
-                            <span className="flex items-center">
-                              <FaArrowDown className="text-red-500 mr-1" />
-                              {clip.downvotes}
-                            </span>
-                          </div>
-                          <span className="flex items-center" title={new Date(clip.createdAt).toLocaleDateString()}>
-                            <FaCalendarAlt className="mr-1" />
-                            {format(new Date(clip.createdAt))}
-                          </span>
-                        </div>
-                        
-                        {clip.submitter !== 'Legacy(no data)' && (
-                          <div className="text-xs text-neutral-500 dark:text-neutral-400 mt-2 truncate">
-                            Submitted by: <span className="font-medium">{clip.submitter}</span>
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
+                    <ClipCard key={clip._id} clip={clip} index={index} />
                   ))}
                 </div>
-              </div>
+              </motion.div>
             )}
-            
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex justify-center mt-10">
-                <nav className="flex items-center bg-white dark:bg-neutral-800 rounded-lg shadow-md overflow-hidden">
-                  <button
-                    onClick={() => handlePageChange(1)}
-                    disabled={currentPage === 1}
-                    className={`p-3 border-r border-neutral-200 dark:border-neutral-700 ${
-                      currentPage === 1 
-                        ? 'text-neutral-400 cursor-not-allowed' 
-                        : 'hover:bg-neutral-100 dark:hover:bg-neutral-700'
-                    }`}
-                    aria-label="First Page"
-                  >
-                    <FaAngleDoubleLeft size={18} />
-                  </button>
-                  
-                  <button
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    disabled={currentPage === 1}
-                    className={`p-3 border-r border-neutral-200 dark:border-neutral-700 ${
-                      currentPage === 1 
-                        ? 'text-neutral-400 cursor-not-allowed' 
-                        : 'hover:bg-neutral-100 dark:hover:bg-neutral-700'
-                    }`}
-                    aria-label="Previous Page"
-                  >
-                    <FaAngleLeft size={18} />
-                  </button>
-                  
-                  <div className="px-4 py-2 font-medium text-neutral-800 dark:text-white">
-                    Page {currentPage} of {totalPages}
+
+            {/* Current Season Clips (when no season/year filters are applied) */}
+            {!seasonFilter && !yearFilter && currentSeasonClips.length > 0 && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: profiles.length > 0 ? 0.2 : 0 }}
+                className="mb-12"
+              >
+                <div className={`${getSeasonInfo(currentSeason.season).bgColor} text-white rounded-xl shadow-lg p-6 mb-6`}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-2xl font-bold mb-1 flex items-center">
+                        {getSeasonInfo(currentSeason.season).emoji}
+                        <span className="ml-2">{currentSeason.season} {currentSeason.year} - Current Season</span>
+                      </h2>
+                      <p className="text-blue-100">
+                        {currentSeasonClips.length} clip{currentSeasonClips.length !== 1 ? 's' : ''} from the current season
+                      </p>
+                    </div>
+                    <div className="text-4xl opacity-20">
+                      {getSeasonInfo(currentSeason.season).emoji}
+                    </div>
                   </div>
-                  
-                  <button
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                    className={`p-3 border-l border-neutral-200 dark:border-neutral-700 ${
-                      currentPage === totalPages 
-                        ? 'text-neutral-400 cursor-not-allowed' 
-                        : 'hover:bg-neutral-100 dark:hover:bg-neutral-700'
-                    }`}
-                    aria-label="Next Page"
-                  >
-                    <FaAngleRight size={18} />
-                  </button>
-                  
-                  <button
-                    onClick={() => handlePageChange(totalPages)}
-                    disabled={currentPage === totalPages}
-                    className={`p-3 border-l border-neutral-200 dark:border-neutral-700 ${
-                      currentPage === totalPages 
-                        ? 'text-neutral-400 cursor-not-allowed' 
-                        : 'hover:bg-neutral-100 dark:hover:bg-neutral-700'
-                    }`}
-                    aria-label="Last Page"
-                  >
-                    <FaAngleDoubleRight size={18} />
-                  </button>
-                </nav>
-              </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {currentSeasonClips.slice(0, currentSeasonDisplayCount).map((clip, index) => (
+                    <ClipCard key={clip._id} clip={clip} index={index} />
+                  ))}
+                </div>
+                
+                {/* Show More Button for Current Season */}
+                {currentSeasonClips.length > currentSeasonDisplayCount && (
+                  <div className="flex justify-center mt-8">
+                    <button
+                      onClick={showMoreCurrentSeasonClips}
+                      className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all duration-200 font-medium shadow-sm flex items-center"
+                    >
+                      Show {Math.min(8, currentSeasonClips.length - currentSeasonDisplayCount)} More Clips
+                      <FaChevronDown className="ml-2" />
+                    </button>
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {/* Other Seasons (when no season/year filters are applied) */}
+            {!seasonFilter && !yearFilter && Object.keys(otherSeasonsClips).length > 0 && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: (profiles.length > 0 ? 0.2 : 0) + (currentSeasonClips.length > 0 ? 0.2 : 0) }}
+                className="mb-12"
+              >
+                <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-md p-6 mb-6">
+                  <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1 flex items-center">
+                    <FaCalendarAlt className="mr-3 text-orange-500" />
+                    Previous Seasons
+                  </h2>
+                  <p className="text-neutral-600 dark:text-neutral-400">
+                    Clips from {Object.keys(otherSeasonsClips).length} other season{Object.keys(otherSeasonsClips).length !== 1 ? 's' : ''}
+                  </p>
+                </div>
+
+                <div className="space-y-6">
+                  {availableSeasons.map((seasonKey) => {
+                    const seasonData = otherSeasonsClips[seasonKey];
+                    if (!seasonData) return null;
+                    
+                    const isExpanded = expandedSeasons.has(seasonKey);
+                    const seasonInfo = getSeasonInfo(seasonData.season);
+                    
+                    return (
+                      <motion.div 
+                        key={seasonKey}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-white dark:bg-neutral-900 rounded-xl shadow-md overflow-hidden"
+                      >
+                        <button
+                          onClick={() => toggleSeasonExpansion(seasonKey)}
+                          className={`w-full p-6 text-left transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800 ${seasonInfo.bgColor}`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                              <span className="text-2xl mr-3">{seasonInfo.emoji}</span>
+                              <div>
+                                <h3 className={`text-xl font-bold ${seasonInfo.color} capitalize`}>
+                                  {seasonData.season} {seasonData.year}
+                                </h3>
+                                <p className="text-neutral-600 dark:text-neutral-400">
+                                  {seasonData.clips.length} clip{seasonData.clips.length !== 1 ? 's' : ''}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center">
+                              {isExpanded ? (
+                                <FaChevronUp className="text-neutral-500" />
+                              ) : (
+                                <FaChevronDown className="text-neutral-500" />
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                        
+                        <AnimatePresence>
+                          {isExpanded && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              transition={{ duration: 0.3 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="p-6 pt-0 bg-neutral-50 dark:bg-neutral-800">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-6">
+                                  {seasonData.clips.slice(0, 8).map((clip, index) => (
+                                    <ClipCard key={clip._id} clip={clip} index={index} />
+                                  ))}
+                                </div>
+                                {seasonData.clips.length > 8 && (
+                                  <div className="mt-6 text-center">
+                                    <Link
+                                      to={`/search?query=${encodeURIComponent(searchTerm)}&season=${seasonData.season}&year=${seasonData.year}`}
+                                      className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                                    >
+                                      View all {seasonData.clips.length} clips from {seasonData.season} {seasonData.year}
+                                      <FaPlay className="ml-2" />
+                                    </Link>
+                                  </div>
+                                )}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </motion.div>
             )}
           </>
         ) : searchTerm ? (
@@ -747,7 +922,7 @@ const ClipSearch: React.FC = () => {
             <p className="text-neutral-600 dark:text-neutral-400 text-center max-w-md">
               We couldn't find any {searchType === 'clips' ? 'clips' : searchType === 'profiles' ? 'profiles' : 'results'} matching "{searchTerm}". Please try different keywords or filters.
             </p>
-            {(streamerFilter || submitterFilter) && (
+            {(streamerFilter || submitterFilter || seasonFilter || yearFilter) && (
               <button
                 onClick={resetFilters}
                 className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"

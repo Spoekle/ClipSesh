@@ -1,17 +1,16 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import * as adminService from '../../../services/adminService';
 import { motion } from 'framer-motion';
 import { FaUser, FaLock, FaUserPlus, FaShieldAlt, FaCheck, FaEnvelope, FaExclamationTriangle } from 'react-icons/fa';
-import { useNotification } from '../../../context/NotificationContext';
+import { useNotification } from '../../../context/AlertContext';
 import { CreateUserFormData, FormErrors } from '../../../types/adminTypes';
 
 interface CreateUserProps {
   fetchUsers: () => void;
-  apiUrl: string;
   AVAILABLE_ROLES: string[];
 }
 
-const CreateUser: React.FC<CreateUserProps> = ({ fetchUsers, apiUrl, AVAILABLE_ROLES }) => {
+const CreateUser: React.FC<CreateUserProps> = ({ fetchUsers, AVAILABLE_ROLES }) => {
     const [formData, setFormData] = useState<CreateUserFormData>({
         username: '',
         password: '',
@@ -103,14 +102,9 @@ const CreateUser: React.FC<CreateUserProps> = ({ fetchUsers, apiUrl, AVAILABLE_R
         if (!validateForm()) {
             return;
         }
-        
-        setIsSubmitting(true);
+          setIsSubmitting(true);
         try {
-            const token = localStorage.getItem('token');
-            await axios.post(`${apiUrl}/api/admin/create-user`, 
-                { ...formData, status: 'active' }, 
-                { headers: { Authorization: `Bearer ${token}` }}
-            );
+            await adminService.createUser({ ...formData, status: 'active' });
             
             showSuccess('User created successfully!');
             setFormData({ username: '', password: '', email: '', roles: ['user'] });

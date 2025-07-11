@@ -2,11 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaBell, FaCheck, FaTrash, FaAngleRight, FaRegBell, FaUsers } from 'react-icons/fa';
-import axios from 'axios';
-import apiUrl from '../../config/config';
 import { UserNotification, UserNotificationResponse } from '../../types/notificationTypes';
-import { useNotification } from '../../context/NotificationContext';
+import { useNotification } from '../../context/AlertContext';
 import { format } from 'timeago.js';
+import * as notificationService from '../../services/notificationService';
 
 interface NotificationDropdownProps {
   isOpen: boolean;
@@ -47,19 +46,13 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
     if (prefetchedData) {
       setNotifications(prefetchedData.notifications);
     }
-  }, [prefetchedData]);
-
-  const fetchNotifications = async (): Promise<void> => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
+  }, [prefetchedData]);  const fetchNotifications = async (): Promise<void> => {
+    if (!notificationService.isAuthenticated()) return;
 
     try {
       setLoading(true);
-      const response = await axios.get<UserNotificationResponse>(
-        `${apiUrl}/api/notifications`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setNotifications(response.data.notifications);
+      const response = await notificationService.fetchNotifications();
+      setNotifications(response.notifications);
     } catch (error) {
       console.error('Error fetching notifications', error);
       showError('Failed to load notifications');
@@ -67,21 +60,13 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
       setLoading(false);
     }
   };
-
   const markAsRead = async (notificationId: string, event?: React.MouseEvent): Promise<void> => {
     if (event) {
       event.stopPropagation();
     }
-    
-    const token = localStorage.getItem('token');
-    if (!token) return;
 
     try {
-      await axios.put(
-        `${apiUrl}/api/notifications/${notificationId}/read`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await notificationService.markNotificationAsRead(notificationId);
       
       // Update local state
       setNotifications(prev => 
@@ -98,17 +83,9 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
       showError('Failed to update notification');
     }
   };
-
   const markAllAsRead = async (): Promise<void> => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
     try {
-      await axios.put(
-        `${apiUrl}/api/notifications/read-all`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await notificationService.markAllNotificationsAsRead();
       
       // Update local state
       setNotifications(prev => 
@@ -124,18 +101,11 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
       showError('Failed to update notifications');
     }
   };
-
-  const deleteNotification = async (notificationId: string, event: React.MouseEvent): Promise<void> => {
+  const deleteNotificationItem = async (notificationId: string, event: React.MouseEvent): Promise<void> => {
     event.stopPropagation();
-    
-    const token = localStorage.getItem('token');
-    if (!token) return;
 
     try {
-      await axios.delete(
-        `${apiUrl}/api/notifications/${notificationId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await notificationService.deleteNotification(notificationId);
       
       // Update local state
       setNotifications(prev => 
@@ -150,7 +120,6 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
       showError('Failed to delete notification');
     }
   };
-
   const navigateToClip = (notification: UserNotification): void => {
     // Mark as read when navigating
     if (!notification.read) {
@@ -159,26 +128,9 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
     
     onClose();
     
-    // Handle different notification types
-    if (notification.type === 'team_message') {
-      navigate(`/clips/${notification.clipId}`, { 
-        state: { 
-          openTeamChat: true,
-          messageId: notification.entityId 
-        }
-      });
-    } else if (notification.type === 'comment_reply') {
-      navigate(`/clips/${notification.clipId}`, { 
-        state: { 
-          highlightComment: notification.entityId,
-          highlightReply: notification.replyId 
-        }
-      });
-    } else {
-      navigate(`/clips/${notification.clipId}`, { 
-        state: { highlightComment: notification.entityId }
-      });
-    }
+    const clipUrl = notificationService.getNotificationClipUrl(notification);
+    const state = notificationService.getNotificationNavigationState(notification);
+    navigate(clipUrl, { state });
   };
 
   const viewAllNotifications = (): void => {
@@ -320,7 +272,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
                             </button>
                           )}
                           <button
-                            onClick={(e) => deleteNotification(notification._id, e)}
+                            onClick={(e) => deleteNotificationItem(notification._id, e)}
                             className="text-red-500 hover:text-red-700 dark:text-red-400 p-0.5"
                             title="Delete notification"
                           >

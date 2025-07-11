@@ -36,6 +36,13 @@ export interface BasicUserInfo {
   email: string;
 }
 
+// Extended user info for profile editing including password change
+export interface UserInfoWithPassword extends BasicUserInfo {
+  currentPassword?: string;
+  newPassword?: string;
+  confirmPassword?: string;
+}
+
 export interface ProfilePictureResponse {
   success: boolean;
   profilePictureUrl: string;
@@ -58,6 +65,7 @@ export interface SocialLinks {
 
 // Trophy Interface - matches backend trophiesSchema
 export interface Trophy {
+  _id: string;
   trophyName: string;
   dateEarned: string;
   description: string;

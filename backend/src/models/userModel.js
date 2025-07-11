@@ -150,7 +150,7 @@ const trophiesSchema = new mongoose.Schema({
   trophyName: { type: String, required: true },
   dateEarned: { type: String, required: true },
   description: { type: String, required: true },
-}, { _id: false });
+});
 
 const socialLinksSchema = new mongoose.Schema({
   website: { type: String, default: '' },

@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaBell, FaCheck, FaTrash, FaAngleRight, FaRegBell, FaUsers, FaComments } from 'react-icons/fa';
-import apiUrl from '../config/config';
-import { UserNotification, UserNotificationResponse } from '../types/notificationTypes';
-import { useNotification } from '../context/NotificationContext';
+import { UserNotification } from '../types/notificationTypes';
+import { useNotification } from '../context/AlertContext';
 import LoadingBar from 'react-top-loading-bar';
 import { format } from 'timeago.js';
+import * as notificationService from '../services/notificationService';
 
 const NotificationsPage: React.FC = () => {
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
@@ -20,11 +19,8 @@ const NotificationsPage: React.FC = () => {
 
   useEffect(() => {
     fetchNotifications();
-  }, []);
-
-  const fetchNotifications = async (): Promise<void> => {
-    const token = localStorage.getItem('token');
-    if (!token) {
+  }, []);  const fetchNotifications = async (): Promise<void> => {
+    if (!notificationService.isAuthenticated()) {
       navigate('/');
       return;
     }
@@ -32,12 +28,9 @@ const NotificationsPage: React.FC = () => {
     try {
       setProgress(30);
       setLoading(true);
-      const response = await axios.get<UserNotificationResponse>(
-        `${apiUrl}/api/notifications`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const response = await notificationService.fetchNotifications();
       setProgress(100);
-      setNotifications(response.data.notifications);
+      setNotifications(response.notifications);
     } catch (error) {
       console.error('Error fetching notifications', error);
       showError('Failed to load notifications');
@@ -64,17 +57,9 @@ const NotificationsPage: React.FC = () => {
       acc[clipId].push(notification);
       return acc;
     }, {} as Record<string, UserNotification[]>);
-
   const markAsRead = async (notificationId: string): Promise<void> => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
     try {
-      await axios.put(
-        `${apiUrl}/api/notifications/${notificationId}/read`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await notificationService.markNotificationAsRead(notificationId);
       
       setNotifications(prev => 
         prev.map(notif => 
@@ -87,17 +72,9 @@ const NotificationsPage: React.FC = () => {
       showError('Failed to update notification');
     }
   };
-
   const markAllAsRead = async (): Promise<void> => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
     try {
-      await axios.put(
-        `${apiUrl}/api/notifications/read-all`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await notificationService.markAllNotificationsAsRead();
       
       setNotifications(prev => 
         prev.map(notif => ({ ...notif, read: true }))
@@ -109,16 +86,9 @@ const NotificationsPage: React.FC = () => {
       showError('Failed to update notifications');
     }
   };
-
-  const deleteNotification = async (notificationId: string): Promise<void> => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
+  const deleteNotificationItem = async (notificationId: string): Promise<void> => {
     try {
-      await axios.delete(
-        `${apiUrl}/api/notifications/${notificationId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await notificationService.deleteNotification(notificationId);
       
       setNotifications(prev => 
         prev.filter(notif => notif._id !== notificationId)
@@ -129,35 +99,15 @@ const NotificationsPage: React.FC = () => {
       showError('Failed to delete notification');
     }
   };
-
   const navigateToClip = (notification: UserNotification): void => {
     // Mark as read when navigating
     if (!notification.read) {
       markAsRead(notification._id);
     }
     
-    // For team messages, scroll to message component
-    if (notification.type === 'team_message') {
-      navigate(`/clips/${notification.clipId}`, { 
-        state: { 
-          openTeamChat: true,
-          messageId: notification.entityId
-        }
-      });
-    } else if (notification.type === 'comment_reply') {
-      // Navigate to the clip with both the comment and reply highlighted
-      navigate(`/clips/${notification.clipId}`, { 
-        state: { 
-          highlightComment: notification.entityId,
-          highlightReply: notification.replyId 
-        }
-      });
-    } else {
-      // For other types, just highlight the entity (usually a comment)
-      navigate(`/clips/${notification.clipId}`, { 
-        state: { highlightComment: notification.entityId }
-      });
-    }
+    const clipUrl = notificationService.getNotificationClipUrl(notification);
+    const state = notificationService.getNotificationNavigationState(notification);
+    navigate(clipUrl, { state });
   };
 
   const getNotificationIcon = (type: string) => {
@@ -397,7 +347,7 @@ const NotificationsPage: React.FC = () => {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              deleteNotification(notification._id);
+                              deleteNotificationItem(notification._id);
                             }}
                             className="text-red-500 hover:text-red-700 dark:text-red-400 p-1 rounded-full ml-2"
                             title="Delete notification"

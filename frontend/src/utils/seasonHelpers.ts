@@ -10,7 +10,7 @@ export const getCurrentSeason = (): { season: string; } => {
   let season = '';
 
   if (
-    (month === 3 && day >= 20) ||
+    (month === 3 && day >= 21) ||
     (month > 3 && month < 6) ||
     (month === 6 && day <= 20)
   ) {

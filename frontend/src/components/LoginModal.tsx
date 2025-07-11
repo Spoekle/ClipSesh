@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import apiUrl from '../config/config';
+const apiUrl = import.meta.env.VITE_BACKEND_URL || 'https://api.spoekle.com';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TbLoader2 } from "react-icons/tb";
 import { FaDiscord, FaTimes, FaEnvelope, FaLock, FaUser } from "react-icons/fa";
+import { loginUser, registerUser, requestPasswordReset } from '../services/userService';
 
 interface LoginModalProps {
   setIsLoginModalOpen: (isOpen: boolean) => void;
@@ -55,19 +56,14 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
       setIsLoginModalOpen(false);
     }
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsSubmitting(true);
-    
-    const url = formMode === 'register'
-      ? `${apiUrl}/api/users/register`
-      : `${apiUrl}/api/users/login`;
       
     try {
-      const response = await axios.post(url, formData);
       if (formMode === 'register') {
+        await registerUser(formData);
         setFormMode('login');
         setFormData({ ...formData, password: '' });
         setResetMessage({ 
@@ -75,8 +71,9 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
           message: 'Registration successful! Please login with your credentials.' 
         });
       } else {
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('username', response.data.username);
+        const response = await loginUser(formData);
+        localStorage.setItem('token', response.token);
+        localStorage.setItem('username', response.username);
         await fetchUser();
         handleClose();
       }
@@ -103,7 +100,6 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
       setIsSubmitting(false);
     }
   };
-
   const handlePasswordReset = async () => {
     if (!email.trim()) {
       setResetMessage({ type: 'error', message: 'Please enter your email address.' });
@@ -114,7 +110,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
       setAwaitingReset(true);
       setResetMessage({ type: '', message: '' });
       
-      await axios.post(`${apiUrl}/api/users/resetPassword`, { email });
+      await requestPasswordReset(email);
       
       setResetMessage({ 
         type: 'success', 

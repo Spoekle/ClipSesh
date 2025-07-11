@@ -18,7 +18,7 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = ({ viewSwitchTimestamp }
   const [data, setData] = useState<DataPoint[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [dateRange, setDateRange] = useState<{ start: Date | null, end: Date | null }>({ start: new Date(Date.now() - 29 * 24 * 60 * 60 * 1000), end: new Date(Date.now()) });  // Fetch user-specific ratings when dateRange changes
+  const [dateRange, setDateRange] = useState<{ start: Date | null, end: Date | null }>({ start: new Date(Date.now() - 29 * 24 * 60 * 60 * 1000), end: new Date(Date.now()) });
   useEffect(() => {
     const fetchActivity = async () => {
       setLoading(true);

@@ -1,16 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import axios from 'axios';
-import { useNotification } from '../../../../../context/NotificationContext';
-import apiUrl from '../../../../../config/config';
+import { useNotification } from '../../../../../context/AlertContext';
 import { IoMdInformationCircleOutline } from 'react-icons/io';
 import { User, Clip, Rating, RatingUser } from '../../../../../types/adminTypes';
+import { getRatingById, submitRating } from '../../../../../services/ratingService';
 
 interface RatingPanelProps {
     clip: Clip;
     user: User | null;
     ratings: Record<string, Rating>;
-    token: string;
     currentClip: Clip;
     isLoading: boolean;
     fetchClipsAndRatings: (user: User | null) => Promise<void>;
@@ -19,7 +17,6 @@ interface RatingPanelProps {
 const RatingPanel: React.FC<RatingPanelProps> = ({
     clip,
     user,
-    token,
     fetchClipsAndRatings,
     currentClip,
     ratings,
@@ -28,20 +25,15 @@ const RatingPanel: React.FC<RatingPanelProps> = ({
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [localRatings, setLocalRatings] = useState<Record<string, Rating> | null>(null);
     const [userCurrentRating, setUserCurrentRating] = useState<string | null>(null);
-    const { showError } = useNotification();
-
-    const fetchRatings = async () => {
+    const { showError } = useNotification();    const fetchRatings = async () => {
         if (!ratings || !ratings[clip._id]) {
             setIsLoading(true);
             try {
-                const token = localStorage.getItem('token');
-                const response = await axios.get(`${apiUrl}/api/ratings/${clip._id}`, {
-                    headers: token ? { Authorization: `Bearer ${token}` } : undefined
-                });
+                const ratingsData = await getRatingById(clip._id);
 
-                if (response.data) {
+                if (ratingsData) {
                     setLocalRatings({
-                        [clip._id]: response.data
+                        [clip._id]: ratingsData
                     });
                 }
             } catch (error) {
@@ -100,14 +92,10 @@ const RatingPanel: React.FC<RatingPanelProps> = ({
         if (ratings?.[clip._id] || localRatings?.[clip._id]) {
             fetchUserCurrentRating();
         }
-    }, [clip._id, ratings?.[clip._id], localRatings?.[clip._id], user]);
-
-    const rateOrDenyClip = async (id: string, rating: number | null = null, deny: boolean = false): Promise<void> => {
+    }, [clip._id, ratings?.[clip._id], localRatings?.[clip._id], user]);    const rateOrDenyClip = async (id: string, rating: number | null = null, deny: boolean = false): Promise<void> => {
         try {
-            const data = rating !== null ? { rating } : { deny };
-            await axios.post(`${apiUrl}/api/ratings/${id}`, data, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            const ratingValue = rating !== null ? rating.toString() as '1' | '2' | '3' | '4' : 'deny';
+            await submitRating(id, ratingValue);
             
             // Update local state immediately for better UX
             if (rating !== null) {
@@ -118,7 +106,7 @@ const RatingPanel: React.FC<RatingPanelProps> = ({
             
             await fetchClipsAndRatings(user);
         } catch (error: any) {
-            showError('Error rating clip: ' + (error.response?.data?.message || 'Unknown error'));
+            showError('Error rating clip: ' + (error.message || 'Unknown error'));
         } finally {
         }
     };

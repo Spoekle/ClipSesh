@@ -1,22 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
-import apiUrl from '../../../../../config/config';
 import { AiOutlineSend, AiOutlineDelete, AiOutlineClose } from 'react-icons/ai';
 import { BiSmile } from 'react-icons/bi';
 import { motion, AnimatePresence } from 'framer-motion';
 import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
 import { format } from 'timeago.js';
-import axios from 'axios';
-import { useNotification } from '../../../../../context/NotificationContext';
+import { useNotification } from '../../../../../context/AlertContext';
 import { User } from '../../../../../types/adminTypes';
-
-interface Message {
-  _id: string;
-  userId: string;
-  user: string;
-  message: string;
-  profilePicture?: string;
-  timestamp: string;
-}
+import { 
+  getMessagesForClip, 
+  sendMessage, 
+  deleteMessage, 
+  Message as MessageType, 
+  SendMessageData 
+} from '../../../../../services/messageService';
 
 interface MessagesPopupProps {
   clipId: string;
@@ -31,7 +27,7 @@ const MessagesPopup: React.FC<MessagesPopupProps> = ({
   user, 
   highlightedMessageId = null 
 }) => {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<MessageType[]>([]);
   const [newMessage, setNewMessage] = useState<string>('');
   const [showEmojiPicker, setShowEmojiPicker] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
@@ -40,22 +36,16 @@ const MessagesPopup: React.FC<MessagesPopupProps> = ({
   const [highlightedMessage] = useState<string | null>(highlightedMessageId);
   
   const { showError } = useNotification();
-
   useEffect(() => {
     const fetchMessages = async () => {
       const token = localStorage.getItem('token');
       if (token) {
         try {
           setLoading(true);
-          const response = await axios.get(
-            `${apiUrl}/api/messages?clipId=${clipId}`,
-            {
-              headers: { Authorization: `Bearer ${token}` },
-            }
-          );
+          const messagesData = await getMessagesForClip(clipId);
           
           setTimeout(() => {
-            setMessages(response.data.reverse());
+            setMessages(messagesData);
             setLoading(false);
           }, 300);
         } catch (error) {
@@ -98,30 +88,20 @@ const MessagesPopup: React.FC<MessagesPopupProps> = ({
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
-
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !user) return;
     
-    const token = localStorage.getItem('token');
     try {
-      const response = await axios.post(
-        `${apiUrl}/api/messages`,
-        {
-          clipId,
-          userId: user._id,
-          user: user.username,
-          message: newMessage,
-          profilePicture: user.profilePicture,
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const messageData: SendMessageData = {
+        clipId,
+        userId: user._id,
+        user: user.username,
+        message: newMessage,
+        profilePicture: user.profilePicture,
+      };
       
-      setMessages((prevMessages) => [response.data, ...prevMessages]);
+      const newMessageData = await sendMessage(messageData);
+      setMessages((prevMessages) => [newMessageData, ...prevMessages]);
       setNewMessage('');
     } catch (error) {
       console.error('Failed to send message:', error);
@@ -140,19 +120,11 @@ const MessagesPopup: React.FC<MessagesPopupProps> = ({
     setNewMessage((prev) => prev + emojiData.emoji);
     setShowEmojiPicker(false);
   };
-
   const handleDeleteMessage = async (id: string) => {
     if (!user) return;
     
-    const token = localStorage.getItem('token');
     try {
-      await axios.delete(
-        `${apiUrl}/api/messages/${id}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          data: { userId: user._id, roles: user.roles }
-        }
-      );
+      await deleteMessage(id, user._id, user.roles);
 
       setMessages((prevMessages) => 
         prevMessages.filter((msg) => msg._id !== id)
@@ -174,7 +146,7 @@ const MessagesPopup: React.FC<MessagesPopupProps> = ({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
-      className="fixed bottom-0 right-4 w-96 z-30 bg-neutral-900 text-white rounded-t-xl shadow-2xl"
+      className="fixed bottom-18 right-0 md:right-4 md:bottom-0 w-full md:w-96 z-30 bg-neutral-900 text-white rounded-t-xl shadow-2xl"
     >
       <div className="flex justify-between items-center p-3 border-b border-neutral-700">
         <h3 className="text-xl font-bold">Team Chat</h3>

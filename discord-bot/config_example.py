@@ -16,7 +16,5 @@
 UPLOADBOT_USERNAME=""
 UPLOADBOT_PASSWORD=""
 BACKEND_URL="http://backend:3000"  # Default for Docker environment
-
-# Optional fallback Discord bot token (only used if token can't be fetched from backend)
 DISCORD_BOT_TOKEN=""
 

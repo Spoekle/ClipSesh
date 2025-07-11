@@ -22,7 +22,7 @@ const clipUpload = require('./storage/ClipUpload');
 const Notification = require('../models/notificationModel');
 const User = require('../models/userModel');
 const Rating = require('../models/ratingModel');
-const { getClipPath, getDailyDirectory, isLegacyPath } = require('../utils/seasonHelpers');
+const { getClipPath, getDailyDirectory, isLegacyPath, getCurrentSeason } = require('../utils/seasonHelpers');
 
 const backendUrl = process.env.BACKEND_URL || 'https://api.spoekle.com';
 
@@ -31,7 +31,7 @@ const backendUrl = process.env.BACKEND_URL || 'https://api.spoekle.com';
  */
 async function updateClipCount() {
   try {
-    const count = await Clip.countDocuments();
+    const count = await Clip.countDocuments({ archived: { $ne: true } });
     await PublicConfig.findOneAndUpdate(
       {}, 
       { clipAmount: count }, 
@@ -308,9 +308,11 @@ router.get('/', async (req, res) => {
         limit = Math.min(Math.max(1, parseInt(limit) || 12)); // Cap at 100
         
         console.log(`Clips query: page=${page}, limit=${limit}, sortBy=${sortBy}, sortOrder=${sortOrder}, streamer=${streamer}, search=${search}, excludeRatedByUser=${excludeRatedByUser}`);
-        
-        // Build base query
+          // Build base query
         const query = {};
+        
+        // Exclude archived clips from regular fetches
+        query.archived = { $ne: true };
         
         if (streamer?.trim()) {
             query.streamer = { $regex: new RegExp(streamer.trim(), 'i') };
@@ -328,10 +330,8 @@ router.get('/', async (req, res) => {
         if (userRatedClipIds.length > 0) {
             query._id = { $nin: userRatedClipIds };
             console.log(`Excluding ${userRatedClipIds.length} clips rated by user ${excludeRatedByUser}`);
-        }
-
-        // Get total counts
-        const totalClipsBeforeFiltering = await Clip.countDocuments({});
+        }        // Get total counts
+        const totalClipsBeforeFiltering = await Clip.countDocuments({ archived: { $ne: true } });
         const totalClipsAfterAllFilters = await Clip.countDocuments(query);
         
         // Calculate pagination
@@ -432,7 +432,7 @@ async function fetchRatingsData(clips) {
  */
 router.get('/filter-options', async (req, res) => {
     try {
-        const clips = await Clip.find({}, 'streamer submitter');
+        const clips = await Clip.find({ archived: { $ne: true } }, 'streamer submitter');
         
         // Extract unique streamers and submitters
         const streamers = [...new Set(clips.map(clip => clip.streamer).filter(Boolean))].sort();
@@ -761,9 +761,8 @@ router.get('/clip-navigation/adjacent', async (req, res) => {
         const currentClip = await Clip.findById(currentClipId);
         if (!currentClip) {
             return res.status(404).json({ error: 'Current clip not found' });
-        }
-
-        const baseQuery = {};
+        }        
+        const baseQuery = { archived: { $ne: true } }; // Exclude archived clips
         if (streamer) {
             baseQuery.streamer = { $regex: new RegExp(streamer, 'i') };
         }
@@ -1208,8 +1207,10 @@ router.post('/', authorizeRoles(['uploader', 'admin']), clipUpload.single('clip'
         }
         else {
             console.log("No file or valid link provided.");
-            return res.status(400).json({ error: 'No file or valid link provided' });
-        }
+            return res.status(400).json({ error: 'No file or valid link provided' });        }
+
+        // Get current season and year
+        const { season, year } = getCurrentSeason();
 
         const newClip = new Clip({ 
             url: fileUrl, 
@@ -1218,7 +1219,9 @@ router.post('/', authorizeRoles(['uploader', 'admin']), clipUpload.single('clip'
             submitter, 
             title: finalTitle || title, 
             link,
-            discordSubmitterId 
+            discordSubmitterId,
+            season: season.charAt(0).toUpperCase() + season.slice(1), // Capitalize first letter
+            year: year
         });
         await newClip.save();
 
@@ -1236,7 +1239,7 @@ router.post('/', authorizeRoles(['uploader', 'admin']), clipUpload.single('clip'
 
 router.put('/:id', authorizeRoles(['uploader', 'admin']), async (req, res) => {
     const { id } = req.params;
-    const { streamer, submitter, title } = req.body;
+    const { streamer, submitter, title, discordSubmitterId, link, archived, season, year } = req.body;
 
     try {
         const clip = await Clip.findById(id);
@@ -1252,8 +1255,34 @@ router.put('/:id', authorizeRoles(['uploader', 'admin']), async (req, res) => {
             clip.submitter = submitter;
         }
 
+        if (discordSubmitterId !== undefined) {
+            clip.discordSubmitterId = discordSubmitterId;
+        }
+
         if (title !== undefined) {
             clip.title = title;
+        }
+
+        if (link !== undefined) {
+            clip.link = link;
+        }
+
+        if (archived !== undefined) {
+            clip.archived = archived;
+            // Set archivedAt timestamp when archiving
+            if (archived && !clip.archivedAt) {
+                clip.archivedAt = new Date();
+            } else if (!archived) {
+                clip.archivedAt = undefined;
+            }
+        }
+
+        if (season !== undefined) {
+            clip.season = season;
+        }
+
+        if (year !== undefined) {
+            clip.year = year;
         }
 
         await clip.save();
@@ -1661,9 +1690,11 @@ router.get('/user/:discordId', async (req, res) => {
         const pageNumber = parseInt(page);
         const limitNumber = parseInt(limit);
         const skip = (pageNumber - 1) * limitNumber;
-        
-        // Build query to find clips by Discord submitter ID
-        const query = { discordSubmitterId: discordId };
+          // Build query to find clips by Discord submitter ID
+        const query = { 
+            discordSubmitterId: discordId,
+            archived: { $ne: true } // Exclude archived clips
+        };
         
         // Get total count for pagination
         const totalClips = await Clip.countDocuments(query);

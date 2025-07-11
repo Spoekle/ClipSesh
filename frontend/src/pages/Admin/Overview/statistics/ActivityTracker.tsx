@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import axios from 'axios';
-import apiUrl from '../../../../config/config';
 import { FaChartLine } from 'react-icons/fa';
 import DateRangePicker from '../../../../components/DateRangePicker';
+import * as ratingService from '../../../../services/ratingService';
 
 interface ActivityData {
   date: string;
@@ -24,7 +23,7 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = () => {
   const [userActivityData, setUserActivityData] = useState<UserActivityData>({});
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [dateRange, setDateRange] = useState<{ start: Date | null, end: Date | null }>({ start: null, end: null });
+  const [dateRange, setDateRange] = useState<{ start: Date | null, end: Date | null }>({ start: new Date(Date.now() - 29 * 24 * 60 * 60 * 1000), end: new Date(Date.now()) });
   const [showPerUser, setShowPerUser] = useState<boolean>(false);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
 
@@ -34,9 +33,8 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem('token');
       const params: any = {};
-      
+
       // Add date range parameters if set
       if (dateRange.start) {
         params.startDate = dateRange.start.toISOString().split('T')[0];
@@ -47,12 +45,9 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = () => {
         endDate.setHours(23, 59, 59, 999);
         params.endDate = endDate.toISOString().split('T')[0];
       }
-      
-      const response = await axios.get(`${apiUrl}/api/ratings/activity`, {
-        headers: { Authorization: `Bearer ${token}` },
-        params
-      });
-      processActivityData(response.data);
+
+      const data = await ratingService.getRatingActivity(params);
+      processActivityData(data);
     } catch (error) {
       console.error('Error fetching activity data:', error);
       setError('Failed to load activity data');
@@ -116,7 +111,7 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = () => {
 
     // Generate all date keys in the range (using daily view)
     const allDateKeys = generateAllDateKeys(earliestDate, latestDate);
-    
+
     // Make sure all dates in range are included in the activity data (with 0 values for empty dates)
     const aggregatedActivityData = allDateKeys.map(dateKey => ({
       date: dateKey,
@@ -145,22 +140,22 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = () => {
   // Helper function to generate all date keys in the range (daily view)
   const generateAllDateKeys = (startDate: Date, endDate: Date): string[] => {
     const dateKeys: string[] = [];
-    
+
     // Get date strings directly to avoid timezone issues
     const startDateStr = startDate.toISOString().split('T')[0];
     const endDateStr = endDate.toISOString().split('T')[0];
-    
+
     // Create dates from the ISO date strings to ensure consistency
     const currentDate = new Date(startDateStr + 'T00:00:00.000Z');
     const finalDate = new Date(endDateStr + 'T00:00:00.000Z');
-    
+
     while (currentDate <= finalDate) {
       const dateKey = currentDate.toISOString().split('T')[0];
       dateKeys.push(dateKey);
       // Move to next day
       currentDate.setUTCDate(currentDate.getUTCDate() + 1);
     }
-    
+
     return dateKeys;
   };
 
@@ -220,14 +215,14 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = () => {
   // Generate HSL color based on username hash for better uniqueness
   const generateColor = (username: string): string => {
     const hash = stringToHash(username);
-    
+
     // Generate hue from hash (0-360 degrees)
     const hue = hash % 360;
-    
+
     // Use higher saturation and varied lightness for better distinction
     const saturation = 65 + (hash % 25); // 65-90%
     const lightness = 45 + (hash % 20); // 45-65%
-    
+
     return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
   };
 
@@ -244,11 +239,10 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = () => {
         <div className="flex flex-col sm:flex-row sm:justify-between mb-6 gap-4">
           <button
             onClick={() => setShowPerUser(!showPerUser)}
-            className={`px-4 py-2 sm:py-1.5 rounded-lg text-sm flex items-center justify-center gap-2 ${
-              showPerUser
+            className={`px-4 py-2 sm:py-1.5 rounded-lg text-sm flex items-center justify-center gap-2 ${showPerUser
                 ? 'bg-purple-600 text-white'
                 : 'bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300'
-            }`}
+              }`}
           >
             <span>{showPerUser ? 'Show Total Activity' : 'Show Per User'}</span>
           </button>
@@ -352,11 +346,10 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = () => {
                     <button
                       key={username}
                       onClick={() => toggleUserSelection(username)}
-                      className={`px-3 py-2 sm:px-2 sm:py-1 rounded-md text-xs font-medium transition-colors touch-manipulation ${
-                        selectedUsers.includes(username)
+                      className={`px-3 py-2 sm:px-2 sm:py-1 rounded-md text-xs font-medium transition-colors touch-manipulation ${selectedUsers.includes(username)
                           ? 'bg-opacity-100 text-white'
                           : 'bg-opacity-50 text-neutral-300'
-                      }`}
+                        }`}
                       style={{
                         backgroundColor: selectedUsers.includes(username)
                           ? generateColor(username)
@@ -385,7 +378,7 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = () => {
               <div className="text-sm sm:text-lg font-bold mt-1 text-center">
                 {activityData.length > 0
                   ? formatTooltipDate(activityData.reduce((max, item) =>
-                      item.count > max.count ? item : max, activityData[0]).date)
+                    item.count > max.count ? item : max, activityData[0]).date)
                   : 'N/A'}
               </div>
             </div>

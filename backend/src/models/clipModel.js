@@ -58,6 +58,21 @@ const mongoose = require('mongoose');
  *             $ref: '#/components/schemas/Comment'
  *           description: The comments on the clip
  *           default: []
+ *         season:
+ *           type: string
+ *           description: The season when the clip was created
+ *           enum: [Winter, Spring, Summer, Fall]
+ *         year:
+ *           type: integer
+ *           description: The year when the clip was created
+ *         archived:
+ *           type: boolean
+ *           description: Indicates if the clip is archived
+ *           default: false
+ *         archivedAt:
+ *           type: string
+ *           format: date-time
+ *           description: The date when the clip was archived
  *       required:
  *         - url
  *         - streamer
@@ -123,9 +138,13 @@ const clipSchema = new mongoose.Schema({
   submitter: { type: String, required: true },
   title: { type: String, required: true },
   upvotes: { type: Number, default: 0 },
-  downvotes: { type: Number, default: 0 },
+  downvotes: { type: Number, default: 0 },  
   comments: { type: [commentSchema], default: [] },
-  discordSubmitterId: { type: String }
+  discordSubmitterId: { type: String },
+  season: { type: String, enum: ['Winter', 'Spring', 'Summer', 'Fall'] },
+  year: { type: Number },
+  archived: { type: Boolean, default: false },
+  archivedAt: { type: Date }
 }, { timestamps: true });
 
 const Clip = mongoose.model('Clip', clipSchema);

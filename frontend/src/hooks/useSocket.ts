@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import io, { Socket } from 'socket.io-client';
-import apiUrl from '../config/config';
+const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://api.spoekle.com';
 
 const useSocket = () => {
   const [isConnected, setIsConnected] = useState(false);
@@ -9,7 +9,7 @@ const useSocket = () => {
   // Initialize the socket connection
   useEffect(() => {
     // Create socket connection
-    const socket = io(apiUrl, {
+    const socket = io(backendUrl, {
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
     });

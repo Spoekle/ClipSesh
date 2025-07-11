@@ -4,8 +4,7 @@ import { FaStar } from 'react-icons/fa';
 import { IoChatbubbleEllipsesOutline } from 'react-icons/io5';
 import { format } from 'timeago.js';
 import { User, Clip, Rating, RatingUser } from '../../../../types/adminTypes';
-import axios from 'axios';
-import apiUrl from '../../../../config/config';
+import { getClipVoteStatus } from '../../../../services/clipService';
 
 interface ClipItemProps {
   clip: Clip;
@@ -31,13 +30,12 @@ const ClipItem: React.FC<ClipItemProps> = ({
 }) => {
   const [isHovering, setIsHovering] = useState<boolean>(false);
   const [voteStatus, setVoteStatus] = useState<VoteStatus>({ hasVoted: false });
-
   // Fetch the user's vote status for this clip
   useEffect(() => {
     const checkVoteStatus = async () => {
       try {
-        const response = await axios.get(`${apiUrl}/api/clips/${clip._id}/vote/status`);
-        setVoteStatus(response.data);
+        const voteData = await getClipVoteStatus(clip._id);
+        setVoteStatus(voteData);
       } catch (error) {
         console.error('Error fetching vote status:', error);
       }

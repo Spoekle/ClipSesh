@@ -18,20 +18,18 @@ interface ZipManagerProps {
   handleClipAmountChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleZipSubmit: (e: React.FormEvent | null, refresh?: boolean) => Promise<void>;
   seasonInfo: SeasonInfo;
-  apiUrl: string;
 }
 
-const ZipManager: React.FC<ZipManagerProps> = ({ 
-  zips, 
-  zipsLoading, 
-  deleteZip, 
-  zipFile, 
-  handleZipChange, 
-  clipAmount, 
-  handleClipAmountChange, 
-  handleZipSubmit, 
-  seasonInfo, 
-  apiUrl 
+const ZipManager: React.FC<ZipManagerProps> = ({
+  zips,
+  zipsLoading,
+  deleteZip,
+  zipFile,
+  handleZipChange,
+  clipAmount,
+  handleClipAmountChange,
+  handleZipSubmit,
+  seasonInfo
 }) => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
@@ -41,7 +39,7 @@ const ZipManager: React.FC<ZipManagerProps> = ({
   const [retryAttempt, setRetryAttempt] = useState(0);
   const [currentChunk, setCurrentChunk] = useState(0);
   const [totalChunks, setTotalChunks] = useState(0);
-  
+
   // Confirmation dialog state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [zipToDelete, setZipToDelete] = useState<string | null>(null);
@@ -51,19 +49,19 @@ const ZipManager: React.FC<ZipManagerProps> = ({
   const submitWithProgress = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!zipFile || isUploading) return;
-    
+
     setIsUploading(true);
     setUploadProgress(0);
     setUploadError("");
     setCurrentChunk(0);
     setTotalChunks(0);
-    
     try {
       const token = localStorage.getItem('token') || '';
-      
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://api.spoekle.com';
+
       const success = await uploadFileInChunks({
         file: zipFile,
-        apiUrl,
+        apiUrl: backendUrl,
         token,
         clipAmount,
         season: selectedSeason,
@@ -78,7 +76,7 @@ const ZipManager: React.FC<ZipManagerProps> = ({
           setRetryAttempt(prev => prev + 1);
         }
       });
-      
+
       if (success) {
         await handleZipSubmit(null, true);
         setUploadError("");
@@ -91,11 +89,11 @@ const ZipManager: React.FC<ZipManagerProps> = ({
       setIsUploading(false);
     }
   };
-  
+
   // Retry upload after failure
   const retryUpload = () => {
     if (zipFile && !isUploading) {
-      submitWithProgress({ preventDefault: () => {} } as React.FormEvent);
+      submitWithProgress({ preventDefault: () => { } } as React.FormEvent);
     }
   };
 
@@ -105,12 +103,18 @@ const ZipManager: React.FC<ZipManagerProps> = ({
     setSelectedZipName(zipName);
     setShowDeleteConfirm(true);
   };
-
   const confirmDelete = async () => {
     if (zipToDelete) {
-      await deleteZip(zipToDelete);
-      setShowDeleteConfirm(false);
-      setZipToDelete(null);
+      try {
+        await deleteZip(zipToDelete);
+        setShowDeleteConfirm(false);
+        setZipToDelete(null);
+        setSelectedZipName("");
+      } catch (error) {
+        console.error('Error deleting zip:', error);
+        // Keep the dialog open and show error (you could add error state here if needed)
+        // For now, just log the error - the dialog will remain open
+      }
     }
   };
 
@@ -123,7 +127,7 @@ const ZipManager: React.FC<ZipManagerProps> = ({
   return (
     <>
       {/* Confirmation Dialog */}
-      <ConfirmationDialog 
+      <ConfirmationDialog
         isOpen={showDeleteConfirm}
         title="Delete ZIP Archive"
         message={`Are you sure you want to delete "${selectedZipName}"? This action cannot be undone.`}
@@ -135,14 +139,14 @@ const ZipManager: React.FC<ZipManagerProps> = ({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Upload Zip Form */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.4 }}
           className="w-full bg-neutral-300 dark:bg-neutral-800 text-neutral-900 dark:text-white transition duration-200 p-6 md:p-8 rounded-xl shadow-lg hover:shadow-xl"
         >
           <h2 className="text-2xl md:text-3xl font-bold mb-6 border-b pb-3 border-neutral-400 dark:border-neutral-700 flex items-center">
-            <FaUpload className="mr-3 text-green-500" /> 
+            <FaUpload className="mr-3 text-green-500" />
             Upload Clips
           </h2>
           <form onSubmit={submitWithProgress} className="space-y-5">
@@ -180,8 +184,8 @@ const ZipManager: React.FC<ZipManagerProps> = ({
             {isUploading && (
               <div className="space-y-2">
                 <div className="h-2 w-full bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-blue-500 transition-all duration-300" 
+                  <div
+                    className="h-full bg-blue-500 transition-all duration-300"
                     style={{ width: `${uploadProgress}%` }}
                   ></div>
                 </div>
@@ -206,7 +210,7 @@ const ZipManager: React.FC<ZipManagerProps> = ({
                     <p className="text-xs mt-1">The server may still be processing your file.</p>
                   </div>
                 </div>
-                <button 
+                <button
                   type="button"
                   onClick={retryUpload}
                   className="mt-2 px-3 py-1.5 bg-red-200 dark:bg-red-800 rounded flex items-center text-xs font-medium"
@@ -233,7 +237,7 @@ const ZipManager: React.FC<ZipManagerProps> = ({
                   required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <label htmlFor="year" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
                   Year:
@@ -280,11 +284,10 @@ const ZipManager: React.FC<ZipManagerProps> = ({
               whileTap={{ scale: 0.98 }}
               type="submit"
               disabled={!zipFile || isUploading}
-              className={`w-full py-3 px-4 rounded-lg font-medium flex items-center justify-center transition duration-200 ${
-                !zipFile || isUploading
-                  ? 'bg-neutral-500 cursor-not-allowed' 
+              className={`w-full py-3 px-4 rounded-lg font-medium flex items-center justify-center transition duration-200 ${!zipFile || isUploading
+                  ? 'bg-neutral-500 cursor-not-allowed'
                   : 'bg-blue-600 hover:bg-blue-700 text-white'
-              }`}
+                }`}
             >
               {isUploading ? (
                 <>
@@ -300,17 +303,17 @@ const ZipManager: React.FC<ZipManagerProps> = ({
         </motion.div>
 
         {/* Available Zips */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.5 }}
           className="w-full bg-neutral-300 dark:bg-neutral-800 text-neutral-900 dark:text-white transition duration-200 p-6 md:p-8 rounded-xl shadow-lg hover:shadow-xl"
         >
           <h2 className="text-2xl md:text-3xl font-bold mb-6 border-b pb-3 border-neutral-400 dark:border-neutral-700 flex items-center">
-            <FaDownload className="mr-3 text-blue-500" /> 
+            <FaDownload className="mr-3 text-blue-500" />
             Available Packages
           </h2>
-          
+
           {zipsLoading ? (
             <div className="flex flex-col items-center justify-center py-12">
               <FaSpinner className="animate-spin text-4xl text-blue-500 mb-3" />
@@ -327,8 +330,8 @@ const ZipManager: React.FC<ZipManagerProps> = ({
           ) : (
             <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
               {zips.map((zip, index) => (
-                <motion.div 
-                  key={zip._id} 
+                <motion.div
+                  key={zip._id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
@@ -351,7 +354,7 @@ const ZipManager: React.FC<ZipManagerProps> = ({
                           <span>{formatDate(zip.createdAt)}</span>
                         </div>
                       </div>
-                      
+
                       <div className="flex gap-2">
                         <motion.button
                           whileHover={{ scale: 1.1 }}
@@ -362,7 +365,7 @@ const ZipManager: React.FC<ZipManagerProps> = ({
                         >
                           <FaDownload />
                         </motion.button>
-                        
+
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}

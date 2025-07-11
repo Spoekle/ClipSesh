@@ -1,6 +1,5 @@
 import { useState, useEffect, ReactNode } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import axios from 'axios';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import EditorDash from './pages/EditorDash';
@@ -11,14 +10,13 @@ import AdminDash from './pages/Admin/Index';
 import ResetPassword from './pages/ResetPassword';
 import PrivacyStatement from './pages/PrivacyStatement';
 import ProfilePage from './pages/Profile/Index';
-import background from './media/background.jpg';
-import apiUrl from './config/config';
 import { motion } from 'framer-motion';
 import { FaLock, FaShieldAlt, FaUserCheck } from 'react-icons/fa';
-import { NotificationProvider } from './context/NotificationContext';
-import NotificationContainer from './components/Notification/NotificationContainer';
+import { NotificationProvider } from './context/AlertContext';
+import NotificationContainer from './components/PopupAlerts/NotificationContainer';
 import NotificationsPage from './pages/NotificationsPage';
 import { User } from './types/adminTypes';
+import { getCurrentUser } from './services/userService';
 
 interface RequireAuthProps {
   children: ReactNode;
@@ -33,6 +31,7 @@ interface NavigateState {
 
 function ClipSesh() {
   const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const extractTokenFromURL = (): void => {
@@ -42,28 +41,25 @@ function ClipSesh() {
         localStorage.setItem('token', token);
         window.history.replaceState({}, document.title, window.location.pathname);
       }
-    };
-
+    };    
     const fetchUser = async (): Promise<void> => {
       const token = localStorage.getItem('token');
+      setAuthLoading(true);
       if (token) {
         try {
-          const response = await axios.get<User>(`${apiUrl}/api/users/me`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          setUser(response.data);
+          const userData = await getCurrentUser();
+          setUser(userData);
         } catch (error) {
           console.error('Error fetching user:', error);
-          // Clear invalid token
           localStorage.removeItem('token');
         }
       }
+      setAuthLoading(false);
     };
 
     extractTokenFromURL();
     fetchUser();
   }, []);
-
   const RequireAuth: React.FC<RequireAuthProps> = ({ 
     children, 
     isAdminRequired = false, 
@@ -71,7 +67,7 @@ function ClipSesh() {
     isVerifiedRequired = false 
   }) => {
     const [authCheckComplete, setAuthCheckComplete] = useState<boolean>(false);
-    const [showLoadingScreen, setShowLoadingScreen] = useState<boolean>(true);
+    const [showVerificationModal, setShowVerificationModal] = useState<boolean>(true);
     const [loadingMessage, setLoadingMessage] = useState<string>('Checking authentication...');
 
     useEffect(() => {
@@ -84,133 +80,48 @@ function ClipSesh() {
         setLoadingMessage('Verifying ClipTeam privileges...');
       }
       
-      // Hide loading screen after a short delay to allow animations to play
+      // Hide verification modal after a shorter delay for better responsiveness
       const timer = setTimeout(() => {
         setAuthCheckComplete(true);
         setTimeout(() => {
-          setShowLoadingScreen(false);
-        }, 300);
-      }, 800);
+          setShowVerificationModal(false);
+        }, 200);
+      }, 600);
 
-      return () => clearTimeout(timer);
-    }, [isAdminRequired, isEditorRequired, isVerifiedRequired]);
+      return () => clearTimeout(timer);    }, [isAdminRequired, isEditorRequired, isVerifiedRequired]);
 
-    if (showLoadingScreen) {
+    // Wait for authentication to complete before making any checks
+    if (authLoading) {
       return (
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 bg-neutral-200 dark:bg-neutral-900 transition-all duration-300 flex flex-col"
-        >
-          <div 
-            className="w-full h-96 bg-cover bg-center relative"
-            style={{ 
-              backgroundImage: `url(${background})`, 
-              clipPath: 'polygon(0 0, 100% 0, 100% 80%, 0 100%)' 
-            }}
-          >
-            {/* Loading UI content */}
-            <div className="absolute inset-0 bg-gradient-to-b from-neutral-900/80 to-black/40 backdrop-blur-sm flex items-center justify-center">
-              <div className="flex flex-col items-center justify-center text-white px-4 max-w-xl mx-auto">
-                <motion.div 
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1, rotate: [0, 10, 0] }}
-                  transition={{ duration: 0.5 }}
-                  className="mb-6 relative"
-                >
-                  {isAdminRequired ? (
-                    <FaShieldAlt className="text-6xl text-red-500" />
-                  ) : isVerifiedRequired ? (
-                    <FaUserCheck className="text-6xl text-blue-500" />
-                  ) : (
-                    <FaLock className="text-6xl text-amber-500" />
-                  )}
-                  <motion.div 
-                    className="absolute -top-1 -right-1 w-3 h-3 bg-white rounded-full"
-                    animate={{ 
-                      scale: [1, 1.5, 1],
-                      opacity: [1, 0.5, 1] 
-                    }}
-                    transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
-                  />
-                </motion.div>
-                
-                <motion.h1 
-                  className="text-3xl md:text-4xl font-bold mb-2 text-center"
-                  initial={{ y: -20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                >
-                  Secure Access Required
-                </motion.h1>
-                
-                <motion.div
-                  className="flex items-center gap-4 mb-8"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.3 }}
-                >
-                  <span className="h-px bg-white/30 flex-1"></span>
-                  <span className="text-white/70 text-sm uppercase tracking-wider">ClipSesh</span>
-                  <span className="h-px bg-white/30 flex-1"></span>
-                </motion.div>
-                
-                <motion.p 
-                  className="text-xl text-center text-white/90 max-w-md"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.4 }}
-                >
-                  {loadingMessage}
-                </motion.p>
-                
-                <motion.div 
-                  className="mt-8 flex justify-center items-center gap-2"
-                  initial={{ opacity: 0 }}
-                  animate={{ 
-                    opacity: authCheckComplete ? [1, 0] : 1,
-                    transition: { 
-                      opacity: { duration: 0.3 },
-                      delay: 0.5
-                    }
-                  }}
-                >
-                  <div className="w-3 h-3 rounded-full bg-blue-500 animate-ping" style={{ animationDelay: '0s' }}></div>
-                  <div className="w-3 h-3 rounded-full bg-blue-500 animate-ping" style={{ animationDelay: '0.3s' }}></div>
-                  <div className="w-3 h-3 rounded-full bg-blue-500 animate-ping" style={{ animationDelay: '0.6s' }}></div>
-                </motion.div>
+        <div className="relative">
+          <div className="blur-sm pointer-events-none">
+            {children}
+          </div>
+          <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4">
+              <div className="flex flex-col items-center text-center">
+                <div className="mb-6">
+                  <FaLock className="text-5xl text-blue-500" />
+                </div>
+                <h2 className="text-2xl font-bold mb-3 text-neutral-900 dark:text-white">
+                  Loading...
+                </h2>
+                <p className="text-lg text-neutral-600 dark:text-neutral-300 mb-6">
+                  Checking authentication status...
+                </p>
+                <div className="flex justify-center items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-blue-500 animate-ping" style={{ animationDelay: '0s' }}></div>
+                  <div className="w-2 h-2 rounded-full bg-blue-500 animate-ping" style={{ animationDelay: '0.2s' }}></div>
+                  <div className="w-2 h-2 rounded-full bg-blue-500 animate-ping" style={{ animationDelay: '0.4s' }}></div>
+                </div>
               </div>
             </div>
           </div>
-          
-          <div className="flex-1 flex flex-col items-center justify-center p-8">
-            <motion.div 
-              className="relative w-full max-w-md"
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.6 }}
-            >
-              <div className="w-full h-2 bg-neutral-300 dark:bg-neutral-700 rounded-full overflow-hidden">
-                <motion.div 
-                  className="h-full bg-blue-500"
-                  initial={{ width: 0 }}
-                  animate={{ width: authCheckComplete ? '100%' : '90%' }}
-                  transition={{ 
-                    duration: authCheckComplete ? 0.2 : 0.8,
-                    ease: "easeOut" 
-                  }}
-                />
-              </div>
-              <p className="text-center mt-3 text-sm text-neutral-500 dark:text-neutral-400">
-                {authCheckComplete ? 'Authentication complete!' : 'Validating credentials...'}
-              </p>
-            </motion.div>
-          </div>
-        </motion.div>
+        </div>
       );
     }
 
+    // Check authentication status
     if (!user) {
       return <Navigate to="/clips" replace state={{ alert: "You must be logged in to view this page." } as NavigateState} />;
     }
@@ -227,7 +138,112 @@ function ClipSesh() {
       return <Navigate to="/clips" replace state={{ alert: "You must have verified rights to do this!" } as NavigateState} />;
     }
 
-    return <>{children}</>;
+    return (
+      <div className="relative">
+        {/* Render the page content immediately but blurred */}
+        <div className={showVerificationModal ? "blur-sm pointer-events-none" : ""}>
+          {children}
+        </div>
+        
+        {/* Verification Modal Overlay */}
+        {showVerificationModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4"
+            >
+              <div className="flex flex-col items-center text-center">
+                <motion.div 
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1, rotate: [0, 10, 0] }}
+                  transition={{ duration: 0.5 }}
+                  className="mb-6 relative"
+                >
+                  {isAdminRequired ? (
+                    <FaShieldAlt className="text-5xl text-red-500" />
+                  ) : isVerifiedRequired ? (
+                    <FaUserCheck className="text-5xl text-blue-500" />
+                  ) : (
+                    <FaLock className="text-5xl text-amber-500" />
+                  )}
+                  <motion.div 
+                    className="absolute -top-1 -right-1 w-3 h-3 bg-white rounded-full"
+                    animate={{ 
+                      scale: [1, 1.5, 1],
+                      opacity: [1, 0.5, 1] 
+                    }}
+                    transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+                  />
+                </motion.div>
+                
+                <motion.h2 
+                  className="text-2xl font-bold mb-3 text-neutral-900 dark:text-white"
+                  initial={{ y: -10, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  Secure Access Required
+                </motion.h2>
+                
+                <motion.p 
+                  className="text-lg text-neutral-600 dark:text-neutral-300 mb-6"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  {loadingMessage}
+                </motion.p>
+                
+                <motion.div 
+                  className="flex justify-center items-center gap-2"
+                  initial={{ opacity: 0 }}
+                  animate={{ 
+                    opacity: authCheckComplete ? [1, 0] : 1,
+                    transition: { 
+                      opacity: { duration: 0.2 },
+                      delay: 0.4
+                    }
+                  }}
+                >
+                  <div className="w-2 h-2 rounded-full bg-blue-500 animate-ping" style={{ animationDelay: '0s' }}></div>
+                  <div className="w-2 h-2 rounded-full bg-blue-500 animate-ping" style={{ animationDelay: '0.2s' }}></div>
+                  <div className="w-2 h-2 rounded-full bg-blue-500 animate-ping" style={{ animationDelay: '0.4s' }}></div>
+                </motion.div>
+                
+                <motion.div 
+                  className="w-full mt-6"
+                  initial={{ width: 0, opacity: 0 }}
+                  animate={{ width: "100%", opacity: 1 }}
+                  transition={{ delay: 0.5 }}
+                >
+                  <div className="w-full h-1 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
+                    <motion.div 
+                      className="h-full bg-gradient-to-r from-blue-500 to-purple-500"
+                      initial={{ width: 0 }}
+                      animate={{ width: authCheckComplete ? '100%' : '85%' }}
+                      transition={{ 
+                        duration: authCheckComplete ? 0.1 : 0.6,
+                        ease: "easeOut" 
+                      }}
+                    />
+                  </div>
+                  <p className="text-center mt-2 text-xs text-neutral-400">
+                    {authCheckComplete ? 'Access granted!' : 'Validating credentials...'}
+                  </p>
+                </motion.div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -256,8 +272,7 @@ function ClipSesh() {
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/privacystatement" element={<PrivacyStatement />} />
             </Routes>
-          </main>
-          <Footer />
+          </main>          <Footer />
           <NotificationContainer />
         </div>
       </NotificationProvider>

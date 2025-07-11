@@ -1,23 +1,41 @@
 import { useState, useEffect } from 'react';
-import apiUrl from '../../../../config/config';
-import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaSave, FaTimes, FaUser, FaVideo, FaLink } from 'react-icons/fa';
-import { useNotification } from '../../../../context/NotificationContext';
+import { FaSave, FaTimes, FaUser, FaVideo, FaLink, FaIdCard, FaArchive, FaCalendarAlt, FaSnowflake } from 'react-icons/fa';
+import { useNotification } from '../../../../context/AlertContext';
+import { Clip } from '../../../../types/adminTypes';
+import { updateClip } from '../../../../services/clipService';
 
-interface newErrors {
+interface EditClipModalProps {
+  clip: Clip;
+  setCurrentClip: (clip: Clip) => void;
+  setIsEditModalOpen: (open: boolean) => void;
+  isEditModalOpen: boolean;
+}
+
+interface EditErrors {
   streamer?: string;
   title?: string;
   link?: string;
+  submitterId?: string;
+  year?: string;
 }
 
-const EditClipModal = ({ clip, setCurrentClip, setIsEditModalOpen, isEditModalOpen, token }) => {
+const EditClipModal: React.FC<EditClipModalProps> = ({ 
+  clip, 
+  setCurrentClip, 
+  setIsEditModalOpen, 
+  isEditModalOpen 
+}) => {
   const [streamer, setStreamer] = useState(clip.streamer);
   const [title, setTitle] = useState(clip.title);
   const [submitter, setSubmitter] = useState(clip.submitter);
+  const [submitterId, setSubmitterId] = useState(clip.discordSubmitterId || '');
   const [link, setLink] = useState(clip.link || '');
+  const [archived, setArchived] = useState(clip.archived || false);
+  const [season, setSeason] = useState(clip.season || '');
+  const [year, setYear] = useState(clip.year?.toString() || '');
   const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState<newErrors>({});
+  const [errors, setErrors] = useState<EditErrors>({});
 
   const { showSuccess, showError } = useNotification();
 
@@ -27,19 +45,27 @@ const EditClipModal = ({ clip, setCurrentClip, setIsEditModalOpen, isEditModalOp
       setStreamer(clip.streamer);
       setTitle(clip.title);
       setSubmitter(clip.submitter);
+      setSubmitterId(clip.discordSubmitterId || '');
       setLink(clip.link || '');
+      setArchived(clip.archived || false);
+      setSeason(clip.season || '');
+      setYear(clip.year?.toString() || '');
       setErrors({});
     }
   }, [clip, isEditModalOpen]);
 
   const validateForm = () => {
-    const newErrors: newErrors = {};
+    const newErrors: EditErrors = {};
 
     if (!streamer.trim()) newErrors.streamer = 'Streamer name is required';
     if (!title.trim()) newErrors.title = 'Title is required';
     
     if (link && !isValidUrl(link)) {
       newErrors.link = 'Please enter a valid URL';
+    }
+
+    if (year && (!Number.isInteger(Number(year)) || Number(year) < 1900 || Number(year) > new Date().getFullYear() + 10)) {
+      newErrors.year = 'Please enter a valid year';
     }
     
     setErrors(newErrors);
@@ -54,7 +80,6 @@ const EditClipModal = ({ clip, setCurrentClip, setIsEditModalOpen, isEditModalOp
       return false;
     }
   };
-
   const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
@@ -62,19 +87,19 @@ const EditClipModal = ({ clip, setCurrentClip, setIsEditModalOpen, isEditModalOp
     
     try {
       setIsLoading(true);
-      const response = await axios.put(
-        `${apiUrl}/api/clips/${clip._id}`,
-        { streamer, title, submitter, link },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      const updatedClip = await updateClip(clip._id, { 
+        streamer, 
+        title, 
+        submitter,
+        discordSubmitterId: submitterId || undefined,
+        link: link || undefined,
+        archived,
+        season: season || undefined,
+        year: year ? Number(year) : undefined
+      });
       
-      if (response.data) {
-        setCurrentClip(response.data.clip || response.data);
+      if (updatedClip) {
+        setCurrentClip(updatedClip);
         showSuccess('Clip updated successfully!');
       } else {
         showError('No data received from the update.');
@@ -83,7 +108,11 @@ const EditClipModal = ({ clip, setCurrentClip, setIsEditModalOpen, isEditModalOp
       handleClose();
     } catch (error) {
       console.error('Error updating clip:', error);
-      showError(error.response?.data?.message || 'Error updating clip');
+      if (error instanceof Error) {
+        showError(error.message || 'Error updating clip');
+      } else {
+        showError('Error updating clip');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -92,17 +121,16 @@ const EditClipModal = ({ clip, setCurrentClip, setIsEditModalOpen, isEditModalOp
   const handleClose = () => {
     setIsEditModalOpen(false);
   };
-
   // Handle clicks outside the modal
-  const handleClickOutside = (event ) => {
-    if (event.target.classList.contains('modal-overlay')) {
+  const handleClickOutside = (event: React.MouseEvent<HTMLDivElement>) => {
+    if ((event.target as HTMLElement).classList.contains('modal-overlay')) {
       handleClose();
     }
   };
 
   // Escape key to close modal
   useEffect(() => {
-    const handleEscape = (e) => {
+    const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         handleClose();
       }
@@ -141,7 +169,7 @@ const EditClipModal = ({ clip, setCurrentClip, setIsEditModalOpen, isEditModalOp
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
             transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-            className="modal-content relative bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white w-full max-w-md rounded-lg shadow-xl p-6 mx-4"
+            className="modal-content relative bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white w-full max-w-lg rounded-lg shadow-xl p-6 mx-4 max-h-[90vh] overflow-y-auto"
           >
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold">Edit Clip Details</h2>
@@ -234,6 +262,90 @@ const EditClipModal = ({ clip, setCurrentClip, setIsEditModalOpen, isEditModalOp
                 {errors.link && (
                   <p className="text-red-600 text-sm mt-1">{errors.link}</p>
                 )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                  <FaIdCard className="inline mr-2" />
+                  Submitter Discord ID
+                </label>
+                <input
+                  type="text"
+                  value={submitterId}
+                  onChange={(e) => setSubmitterId(e.target.value)}
+                  placeholder="Discord user ID (optional)"
+                  className={`w-full px-4 py-2.5 rounded-md bg-neutral-100 dark:bg-neutral-700 border ${
+                    errors.submitterId
+                      ? 'border-red-500 dark:border-red-500' 
+                      : 'border-neutral-300 dark:border-neutral-600'
+                  } focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  disabled={isLoading}
+                />
+                {errors.submitterId && (
+                  <p className="text-red-600 text-sm mt-1">{errors.submitterId}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                  <FaSnowflake className="inline mr-2" />
+                  Season
+                </label>
+                <select
+                  value={season}
+                  onChange={(e) => setSeason(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-md bg-neutral-100 dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={isLoading}
+                >
+                  <option value="">Select Season (optional)</option>
+                  <option value="Winter">Winter</option>
+                  <option value="Spring">Spring</option>
+                  <option value="Summer">Summer</option>
+                  <option value="Fall">Fall</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                  <FaCalendarAlt className="inline mr-2" />
+                  Year
+                </label>
+                <input
+                  type="number"
+                  value={year}
+                  onChange={(e) => setYear(e.target.value)}
+                  placeholder="Year (optional)"
+                  min="1900"
+                  max={new Date().getFullYear() + 10}
+                  className={`w-full px-4 py-2.5 rounded-md bg-neutral-100 dark:bg-neutral-700 border ${
+                    errors.year
+                      ? 'border-red-500 dark:border-red-500' 
+                      : 'border-neutral-300 dark:border-neutral-600'
+                  } focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  disabled={isLoading}
+                />
+                {errors.year && (
+                  <p className="text-red-600 text-sm mt-1">{errors.year}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="flex items-center text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                  <FaArchive className="inline mr-2" />
+                  Archived Status
+                </label>
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={archived}
+                    onChange={(e) => setArchived(e.target.checked)}
+                    className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-neutral-300 rounded"
+                    disabled={isLoading}
+                  />
+                  <span className="text-sm text-neutral-700 dark:text-neutral-300">
+                    Mark as archived
+                  </span>
+                </label>
               </div>
               
               <div className="flex justify-end space-x-3 pt-2">
