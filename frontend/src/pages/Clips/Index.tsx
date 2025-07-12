@@ -10,7 +10,7 @@ import ClipViewerHeader from './components/ClipViewerHeader';
 import ClipViewerContent from './components/ClipViewerContent';
 
 // Import shared types
-import { User, Clip, Rating } from '../../types/adminTypes';
+import { User, Clip, Rating, AdminConfig } from '../../types/adminTypes';
 
 // Import services
 import { getClips, getClipById } from '../../services/clipService';
@@ -20,13 +20,6 @@ import { getBulkRatings } from '../../services/ratingService';
 
 interface RatingMap {
   [clipId: string]: Rating;
-}
-
-interface Config {
-  denyThreshold: number;
-  allowedFileTypes: string[];
-  clipAmount: number;
-  itemsPerPage?: number;
 }
 
 function ClipViewer() {
@@ -61,10 +54,10 @@ function ClipViewer() {
   const [currentClip, setCurrentClip] = useState<Clip | null>(null);
   const [expandedClip, setExpandedClip] = useState<string | null>(clipId || null);
   const [sortOptionState, setSortOptionState] = useState<string>(sortOption || 'newest');
-  const [config, setConfig] = useState<Config>({
+  const [config, setConfig] = useState<AdminConfig>({
     denyThreshold: 3,
-    allowedFileTypes: ['video/mp4', 'video/webm'],
-    clipAmount: 0
+    latestVideoLink: '',
+    clipChannelIds: [],
   });
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [progress, setProgress] = useState<number>(0);
@@ -83,7 +76,7 @@ function ClipViewer() {
       setProgress(10);
 
       const configData = await getCombinedConfig(user);
-        // Update total pages based on clipAmount for pagination
+      // Update total pages based on clipAmount for pagination
       if (configData.clipAmount) {
         const totalPagesCount = Math.ceil(configData.clipAmount / itemsPerPage);
         setTotalPages(totalPagesCount);
@@ -245,12 +238,14 @@ function ClipViewer() {
           }));
         }
 
-        // For now, let's check if ratings are included in the response in the future
-        // but for now fetch them separately if user has permission
-        if (currentUser && (currentUser.roles?.includes('admin') || currentUser.roles?.includes('clipteam'))) {
+        // Check if ratings are included in the response from the backend
+        if (clipResponse.ratings && Object.keys(clipResponse.ratings).length > 0) {
+          console.log('Using ratings from clips response:', Object.keys(clipResponse.ratings).length);
+          setRatings(clipResponse.ratings);
+        } else if (currentUser && (currentUser.roles?.includes('admin') || currentUser.roles?.includes('clipteam'))) {
+          // Fallback: fetch ratings separately if not included in response
           const fetchRatings = async () => {
             try {
-              // Only fetch ratings for the current page of clips
               const clipIds = clips.map((clip: Clip) => clip._id);
               const ratingsData = await getBulkRatings(clipIds);
               setRatings(ratingsData);
@@ -264,21 +259,32 @@ function ClipViewer() {
 
         // Use the server-filtered clips directly
         setUnratedClips(clips);        // Even with server-side filtering, track which clips have been rated by the user for UI purposes
-        if (currentUser && ratings && Object.keys(ratings).length > 0) {
+        if (currentUser && clipResponse.ratings && Object.keys(clipResponse.ratings).length > 0) {
           const rated: Clip[] = [];
+          const responseRatings = clipResponse.ratings;
 
           clips.forEach((clip: Clip) => {
             // Check if the user has rated this clip
-            const clipRating = ratings[clip._id];
-            if (clipRating && clipRating.ratings) {
-              // Check each rating category (1-4 and deny)
-              const allRatingCategories = ['1', '2', '3', '4', 'deny'] as const;
-
-              for (const category of allRatingCategories) {
-                const ratingUsers = clipRating.ratings[category] || [];
-                if (ratingUsers.some((u: any) => u && u.userId === currentUser._id)) {
-                  rated.push(clip);
-                  break;
+            const clipRating = responseRatings[clip._id];
+            if (clipRating) {
+              // Handle both rating formats
+              if (clipRating.ratings) {
+                // Format 1: ratings object with arrays of users
+                const allRatingCategories = ['1', '2', '3', '4', 'deny'] as const;
+                for (const category of allRatingCategories) {
+                  const ratingUsers = clipRating.ratings[category] || [];
+                  if (ratingUsers.some((u: any) => u && u.userId === currentUser._id)) {
+                    rated.push(clip);
+                    break;
+                  }
+                }
+              } else if (clipRating.ratingCounts) {
+                // Format 2: ratingCounts array with users
+                for (const ratingCount of clipRating.ratingCounts) {
+                  if (ratingCount.users && ratingCount.users.some((u: any) => u && u.userId === currentUser._id)) {
+                    rated.push(clip);
+                    break;
+                  }
                 }
               }
             }
@@ -293,13 +299,19 @@ function ClipViewer() {
         if (currentUser && (currentUser.roles?.includes('admin') || currentUser.roles?.includes('clipteam'))) {
           const denied: Clip[] = [];
           const threshold = config.denyThreshold || 3;
+          const responseRatings = clipResponse.ratings || {};
 
           clips.forEach((clip: Clip) => {
-            const ratingData = ratings[clip._id];
-            if (ratingData && ratingData.ratingCounts?.some(
-              (rateData: { rating: string; count: number }) => rateData.rating === 'deny' && rateData.count >= threshold
-            )) {
-              denied.push(clip);
+            const ratingData = responseRatings[clip._id];
+            if (ratingData) {
+              // Handle both rating formats
+              if (ratingData.ratingCounts && ratingData.ratingCounts.some(
+                (rateData: { rating: string; count: number }) => rateData.rating === 'deny' && rateData.count >= threshold
+              )) {
+                denied.push(clip);
+              } else if (ratingData.ratings && ratingData.ratings.deny && ratingData.ratings.deny.length >= threshold) {
+                denied.push(clip);
+              }
             }
           });
 
@@ -332,7 +344,7 @@ function ClipViewer() {
       const timer = setTimeout(() => {
         fetchClipsAndRatings(user, filterRatedClips, currentPage);
       }, 100);
-      
+
       return () => clearTimeout(timer);
     }
   }, [currentPage, sortOption, searchTerm, filterStreamer, initialDataLoaded, fetchClipsAndRatings, user, filterRatedClips]);
@@ -407,20 +419,21 @@ function ClipViewer() {
   useEffect(() => {
     if (expandedClip && expandedClip !== 'new') {
       setIsClipLoading(true);
-        // Fetch both clip data and ratings concurrently
+      // Fetch both clip data and ratings concurrently
       const fetchClipData = getClipById(expandedClip);
       // Always fetch ratings for individual clips as they contain public aggregate data
-      const fetchRatings = getBulkRatings([expandedClip]);      Promise.all([fetchClipData, fetchRatings])
+      const fetchRatings = getBulkRatings([expandedClip]); Promise.all([fetchClipData, fetchRatings])
         .then(([clipData, ratingsData]) => {
           setCurrentClip(clipData);
-          
+
+          // Update ratings state with the fetched data
           if (ratingsData && ratingsData[expandedClip]) {
             setRatings(prevRatings => ({
               ...prevRatings,
               [expandedClip]: ratingsData[expandedClip]
             }));
           }
-          
+
           setIsClipLoading(false);
         })
         .catch((error) => {
@@ -469,37 +482,37 @@ function ClipViewer() {
 
       {/* Main content container */}
       <div className="container mx-auto px-4 py-8 bg-neutral-200 dark:bg-neutral-900 transition duration-200">        <ClipViewerContent
-          expandedClip={expandedClip}
-          setExpandedClip={setExpandedClip}
-          isClipLoading={isClipLoading}
-          currentClip={currentClip}
-          isLoggedIn={isLoggedIn}
-          user={user}
-          fetchClipsAndRatings={triggerClipRefetch}
-          ratings={ratings}
-          searchParams={searchParams}
-          unratedClips={unratedClips}
-          sortOptionState={sortOptionState}
-          setSortOptionState={setSortOptionState}
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          filterStreamer={filterStreamer}
-          setFilterStreamer={setFilterStreamer}
-          filterRatedClips={filterRatedClips}
-          setFilterRatedClips={setFilterRatedClips}
-          filterDeniedClips={filterDeniedClips}
-          setFilterDeniedClips={setFilterDeniedClips}
-          currentPage={currentPage}
-          setCurrentPage={setCurrentPage}
-          setSearchParams={setSearchParams}
-          isLoading={isLoading}
-          config={{
-            clipAmount: config.clipAmount,
-            itemsPerPage: itemsPerPage
-          }}
-          itemsPerPage={itemsPerPage}
-          sortOption={sortOption}
-        />
+        expandedClip={expandedClip}
+        setExpandedClip={setExpandedClip}
+        isClipLoading={isClipLoading}
+        currentClip={currentClip}
+        isLoggedIn={isLoggedIn}
+        user={user}
+        fetchClipsAndRatings={triggerClipRefetch}
+        ratings={ratings}
+        searchParams={searchParams}
+        unratedClips={unratedClips}
+        sortOptionState={sortOptionState}
+        setSortOptionState={setSortOptionState}
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        filterStreamer={filterStreamer}
+        setFilterStreamer={setFilterStreamer}
+        filterRatedClips={filterRatedClips}
+        setFilterRatedClips={setFilterRatedClips}
+        filterDeniedClips={filterDeniedClips}
+        setFilterDeniedClips={setFilterDeniedClips}
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
+        setSearchParams={setSearchParams}
+        isLoading={isLoading}
+        config={{
+          clipAmount: config.clipAmount,
+          itemsPerPage: itemsPerPage
+        }}
+        itemsPerPage={itemsPerPage}
+        sortOption={sortOption}
+      />
       </div>
     </motion.div>
   );

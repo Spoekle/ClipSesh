@@ -318,16 +318,12 @@ router.get('/', searchLimiter, async (req, res) => {
         };
 
         if (type === 'all') {
-            // For combined search, paginate profiles only (clips are organized by season)
             const startIndex = skip;
             const endIndex = startIndex + limit;
             results.profiles = results.profiles.slice(startIndex, endIndex);
         } else if (type === 'clips') {
-            // For clips-only search, apply normal pagination
-            results.clips = results.clips.slice(skip, skip + limit);
             results.profiles = [];
         } else if (type === 'profiles') {
-            // For profiles-only search, paginate normally
             results.profiles = results.profiles.slice(skip, skip + limit);
             results.clips = [];
             results.currentSeasonClips = [];

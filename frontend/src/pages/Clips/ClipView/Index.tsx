@@ -409,7 +409,7 @@ const ClipContent: React.FC<ClipContentProps> = ({
             )}
 
             {/* Header */}
-            <div className="sticky top-14 z-10 flex justify-between items-center bg-white dark:bg-neutral-800 p-4 shadow-md rounded-b-xl">
+            <div className="sticky top-12 z-10 flex justify-between items-center bg-white dark:bg-neutral-800 p-4 shadow-md rounded-xl">
                 <Link
                     className="bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 text-neutral-800 dark:text-white px-4 py-2 rounded-lg transition flex items-center gap-2 font-medium"
                     to={{

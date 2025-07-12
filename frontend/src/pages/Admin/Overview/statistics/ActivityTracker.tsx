@@ -23,24 +23,27 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = () => {
   const [userActivityData, setUserActivityData] = useState<UserActivityData>({});
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [dateRange, setDateRange] = useState<{ start: Date | null, end: Date | null }>({ start: new Date(Date.now() - 29 * 24 * 60 * 60 * 1000), end: new Date(Date.now()) });
+  const [dateRange, setDateRange] = useState<{ start: Date | null, end: Date | null }>({ 
+    start: new Date(Date.now() - 29 * 24 * 60 * 60 * 1000), 
+    end: new Date(Date.now()) 
+  });
   const [showPerUser, setShowPerUser] = useState<boolean>(false);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
 
   useEffect(() => {
     fetchActivityData();
-  }, [dateRange]);  const fetchActivityData = async () => {
+  }, [dateRange]);
+
+  const fetchActivityData = async () => {
     setIsLoading(true);
     setError(null);
     try {
       const params: any = {};
 
-      // Add date range parameters if set
       if (dateRange.start) {
         params.startDate = dateRange.start.toISOString().split('T')[0];
       }
       if (dateRange.end) {
-        // Ensure end date includes the full day
         const endDate = new Date(dateRange.end);
         endDate.setHours(23, 59, 59, 999);
         params.endDate = endDate.toISOString().split('T')[0];
@@ -80,10 +83,8 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = () => {
 
         const date = new Date(rating.timestamp);
 
-        // Filter by custom date range if set
         if (dateRange.start && date < dateRange.start) return;
         if (dateRange.end) {
-          // Create end of day for comparison
           const endOfDay = new Date(dateRange.end);
           endOfDay.setHours(23, 59, 59, 999);
           if (date > endOfDay) return;
@@ -92,13 +93,9 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = () => {
         if (!earliestDate || date < earliestDate) earliestDate = date;
         if (!latestDate || date > latestDate) latestDate = date;
 
-        let dateKey: string;
-
-        // Fixed to daily view for simplicity
-        dateKey = date.toISOString().split('T')[0];
+        const dateKey = date.toISOString().split('T')[0];
 
         activityByDate[dateKey] = (activityByDate[dateKey] || 0) + 1;
-
         userActivityByDate[user.username][dateKey] = (userActivityByDate[user.username][dateKey] || 0) + 1;
       });
     });
@@ -109,16 +106,13 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = () => {
       return;
     }
 
-    // Generate all date keys in the range (using daily view)
     const allDateKeys = generateAllDateKeys(earliestDate, latestDate);
 
-    // Make sure all dates in range are included in the activity data (with 0 values for empty dates)
     const aggregatedActivityData = allDateKeys.map(dateKey => ({
       date: dateKey,
       count: activityByDate[dateKey] || 0
     }));
 
-    // Make sure all users have entries for all dates in the range
     const processedUserActivityData: UserActivityData = {};
     Object.keys(userActivityByDate).forEach(username => {
       processedUserActivityData[username] = allDateKeys.map(dateKey => ({
@@ -137,22 +131,17 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = () => {
     }
   };
 
-  // Helper function to generate all date keys in the range (daily view)
   const generateAllDateKeys = (startDate: Date, endDate: Date): string[] => {
     const dateKeys: string[] = [];
-
-    // Get date strings directly to avoid timezone issues
     const startDateStr = startDate.toISOString().split('T')[0];
     const endDateStr = endDate.toISOString().split('T')[0];
 
-    // Create dates from the ISO date strings to ensure consistency
     const currentDate = new Date(startDateStr + 'T00:00:00.000Z');
     const finalDate = new Date(endDateStr + 'T00:00:00.000Z');
 
     while (currentDate <= finalDate) {
       const dateKey = currentDate.toISOString().split('T')[0];
       dateKeys.push(dateKey);
-      // Move to next day
       currentDate.setUTCDate(currentDate.getUTCDate() + 1);
     }
 
@@ -172,12 +161,10 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = () => {
   };
 
   const formatXAxisLabel = (value: string) => {
-    // For daily view, show day of month
     return value.split('-')[2];
   };
 
   const formatTooltipDate = (dateKey: string) => {
-    // For daily view, format as readable date
     const date = new Date(dateKey);
     return date.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
   };
@@ -185,14 +172,18 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = () => {
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-neutral-800 p-3 rounded-lg border border-neutral-700 shadow-lg">
-          <p className="font-medium text-white">{formatTooltipDate(label)}</p>
+        <div className="bg-neutral-200 dark:bg-neutral-800 p-3 rounded-xl border border-neutral-300 dark:border-neutral-700 shadow-xl">
+          <p className="font-medium text-neutral-800 dark:text-white mb-2">
+            {formatTooltipDate(label)}
+          </p>
           {payload.map((entry: any, index: number) => (
-            <div key={index} className="flex justify-between text-sm my-1">
-              <span style={{ color: entry.color }}>
-                {entry.dataKey === 'count' ? `${entry.name}:` : `${entry.name}:`}
+            <div key={index} className="flex justify-between items-center">
+              <span style={{ color: entry.color }} className="font-medium">
+                {entry.dataKey === 'count' ? 'Activity' : entry.dataKey}:
               </span>
-              <span className="font-semibold text-white ml-4">{entry.value}</span>
+              <span className="font-semibold text-neutral-800 dark:text-white ml-4">
+                {entry.value} ratings
+              </span>
             </div>
           ))}
         </div>
@@ -201,197 +192,218 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = () => {
     return null;
   };
 
-  // String hash function to generate a consistent hash value for a username
   const stringToHash = (str: string): number => {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
       hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32bit integer
+      hash = hash & hash;
     }
     return Math.abs(hash);
   };
 
-  // Generate HSL color based on username hash for better uniqueness
   const generateColor = (username: string): string => {
     const hash = stringToHash(username);
-
-    // Generate hue from hash (0-360 degrees)
     const hue = hash % 360;
-
-    // Use higher saturation and varied lightness for better distinction
-    const saturation = 65 + (hash % 25); // 65-90%
-    const lightness = 45 + (hash % 20); // 45-65%
-
+    const saturation = 65 + (hash % 25);
+    const lightness = 45 + (hash % 20);
     return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
   };
 
   return (
-    <>
-      <div className="mt-10 mb-4">
-        <h3 className="text-xl font-bold flex items-center">
-          <FaChartLine className="mr-2 text-purple-500" />
-          Rating Activity Timeline
-        </h3>
+    <div className="space-y-6">
+      {/* Header Section */}
+      <div className="bg-neutral-200 dark:bg-neutral-700 p-6 rounded-xl shadow-lg">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="bg-purple-500 p-3 rounded-xl shadow-lg">
+              <FaChartLine className="text-white text-xl" />
+            </div>
+            <div>
+              <h3 className="text-2xl font-bold text-neutral-800 dark:text-neutral-100">
+                Activity Timeline Analysis
+              </h3>
+              <p className="text-neutral-600 dark:text-neutral-300 mt-1">
+                Track rating activity patterns and trends over time
+              </p>
+            </div>
+          </div>
+          
+          {/* Activity Stats */}
+          {!isLoading && activityData.length > 0 && (
+            <div className="hidden md:flex items-center space-x-6">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-neutral-800 dark:text-neutral-200">
+                  {activityData.reduce((sum, day) => sum + day.count, 0)}
+                </div>
+                <div className="text-sm text-neutral-600 dark:text-neutral-400">Total Activity</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-neutral-800 dark:text-neutral-200">
+                  {Object.keys(userActivityData).length}
+                </div>
+                <div className="text-sm text-neutral-600 dark:text-neutral-400">Active Users</div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="bg-neutral-300 dark:bg-neutral-800 p-4 sm:p-5 rounded-xl shadow-lg mb-8">
-        <div className="flex flex-col sm:flex-row sm:justify-between mb-6 gap-4">
-          <button
-            onClick={() => setShowPerUser(!showPerUser)}
-            className={`px-4 py-2 sm:py-1.5 rounded-lg text-sm flex items-center justify-center gap-2 ${showPerUser
-                ? 'bg-purple-600 text-white'
-                : 'bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300'
-              }`}
-          >
-            <span>{showPerUser ? 'Show Total Activity' : 'Show Per User'}</span>
-          </button>
-
-          <DateRangePicker
-            startDate={dateRange.start}
-            endDate={dateRange.end}
-            onDateRangeChange={handleDateRangeChange}
-            className="w-full sm:w-auto"
-          />
-        </div>
-
-        {isLoading ? (
-          <div className="flex justify-center items-center h-64 bg-neutral-200 dark:bg-neutral-700 rounded-lg">
-            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
-          </div>
-        ) : error ? (
-          <div className="flex justify-center items-center h-64 bg-neutral-200 dark:bg-neutral-700 rounded-lg">
-            <p className="text-red-500">{error}</p>
-          </div>
-        ) : activityData.length === 0 ? (
-          <div className="flex justify-center items-center h-64 bg-neutral-200 dark:bg-neutral-700 rounded-lg">
-            <p className="text-neutral-500">No activity data available for the selected filters</p>
-          </div>
-        ) : (
-          <>
-            <div className="w-full h-64 sm:h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                {!showPerUser ? (
-                  <LineChart
-                    data={activityData}
-                    margin={{ top: 5, right: 10, left: 10, bottom: 30 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#555" />
-                    <XAxis
-                      dataKey="date"
-                      tick={{ fill: '#888', fontSize: 10 }}
-                      tickFormatter={formatXAxisLabel}
-                      height={50}
-                      interval="preserveStartEnd"
-                    />
-                    <YAxis
-                      tick={{ fill: '#888', fontSize: 10 }}
-                      allowDecimals={false}
-                    />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Legend />
-                    <Line
-                      type="monotone"
-                      dataKey="count"
-                      name="Total Ratings"
-                      stroke="#8884d8"
-                      activeDot={{ r: 8 }}
-                      strokeWidth={2}
-                    />
-                  </LineChart>
-                ) : (
-                  <LineChart
-                    margin={{ top: 5, right: 10, left: 10, bottom: 30 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#555" />
-                    <XAxis
-                      dataKey="date"
-                      tick={{ fill: '#888', fontSize: 10 }}
-                      tickFormatter={formatXAxisLabel}
-                      allowDuplicatedCategory={false}
-                      type="category"
-                      height={50}
-                      interval="preserveStartEnd"
-                    />
-                    <YAxis
-                      tick={{ fill: '#888', fontSize: 10 }}
-                      allowDecimals={false}
-                    />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Legend />
-                    {Object.entries(userActivityData)
-                      .filter(([username]) => selectedUsers.includes(username))
-                      .map(([username, data]) => (
-                        <Line
-                          key={username}
-                          type="monotone"
-                          data={data}
-                          dataKey="count"
-                          name={username}
-                          stroke={generateColor(username)}
-                          activeDot={{ r: 6 }}
-                          strokeWidth={2}
-                        />
-                      ))}
-                  </LineChart>
-                )}
-              </ResponsiveContainer>
-            </div>
-
-            {showPerUser && (
-              <div className="mt-4">
-                <p className="text-sm font-medium mb-3">Select users to display (max 5 recommended):</p>
-                <div className="flex flex-wrap gap-2 mt-1 pb-2 max-h-32 overflow-y-auto">
-                  {Object.keys(userActivityData).map((username) => (
+      {/* Controls and Chart Section */}
+      <div className="bg-neutral-200 dark:bg-neutral-700 rounded-xl shadow-lg overflow-hidden">
+        <div className="p-6 border-b border-neutral-300 dark:border-neutral-600">
+          <div className="flex flex-col sm:flex-row sm:justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                onClick={() => setShowPerUser(!showPerUser)}
+                className={`px-4 py-2 rounded-lg transition-all duration-200 ${
+                  showPerUser
+                    ? 'bg-purple-600 text-white shadow-lg'
+                    : 'bg-neutral-300 dark:bg-neutral-600 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-400 dark:hover:bg-neutral-500'
+                }`}
+              >
+                {showPerUser ? 'Show Overall' : 'Show Per User'}
+              </button>
+              
+              {showPerUser && Object.keys(userActivityData).length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {Object.keys(userActivityData).slice(0, 4).map(username => (
                     <button
                       key={username}
                       onClick={() => toggleUserSelection(username)}
-                      className={`px-3 py-2 sm:px-2 sm:py-1 rounded-md text-xs font-medium transition-colors touch-manipulation ${selectedUsers.includes(username)
-                          ? 'bg-opacity-100 text-white'
-                          : 'bg-opacity-50 text-neutral-300'
-                        }`}
+                      className={`px-3 py-1 rounded-full text-sm transition-all duration-200 ${
+                        selectedUsers.includes(username)
+                          ? 'text-white shadow-md'
+                          : 'bg-neutral-300 dark:bg-neutral-600 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-400 dark:hover:bg-neutral-500'
+                      }`}
                       style={{
                         backgroundColor: selectedUsers.includes(username)
                           ? generateColor(username)
-                          : '#555555'
+                          : undefined
                       }}
                     >
                       {username}
                     </button>
                   ))}
+                  {Object.keys(userActivityData).length > 4 && (
+                    <span className="text-sm text-neutral-600 dark:text-neutral-400 px-2 py-1">
+                      +{Object.keys(userActivityData).length - 4} more
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <DateRangePicker
+              startDate={dateRange.start}
+              endDate={dateRange.end}
+              onDateRangeChange={handleDateRangeChange}
+              className="w-full sm:w-auto"
+            />
+          </div>
+        </div>
+
+        <div className="p-6">
+          {isLoading ? (
+            <div className="bg-neutral-300 dark:bg-neutral-800 rounded-xl p-8 text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
+              <p className="text-neutral-600 dark:text-neutral-400">Loading activity data...</p>
+            </div>
+          ) : error ? (
+            <div className="bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-xl p-6 text-center">
+              <p className="text-red-800 dark:text-red-200 font-medium">{error}</p>
+            </div>
+          ) : activityData.length === 0 ? (
+            <div className="bg-neutral-300 dark:bg-neutral-800 rounded-xl p-8 text-center">
+              <FaChartLine className="text-4xl text-neutral-500 dark:text-neutral-400 mx-auto mb-4" />
+              <h4 className="text-lg font-semibold text-neutral-700 dark:text-neutral-300 mb-2">
+                No Activity Data
+              </h4>
+              <p className="text-neutral-600 dark:text-neutral-400">
+                No rating activity found for the selected date range.
+              </p>
+            </div>
+          ) : (
+            <div className="bg-neutral-300 dark:bg-neutral-800 rounded-xl p-4" style={{ height: 400 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={showPerUser ? userActivityData[selectedUsers[0]] || [] : activityData}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#9ca3af" strokeOpacity={0.5} />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={formatXAxisLabel}
+                    tick={{ fill: '#6b7280', fontSize: 12 }}
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                  />
+                  <YAxis tick={{ fill: '#6b7280', fontSize: 12 }} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend />
+                  
+                  {!showPerUser ? (
+                    <Line
+                      type="monotone"
+                      dataKey="count"
+                      stroke="#8b5cf6"
+                      strokeWidth={3}
+                      dot={{ fill: '#8b5cf6', strokeWidth: 2, r: 4 }}
+                      activeDot={{ r: 6, stroke: '#8b5cf6', strokeWidth: 2 }}
+                      name="Total Activity"
+                    />
+                  ) : (
+                    selectedUsers.slice(0, 5).map((username) => (
+                      <Line
+                        key={username}
+                        type="monotone"
+                        dataKey="count"
+                        stroke={generateColor(username)}
+                        strokeWidth={2}
+                        dot={{ fill: generateColor(username), strokeWidth: 2, r: 3 }}
+                        activeDot={{ r: 5 }}
+                        name={username}
+                        data={userActivityData[username]}
+                      />
+                    ))
+                  )}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+          
+          {/* Summary Stats */}
+          {!isLoading && activityData.length > 0 && (
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-neutral-300 dark:bg-neutral-800 p-4 rounded-lg text-center">
+                <div className="text-sm text-neutral-600 dark:text-neutral-400">Total Ratings</div>
+                <div className="text-2xl font-bold text-neutral-800 dark:text-neutral-200 mt-1">
+                  {activityData.reduce((sum, item) => sum + item.count, 0)}
                 </div>
               </div>
-            )}
-          </>
-        )}
-
-        {!isLoading && activityData.length > 0 && (
-          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="bg-neutral-200 dark:bg-neutral-700 p-4 rounded-lg flex flex-col items-center justify-center">
-              <div className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 text-center">Total Ratings</div>
-              <div className="text-lg sm:text-xl font-bold mt-1">
-                {activityData.reduce((sum, item) => sum + item.count, 0)}
+              <div className="bg-neutral-300 dark:bg-neutral-800 p-4 rounded-lg text-center">
+                <div className="text-sm text-neutral-600 dark:text-neutral-400">Most Active Day</div>
+                <div className="text-lg font-bold text-neutral-800 dark:text-neutral-200 mt-1">
+                  {activityData.length > 0
+                    ? formatTooltipDate(activityData.reduce((max, item) =>
+                      item.count > max.count ? item : max, activityData[0]).date)
+                    : 'N/A'}
+                </div>
+              </div>
+              <div className="bg-neutral-300 dark:bg-neutral-800 p-4 rounded-lg text-center">
+                <div className="text-sm text-neutral-600 dark:text-neutral-400">Average Daily</div>
+                <div className="text-2xl font-bold text-neutral-800 dark:text-neutral-200 mt-1">
+                  {activityData.length > 0 
+                    ? Math.round(activityData.reduce((sum, item) => sum + item.count, 0) / activityData.length)
+                    : 0}
+                </div>
               </div>
             </div>
-            <div className="bg-neutral-200 dark:bg-neutral-700 p-4 rounded-lg flex flex-col items-center justify-center">
-              <div className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 text-center">Most Active Day</div>
-              <div className="text-sm sm:text-lg font-bold mt-1 text-center">
-                {activityData.length > 0
-                  ? formatTooltipDate(activityData.reduce((max, item) =>
-                    item.count > max.count ? item : max, activityData[0]).date)
-                  : 'N/A'}
-              </div>
-            </div>
-            <div className="bg-neutral-200 dark:bg-neutral-700 p-4 rounded-lg flex flex-col items-center justify-center sm:col-span-2 lg:col-span-1">
-              <div className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 text-center">Active Users</div>
-              <div className="text-lg sm:text-xl font-bold mt-1">
-                {Object.keys(userActivityData).length}
-              </div>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
-    </>
+    </div>
   );
 };
 

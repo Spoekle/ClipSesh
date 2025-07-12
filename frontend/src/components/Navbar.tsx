@@ -247,6 +247,7 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
                 removeRecentSearch={removeRecentSearch}
                 isNotificationDropdownOpen={isNotificationDropdownOpen}
                 toggleNotificationDropdown={toggleNotificationDropdown}
+                navigate={navigate}
               />
             ) : (
               <DesktopNavbar
@@ -266,6 +267,7 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
                 dropdownRef={dropdownRef}
                 isNotificationDropdownOpen={isNotificationDropdownOpen}
                 toggleNotificationDropdown={toggleNotificationDropdown}
+                navigate={navigate}
               />
             )}
           </motion.div>

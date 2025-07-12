@@ -885,14 +885,14 @@ const ClipSearch: React.FC = () => {
                               transition={{ duration: 0.3 }}
                               className="overflow-hidden"
                             >
-                              <div className="p-6 pt-0 bg-neutral-50 dark:bg-neutral-800">
+                              <div className="p-6 pt-0 bg-white dark:bg-neutral-900 border-4 border-t-0 border-neutral-50 rounded-b-xl dark:border-neutral-800">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-6">
                                   {seasonData.clips.slice(0, 8).map((clip, index) => (
                                     <ClipCard key={clip._id} clip={clip} index={index} />
                                   ))}
                                 </div>
                                 {seasonData.clips.length > 8 && (
-                                  <div className="mt-6 text-center">
+                                  <div className="text-center">
                                     <Link
                                       to={`/search?query=${encodeURIComponent(searchTerm)}&season=${seasonData.season}&year=${seasonData.year}`}
                                       className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"

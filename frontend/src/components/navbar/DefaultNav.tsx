@@ -23,6 +23,7 @@ interface DesktopNavbarProps {
   dropdownRef: React.RefObject<HTMLDivElement | null>;
   isNotificationDropdownOpen: boolean;
   toggleNotificationDropdown: () => void;
+  navigate: (path: string) => void;
 }
 
 function DesktopNavbar({
@@ -41,7 +42,8 @@ function DesktopNavbar({
   removeRecentSearch,
   dropdownRef,
   isNotificationDropdownOpen,
-  toggleNotificationDropdown
+  toggleNotificationDropdown,
+  navigate
 }: DesktopNavbarProps) {
   const searchRef = useRef<HTMLDivElement>(null);
   const [searchFocused, setSearchFocused] = useState(false);
@@ -221,14 +223,21 @@ function DesktopNavbar({
                     <motion.div 
                       key={search} 
                       className="px-3 py-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center justify-between group"
-                      whileHover={{ backgroundColor: "rgba(0,0,0,0.05)" }}
-                      transition={{ duration: 0.2 }}
                     >
                       <button
-                        className="text-sm text-left flex-grow truncate"
+                        className="text-sm text-left flex-grow truncate hover:cursor-pointer"
                         onClick={() => {
+                          // Directly perform the search action
                           setSearchInput(search);
-                          handleSearch({ preventDefault: () => {}} as React.FormEvent);
+                          setShowRecentSearched(false);
+                          
+                          // Update recent searches
+                          const existingSearches = JSON.parse(localStorage.getItem('recentSearches') || '[]');
+                          const updatedSearches = [search, ...existingSearches.filter((s: string) => s !== search)].slice(0, 5);
+                          localStorage.setItem('recentSearches', JSON.stringify(updatedSearches));
+                          
+                          // Navigate to search page
+                          navigate(`/search?query=${encodeURIComponent(search)}`);
                         }}
                       >
                         {search}

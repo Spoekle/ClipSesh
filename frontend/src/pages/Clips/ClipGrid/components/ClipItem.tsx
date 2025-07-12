@@ -47,18 +47,27 @@ const ClipItem: React.FC<ClipItemProps> = ({
   // Get the user's specific rating for this clip
   const userRating = useMemo(() => {
     // If no user or no ratings, return null
-    if (!user || !ratings) return null;
+    if (!user || !ratings || !ratings[clip._id]) return null;
 
     const clipRatings = ratings[clip._id];
-    if (!clipRatings || !clipRatings.ratings) return null;
+    
+    // Handle both rating formats
+    if (clipRatings.ratings) {
+      // Format 1: ratings object with arrays of users
+      const ratingCategories = ['1', '2', '3', '4', 'deny'] as const;
 
-    // Check through all rating categories (1-4 and deny)
-    const ratingCategories = ['1', '2', '3', '4', 'deny'] as const;
-
-    for (const category of ratingCategories) {
-      const ratingUsers = clipRatings.ratings[category] || [];
-      if (ratingUsers.some((u: RatingUser) => u && u.userId === user._id)) {
-        return category;
+      for (const category of ratingCategories) {
+        const ratingUsers = clipRatings.ratings[category] || [];
+        if (ratingUsers.some((u: RatingUser) => u && u.userId === user._id)) {
+          return category;
+        }
+      }
+    } else if (clipRatings.ratingCounts) {
+      // Format 2: ratingCounts array with users
+      for (const ratingCount of clipRatings.ratingCounts) {
+        if (ratingCount.users && ratingCount.users.some((u: RatingUser) => u && u.userId === user._id)) {
+          return ratingCount.rating;
+        }
       }
     }
 
@@ -77,9 +86,17 @@ const ClipItem: React.FC<ClipItemProps> = ({
     const clipRatings = ratings[clip._id];
     const denyThreshold = config.denyThreshold || 3;
 
-    return clipRatings.ratingCounts?.some(
-      (rateData) => rateData.rating === 'deny' && rateData.count >= denyThreshold
-    );
+    // Handle both rating formats
+    if (clipRatings.ratingCounts) {
+      return clipRatings.ratingCounts.some(
+        (rateData) => rateData.rating === 'deny' && rateData.count >= denyThreshold
+      );
+    } else if (clipRatings.ratings) {
+      const denyCount = clipRatings.ratings.deny?.length || 0;
+      return denyCount >= denyThreshold;
+    }
+
+    return false;
   }, [clip._id, ratings, config.denyThreshold]);
 
   // Calculate average rating with useMemo for efficiency
@@ -169,7 +186,11 @@ const ClipItem: React.FC<ClipItemProps> = ({
     } 
     // Handle ratings structure with "ratingCounts" property (format 2)
     else if (clipRating.ratingCounts) {
-      return clipRating.ratingCounts.reduce((acc, curr) => acc + (curr?.count || 0), 0);
+      // Filter to include only numerical ratings (1-4), excluding deny
+      const numericRatings = clipRating.ratingCounts.filter(r => 
+        r && r.rating !== 'deny' && ['1', '2', '3', '4'].includes(r.rating)
+      );
+      return numericRatings.reduce((acc, curr) => acc + (curr?.count || 0), 0);
     }
     
     return 0;

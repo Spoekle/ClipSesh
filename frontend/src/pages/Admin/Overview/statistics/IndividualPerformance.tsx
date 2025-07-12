@@ -44,22 +44,67 @@ const IndividualPerformance: React.FC<IndividualPerformanceProps> = ({ sortedUse
     }));
   };
 
+  // Calculate performance metrics
+  const averageCompletion = sortedUsers.length > 0 
+    ? sortedUsers.reduce((sum, user) => sum + user.percentageRated, 0) / sortedUsers.length 
+    : 0;
+  const compliantUsers = sortedUsers.filter(user => user.percentageRated > 20).length;
+
   return (
-    <>
+    <div className="space-y-6">
+      {/* Header Section */}
       <div 
         onClick={() => setIsPerformanceExpanded(!isPerformanceExpanded)}
-        className="flex justify-between items-center mt-10 mb-4 cursor-pointer group"
+        className="group cursor-pointer"
       >
-        <h3 className="text-xl font-bold flex items-center">
-          <FaUserAlt className="mr-2 text-blue-500" /> 
-          Individual Performance Stats
-        </h3>
-        <div className="bg-neutral-200 dark:bg-neutral-700 p-2 rounded-full transform transition-transform duration-200 group-hover:bg-neutral-300 dark:group-hover:bg-neutral-600">
-          {isPerformanceExpanded ? (
-            <FaAngleUp className="text-neutral-600 dark:text-neutral-300" />
-          ) : (
-            <FaAngleDown className="text-neutral-600 dark:text-neutral-300" />
-          )}
+        <div className="bg-neutral-200 dark:bg-neutral-700 p-6 rounded-xl hover:shadow-lg transition-all duration-300">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="bg-blue-500 p-3 rounded-xl shadow-lg">
+                <FaUserAlt className="text-white text-xl" />
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold text-neutral-800 dark:text-neutral-100">
+                  Individual Performance Details
+                </h3>
+                <p className="text-neutral-600 dark:text-neutral-300 mt-1">
+                  Detailed breakdown of each team member's rating activity
+                </p>
+              </div>
+            </div>
+            
+            {/* Quick Stats */}
+            <div className="hidden md:flex items-center space-x-6">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-neutral-800 dark:text-neutral-200">
+                  {averageCompletion.toFixed(1)}%
+                </div>
+                <div className="text-sm text-neutral-600 dark:text-neutral-400">Avg Completion</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-neutral-800 dark:text-neutral-200">
+                  {compliantUsers}/{sortedUsers.length}
+                </div>
+                <div className="text-sm text-neutral-600 dark:text-neutral-400">Compliant</div>
+              </div>
+              <div className="bg-neutral-300 dark:bg-neutral-600 p-3 rounded-full shadow-md group-hover:bg-neutral-400 dark:group-hover:bg-neutral-500 transition-all duration-200">
+                {isPerformanceExpanded ? (
+                  <FaAngleUp className="text-neutral-700 dark:text-neutral-300 text-lg" />
+                ) : (
+                  <FaAngleDown className="text-neutral-700 dark:text-neutral-300 text-lg" />
+                )}
+              </div>
+            </div>
+            
+            {/* Mobile toggle */}
+            <div className="md:hidden bg-neutral-300 dark:bg-neutral-600 p-3 rounded-full shadow-md group-hover:bg-neutral-400 dark:group-hover:bg-neutral-500 transition-all duration-200">
+              {isPerformanceExpanded ? (
+                <FaAngleUp className="text-neutral-700 dark:text-neutral-300" />
+              ) : (
+                <FaAngleDown className="text-neutral-700 dark:text-neutral-300" />
+              )}
+            </div>
+          </div>
         </div>
       </div>
       
@@ -180,7 +225,7 @@ const IndividualPerformance: React.FC<IndividualPerformanceProps> = ({ sortedUse
                                     dataKey="value"
                                     paddingAngle={3}
                                   >
-                                    {userPieData.map((item, index) => (
+                                    {userPieData.map((_, index) => (
                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                       ))}
                                   </Pie>
@@ -234,7 +279,7 @@ const IndividualPerformance: React.FC<IndividualPerformanceProps> = ({ sortedUse
           })}
         </div>
       </motion.div>
-    </>
+    </div>
   );
 };
 

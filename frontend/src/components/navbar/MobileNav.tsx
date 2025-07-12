@@ -21,6 +21,7 @@ interface MobileNavbarProps {
   removeRecentSearch: (search: string) => void;
   isNotificationDropdownOpen: boolean;
   toggleNotificationDropdown: () => void;
+  navigate: (path: string) => void;
 }
 
 const MobileNavbar: React.FC<MobileNavbarProps> = ({
@@ -33,7 +34,8 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
   recentSearches,
   removeRecentSearch,
   isNotificationDropdownOpen,
-  toggleNotificationDropdown
+  toggleNotificationDropdown,
+  navigate
 }) => {
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
   const [showSearch, setShowSearch] = useState<boolean>(false);
@@ -242,8 +244,15 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
                         className="w-full text-left text-sm flex gap-2 items-center"
                         onClick={() => {
                           setSearchInput(search);
-                          handleSearch({ preventDefault: () => {}} as React.FormEvent);
                           setShowSearch(false);
+                          
+                          // Update recent searches
+                          const existingSearches = JSON.parse(localStorage.getItem('recentSearches') || '[]');
+                          const updatedSearches = [search, ...existingSearches.filter((s: string) => s !== search)].slice(0, 5);
+                          localStorage.setItem('recentSearches', JSON.stringify(updatedSearches));
+                          
+                          // Navigate to search page
+                          navigate(`/search?query=${encodeURIComponent(search)}`);
                         }}
                       >
                         <FaSearch size={12} className="text-neutral-400" />
