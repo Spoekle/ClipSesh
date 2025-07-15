@@ -418,11 +418,33 @@ function AdminDash() {
             return { ...clip, rating: '1', index };
           }
 
-          const mostChosenRating = ratingData.ratingCounts.reduce(
-            (max, rateData) => (rateData.count > max.count ? rateData : max),
-            ratingData.ratingCounts[0]
-          );
-          return { ...clip, rating: mostChosenRating.rating, index }; // Include index for tracking
+          // Calculate average rating instead of most chosen
+          let totalRatingSum = 0;
+          let totalRatingCount = 0;
+          
+          ratingData.ratingCounts.forEach(rateData => {
+            // Skip 'deny' ratings in average calculation
+            if (rateData.rating !== 'deny' && rateData.count > 0) {
+              const numericRating = parseInt(rateData.rating);
+              if (!isNaN(numericRating)) {
+                totalRatingSum += numericRating * rateData.count;
+                totalRatingCount += rateData.count;
+              }
+            }
+          });
+          
+          // Calculate average and round to nearest integer
+          let averageRating = '4'; // Default fallback
+          if (totalRatingCount > 0) {
+            const avgValue = totalRatingSum / totalRatingCount;
+            averageRating = Math.round(avgValue).toString();
+            
+            // Ensure the rating is within valid bounds (1-4)
+            const roundedRating = Math.max(1, Math.min(4, parseInt(averageRating)));
+            averageRating = roundedRating.toString();
+          }
+          
+          return { ...clip, rating: averageRating, index }; // Include index for tracking
         }),
         season: season,
         year: year

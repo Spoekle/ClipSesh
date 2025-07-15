@@ -15,7 +15,6 @@ interface ClipViewerContentProps {
   user: User | null;
   fetchClipsAndRatings: (user: User | null) => Promise<void>;
   ratings: Record<string, Rating>;
-  searchParams: URLSearchParams;
   unratedClips: Clip[];
   sortOptionState: string;
   setSortOptionState: (option: string) => void;
@@ -48,7 +47,6 @@ const ClipViewerContent: React.FC<ClipViewerContentProps> = ({
   user,
   fetchClipsAndRatings,
   ratings,
-  searchParams,
   unratedClips,
   sortOptionState,
   setSortOptionState,
@@ -176,7 +174,6 @@ const ClipViewerContent: React.FC<ClipViewerContentProps> = ({
           user={user}
           fetchClipsAndRatings={fetchClipsAndRatings}
           ratings={ratings}
-          searchParams={searchParams}
         />
       );
     }

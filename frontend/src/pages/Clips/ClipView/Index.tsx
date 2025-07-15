@@ -37,7 +37,6 @@ interface ClipContentProps {
     user: User | null;
     fetchClipsAndRatings: (user: User | null) => Promise<void>;
     ratings: Record<string, Rating>;
-    searchParams: URLSearchParams;
 }
 
 // Updated interface to handle different formats of the 'from' state
@@ -57,8 +56,7 @@ const ClipContent: React.FC<ClipContentProps> = ({
     setExpandedClip,
     user,
     fetchClipsAndRatings,
-    ratings,
-    searchParams
+    ratings
 }) => {
     const [currentClip, setCurrentClip] = useState<Clip>(clip);
     const [popout, setPopout] = useState<string>('');
@@ -180,28 +178,42 @@ const ClipContent: React.FC<ClipContentProps> = ({
 
         setLoadingAdjacentClips(true);
         try {
-            // Build the search parameters based on the current search params
-            const queryParams = new URLSearchParams();
-
-            // Copy over sort parameter if it exists
-            const currentSort = searchParams.get('sort');
-            if (currentSort) {
-                queryParams.append('sort', currentSort);
-            }
-
             // Use the specificClipId if provided, otherwise use current clip id or fallback to prop clip id
             const clipIdToUse = specificClipId || currentClip?._id || clip._id;
             console.log(`Fetching adjacent clips for: ${clipIdToUse}`);
 
-            queryParams.append('currentClipId', clipIdToUse);
-            queryParams.append('getAdjacent', 'true');
+            // Get current URL search params to ensure we're using the most up-to-date filters
+            const currentSearchParams = new URLSearchParams(window.location.search);
+            console.log('Current URL search params:', currentSearchParams.toString());
 
-            // Add streamer filter if present in URL
-            const streamerFilter = searchParams.get('streamer');
+            // Prepare options for the API call
+            const options: { sort?: string; streamer?: string; excludeRatedByUser?: string } = {};
+            
+            // Get sort parameter from URL search params
+            const currentSort = currentSearchParams.get('sort');
+            if (currentSort) {
+                options.sort = currentSort;
+                console.log(`Sort parameter: ${currentSort}`);
+            }
+
+            // Get streamer filter from URL search params
+            const streamerFilter = currentSearchParams.get('streamer');
             if (streamerFilter) {
-                queryParams.append('streamer', streamerFilter);
-            }            // Make a single API call to get both previous and next clips
-            const adjacentData = await getAdjacentClips(currentClip._id);
+                options.streamer = streamerFilter;
+                console.log(`Streamer filter: ${streamerFilter}`);
+            }
+
+            // Get excludeRatedByUser filter from URL search params (for hide rated functionality)
+            const excludeRatedByUser = currentSearchParams.get('excludeRatedByUser');
+            if (excludeRatedByUser) {
+                options.excludeRatedByUser = excludeRatedByUser;
+                console.log(`Exclude rated by user: ${excludeRatedByUser}`);
+            }
+
+            console.log('Adjacent clips options:', options);
+
+            // Make a single API call to get both previous and next clips
+            const adjacentData = await getAdjacentClips(clipIdToUse, options);
 
             console.log("Adjacent clips response:", adjacentData);
 
@@ -209,6 +221,7 @@ const ClipContent: React.FC<ClipContentProps> = ({
             if (adjacentData) {
                 setPrevClip(adjacentData.previous || null);
                 setNextClip(adjacentData.next || null);
+                console.log(`Set navigation - Previous: ${adjacentData.previous?._id || 'none'}, Next: ${adjacentData.next?._id || 'none'}`);
             }
         } catch (error) {
             console.error('Error fetching adjacent clips:', error);
@@ -235,14 +248,18 @@ const ClipContent: React.FC<ClipContentProps> = ({
         const fromPathname = from.pathname.split('/').filter(Boolean);
         const basePath = fromPathname.length > 0 ? fromPathname[0] : 'clips';
 
-        // Create a sanitized state object
+        // Preserve current search parameters to maintain filters when navigating
+        const currentSearchParams = new URLSearchParams(window.location.search);
+        const searchString = currentSearchParams.toString();
+
+        // Create a sanitized state object with current search params
         const cleanFromState = {
             pathname: `/${basePath}`,
-            search: from.search || ''
+            search: searchString ? `?${searchString}` : ''
         };
 
-        // Update URL first so the navigation happens immediately
-        navigate(`/clips/${clipId}`, {
+        // Update URL first so the navigation happens immediately, preserving search params
+        navigate(`/clips/${clipId}${searchString ? `?${searchString}` : ''}`, {
             state: { from: cleanFromState },
             replace: true // Replace current history entry to avoid back button issues
         });        // Fetch the new clip data
@@ -289,10 +306,14 @@ const ClipContent: React.FC<ClipContentProps> = ({
         const pathSegments = from.pathname.split('/').filter(Boolean);
         const basePath = pathSegments.length > 0 ? pathSegments[0] : 'clips';
 
-        // Navigate back with a clean path
+        // Use current search parameters to maintain filters when going back
+        const currentSearchParams = new URLSearchParams(window.location.search);
+        const searchString = currentSearchParams.toString();
+
+        // Navigate back with a clean path and current search params
         navigate({
             pathname: `/${basePath}`,
-            search: from.search || ''
+            search: searchString ? `?${searchString}` : ''
         });
     };
 
@@ -469,9 +490,9 @@ const ClipContent: React.FC<ClipContentProps> = ({
                     {/* Video player container */}
                     <div className="flex items-center">
                         {/* Previous clip button - positioned outside the video */}
-                        {nextClip && (
+                        {prevClip && (
                             <button
-                                onClick={() => navigateToClip(nextClip._id)}
+                                onClick={() => navigateToClip(prevClip._id)}
                                 disabled={loadingAdjacentClips || isClipLoading}
                                 className={`hidden sm:flex fixed left-4 top-1/2 transform -translate-y-1/2 z-20 ${loadingAdjacentClips || isClipLoading
                                     ? 'bg-neutral-200/90 dark:bg-neutral-600/90 cursor-not-allowed'
@@ -487,12 +508,43 @@ const ClipContent: React.FC<ClipContentProps> = ({
                             </button>
                         )}
 
+                        {/* Next clip button - positioned outside the video */}
+                        {nextClip && (
+                            <button
+                                onClick={() => navigateToClip(nextClip._id)}
+                                disabled={loadingAdjacentClips || isClipLoading}
+                                className={`hidden sm:flex fixed right-4 top-1/2 transform -translate-y-1/2 z-20 ${loadingAdjacentClips || isClipLoading
+                                    ? 'bg-neutral-200/90 dark:bg-neutral-600/90 cursor-not-allowed'
+                                    : 'bg-white/90 dark:bg-neutral-800/90 hover:bg-white dark:hover:bg-neutral-700 hover:scale-110'
+                                    } text-neutral-800 dark:text-white h-16 w-16 items-center justify-center rounded-full shadow-lg transition`}
+                                aria-label="Next clip"
+                            >
+                                {isClipLoading ? (
+                                    <div className="animate-spin h-6 w-6 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                                ) : (
+                                    <FaChevronRight size={24} />
+                                )}
+                            </button>
+                        )}
+
+                        {/* Debug info - remove later */}
+                        {process.env.NODE_ENV === 'development' && (
+                            <div className="fixed top-4 left-4 bg-black/80 text-white p-2 rounded z-50 text-xs">
+                                <div>Loading Adjacent: {loadingAdjacentClips ? 'YES' : 'NO'}</div>
+                                <div>Prev Clip: {prevClip ? prevClip._id : 'NONE'}</div>
+                                <div>Next Clip: {nextClip ? nextClip._id : 'NONE'}</div>
+                                <div>Current Clip: {currentClip?._id || 'NONE'}</div>
+                                <div>URL Params: {new URLSearchParams(window.location.search).toString() || 'NONE'}</div>
+                                <div>ExcludeRated: {new URLSearchParams(window.location.search).get('excludeRatedByUser') || 'NONE'}</div>
+                            </div>
+                        )}
+
                         {/* For mobile - bottom navigation bar */}
                         <div className="sm:hidden fixed bottom-0 left-0 right-0 z-20 flex justify-between items-center px-4 py-3 bg-neutral-100/90 dark:bg-neutral-800/90 backdrop-blur-sm">
                             <button
-                                onClick={() => nextClip && navigateToClip(nextClip._id)}
-                                disabled={!nextClip || loadingAdjacentClips || isClipLoading}
-                                className={`flex items-center justify-center rounded-full w-12 h-12 shadow-md ${!nextClip || loadingAdjacentClips || isClipLoading ?
+                                onClick={() => prevClip && navigateToClip(prevClip._id)}
+                                disabled={!prevClip || loadingAdjacentClips || isClipLoading}
+                                className={`flex items-center justify-center rounded-full w-12 h-12 shadow-md ${!prevClip || loadingAdjacentClips || isClipLoading ?
                                     'bg-neutral-300 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-500' :
                                     'bg-white dark:bg-neutral-700 text-neutral-800 dark:text-white hover:bg-neutral-200 dark:hover:bg-neutral-600'}`}
                                 aria-label="Previous clip"
@@ -522,9 +574,9 @@ const ClipContent: React.FC<ClipContentProps> = ({
                             </Link>
 
                             <button
-                                onClick={() => prevClip && navigateToClip(prevClip._id)}
-                                disabled={!prevClip || loadingAdjacentClips || isClipLoading}
-                                className={`flex items-center justify-center rounded-full w-12 h-12 shadow-md ${!prevClip || loadingAdjacentClips || isClipLoading ?
+                                onClick={() => nextClip && navigateToClip(nextClip._id)}
+                                disabled={!nextClip || loadingAdjacentClips || isClipLoading}
+                                className={`flex items-center justify-center rounded-full w-12 h-12 shadow-md ${!nextClip || loadingAdjacentClips || isClipLoading ?
                                     'bg-neutral-300 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-500' :
                                     'bg-white dark:bg-neutral-700 text-neutral-800 dark:text-white hover:bg-neutral-200 dark:hover:bg-neutral-600'}`}
                                 aria-label="Next clip"

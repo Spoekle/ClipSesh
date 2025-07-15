@@ -752,7 +752,7 @@ router.get('/:id', async (req, res) => {
  */
 router.get('/clip-navigation/adjacent', async (req, res) => {
     try {
-        const { currentClipId, sort = 'newest', streamer, getAdjacent } = req.query;
+        const { currentClipId, sort = 'newest', streamer, getAdjacent, excludeRatedByUser } = req.query;
         
         if (!currentClipId || getAdjacent !== 'true') {
             return res.status(400).json({ error: 'Required parameters missing' });
@@ -765,6 +765,20 @@ router.get('/clip-navigation/adjacent', async (req, res) => {
         const baseQuery = { archived: { $ne: true } }; // Exclude archived clips
         if (streamer) {
             baseQuery.streamer = { $regex: new RegExp(streamer, 'i') };
+        }
+        
+        // Add excludeRatedByUser filtering
+        if (excludeRatedByUser) {
+            const userRatedClipIds = await getUserRatedClipIds(excludeRatedByUser);
+            if (userRatedClipIds.length > 0) {
+                baseQuery._id = { $nin: userRatedClipIds };
+                console.log(`Excluding ${userRatedClipIds.length} clips rated by user ${excludeRatedByUser} from adjacent clips`);
+                
+                // Debug: Get total available clips before and after filtering
+                const totalClipsBeforeFilter = await Clip.countDocuments({ archived: { $ne: true } });
+                const totalClipsAfterFilter = await Clip.countDocuments(baseQuery);
+                console.log(`Total clips before filtering: ${totalClipsBeforeFilter}, after filtering: ${totalClipsAfterFilter}`);
+            }
         }
         
         let sortField = 'createdAt';
@@ -792,37 +806,48 @@ router.get('/clip-navigation/adjacent', async (req, res) => {
 
         console.log(`Finding adjacent clips for ${currentClipId} with sort: ${sort} (${sortField}, direction: ${sortDirection})`);
         console.log(`Current clip ${sortField} value:`, currentClip[sortField]);
+        console.log(`Base query (includes excludeRatedByUser filters):`, JSON.stringify(baseQuery));
 
+        // For "previous" clip in the navigation context:
+        // - If sorting newest first (descending), previous = newer clips (higher timestamp)
+        // - If sorting oldest first (ascending), previous = older clips (lower timestamp)
         const prevClipQuery = { ...baseQuery };
         if (sortDirection === -1) {
-            prevClipQuery[sortField] = { $lt: currentClip[sortField] };
-        } else {
+            // Descending sort: previous = newer (higher value)
             prevClipQuery[sortField] = { $gt: currentClip[sortField] };
+        } else {
+            // Ascending sort: previous = older (lower value)
+            prevClipQuery[sortField] = { $lt: currentClip[sortField] };
         }
         
         console.log('Previous clip query:', JSON.stringify(prevClipQuery));
         const prevClip = await Clip.findOne(prevClipQuery)
-            .sort({ [sortField]: sortDirection })
+            .sort({ [sortField]: -sortDirection }) // Reverse sort to get closest match
             .limit(1);
         
+        // For "next" clip in the navigation context:
+        // - If sorting newest first (descending), next = older clips (lower timestamp)
+        // - If sorting oldest first (ascending), next = newer clips (higher timestamp)
         const nextClipQuery = { ...baseQuery };
         if (sortDirection === -1) {
-            nextClipQuery[sortField] = { $gt: currentClip[sortField] };
-        } else {
+            // Descending sort: next = older (lower value)
             nextClipQuery[sortField] = { $lt: currentClip[sortField] };
+        } else {
+            // Ascending sort: next = newer (higher value)
+            nextClipQuery[sortField] = { $gt: currentClip[sortField] };
         }
         
         console.log('Next clip query:', JSON.stringify(nextClipQuery));
-        // For the next clip, we need to reverse the sort direction to get the correct adjacent clip
         const nextClip = await Clip.findOne(nextClipQuery)
-            .sort({ [sortField]: -sortDirection })
+            .sort({ [sortField]: sortDirection }) // Same sort direction to get closest match
             .limit(1);
         
-        console.log(`Found previous clip: ${prevClip?._id || 'none'}, next clip: ${nextClip?._id || 'none'}`);
+        console.log(`Found previous clip: ${prevClip?._id || 'none'} (${sortField}: ${prevClip?.[sortField] || 'none'})`);
+        console.log(`Found next clip: ${nextClip?._id || 'none'} (${sortField}: ${nextClip?.[sortField] || 'none'})`);
         
         res.json({
-            prevClip,
-            nextClip
+            previous: prevClip,
+            next: nextClip
         });
     } catch (error) {
         console.error('Error fetching adjacent clips:', error);

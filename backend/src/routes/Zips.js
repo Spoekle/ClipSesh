@@ -362,6 +362,8 @@ router.post('/process', authorizeRoles(['clipteam', 'admin']), async (req, res) 
         }
 
         const jobId = `job-${Date.now()}`;
+        // Filter out denied clips - clips come with average ratings calculated on frontend
+        // Note: Rating values are now calculated as averages (rounded to nearest integer) rather than most chosen
         const allowedClips = clips.filter(clip => clip.rating !== 'denied');
         const totalClips = allowedClips.length;
 
@@ -732,7 +734,15 @@ async function processClipsAsync(jobId, clips, season, year) {
             for (const clip of batchClips) {
                 try {
                     const { url, streamer, rating, title, _id, index } = clip;
-                    const clipData = { url, streamer, rating, title, _id };
+                    
+                    // Validate that rating is a valid numeric value (1-4) or 'deny'
+                    const validRatings = ['1', '2', '3', '4', 'deny'];
+                    const finalRating = validRatings.includes(rating) ? rating : '1';
+                    if (finalRating !== rating) {
+                        logAndEmit(`Warning: Invalid rating '${rating}' for clip ${title}, defaulting to '1'`, 'warning');
+                    }
+                    
+                    const clipData = { url, streamer, rating: finalRating, title, _id };
                     
                     // Emit clip processing started
                     if (wsManager) {
@@ -748,9 +758,9 @@ async function processClipsAsync(jobId, clips, season, year) {
                         timeout: 30000 // 30 second timeout for each clip
                     });
                     
-                    // Generate a safe filename
+                    // Generate a safe filename using the validated rating
                     const safeTitle = title.replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
-                    const fileName = `${rating}-${streamer}-${safeTitle}.mp4`;
+                    const fileName = `${finalRating}-${streamer}-${safeTitle}.mp4`;
                     
                     // Use Buffer for more reliable stream handling
                     archive.append(Buffer.from(response.data), { name: fileName });

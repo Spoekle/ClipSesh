@@ -10,11 +10,6 @@ import {
   ConfigResponse,
   ProcessClipsRequest,
   ProcessJobStatus,
-  TrophyCriteria,
-  TrophyAssignmentResult,
-  TrophyPreviewResult,
-  AllTrophyPreviewResult,
-  CustomCriteriaValidationResult
 } from '../types/adminTypes';
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://api.spoekle.com';
@@ -57,7 +52,7 @@ export const createUser = async (userData: CreateUserFormData & { status: string
 // Update user information
 export const updateUser = async (userId: string, updateData: Partial<User>): Promise<void> => {
   try {
-    await axios.put(`${backendUrl}/api/users/${userId}`, updateData, {
+    await axios.put(`${backendUrl}/api/admin/users/${userId}`, updateData, {
       headers: getAuthHeaders()
     });
   } catch (error: any) {

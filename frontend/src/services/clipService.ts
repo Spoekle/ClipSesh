@@ -122,11 +122,35 @@ export const getClipById = async (clipId: string): Promise<Clip> => {
 /**
  * Get adjacent clips for navigation (next/previous)
  */
-export const getAdjacentClips = async (clipId: string): Promise<{ previous?: Clip, next?: Clip }> => {
+export const getAdjacentClips = async (
+  clipId: string, 
+  options?: {
+    sort?: string;
+    streamer?: string;
+    excludeRatedByUser?: string;
+  }
+): Promise<{ previous?: Clip, next?: Clip }> => {
   try {
     const headers = getAuthHeaders();
+    const params: any = { 
+      currentClipId: clipId,
+      getAdjacent: 'true'
+    };
+    
+    if (options?.sort) {
+      params.sort = options.sort;
+    }
+    
+    if (options?.streamer) {
+      params.streamer = options.streamer;
+    }
+    
+    if (options?.excludeRatedByUser) {
+      params.excludeRatedByUser = options.excludeRatedByUser;
+    }
+    
     const response = await axios.get(`${backendUrl}/api/clips/clip-navigation/adjacent`, {
-      params: { clipId },
+      params,
       headers
     });
     return response.data;

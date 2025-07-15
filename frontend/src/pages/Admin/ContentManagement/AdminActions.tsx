@@ -48,7 +48,7 @@ const AdminActions: React.FC<AdminActionsProps> = ({
       <ConfirmationDialog 
         isOpen={showProcessConfirm}
         title="Process Approved Clips"
-        message="Are you sure you want to process all approved clips? This will create a ZIP file with all clips that have not been denied."
+        message="Are you sure you want to process all approved clips? This will create a ZIP file with all clips that have not been denied, using average ratings (rounded to nearest integer) for naming."
         confirmText="Process Clips"
         confirmVariant="primary"
         onConfirm={confirmProcess}
@@ -79,7 +79,7 @@ const AdminActions: React.FC<AdminActionsProps> = ({
               <div className="flex items-start space-x-3">
                 <FaInfoCircle className="text-blue-500 mt-1 flex-shrink-0" />
                 <p className="text-neutral-700 dark:text-neutral-300">
-                  Process approved clips to create a downloadable ZIP file. Delete all clips to start fresh. 
+                  Process approved clips to create a downloadable ZIP file. Clips are included based on average ratings (rounded to nearest integer) rather than denied status. 
                   Be careful with these actions as they can't be undone.
                 </p>
               </div>

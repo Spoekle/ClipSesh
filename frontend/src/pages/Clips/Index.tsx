@@ -213,7 +213,18 @@ function ClipViewer() {
       // If filterRated is true and user is logged in, exclude clips rated by user
       if (shouldFilterRated && currentUser?._id) {
         params.append('excludeRatedByUser', currentUser._id);
-      }      // Only include ratings for users with clipteam role or higher
+      }
+
+      // Update URL search params to reflect current filters
+      const newSearchParams = new URLSearchParams();
+      if (currentSortOption) newSearchParams.set('sort', currentSortOption);
+      if (currentSearchTerm) newSearchParams.set('q', currentSearchTerm);
+      if (currentFilterStreamer) newSearchParams.set('streamer', currentFilterStreamer);
+      if (pageNumber > 1) newSearchParams.set('page', pageNumber.toString());
+      if (shouldFilterRated && currentUser?._id) newSearchParams.set('excludeRatedByUser', currentUser._id);
+      
+      // Update URL without adding to history
+      setSearchParams(newSearchParams, { replace: true });      // Only include ratings for users with clipteam role or higher
       if (currentUser && (currentUser.roles?.includes('admin') || currentUser.roles?.includes('clipteam'))) {
         params.append('includeRatings', 'true');
       }
@@ -490,7 +501,6 @@ function ClipViewer() {
         user={user}
         fetchClipsAndRatings={triggerClipRefetch}
         ratings={ratings}
-        searchParams={searchParams}
         unratedClips={unratedClips}
         sortOptionState={sortOptionState}
         setSortOptionState={setSortOptionState}
@@ -507,7 +517,7 @@ function ClipViewer() {
         setSearchParams={setSearchParams}
         isLoading={isLoading}
         config={{
-          clipAmount: config.clipAmount,
+          clipAmount: 0,
           itemsPerPage: itemsPerPage
         }}
         itemsPerPage={itemsPerPage}

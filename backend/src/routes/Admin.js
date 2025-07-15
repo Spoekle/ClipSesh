@@ -171,7 +171,7 @@ router.put('/users/:id', authorizeRoles(['admin']), async (req, res) => {
     if (password) user.password = await bcrypt.hash(password, 10);
     if (roles) user.roles = roles;
     if (email !== undefined) user.email = email;
-    if (profilePicture) user.profilePicture = profilePicture;
+    if (profilePicture !== undefined) user.profilePicture = profilePicture;
     if (status) user.status = status;
 
     // Update lastModified timestamp

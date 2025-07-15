@@ -119,7 +119,7 @@ const UserList: React.FC<UserListProps> = ({ fetchUsers, AVAILABLE_ROLES }) => {
       }
       setEditUser({
         ...editUser,
-        roles: updatedRoles.length ? updatedRoles : ['user'] // Default to 'user' if all roles removed
+        roles: updatedRoles.length ? updatedRoles : ['user']
       });
     } else {
       setEditUser({
@@ -133,6 +133,9 @@ const UserList: React.FC<UserListProps> = ({ fetchUsers, AVAILABLE_ROLES }) => {
     try {
       await adminService.disableUser(userId);
       showSuccess('User disabled successfully');
+      // Update local state immediately for UI responsiveness
+      fetchFilteredUsers();
+      // Also update parent state for other components
       fetchUsers();
     } catch (error: any) {
       console.error('Error disabling user:', error);
@@ -177,6 +180,9 @@ const UserList: React.FC<UserListProps> = ({ fetchUsers, AVAILABLE_ROLES }) => {
       
       showSuccess('User updated successfully');
       setEditUser(null);
+      // Update local state immediately for UI responsiveness
+      fetchFilteredUsers();
+      // Also update parent state for other components
       fetchUsers();
     } catch (error: any) {
       console.error('Error updating user:', error);
