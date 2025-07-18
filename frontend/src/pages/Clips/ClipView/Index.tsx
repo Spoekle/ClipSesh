@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Helmet } from 'react-helmet';
-import { useLocation, useNavigate, Link } from 'react-router-dom';
+import { useLocation, useNavigate, Link, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
     FaThumbsUp,
@@ -23,13 +23,16 @@ import { useNotification } from '../../../context/AlertContext';
 import { Clip, User, Rating } from '../../../types/adminTypes';
 import RatingPanel from './components/clipteam/RatingPanel';
 import CommentSection from './components/CommentSection';
+
+// React Query hooks
 import { 
-  getAdjacentClips, 
-  getClipById, 
-  getClipVoteStatus, 
-  voteOnClip,
-  deleteClip 
-} from '../../../services/clipService';
+  useClip, 
+  useAdjacentClipsFromCache, 
+  useClipVoteStatus, 
+  useVoteOnClip,
+  useDeleteClip 
+} from '../../../hooks/useClips';
+
 
 interface ClipContentProps {
     clip: Clip;
@@ -58,17 +61,80 @@ const ClipContent: React.FC<ClipContentProps> = ({
     fetchClipsAndRatings,
     ratings
 }) => {
-    const [currentClip, setCurrentClip] = useState<Clip>(clip);
+    // Get clip ID from URL params to ensure we always have the current clip ID
+    const { clipId } = useParams<{ clipId: string }>();
+    const currentClipId = clipId || clip._id;
+    
+    console.log('🎬 ClipContent - URL clip ID:', clipId);
+    console.log('🎬 ClipContent - Prop clip ID:', clip._id);
+    console.log('🎬 ClipContent - Using clip ID:', currentClipId);
+    
+    // React Query hooks - get current clip data
+    const { data: currentClip, isLoading: isClipLoading } = useClip(currentClipId);
+    
+    // Build params for adjacent clips based on current URL parameters
+    const adjacentClipParams = useMemo(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const params: any = {
+            sort: urlParams.get('sort') || 'newest',
+        };
+        
+        // Add optional parameters only if they exist
+        if (urlParams.get('streamer')) {
+            params.streamer = urlParams.get('streamer');
+        }
+        if (urlParams.get('excludeRatedByUser')) {
+            params.excludeRatedByUser = urlParams.get('excludeRatedByUser');
+        }
+        if (urlParams.get('q')) {
+            params.search = urlParams.get('q');
+        }
+        
+        // Add includeRatings for admin/clipteam users (matching main page logic)
+        if (user && (user.roles?.includes('admin') || user.roles?.includes('clipteam'))) {
+            params.includeRatings = true;
+        }
+        
+        console.log('🎬 ClipView - Building adjacent clips params:', params);
+        console.log('🎬 ClipView - Current clip ID:', currentClipId);
+        console.log('🎬 ClipView - Full URL search:', window.location.search);
+        console.log('🎬 ClipView - User roles:', user?.roles);
+        return params;
+    }, [currentClipId, user]);
+    
+    // Get adjacent clips from cached data using the current clip ID from URL
+    const { data: adjacentClips, isLoading: loadingAdjacentClips } = useAdjacentClipsFromCache(currentClipId, adjacentClipParams);
+    
+    // Get vote status for current clip  
+    const { data: voteStatus } = useClipVoteStatus(currentClipId);
+    
+    // Mutations
+    const voteOnClipMutation = useVoteOnClip();
+    const deleteClipMutation = useDeleteClip();
+
+    // Local state
     const [popout, setPopout] = useState<string>('');
     const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
     const [isLoading, setIsLoading] = useState<boolean>(false);
-    const [shareUrl, setShareUrl] = useState<string>('');
-    const [nextClip, setNextClip] = useState<Clip | null>(null);
-    const [prevClip, setPrevClip] = useState<Clip | null>(null);
-    const [loadingAdjacentClips, setLoadingAdjacentClips] = useState<boolean>(false);
-    const [isClipLoading, setIsClipLoading] = useState<boolean>(false);
     const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false);
+
+    // Extract adjacent clips for navigation
+    const nextClip = adjacentClips?.next || null;
+    const prevClip = adjacentClips?.previous || null;
+    
+    // Use the fetched clip data or fallback to prop
+    const clipData = currentClip || clip;
+    
+    console.log('🎬 Adjacent clips state:');
+    console.log('   Previous:', prevClip?._id || 'none');
+    console.log('   Next:', nextClip?._id || 'none');
+    console.log('   Current clip prop:', clip._id);
+    console.log('   Current clip data:', clipData?._id);
+    console.log('   URL clip ID:', currentClipId);
+    
+    // Set share URL
+    const shareUrl = clipData ? `${window.location.origin}/clips/${clipData._id}` : '';
 
     // Use our custom notification hook instead of toast
     const { showSuccess, showError } = useNotification();
@@ -135,7 +201,8 @@ const ClipContent: React.FC<ClipContentProps> = ({
     const openTeamChat = location.state?.openTeamChat;
 
     // Set highlighted message from location state
-    useEffect(() => {
+    // Handle message highlighting from navigation state
+    React.useEffect(() => {
         const messageId = location.state?.messageId;
         if (messageId) {
             setHighlightedMessageId(messageId);
@@ -143,105 +210,33 @@ const ClipContent: React.FC<ClipContentProps> = ({
     }, [location.state?.messageId]);
 
     // Set popout to 'chat' if navigating from team message notification
-    useEffect(() => {
+    React.useEffect(() => {
         if (openTeamChat && user && (user.roles.includes('admin') || user.roles.includes('clipteam'))) {
             setPopout('chat');
         }
     }, [openTeamChat, user]);
 
-    // Set share URL and fetch adjacent clips when current clip changes
-    useEffect(() => {
-        if (currentClip && currentClip._id) {
-            console.log(`Setting share URL and fetching adjacent clips for: ${currentClip._id}`);
-            setShareUrl(`${window.location.origin}/clips/${currentClip._id}`);
-            fetchAdjacentClips(currentClip._id);
 
-            // Log the current from state to help with debugging
-            console.log('Current from state:', from);
-        }
-    }, [currentClip?._id, from]);
-
-    // Update currentClip when clip prop changes
-    useEffect(() => {
-        if (clip && (!currentClip || clip._id !== currentClip._id)) {
-            console.log(`Updating current clip from prop: ${clip._id}`);
-            setCurrentClip(clip);
-        }
-    }, [clip?._id]);
-
-    // Update the fetchAdjacentClips function to call the correct API endpoint
-    const fetchAdjacentClips = async (specificClipId?: string) => {
-        if (!specificClipId && !currentClip?._id && !clip?._id) {
-            console.warn('No clip ID available to fetch adjacent clips');
-            return;
-        }
-
-        setLoadingAdjacentClips(true);
-        try {
-            // Use the specificClipId if provided, otherwise use current clip id or fallback to prop clip id
-            const clipIdToUse = specificClipId || currentClip?._id || clip._id;
-            console.log(`Fetching adjacent clips for: ${clipIdToUse}`);
-
-            // Get current URL search params to ensure we're using the most up-to-date filters
-            const currentSearchParams = new URLSearchParams(window.location.search);
-            console.log('Current URL search params:', currentSearchParams.toString());
-
-            // Prepare options for the API call
-            const options: { sort?: string; streamer?: string; excludeRatedByUser?: string } = {};
-            
-            // Get sort parameter from URL search params
-            const currentSort = currentSearchParams.get('sort');
-            if (currentSort) {
-                options.sort = currentSort;
-                console.log(`Sort parameter: ${currentSort}`);
-            }
-
-            // Get streamer filter from URL search params
-            const streamerFilter = currentSearchParams.get('streamer');
-            if (streamerFilter) {
-                options.streamer = streamerFilter;
-                console.log(`Streamer filter: ${streamerFilter}`);
-            }
-
-            // Get excludeRatedByUser filter from URL search params (for hide rated functionality)
-            const excludeRatedByUser = currentSearchParams.get('excludeRatedByUser');
-            if (excludeRatedByUser) {
-                options.excludeRatedByUser = excludeRatedByUser;
-                console.log(`Exclude rated by user: ${excludeRatedByUser}`);
-            }
-
-            console.log('Adjacent clips options:', options);
-
-            // Make a single API call to get both previous and next clips
-            const adjacentData = await getAdjacentClips(clipIdToUse, options);
-
-            console.log("Adjacent clips response:", adjacentData);
-
-            // Set the prev and next clips from response
-            if (adjacentData) {
-                setPrevClip(adjacentData.previous || null);
-                setNextClip(adjacentData.next || null);
-                console.log(`Set navigation - Previous: ${adjacentData.previous?._id || 'none'}, Next: ${adjacentData.next?._id || 'none'}`);
-            }
-        } catch (error) {
-            console.error('Error fetching adjacent clips:', error);
-            // Don't clear existing nav clips on error
-        } finally {
-            setLoadingAdjacentClips(false);
-        }
-    };
 
     // Navigate to adjacent clip with improved reliability
-    const navigateToClip = (clipId: string) => {
+    const navigateToClip = useCallback((clipId: string) => {
+        console.log('🎬 Navigating to clip:', clipId);
+        console.log('🎬 Current clip:', currentClipId);
+        console.log('🎬 Is loading:', isClipLoading);
+        console.log('🎬 Target clipId type:', typeof clipId);
+        console.log('🎬 Target clipId value:', JSON.stringify(clipId));
+        
         // Prevent navigation if already loading
-        if (isClipLoading) return;
-
-        // Show loading state
-        setIsClipLoading(true);
-
-        // Reset adjacent clips to prevent confusion when navigating
-        setPrevClip(null);
-        setNextClip(null);
+        if (isClipLoading) {
+            console.log('🎬 Navigation blocked - already loading');
+            return;
+        }
+        
+        // Validate clip ID
+        if (!clipId || typeof clipId !== 'string') {
+            console.log('🎬 Navigation blocked - invalid clip ID:', clipId);
+            return;
+        }
 
         // Create a clean from state to avoid URL corruption
         // Only use the first path segment to prevent function code leaking into URLs
@@ -258,39 +253,23 @@ const ClipContent: React.FC<ClipContentProps> = ({
             search: searchString ? `?${searchString}` : ''
         };
 
-        // Update URL first so the navigation happens immediately, preserving search params
+        console.log('🎬 Navigation details:');
+        console.log('   Target clip:', clipId);
+        console.log('   Search string:', searchString);
+        console.log('   From state:', cleanFromState);
+        console.log('   Full URL:', `/clips/${clipId}${searchString ? `?${searchString}` : ''}`);
+        console.log('   Current window location:', window.location.href);
+
+        // Update URL and let React Query handle the data fetching
         navigate(`/clips/${clipId}${searchString ? `?${searchString}` : ''}`, {
             state: { from: cleanFromState },
             replace: true // Replace current history entry to avoid back button issues
-        });        // Fetch the new clip data
-        const fetchNewClip = async () => {
-            try {
-                // Fetch the new clip directly
-                const clipData = await getClipById(clipId);
+        });
+        
+        console.log('🎬 Navigation completed, new URL should be:', `/clips/${clipId}${searchString ? `?${searchString}` : ''}`);
+    }, [isClipLoading, from.pathname, navigate, currentClipId]);
 
-                if (clipData) {
-                    // Update current clip with the new data
-                    setCurrentClip(clipData);
-
-                    // After setting the current clip, update expandedClip in parent component
-                    setExpandedClip(clipId);
-
-                    // Fetch adjacent clips for the new clip
-                    await fetchAdjacentClips(clipId);
-                }
-            } catch (error) {
-                console.error('Error fetching new clip:', error);
-                showError('Error loading clip. Please try again.');
-            } finally {
-                setIsClipLoading(false);
-            }
-        };
-
-        // Execute the fetch operation
-        fetchNewClip();
-    };
-
-    if (!currentClip) {
+    if (!clipData) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-neutral-100 dark:bg-neutral-900">
                 <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500"></div>
@@ -321,44 +300,26 @@ const ClipContent: React.FC<ClipContentProps> = ({
         setIsEditModalOpen(!isEditModalOpen);
     };
 
-    // Add a state to track the user's current vote
-    const [userVote, setUserVote] = useState<'upvote' | 'downvote' | null>(null);    // Check user's current vote status when clip changes
-    useEffect(() => {
-        const checkVoteStatus = async () => {
-            if (!currentClip?._id) return;
-
-            try {
-                const voteStatusData = await getClipVoteStatus(currentClip._id);
-                if (voteStatusData.hasVoted) {
-                    setUserVote(voteStatusData.voteType || null);
-                } else {
-                    setUserVote(null);
-                }
-            } catch (error) {
-                console.error('Error fetching vote status:', error);
-            }
-        };
-
-        checkVoteStatus();
-    }, [currentClip?._id]);
+    // Get current user vote from the vote status
+    const userVote = voteStatus?.hasVoted ? voteStatus.voteType : null;
 
     const handleVote = async (voteType: 'upvote' | 'downvote'): Promise<void> => {
-        if (!currentClip?._id) return;
+        if (!clipData?._id) return;
 
         try {
             // If user already voted the same way, remove the vote
             if (userVote === voteType) {
-                // TODO: Add remove vote functionality if API supports it
-                setUserVote(null);
+                await voteOnClipMutation.mutateAsync({
+                    clipId: clipData._id,
+                    voteType
+                });
+                showSuccess('Vote removed!');
             } else {
-                // Vote on the clip using the service
-                const updatedClip = await voteOnClip(currentClip._id, voteType);
-                
-                // Update the current clip with new vote counts
-                setCurrentClip(updatedClip);
-                
-                // Update user's vote status
-                setUserVote(voteType);
+                // Vote on the clip using the mutation
+                await voteOnClipMutation.mutateAsync({
+                    clipId: clipData._id,
+                    voteType
+                });
                 
                 showSuccess(`Clip ${voteType}d successfully!`);
             }
@@ -371,11 +332,11 @@ const ClipContent: React.FC<ClipContentProps> = ({
     const handleDownvote = (): Promise<void> => handleVote('downvote');
 
     const handleDeleteClip = async (): Promise<void> => {
-        if (!currentClip?._id) return;
+        if (!clipData?._id) return;
 
         try {
             setIsLoading(true);
-            await deleteClip(currentClip._id);
+            await deleteClipMutation.mutateAsync(clipData._id);
             showSuccess('Clip deleted successfully!');
             closeExpandedClip();
         } catch (error: any) {
@@ -421,10 +382,10 @@ const ClipContent: React.FC<ClipContentProps> = ({
 
             {clip && (
                 <Helmet>
-                    <title>{currentClip && `${currentClip.streamer} | ${currentClip.title}`}</title>
+                    <title>{clipData && `${clipData.streamer} | ${clipData.title}`}</title>
                     <meta
                         name="description"
-                        content={`${currentClip.title} by ${currentClip.streamer} on ${new Date(currentClip.createdAt).toLocaleString()}. Watch the clip and rate it on ClipSesh! ${currentClip.upvotes} upvotes and ${currentClip.downvotes}. ${currentClip.comments.length} comments. ${currentClip.link}`}
+                        content={`${clipData.title} by ${clipData.streamer} on ${new Date(clipData.createdAt).toLocaleString()}. Watch the clip and rate it on ClipSesh! ${clipData.upvotes} upvotes and ${clipData.downvotes}. ${clipData.comments.length} comments. ${clipData.link}`}
                     />
                 </Helmet>
             )}
@@ -438,8 +399,8 @@ const ClipContent: React.FC<ClipContentProps> = ({
                         search: from.search || ''
                     }}
                     onClick={(e) => {
-                        e.preventDefault(); // Prevent default Link behavior
-                        closeExpandedClip(); // Use our sanitized function instead
+                        e.preventDefault();
+                        closeExpandedClip();
                     }}
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -492,7 +453,10 @@ const ClipContent: React.FC<ClipContentProps> = ({
                         {/* Previous clip button - positioned outside the video */}
                         {prevClip && (
                             <button
-                                onClick={() => navigateToClip(prevClip._id)}
+                                onClick={() => {
+                                    console.log('🎬 Previous button clicked:', prevClip._id);
+                                    navigateToClip(prevClip._id);
+                                }}
                                 disabled={loadingAdjacentClips || isClipLoading}
                                 className={`hidden sm:flex fixed left-4 top-1/2 transform -translate-y-1/2 z-20 ${loadingAdjacentClips || isClipLoading
                                     ? 'bg-neutral-200/90 dark:bg-neutral-600/90 cursor-not-allowed'
@@ -511,7 +475,10 @@ const ClipContent: React.FC<ClipContentProps> = ({
                         {/* Next clip button - positioned outside the video */}
                         {nextClip && (
                             <button
-                                onClick={() => navigateToClip(nextClip._id)}
+                                onClick={() => {
+                                    console.log('🎬 Next button clicked:', nextClip._id);
+                                    navigateToClip(nextClip._id);
+                                }}
                                 disabled={loadingAdjacentClips || isClipLoading}
                                 className={`hidden sm:flex fixed right-4 top-1/2 transform -translate-y-1/2 z-20 ${loadingAdjacentClips || isClipLoading
                                     ? 'bg-neutral-200/90 dark:bg-neutral-600/90 cursor-not-allowed'
@@ -527,22 +494,13 @@ const ClipContent: React.FC<ClipContentProps> = ({
                             </button>
                         )}
 
-                        {/* Debug info - remove later */}
-                        {process.env.NODE_ENV === 'development' && (
-                            <div className="fixed top-4 left-4 bg-black/80 text-white p-2 rounded z-50 text-xs">
-                                <div>Loading Adjacent: {loadingAdjacentClips ? 'YES' : 'NO'}</div>
-                                <div>Prev Clip: {prevClip ? prevClip._id : 'NONE'}</div>
-                                <div>Next Clip: {nextClip ? nextClip._id : 'NONE'}</div>
-                                <div>Current Clip: {currentClip?._id || 'NONE'}</div>
-                                <div>URL Params: {new URLSearchParams(window.location.search).toString() || 'NONE'}</div>
-                                <div>ExcludeRated: {new URLSearchParams(window.location.search).get('excludeRatedByUser') || 'NONE'}</div>
-                            </div>
-                        )}
-
                         {/* For mobile - bottom navigation bar */}
                         <div className="sm:hidden fixed bottom-0 left-0 right-0 z-20 flex justify-between items-center px-4 py-3 bg-neutral-100/90 dark:bg-neutral-800/90 backdrop-blur-sm">
                             <button
-                                onClick={() => prevClip && navigateToClip(prevClip._id)}
+                                onClick={() => {
+                                    console.log('🎬 Mobile previous button clicked:', prevClip?._id);
+                                    prevClip && navigateToClip(prevClip._id);
+                                }}
                                 disabled={!prevClip || loadingAdjacentClips || isClipLoading}
                                 className={`flex items-center justify-center rounded-full w-12 h-12 shadow-md ${!prevClip || loadingAdjacentClips || isClipLoading ?
                                     'bg-neutral-300 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-500' :
@@ -562,8 +520,8 @@ const ClipContent: React.FC<ClipContentProps> = ({
                                     search: from.search || ''
                                 }}
                                 onClick={(e) => {
-                                    e.preventDefault(); // Prevent default Link behavior
-                                    closeExpandedClip(); // Use our sanitized function instead
+                                    e.preventDefault();
+                                    closeExpandedClip();
                                 }}
                                 className="bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 text-neutral-800 dark:text-white px-4 py-2 rounded-lg transition flex items-center gap-2 font-medium"
                             >
@@ -574,7 +532,10 @@ const ClipContent: React.FC<ClipContentProps> = ({
                             </Link>
 
                             <button
-                                onClick={() => nextClip && navigateToClip(nextClip._id)}
+                                onClick={() => {
+                                    console.log('🎬 Mobile next button clicked:', nextClip?._id);
+                                    nextClip && navigateToClip(nextClip._id);
+                                }}
                                 disabled={!nextClip || loadingAdjacentClips || isClipLoading}
                                 className={`flex items-center justify-center rounded-full w-12 h-12 shadow-md ${!nextClip || loadingAdjacentClips || isClipLoading ?
                                     'bg-neutral-300 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-500' :
@@ -596,11 +557,11 @@ const ClipContent: React.FC<ClipContentProps> = ({
                             transition={{ delay: 0.1 }}
                             className="bg-white dark:bg-neutral-800 rounded-xl shadow-lg overflow-hidden w-full"
                         >
-                            <CustomPlayer currentClip={currentClip} />
+                            <CustomPlayer currentClip={clipData} />
 
                             <div className="p-6">
                                 <h1 className="text-2xl text-neutral-900 dark:text-white font-bold mb-2">
-                                    {currentClip.title}
+                                    {clipData.title}
                                 </h1>
 
                                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mt-4 mb-6">
@@ -616,7 +577,7 @@ const ClipContent: React.FC<ClipContentProps> = ({
                                                 title={userVote === 'upvote' ? 'Remove your upvote' : 'Upvote this clip'}
                                             >
                                                 <FaThumbsUp className={`mr-2 ${userVote === 'upvote' ? 'text-white animate-pulse' : ''}`} />
-                                                {currentClip.upvotes}
+                                                {clipData.upvotes}
                                                 {userVote === 'upvote' && <span className="ml-1">✓</span>}
                                             </button>
                                             <button
@@ -629,7 +590,7 @@ const ClipContent: React.FC<ClipContentProps> = ({
                                                 title={userVote === 'downvote' ? 'Remove your downvote' : 'Downvote this clip'}
                                             >
                                                 <FaThumbsDown className={`mr-2 ${userVote === 'downvote' ? 'text-white animate-pulse' : ''}`} />
-                                                {currentClip.downvotes}
+                                                {clipData.downvotes}
                                                 {userVote === 'downvote' && <span className="ml-1">✓</span>}
                                             </button>
                                         </div>
@@ -637,7 +598,7 @@ const ClipContent: React.FC<ClipContentProps> = ({
 
                                     <div>
                                         <a
-                                            href={currentClip.link}
+                                            href={clipData.link}
                                             className="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 transition"
                                             target="_blank"
                                             rel="noreferrer"
@@ -654,17 +615,17 @@ const ClipContent: React.FC<ClipContentProps> = ({
                                             <div className="flex items-center gap-2">
                                                 <FaUser className="text-neutral-500 dark:text-neutral-400" />
                                                 <span className="text-lg text-neutral-900 dark:text-white font-semibold">
-                                                    {currentClip.streamer}
+                                                    {clipData.streamer}
                                                 </span>
                                             </div>
                                         </div>
 
-                                        {currentClip.submitter !== 'Legacy(no data)' && (
+                                        {clipData.submitter !== 'Legacy(no data)' && (
                                             <div className="w-full sm:w-1/2">
                                                 <div className="flex items-center gap-2">
                                                     <FaUser className="text-neutral-500 dark:text-neutral-400" />
                                                     <span className="text-neutral-600 dark:text-neutral-300">
-                                                        Submitted by: <span className="font-medium">{currentClip.submitter}</span>
+                                                        Submitted by: <span className="font-medium">{clipData.submitter}</span>
                                                     </span>
                                                 </div>
                                             </div>
@@ -675,23 +636,23 @@ const ClipContent: React.FC<ClipContentProps> = ({
                                                 <FaRegCalendarAlt className="text-neutral-500 dark:text-neutral-400" />
                                                 <span
                                                     className="text-neutral-600 dark:text-neutral-300"
-                                                    title={currentClip.createdAt}
+                                                    title={clipData.createdAt}
                                                 >
-                                                    {new Date(currentClip.createdAt).toLocaleDateString('en-US', {
+                                                    {new Date(clipData.createdAt).toLocaleDateString('en-US', {
                                                         year: 'numeric',
                                                         month: 'long',
                                                         day: 'numeric'
                                                     })}
                                                 </span>
                                             </div>
-                                            {currentClip.updatedAt && (currentClip.createdAt !== currentClip.updatedAt && (
+                                            {clipData.updatedAt && (clipData.createdAt !== clipData.updatedAt && (
                                                 <div className="flex items-center gap-2">
                                                     <FaEdit className="text-neutral-500 dark:text-neutral-400" />
                                                     <span
                                                         className="text-neutral-600 dark:text-neutral-300"
-                                                        title={currentClip.updatedAt}
+                                                        title={clipData.updatedAt}
                                                     >
-                                                        {new Date(currentClip.updatedAt).toLocaleDateString('en-US', {
+                                                        {new Date(clipData.updatedAt).toLocaleDateString('en-US', {
                                                             year: 'numeric',
                                                             month: 'long',
                                                             day: 'numeric'
@@ -704,8 +665,8 @@ const ClipContent: React.FC<ClipContentProps> = ({
                                 </div>                                {/* Rating panel for all logged-in users */}
                                 {user && (
                                     <RatingPanel
-                                        clip={currentClip}
-                                        currentClip={currentClip}
+                                        clip={clipData}
+                                        currentClip={clipData}
                                         user={user}
                                         isLoading={isLoading}
                                         ratings={ratings}
@@ -715,37 +676,17 @@ const ClipContent: React.FC<ClipContentProps> = ({
                                 
                             </div>
                         </motion.div>
-
-
-                        {/* Next clip button - positioned outside the video */}
-                        {prevClip && (
-                            <button
-                                onClick={() => navigateToClip(prevClip._id)}
-                                disabled={loadingAdjacentClips || isClipLoading}
-                                className={`hidden sm:flex fixed right-4 top-1/2 transform -translate-y-1/2 z-20 ${loadingAdjacentClips || isClipLoading
-                                    ? 'bg-neutral-200/90 dark:bg-neutral-600/90 cursor-not-allowed'
-                                    : 'bg-white/90 dark:bg-neutral-800/90 hover:bg-white dark:hover:bg-neutral-700 hover:scale-110'
-                                    } text-neutral-800 dark:text-white h-16 w-16 items-center justify-center rounded-full shadow-lg transition`}
-                                aria-label="Next clip"
-                            >
-                                {isClipLoading ? (
-                                    <div className="animate-spin h-6 w-6 border-2 border-blue-500 border-t-transparent rounded-full"></div>
-                                ) : (
-                                    <FaChevronRight size={24} />
-                                )}
-                            </button>
-                        )}
                     </div>                    {/* Comments section */}
                     <CommentSection
-                        clipId={currentClip._id}
-                        comments={currentClip.comments || []}
+                        clipId={clipData._id}
+                        comments={clipData.comments || []}
                         user={user}
                         fetchClipsAndRatings={fetchClipsAndRatings}
                         highlightedMessageId={highlightedMessageId}
                         setHighlightedMessageId={setHighlightedMessageId}
                         setPopout={setPopout}
                         isClipLoading={isClipLoading}
-                        setIsClipLoading={setIsClipLoading}
+                        setIsClipLoading={() => {/* No-op since React Query handles loading state */}}
                     />
                     
                 </div>
@@ -783,7 +724,13 @@ const ClipContent: React.FC<ClipContentProps> = ({
             {popout === 'chat' ? (
                 <MessageComponent
                     clipId={clip._id}
-                    setPopout={setPopout}
+                    setPopout={(value: string) => {
+                        if (value === 'chat' || value === 'ratings') {
+                            setPopout(value);
+                        } else {
+                            setPopout('');
+                        }
+                    }}
                     user={user}
                     highlightedMessageId={highlightedMessageId}
                 />
@@ -791,12 +738,13 @@ const ClipContent: React.FC<ClipContentProps> = ({
                 <RatingsComponent clip={clip} ratings={ratings} setPopout={setPopout} />
             ) : null}
 
-            {/* Edit Modal */}            {isEditModalOpen && (
+            {/* Edit Modal */}
+            {isEditModalOpen && (
                 <EditModal
                     isEditModalOpen={isEditModalOpen}
                     setIsEditModalOpen={toggleEditModal}
-                    clip={currentClip}
-                    setCurrentClip={setCurrentClip}
+                    clip={clipData}
+                    setCurrentClip={() => {/* Refetch handled by React Query */}}
                 />
             )}
 

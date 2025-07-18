@@ -5,110 +5,126 @@ import { motion } from 'framer-motion';
 import { useNotification } from '../../context/AlertContext';
 import LoadingBar from 'react-top-loading-bar';
 
-// Component imports
 import ClipViewerHeader from './components/ClipViewerHeader';
 import ClipViewerContent from './components/ClipViewerContent';
 
-// Import shared types
-import { User, Clip, Rating, AdminConfig } from '../../types/adminTypes';
-
-// Import services
-import { getClips, getClipById } from '../../services/clipService';
-import { getCombinedConfig } from '../../services/configService';
-import { getCurrentUser } from '../../services/userService';
-import { getBulkRatings } from '../../services/ratingService';
-
-interface RatingMap {
-  [clipId: string]: Rating;
-}
+import { useInfiniteClips, useClip } from '../../hooks/useClips';
+import { useBulkRatings } from '../../hooks/useRatings';
+import { useCombinedConfig } from '../../hooks/useConfig';
+import { useCurrentUser } from '../../hooks/useUser';
 
 function ClipViewer() {
   const { clipId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const sortOption = searchParams.get('sort') || 'newest';
-  const page = parseInt(searchParams.get('page') || '1', 10);
-  const token = localStorage.getItem('token');
+  const searchTerm = searchParams.get('q') || '';
+  const filterStreamer = searchParams.get('streamer') || '';
 
-  // Use the notification system
   const { showError } = useNotification();
 
-  // State management with proper types
-  const [unratedClips, setUnratedClips] = useState<Clip[]>([]);
+  const { data: user, isLoading: userLoading } = useCurrentUser();
+  const { isLoading: configLoading } = useCombinedConfig(user);
+  
   const [filterRatedClips, setFilterRatedClips] = useState<boolean>(() => {
-    // Initialize from localStorage with proper boolean conversion
     const storedValue = localStorage.getItem('filterRatedClips');
     return storedValue === 'true';
   });
+  
   const [filterDeniedClips, setFilterDeniedClips] = useState<boolean>(() => {
-    // Initialize from localStorage with proper boolean conversion
     const storedValue = localStorage.getItem('filterDeniedClips');
     return storedValue === 'true';
   });
 
-  // These state variables are maintained for UI features that might use them later
-  const [, setRatedClips] = useState<Clip[]>([]);
-  const [, setDeniedClips] = useState<Clip[]>([]);
-  const [ratings, setRatings] = useState<RatingMap>({});
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
-  const [user, setUser] = useState<User | null>(null);
-  const [currentClip, setCurrentClip] = useState<Clip | null>(null);
   const [expandedClip, setExpandedClip] = useState<string | null>(clipId || null);
-  const [sortOptionState, setSortOptionState] = useState<string>(sortOption || 'newest');
-  const [config, setConfig] = useState<AdminConfig>({
-    denyThreshold: 3,
-    latestVideoLink: '',
-    clipChannelIds: [],
-  });
-  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [progress, setProgress] = useState<number>(0);
-  const [currentPage, setCurrentPage] = useState<number>(page);
   const [seasonInfo, setSeasonInfo] = useState<{ season: string }>({ season: '' });
-  const [itemsPerPage] = useState<number>(12);
-  const [isClipLoading, setIsClipLoading] = useState<boolean>(false);
-  const [searchTerm, setSearchTerm] = useState<string>(searchParams.get('q') || '');
-  const [filterStreamer, setFilterStreamer] = useState<string>(searchParams.get('streamer') || '');
-  // Track if initial data load has happened
-  const [initialDataLoaded, setInitialDataLoaded] = useState<boolean>(false);
-  const [, setTotalPages] = useState<number>(1);
-  // Define fetchConfig function with default values for when response data is undefined
-  const fetchConfig = useCallback(async () => {
-    try {
-      setProgress(10);
 
-      const configData = await getCombinedConfig(user);
-      // Update total pages based on clipAmount for pagination
-      if (configData.clipAmount) {
-        const totalPagesCount = Math.ceil(configData.clipAmount / itemsPerPage);
-        setTotalPages(totalPagesCount);
-      }
+  const buildClipParams = useCallback(() => {
+    const params: any = {
+      sortBy: 'createdAt',
+      sortOrder: 'desc',
+      sortOption: sortOption,
+    };
 
-      setConfig(configData);
-      setProgress(30);
-    } catch (error) {
-      console.error('Error fetching config:', error);
-      showError("Could not load configuration settings, using defaults");
-    }
-  }, [user, showError, itemsPerPage]);
-  // Fetch user data
-  const fetchUser = useCallback(async () => {
-    if (token) {
-      try {
-        const userData = await getCurrentUser();
-        setIsLoggedIn(true);
-        setUser(userData);
-        return userData;
-      } catch (error) {
-        console.error('Error fetching user:', error);
-        setIsLoggedIn(false);
-        setUser(null);
-        return null;
-      }
+    if (sortOption.includes('_')) {
+      const [field, direction] = sortOption.split('_');
+      params.sortBy = field;
+      params.sortOrder = direction;
     } else {
-      setIsLoggedIn(false);
-      setUser(null);
-      return null;
+      switch (sortOption) {
+        case 'newest':
+          params.sortBy = 'createdAt';
+          params.sortOrder = 'desc';
+          break;
+        case 'oldest':
+          params.sortBy = 'createdAt';
+          params.sortOrder = 'asc';
+          break;
+        case 'highestUpvotes':
+          params.sortBy = 'upvotes';
+          params.sortOrder = 'desc';
+          break;
+        case 'highestDownvotes':
+          params.sortBy = 'downvotes';
+          params.sortOrder = 'desc';
+          break;
+        case 'lowestRatio':
+          params.sortBy = 'ratio';
+          params.sortOrder = 'asc';
+          break;
+        case 'highestRatio':
+          params.sortBy = 'ratio';
+          params.sortOrder = 'desc';
+          break;
+        case 'highestAverageRating':
+          params.sortBy = 'averageRating';
+          params.sortOrder = 'desc';
+          break;
+        case 'mostRated':
+          params.sortBy = 'ratingCount';
+          params.sortOrder = 'desc';
+          break;
+      }
     }
-  }, [token]);
+
+    if (filterStreamer) params.streamer = filterStreamer;
+    if (searchTerm) params.search = searchTerm;
+    if (filterRatedClips && user?._id) params.excludeRatedByUser = user._id;
+    if (user && (user.roles?.includes('admin') || user.roles?.includes('clipteam'))) {
+      params.includeRatings = true;
+    }
+
+    return params;
+  }, [sortOption, filterStreamer, searchTerm, filterRatedClips, user]);
+
+  const { 
+    data: clipsData, 
+    isLoading: clipsLoading, 
+    error: clipsError,
+    refetch: refetchClips,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage
+  } = useInfiniteClips(buildClipParams());
+
+  const { 
+    data: currentClip, 
+    isLoading: isClipLoading 
+  } = useClip(expandedClip || '');
+
+  const { data: currentClipRatings } = useBulkRatings(
+    expandedClip ? [expandedClip] : []
+  );
+
+  const unratedClips = clipsData?.pages.flatMap(page => page.clips || []).filter((clip): clip is NonNullable<typeof clip> => Boolean(clip)) || [];
+  
+  const ratings = clipsData?.pages.reduce((allRatings, page) => {
+    return { ...allRatings, ...(page.ratings || {}) };
+  }, {} as Record<string, any>) || (currentClipRatings || {});
+  
+  const totalClips = clipsData?.pages[0]?.total || 0;
+  const isLoggedIn = Boolean(user);
+  const isLoading = clipsLoading || userLoading || configLoading;
 
   const getSeason = useCallback(() => {
     const now = new Date();
@@ -126,344 +142,64 @@ function ClipViewer() {
       season = 'Winter';
     }
 
-    setSeasonInfo((prevSeasonInfo) => ({
-      ...prevSeasonInfo,
-      season,
-    }));
+    setSeasonInfo({ season });
   }, []);
 
-  // Fetch clips and ratings - with fixed TypeScript types
-  const fetchClipsAndRatings = useCallback(async (userData: User | null = null, filterRated: boolean | null = null, pageToFetch: number | null = null) => {
-    // Use the passed userData or fall back to current user state if available
-    const currentUser = userData || user;
-    const shouldFilterRated = filterRated !== null ? filterRated : filterRatedClips;
-    const pageNumber = pageToFetch !== null ? pageToFetch : currentPage;
-
-    // Get current values from URL params to ensure we're using the most up-to-date values
-    const currentSearchParams = new URLSearchParams(window.location.search);
-    const currentSortOption = currentSearchParams.get('sort') || 'newest';
-    const currentSearchTerm = currentSearchParams.get('q') || '';
-    const currentFilterStreamer = currentSearchParams.get('streamer') || '';
-
-    try {
-      // Build query parameters for filtering, sorting and pagination
-      const params = new URLSearchParams();
-      params.append('page', pageNumber.toString());
-      params.append('limit', itemsPerPage.toString());
-
-      // Parse the new sort format: field_direction
-      let sortBy = 'createdAt';
-      let sortOrder = 'desc';
-
-      if (currentSortOption.includes('_')) {
-        const [field, direction] = currentSortOption.split('_');
-        sortBy = field;
-        sortOrder = direction;
-      } else {
-        // Handle legacy format for backward compatibility
-        switch (currentSortOption) {
-          case 'newest':
-            sortBy = 'createdAt';
-            sortOrder = 'desc';
-            break;
-          case 'oldest':
-            sortBy = 'createdAt';
-            sortOrder = 'asc';
-            break;
-          case 'highestUpvotes':
-            sortBy = 'upvotes';
-            sortOrder = 'desc';
-            break;
-          case 'highestDownvotes':
-            sortBy = 'downvotes';
-            sortOrder = 'desc';
-            break;
-          case 'lowestRatio':
-            sortBy = 'ratio';
-            sortOrder = 'asc';
-            break;
-          case 'highestRatio':
-            sortBy = 'ratio';
-            sortOrder = 'desc';
-            break;
-          case 'highestAverageRating':
-            sortBy = 'averageRating';
-            sortOrder = 'desc';
-            break;
-          case 'mostRated':
-            sortBy = 'ratingCount';
-            sortOrder = 'desc';
-            break;
-        }
-      }
-
-      params.append('sortBy', sortBy);
-      params.append('sortOrder', sortOrder);
-      params.append('sortOption', currentSortOption);
-
-      // Add filter parameters if they exist
-      if (currentFilterStreamer) {
-        params.append('streamer', currentFilterStreamer);
-      }
-
-      if (currentSearchTerm) {
-        params.append('search', currentSearchTerm);
-      }
-
-      // If filterRated is true and user is logged in, exclude clips rated by user
-      if (shouldFilterRated && currentUser?._id) {
-        params.append('excludeRatedByUser', currentUser._id);
-      }
-
-      // Update URL search params to reflect current filters
-      const newSearchParams = new URLSearchParams();
-      if (currentSortOption) newSearchParams.set('sort', currentSortOption);
-      if (currentSearchTerm) newSearchParams.set('q', currentSearchTerm);
-      if (currentFilterStreamer) newSearchParams.set('streamer', currentFilterStreamer);
-      if (pageNumber > 1) newSearchParams.set('page', pageNumber.toString());
-      if (shouldFilterRated && currentUser?._id) newSearchParams.set('excludeRatedByUser', currentUser._id);
-      
-      // Update URL without adding to history
-      setSearchParams(newSearchParams, { replace: true });      // Only include ratings for users with clipteam role or higher
-      if (currentUser && (currentUser.roles?.includes('admin') || currentUser.roles?.includes('clipteam'))) {
-        params.append('includeRatings', 'true');
-      }
-
-      // Get paginated clips with filters and sorting applied by the backend
-      const clipResponse = await getClips(Object.fromEntries(params));// Process the response data
-      if (clipResponse) {
-        const { clips = [], total: totalClips, page: newCurrentPage, pages: newTotalPages } = clipResponse;
-
-        // Update pagination state
-        if (newTotalPages !== undefined) {
-          setTotalPages(newTotalPages);
-        }
-
-        if (newCurrentPage !== undefined) {
-          setCurrentPage(newCurrentPage);
-        }        // Update config's clipAmount
-        if (totalClips !== undefined) {
-          setConfig(current => ({
-            ...current,
-            clipAmount: totalClips
-          }));
-        }
-
-        // Check if ratings are included in the response from the backend
-        if (clipResponse.ratings && Object.keys(clipResponse.ratings).length > 0) {
-          console.log('Using ratings from clips response:', Object.keys(clipResponse.ratings).length);
-          setRatings(clipResponse.ratings);
-        } else if (currentUser && (currentUser.roles?.includes('admin') || currentUser.roles?.includes('clipteam'))) {
-          // Fallback: fetch ratings separately if not included in response
-          const fetchRatings = async () => {
-            try {
-              const clipIds = clips.map((clip: Clip) => clip._id);
-              const ratingsData = await getBulkRatings(clipIds);
-              setRatings(ratingsData);
-            } catch (error) {
-              console.error('Error fetching ratings:', error);
-            }
-          };
-
-          fetchRatings();
-        }
-
-        // Use the server-filtered clips directly
-        setUnratedClips(clips);        // Even with server-side filtering, track which clips have been rated by the user for UI purposes
-        if (currentUser && clipResponse.ratings && Object.keys(clipResponse.ratings).length > 0) {
-          const rated: Clip[] = [];
-          const responseRatings = clipResponse.ratings;
-
-          clips.forEach((clip: Clip) => {
-            // Check if the user has rated this clip
-            const clipRating = responseRatings[clip._id];
-            if (clipRating) {
-              // Handle both rating formats
-              if (clipRating.ratings) {
-                // Format 1: ratings object with arrays of users
-                const allRatingCategories = ['1', '2', '3', '4', 'deny'] as const;
-                for (const category of allRatingCategories) {
-                  const ratingUsers = clipRating.ratings[category] || [];
-                  if (ratingUsers.some((u: any) => u && u.userId === currentUser._id)) {
-                    rated.push(clip);
-                    break;
-                  }
-                }
-              } else if (clipRating.ratingCounts) {
-                // Format 2: ratingCounts array with users
-                for (const ratingCount of clipRating.ratingCounts) {
-                  if (ratingCount.users && ratingCount.users.some((u: any) => u && u.userId === currentUser._id)) {
-                    rated.push(clip);
-                    break;
-                  }
-                }
-              }
-            }
-          });
-
-          setRatedClips(rated);
-        } else {
-          setRatedClips([]);
-        }
-
-        // Filter denied clips if user is authorized
-        if (currentUser && (currentUser.roles?.includes('admin') || currentUser.roles?.includes('clipteam'))) {
-          const denied: Clip[] = [];
-          const threshold = config.denyThreshold || 3;
-          const responseRatings = clipResponse.ratings || {};
-
-          clips.forEach((clip: Clip) => {
-            const ratingData = responseRatings[clip._id];
-            if (ratingData) {
-              // Handle both rating formats
-              if (ratingData.ratingCounts && ratingData.ratingCounts.some(
-                (rateData: { rating: string; count: number }) => rateData.rating === 'deny' && rateData.count >= threshold
-              )) {
-                denied.push(clip);
-              } else if (ratingData.ratings && ratingData.ratings.deny && ratingData.ratings.deny.length >= threshold) {
-                denied.push(clip);
-              }
-            }
-          });
-
-          setDeniedClips(denied);
-        } else {
-          setDeniedClips([]);
-        }
-      } else {
-        // Handle empty response
-        setUnratedClips([]);
-        setRatedClips([]);
-        setDeniedClips([]);
-      }
-
-    } catch (error) {
-      console.error('Error in fetchClipsAndRatings:', error);
+  useEffect(() => {
+    if (clipsError) {
       showError("Could not load clips. Please try again later.");
-      setUnratedClips([]);
-      setRatedClips([]);
-      setDeniedClips([]);
-    } finally {
-      setIsLoading(false);
     }
-  }, [itemsPerPage, token, config.denyThreshold, showError]);
+  }, [clipsError, showError]);
 
-  // Simplified effect for URL parameter changes
   useEffect(() => {
-    if (initialDataLoaded) {
-      // Debounce to avoid multiple rapid calls
-      const timer = setTimeout(() => {
-        fetchClipsAndRatings(user, filterRatedClips, currentPage);
-      }, 100);
+    getSeason();
+  }, [getSeason]);
 
-      return () => clearTimeout(timer);
-    }
-  }, [currentPage, sortOption, searchTerm, filterStreamer, initialDataLoaded, fetchClipsAndRatings, user, filterRatedClips]);
-  // When filterRatedClips changes, update localStorage and trigger a refetch
   useEffect(() => {
-    localStorage.setItem('filterRatedClips', filterRatedClips.toString());
-
-    if (initialDataLoaded) {
-      fetchClipsAndRatings(user, filterRatedClips, 1);
-      setCurrentPage(1);
-    }
-  }, [filterRatedClips, user, initialDataLoaded, fetchClipsAndRatings]);
-
-  // When filterDeniedClips changes, update localStorage and trigger a refetch
-  useEffect(() => {
-    localStorage.setItem('filterDeniedClips', filterDeniedClips.toString());
-
-    if (initialDataLoaded) {
-      fetchClipsAndRatings(user, filterRatedClips, 1);
-      setCurrentPage(1);
-    }
-  }, [filterDeniedClips, user, initialDataLoaded, fetchClipsAndRatings, filterRatedClips]);
-
-  // Initial data fetch - runs just once
-  const fetchInitialData = useCallback(async () => {
-    try {
-      setProgress(10);
-      await fetchConfig();
-      const userData = await fetchUser();
-      localStorage.setItem('filterRatedClips', filterRatedClips.toString());
-      localStorage.setItem('filterDeniedClips', filterDeniedClips.toString());
+    if (isLoading) {
       setProgress(50);
-      getSeason();
-      setProgress(70);
-      await fetchClipsAndRatings(userData, filterRatedClips, page); // Use the page from URL params, not filterDeniedClips
-      setInitialDataLoaded(true);
-      setProgress(100);
-    } catch (error) {
-      console.error('Error fetching initial data:', error);
-      showError("Failed to load initial data. Please try again later.");
+    } else {
       setProgress(100);
     }
-  }, [fetchUser, fetchClipsAndRatings, filterRatedClips, filterDeniedClips, getSeason, showError, fetchConfig, page]);
+  }, [isLoading]);
 
-  // This effect runs only once, for the initial data load
-  useEffect(() => {
-    fetchInitialData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Update expanded clip when clipId param changes
   useEffect(() => {
     if (clipId && clipId !== expandedClip) {
       setExpandedClip(clipId);
     }
   }, [clipId, expandedClip]);
 
-  // Update URL when expandedClip changes
   useEffect(() => {
     if (expandedClip && expandedClip !== clipId) {
       const newSearchParams = new URLSearchParams(searchParams.toString());
-
-      // Preserve existing search params
       const path = expandedClip === 'new' ? '/clips/new' : `/clips/${expandedClip}`;
-
       const queryString = newSearchParams.toString();
       const url = path + (queryString ? `?${queryString}` : '');
       window.history.pushState({}, '', url);
     }
   }, [expandedClip, clipId, searchParams]);
-  // Fetch clip data when expanded clip changes
+
   useEffect(() => {
-    if (expandedClip && expandedClip !== 'new') {
-      setIsClipLoading(true);
-      // Fetch both clip data and ratings concurrently
-      const fetchClipData = getClipById(expandedClip);
-      // Always fetch ratings for individual clips as they contain public aggregate data
-      const fetchRatings = getBulkRatings([expandedClip]); Promise.all([fetchClipData, fetchRatings])
-        .then(([clipData, ratingsData]) => {
-          setCurrentClip(clipData);
+    localStorage.setItem('filterRatedClips', filterRatedClips.toString());
+  }, [filterRatedClips]);
 
-          // Update ratings state with the fetched data
-          if (ratingsData && ratingsData[expandedClip]) {
-            setRatings(prevRatings => ({
-              ...prevRatings,
-              [expandedClip]: ratingsData[expandedClip]
-            }));
-          }
+  useEffect(() => {
+    localStorage.setItem('filterDeniedClips', filterDeniedClips.toString());
+  }, [filterDeniedClips]);
 
-          setIsClipLoading(false);
-        })
-        .catch((error) => {
-          console.error('Error fetching clip data or ratings:', error);
-          if (error.message?.includes('404') || error.message?.includes('not found')) {
-            showError("Clip not found. It may have been deleted or is unavailable.");
-          } else {
-            showError("Could not load clip. Please try again later.");
-          }
-          setIsClipLoading(false);
-          setExpandedClip(null);
-        });
-    }
-  }, [expandedClip, user, token, showError]);
+  useEffect(() => {
+    const newSearchParams = new URLSearchParams();
+    if (sortOption !== 'newest') newSearchParams.set('sort', sortOption);
+    if (searchTerm) newSearchParams.set('q', searchTerm);
+    if (filterStreamer) newSearchParams.set('streamer', filterStreamer);
+    if (filterRatedClips && user?._id) newSearchParams.set('excludeRatedByUser', user._id);
+    
+    setSearchParams(newSearchParams, { replace: true });
+  }, [sortOption, searchTerm, filterStreamer, filterRatedClips, user, setSearchParams]);
 
-  // Create a wrapper function for fetchClipsAndRatings to be passed to child components
-  const triggerClipRefetch = useCallback(async (user: User | null = null) => {
-    await fetchClipsAndRatings(user, filterRatedClips, currentPage);
-  }, [fetchClipsAndRatings, filterRatedClips, currentPage]);
+  const triggerClipRefetch = useCallback(async () => {
+    await refetchClips();
+  }, [refetchClips]);
 
   return (
     <motion.div
@@ -482,47 +218,78 @@ function ClipViewer() {
 
       <div className="w-full">
         <LoadingBar
-          color="#3b82f6" // Blue color
+          color="#3b82f6"
           progress={progress}
           onLoaderFinished={() => setProgress(0)}
           shadow={true}
           height={3}
         />
-      </div>      {/* Seasonal header */}
-      <ClipViewerHeader season={(seasonInfo.season as 'Winter' | 'Spring' | 'Summer' | 'Fall') || 'Winter'} />
+      </div>
+
+      {/* Seasonal header */}
+      <ClipViewerHeader 
+        season={(seasonInfo.season as 'Winter' | 'Spring' | 'Summer' | 'Fall') || 'Winter'} 
+        totalClips={totalClips}
+        isFiltered={!!(searchTerm || filterStreamer || filterRatedClips || filterDeniedClips)}
+      />
 
       {/* Main content container */}
-      <div className="container mx-auto px-4 py-8 bg-neutral-200 dark:bg-neutral-900 transition duration-200">        <ClipViewerContent
-        expandedClip={expandedClip}
-        setExpandedClip={setExpandedClip}
-        isClipLoading={isClipLoading}
-        currentClip={currentClip}
-        isLoggedIn={isLoggedIn}
-        user={user}
-        fetchClipsAndRatings={triggerClipRefetch}
-        ratings={ratings}
-        unratedClips={unratedClips}
-        sortOptionState={sortOptionState}
-        setSortOptionState={setSortOptionState}
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        filterStreamer={filterStreamer}
-        setFilterStreamer={setFilterStreamer}
-        filterRatedClips={filterRatedClips}
-        setFilterRatedClips={setFilterRatedClips}
-        filterDeniedClips={filterDeniedClips}
-        setFilterDeniedClips={setFilterDeniedClips}
-        currentPage={currentPage}
-        setCurrentPage={setCurrentPage}
-        setSearchParams={setSearchParams}
-        isLoading={isLoading}
-        config={{
-          clipAmount: 0,
-          itemsPerPage: itemsPerPage
-        }}
-        itemsPerPage={itemsPerPage}
-        sortOption={sortOption}
-      />
+      <div className="container mx-auto px-4 py-8 bg-neutral-200 dark:bg-neutral-900 transition duration-200">
+        <ClipViewerContent
+          expandedClip={expandedClip}
+          setExpandedClip={setExpandedClip}
+          isClipLoading={isClipLoading}
+          currentClip={currentClip || null}
+          isLoggedIn={isLoggedIn}
+          user={user || null}
+          fetchClipsAndRatings={triggerClipRefetch}
+          ratings={ratings}
+          unratedClips={unratedClips}
+          sortOptionState={sortOption}
+          setSortOptionState={(option: string) => {
+            const newSearchParams = new URLSearchParams(searchParams.toString());
+            newSearchParams.set('sort', option);
+            setSearchParams(newSearchParams);
+          }}
+          searchTerm={searchTerm}
+          setSearchTerm={(term: string) => {
+            const newSearchParams = new URLSearchParams(searchParams.toString());
+            if (term) {
+              newSearchParams.set('q', term);
+            } else {
+              newSearchParams.delete('q');
+            }
+            setSearchParams(newSearchParams);
+          }}
+          filterStreamer={filterStreamer}
+          setFilterStreamer={(streamer: string) => {
+            const newSearchParams = new URLSearchParams(searchParams.toString());
+            if (streamer) {
+              newSearchParams.set('streamer', streamer);
+            } else {
+              newSearchParams.delete('streamer');
+            }
+            setSearchParams(newSearchParams);
+          }}
+          filterRatedClips={filterRatedClips}
+          setFilterRatedClips={setFilterRatedClips}
+          filterDeniedClips={filterDeniedClips}
+          setFilterDeniedClips={setFilterDeniedClips}
+          fetchNextPage={fetchNextPage}
+          hasNextPage={hasNextPage}
+          isFetchingNextPage={isFetchingNextPage}
+          useInfiniteScroll={true}
+          currentPage={1}
+          setCurrentPage={() => {}}
+          setSearchParams={setSearchParams}
+          isLoading={isLoading}
+          config={{
+            clipAmount: totalClips,
+            itemsPerPage: 12
+          }}
+          itemsPerPage={12}
+          sortOption={sortOption}
+        />
       </div>
     </motion.div>
   );

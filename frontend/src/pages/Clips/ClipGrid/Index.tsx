@@ -2,13 +2,14 @@ import ClipItem from './components/ClipItem';
 import Pagination from './components/Pagination';
 import { motion } from 'framer-motion';
 import { Clip, User, Rating } from '../../../types/adminTypes';
+import { useEffect, useRef, useCallback } from 'react';
 
 interface ClipGridProps {
   user: User | null;
   ratings: Record<string, Rating>;
   config: any;
   filterRatedClips: boolean;
-  filterDeniedClips?: boolean; // Make optional for backward compatibility
+  filterDeniedClips?: boolean;
   setExpandedClip: (clipId: string) => void;
   isLoading: boolean;
   filteredClips: Clip[];
@@ -17,6 +18,10 @@ interface ClipGridProps {
   totalPages: number;
   paginate: (pageNumber: number) => void;
   itemsPerPage: number;
+  hasNextPage?: boolean;
+  isFetchingNextPage?: boolean;
+  fetchNextPage?: () => void;
+  useInfiniteScroll?: boolean;
 }
 
 const ClipGrid: React.FC<ClipGridProps> = ({
@@ -31,8 +36,40 @@ const ClipGrid: React.FC<ClipGridProps> = ({
   currentPage,
   totalPages,
   paginate,
+  hasNextPage,
+  isFetchingNextPage,
+  fetchNextPage,
+  useInfiniteScroll = false,
 }) => {
-  // Animation settings for staggered appearance
+  const lastElementRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!useInfiniteScroll || !hasNextPage || isFetchingNextPage || isLoading) return;
+    
+    const checkAndLoadMore = () => {
+      if (lastElementRef.current) {
+        const rect = lastElementRef.current.getBoundingClientRect();
+        const isVisible = rect.top < window.innerHeight + 500;
+        
+        if (isVisible && hasNextPage && fetchNextPage) {
+          console.log('🚀 Loading more - element is visible');
+          fetchNextPage();
+        }
+      }
+    };
+
+    checkAndLoadMore();
+    
+    const handleScroll = () => checkAndLoadMore();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [useInfiniteScroll, hasNextPage, isFetchingNextPage, isLoading, fetchNextPage, currentClips.length]);
+
+  const lastClipElementRef = useCallback((node: HTMLDivElement | null) => {
+    lastElementRef.current = node;
+  }, []);
+
   const containerVariants = {
     hidden: { opacity: 0 },
     show: {
@@ -57,7 +94,7 @@ const ClipGrid: React.FC<ClipGridProps> = ({
     }
   };
 
-  if (isLoading) {
+  if (isLoading && currentClips.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[300px] w-full">
         <div className="flex flex-col items-center justify-center gap-4">
@@ -68,7 +105,7 @@ const ClipGrid: React.FC<ClipGridProps> = ({
     );
   }
 
-  if (filteredClips.length === 0) {
+  if (filteredClips.length === 0 && !isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[300px] bg-white dark:bg-neutral-800 rounded-xl shadow-lg p-8">
         <div className="text-9xl mb-4 text-neutral-400">😢</div>
@@ -90,13 +127,18 @@ const ClipGrid: React.FC<ClipGridProps> = ({
         initial="hidden"
         animate="show"
       >
-        {currentClips.map((clip) => (
-          <motion.div 
-            key={clip._id}
-            variants={itemVariants}
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.98 }}
-          >
+        {currentClips.map((clip, index) => {
+          const isLastItem = index === currentClips.length - 1;
+          const shouldAttachRef = useInfiniteScroll && isLastItem;
+          
+          return (
+            <motion.div 
+              key={clip._id}
+              variants={itemVariants}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.98 }}
+              ref={shouldAttachRef ? lastClipElementRef : null}
+            >
             <ClipItem
               clip={clip}
               user={user}
@@ -106,11 +148,40 @@ const ClipGrid: React.FC<ClipGridProps> = ({
               setExpandedClip={setExpandedClip}
             />
           </motion.div>
-        ))}
+          );
+        })}
       </motion.div>
       
+      {/* Loading indicator for infinite scroll */}
+      {useInfiniteScroll && isFetchingNextPage && (
+        <div className="flex justify-center items-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+          <span className="ml-2 text-neutral-600 dark:text-neutral-400">Loading more clips...</span>
+        </div>
+      )}
+      
+      {/* End of content message for infinite scroll */}
+      {useInfiniteScroll && !hasNextPage && currentClips.length > 0 && (
+        <div className="text-center py-8">
+          <p className="text-neutral-600 dark:text-neutral-400">You've reached the end of the clips!</p>
+        </div>
+      )}
+      
+      {/* Fallback load more button (only if automatic scroll doesn't work) */}
+      {useInfiniteScroll && hasNextPage && !isFetchingNextPage && (
+        <div className="flex justify-center mt-8">
+          <button
+            onClick={fetchNextPage}
+            className="px-4 py-2 text-sm bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors opacity-70"
+            title="Fallback - automatic scroll should handle this"
+          >
+            Load More
+          </button>
+        </div>
+      )}
+      
       {/* Empty placeholders for grid alignment when not full row */}
-      {currentClips.length > 0 && currentClips.length % 4 !== 0 && (
+      {!useInfiniteScroll && currentClips.length > 0 && currentClips.length % 4 !== 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-6">
           {[...Array(4 - (currentClips.length % 4))].map((_, i) => (
             <div key={i} className="hidden xl:block"></div>
@@ -118,8 +189,8 @@ const ClipGrid: React.FC<ClipGridProps> = ({
         </div>
       )}
       
-      {/* Pagination component */}
-      {totalPages > 1 && (
+      {/* Pagination component - only show if not using infinite scroll */}
+      {!useInfiniteScroll && totalPages > 1 && (
         <Pagination
           currentPage={currentPage}
           totalPages={totalPages}

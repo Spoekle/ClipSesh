@@ -10,9 +10,11 @@ type Season = 'Winter' | 'Spring' | 'Summer' | 'Fall';
 
 interface ClipViewerHeaderProps {
   season: Season;
+  totalClips?: number;
+  isFiltered?: boolean;
 }
 
-const ClipViewerHeader = ({ season }: ClipViewerHeaderProps) => {
+const ClipViewerHeader = ({ season, totalClips, isFiltered }: ClipViewerHeaderProps) => {
 
   const seasonImages: Record<Season, string> = {
     'Winter': winterImg,
@@ -22,7 +24,6 @@ const ClipViewerHeader = ({ season }: ClipViewerHeaderProps) => {
   };
 
   const getBackgroundImage = () => {
-    // Return the appropriate image or default to winter
     return seasonImages[season] || winterImg;
   };
 
@@ -56,6 +57,26 @@ const ClipViewerHeader = ({ season }: ClipViewerHeaderProps) => {
           >
             Discover and rate the best clips!
           </motion.h2>
+          
+          {/* Clips count */}
+          {totalClips !== undefined && (
+            <motion.div 
+              initial={{ opacity: 0, y: -20 }} 
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="text-lg text-center text-white opacity-80 bg-black/30 px-4 py-2 rounded-lg backdrop-blur-sm"
+            >
+              {isFiltered ? (
+                <>
+                  <span className="font-semibold">{totalClips.toLocaleString()}</span> clips found
+                </>
+              ) : (
+                <>
+                  <span className="font-semibold">{totalClips.toLocaleString()}</span> clips available
+                </>
+              )}
+            </motion.div>
+          )}
         </div>
       </div>
     </motion.div>
