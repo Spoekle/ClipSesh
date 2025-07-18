@@ -9,33 +9,39 @@ import { FaChartBar } from 'react-icons/fa';
 import { UserRating, SeasonInfo } from '../../../types/adminTypes';
 
 interface User {
-  _id: string;
-  username: string;
-  roles: string[];
-  [key: string]: any;
+    _id: string;
+    username: string;
+    roles: string[];
+    [key: string]: any;
 }
 
 interface StatisticsProps {
-  clipTeam: User[];
-  userRatings: UserRating[];
-  seasonInfo: SeasonInfo;
-  adminStats?: any;
-  loading?: boolean;
+    clipTeam: User[];
+    userRatings: UserRating[];
+    seasonInfo: SeasonInfo;
+    adminStats?: any;
+    clipStats?: {
+        totalClips: number;
+        ratedClips: number;
+        unratedClips: number;
+        deniedClips: number;
+    };
+    loading?: boolean;
 }
 
-const Statistics: React.FC<StatisticsProps> = ({ clipTeam, userRatings, seasonInfo, loading = false }) => {
+const Statistics: React.FC<StatisticsProps> = ({ clipTeam, userRatings, seasonInfo, clipStats, loading = false }) => {
     const [sortBy, setSortBy] = useState<'username' | 'rating' | 'percentage'>('rating');
-    
+
     // Skeleton component for loading states
     const SkeletonBox = ({ className = "" }: { className?: string }) => (
-      <div className={`animate-pulse bg-neutral-400 dark:bg-neutral-600 rounded ${className}`}></div>
+        <div className={`animate-pulse bg-neutral-400 dark:bg-neutral-600 rounded ${className}`}></div>
     );
-    
+
     // Calculate overall stats for team
     const totalRatings = userRatings.reduce((acc, user) => acc + user.total, 0);
     const averageRatings = userRatings.length > 0 ? totalRatings / userRatings.length : 0;
     const mostActiveUser = [...userRatings].sort((a, b) => b.total - a.total)[0]?.username || 'No data';
-    
+
     // Sort users based on the selected criteria
     const sortedUsers = [...userRatings].sort((a, b) => {
         if (sortBy === 'username') {
@@ -49,15 +55,15 @@ const Statistics: React.FC<StatisticsProps> = ({ clipTeam, userRatings, seasonIn
     });
 
     // Get usernames for the clip team members
-    const clipTeamUsernames = clipTeam.map(member => member.username || '').filter(Boolean);    return (
-        <motion.div 
+    const clipTeamUsernames = clipTeam.map(member => member.username || '').filter(Boolean); return (
+        <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
             className="w-full space-y-8"
         >
             {/* Header Section */}
-            <div className="bg-neutral-300 dark:bg-neutral-800 p-6 md:p-8 rounded-xl shadow-lg">
+            <div className="bg-neutral-300 dark:bg-neutral-800 p-6 md:p-8 rounded-xl shadow-lg border border-neutral-200 dark:border-neutral-700">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
                         <div className="bg-blue-500 p-4 rounded-xl shadow-lg">
@@ -68,11 +74,11 @@ const Statistics: React.FC<StatisticsProps> = ({ clipTeam, userRatings, seasonIn
                                 Team Performance Analytics
                             </h2>
                             <p className="text-neutral-600 dark:text-neutral-300 mt-2">
-                                Comprehensive insights into your team's rating activity and progress
+                                Insights into the team's rating activity and progress
                             </p>
                         </div>
                     </div>
-                    
+
                     {/* Season Info */}
                     {seasonInfo.season && (
                         <div className="hidden md:block bg-neutral-200 dark:bg-neutral-700 px-4 py-2 rounded-lg">
@@ -86,7 +92,7 @@ const Statistics: React.FC<StatisticsProps> = ({ clipTeam, userRatings, seasonIn
                     )}
                 </div>
             </div>
-            
+
             {loading ? (
                 <div className="space-y-8">
                     {/* Summary stats skeleton */}
@@ -99,7 +105,7 @@ const Statistics: React.FC<StatisticsProps> = ({ clipTeam, userRatings, seasonIn
                             </div>
                         ))}
                     </div>
-                    
+
                     {/* Charts skeleton */}
                     <div className="space-y-6">
                         <div className="bg-neutral-300 dark:bg-neutral-800 p-6 rounded-xl">
@@ -107,7 +113,7 @@ const Statistics: React.FC<StatisticsProps> = ({ clipTeam, userRatings, seasonIn
                             <SkeletonBox className="h-80 w-full" />
                         </div>
                     </div>
-                    
+
                     {/* Individual performance skeleton */}
                     <div className="bg-neutral-300 dark:bg-neutral-800 p-6 rounded-xl">
                         <SkeletonBox className="h-6 w-48 mb-6" />
@@ -124,35 +130,41 @@ const Statistics: React.FC<StatisticsProps> = ({ clipTeam, userRatings, seasonIn
             ) : (
                 <>
                     {/* Summary stats section */}
-                    <SummaryStats 
-                        totalRatings={totalRatings} 
-                        averageRatings={averageRatings} 
-                        mostActiveUser={mostActiveUser} 
-                    />
-                    
+                    {clipStats && (
+                        <SummaryStats
+                            totalRatings={totalRatings}
+                            averageRatings={averageRatings}
+                            mostActiveUser={mostActiveUser}
+                            totalClips={clipStats.totalClips}
+                            ratedClips={clipStats.ratedClips}
+                            unratedClips={clipStats.unratedClips}
+                            deniedClips={clipStats.deniedClips}
+                        />
+                    )}
+
                     {/* Rating distribution charts */}
-                    <RatingDistribution 
-                        userRatings={userRatings} 
-                        sortBy={sortBy} 
-                        setSortBy={setSortBy as React.Dispatch<React.SetStateAction<string>>} 
+                    <RatingDistribution
+                        userRatings={userRatings}
+                        sortBy={sortBy}
+                        setSortBy={setSortBy as React.Dispatch<React.SetStateAction<string>>}
                     />
-                    
+
                     {/* Activity Tracker section */}
                     <ActivityTracker clipTeamUsernames={clipTeamUsernames} />
-                    
+
                     {/* Individual performance section */}
-                    <IndividualPerformance 
+                    <IndividualPerformance
                         sortedUsers={sortedUsers}
                         seasonInfo={seasonInfo}
                     />
-                    
+
                     {/* Comparison chart section */}
-                    <ComparisonChart 
+                    <ComparisonChart
                         sortedUsers={sortedUsers}
                         seasonInfo={seasonInfo}
                         totalRatings={totalRatings}
                     />
-                    
+
                     {/* Empty state */}
                     {userRatings.length === 0 && (
                         <div className="bg-neutral-300 dark:bg-neutral-800 p-8 rounded-xl text-center">
