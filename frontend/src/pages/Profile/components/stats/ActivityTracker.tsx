@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
 import DateRangePicker from '../../../../components/DateRangePicker';
-import { getMyRatings, UserRatingData } from '../../../../services/ratingService';
+import { useMyRatings } from '../../../../hooks/useRatings';
 
 interface DataPoint {
   date: string;
@@ -14,40 +14,37 @@ interface ActivityTrackerProps {
 }
 
 const ActivityTracker: React.FC<ActivityTrackerProps> = ({ viewSwitchTimestamp }) => {
-  const [rawRatings, setRawRatings] = useState<UserRatingData[]>([]);
   const [data, setData] = useState<DataPoint[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const [dateRange, setDateRange] = useState<{ start: Date | null, end: Date | null }>({ start: new Date(Date.now() - 29 * 24 * 60 * 60 * 1000), end: new Date(Date.now()) });
-  useEffect(() => {
-    const fetchActivity = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const params: any = {};
-        
-        // Add date range parameters if set
-        if (dateRange.start) {
-          params.startDate = dateRange.start.toISOString().split('T')[0];
-        }
-        if (dateRange.end) {
-          // Ensure end date includes the full day
-          const endDate = new Date(dateRange.end);
-          endDate.setHours(23, 59, 59, 999);
-          params.endDate = endDate.toISOString().split('T')[0];
-        }
-        
-        const result = await getMyRatings(params);
-        setRawRatings(result.ratings || []);
-      } catch (e) {
-        setError('Unable to load activity');
-      } finally {
-        setLoading(false);
-      }
-    };    fetchActivity();
-  }, [dateRange, viewSwitchTimestamp]);
+  const [dateRange, setDateRange] = useState<{ start: Date | null, end: Date | null }>({ 
+    start: new Date(Date.now() - 29 * 24 * 60 * 60 * 1000), 
+    end: new Date(Date.now()) 
+  });
 
-  // process rawRatings into time-series data when rawRatings updates
+  const queryParams = React.useMemo(() => {
+    const params: any = {};
+    
+    if (dateRange.start) {
+      params.startDate = dateRange.start.toISOString().split('T')[0];
+    }
+    if (dateRange.end) {
+      const endDate = new Date(dateRange.end);
+      endDate.setHours(23, 59, 59, 999);
+      params.endDate = endDate.toISOString().split('T')[0];
+    }
+    
+    return params;
+  }, [dateRange]);
+
+  const { data: ratingsData, isLoading: loading, error: queryError, refetch } = useMyRatings(queryParams);
+  const error = queryError?.message || null;
+  const rawRatings = ratingsData?.ratings || [];
+
+  useEffect(() => {
+    if (viewSwitchTimestamp) {
+      refetch();
+    }
+  }, [viewSwitchTimestamp, refetch]);
+
   useEffect(() => {  
     const counts: Record<string, number> = {};
     let earliestDate: Date | null = null;
@@ -56,12 +53,10 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = ({ viewSwitchTimestamp }
     rawRatings.forEach(r => {
       const dt = new Date(r.timestamp);
       
-      // Filter by custom date range if set
       if (dateRange.start && dt < dateRange.start) {
         return;
       }
       if (dateRange.end) {
-        // Create end of day for comparison
         const endOfDay = new Date(dateRange.end);
         endOfDay.setHours(23, 59, 59, 999);
         if (dt > endOfDay) {
@@ -69,7 +64,6 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = ({ viewSwitchTimestamp }
         }
       }
       
-      // Track date range
       if (!earliestDate || dt < earliestDate) {
         earliestDate = dt;
       }
@@ -77,12 +71,10 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = ({ viewSwitchTimestamp }
         latestDate = dt;
       }
       
-      // Use daily view for consistency
       const key = dt.toISOString().split('T')[0];
       counts[key] = (counts[key] || 0) + 1;
     });
 
-    // If we have data, generate all date keys in the range to fill in zeros
     if (earliestDate && latestDate) {
       const allKeys = generateAllDateKeys(earliestDate, latestDate);
       const chartData = allKeys.map(date => ({ date, count: counts[date] || 0 }));
@@ -92,23 +84,19 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = ({ viewSwitchTimestamp }
       setData([]);
     }
   }, [rawRatings]);
-  
-  // Helper function to generate all date keys in the range (daily view)
+
   const generateAllDateKeys = (startDate: Date, endDate: Date): string[] => {
     const dateKeys: string[] = [];
-    
-    // Get date strings directly to avoid timezone issues
+
     const startDateStr = startDate.toISOString().split('T')[0];
     const endDateStr = endDate.toISOString().split('T')[0];
-    
-    // Create dates from the ISO date strings to ensure consistency
+ 
     const currentDate = new Date(startDateStr + 'T00:00:00.000Z');
     const finalDate = new Date(endDateStr + 'T00:00:00.000Z');
     
     while (currentDate <= finalDate) {
       const dateKey = currentDate.toISOString().split('T')[0];
       dateKeys.push(dateKey);
-      // Move to next day
       currentDate.setUTCDate(currentDate.getUTCDate() + 1);
     }
 
@@ -120,12 +108,10 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = ({ viewSwitchTimestamp }
   };
   
   const formatXAxisLabel = (value: string) => {
-    // For daily view, show day of month
     return value.split('-')[2];
   };
   
   const formatTooltipDate = (dateKey: string) => {
-    // For daily view, format as readable date
     const date = new Date(dateKey);
     return date.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
   };

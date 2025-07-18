@@ -20,7 +20,15 @@ export const getClips = async (params: ClipQueryParams = {}): Promise<ClipRespon
       headers
     });
     
-    return response.data;
+    // Transform the response to ensure consistent field names
+    const data = response.data;
+    return {
+      clips: data.clips,
+      ratings: data.ratings,
+      total: data.totalClips || data.total,
+      page: data.currentPage || data.page,
+      pages: data.totalPages || data.pages,
+    };
   } catch (error) {
     console.error('Error fetching clips:', error);
     throw new Error('Failed to fetch clips');
@@ -221,7 +229,7 @@ export const addCommentToClip = async (clipId: string, comment: string): Promise
 export const voteOnClip = async (clipId: string, voteType: 'upvote' | 'downvote'): Promise<Clip> => {
   try {
     const headers = getAuthHeaders();
-    const response = await axios.post(`${backendUrl}/api/clips/${clipId}/vote`, { voteType }, { headers });
+    const response = await axios.post(`${backendUrl}/api/clips/${clipId}/vote/${voteType}`, {}, { headers });
     return response.data;
   } catch (error) {
     console.error('Error voting on clip:', error);

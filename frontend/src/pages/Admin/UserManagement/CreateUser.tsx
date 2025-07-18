@@ -1,27 +1,29 @@
 import React, { useState } from 'react';
-import * as adminService from '../../../services/adminService';
 import { motion } from 'framer-motion';
 import { FaUser, FaLock, FaUserPlus, FaShieldAlt, FaCheck, FaEnvelope, FaExclamationTriangle } from 'react-icons/fa';
 import { useNotification } from '../../../context/AlertContext';
 import { CreateUserFormData, FormErrors } from '../../../types/adminTypes';
+
+import { useCreateUser } from '../../../hooks/useAdmin';
 
 interface CreateUserProps {
   fetchUsers: () => void;
   AVAILABLE_ROLES: string[];
 }
 
-const CreateUser: React.FC<CreateUserProps> = ({ fetchUsers, AVAILABLE_ROLES }) => {
+const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
     const [formData, setFormData] = useState<CreateUserFormData>({
         username: '',
         password: '',
         email: '',
-        roles: ['user'] // default role
+        roles: ['user']
     });
     const [errors, setErrors] = useState<FormErrors>({});
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
     const [passwordStrength, setPasswordStrength] = useState<number>(0);
     
     const { showSuccess, showError } = useNotification();
+    const createUserMutation = useCreateUser();
     
     const checkPasswordStrength = (password: string): number => {
         let strength = 0;
@@ -37,12 +39,10 @@ const CreateUser: React.FC<CreateUserProps> = ({ fetchUsers, AVAILABLE_ROLES }) 
         
         if (type === 'checkbox') {
             setFormData(prev => {
-                // Don't allow removing all roles
                 const newRoles = checked
                     ? [...prev.roles, value]
                     : prev.roles.filter(role => role !== value);
                 
-                // Ensure at least one role remains
                 return {
                     ...prev,
                     roles: newRoles.length ? newRoles : prev.roles
@@ -54,7 +54,6 @@ const CreateUser: React.FC<CreateUserProps> = ({ fetchUsers, AVAILABLE_ROLES }) 
                 [name]: value
             });
             
-            // Clear error when field is edited
             if (errors[name as keyof FormErrors]) {
                 setErrors({
                     ...errors,
@@ -62,7 +61,6 @@ const CreateUser: React.FC<CreateUserProps> = ({ fetchUsers, AVAILABLE_ROLES }) 
                 });
             }
             
-            // Check password strength
             if (name === 'password') {
                 setPasswordStrength(checkPasswordStrength(value));
             }
@@ -104,18 +102,16 @@ const CreateUser: React.FC<CreateUserProps> = ({ fetchUsers, AVAILABLE_ROLES }) 
         }
           setIsSubmitting(true);
         try {
-            await adminService.createUser({ ...formData, status: 'active' });
+            await createUserMutation.mutateAsync({ ...formData, status: 'active' });
             
             showSuccess('User created successfully!');
             setFormData({ username: '', password: '', email: '', roles: ['user'] });
             setPasswordStrength(0);
-            fetchUsers();
         } catch (error: any) {
             console.error('Error creating user:', error);
             const errorMessage = error.response?.data?.message || 'Failed to create user';
             showError(errorMessage);
             
-            // Set field-specific errors if returned from API
             if (error.response?.data?.errors) {
                 setErrors(error.response.data.errors);
             }
@@ -124,7 +120,6 @@ const CreateUser: React.FC<CreateUserProps> = ({ fetchUsers, AVAILABLE_ROLES }) 
         }
     };
     
-    // Helper function to get the strength indicator class
     const getStrengthClass = (): string => {
         switch (passwordStrength) {
             case 0: return 'bg-red-500';
@@ -136,7 +131,6 @@ const CreateUser: React.FC<CreateUserProps> = ({ fetchUsers, AVAILABLE_ROLES }) 
         }
     };
     
-    // Helper function to get the strength text
     const getStrengthText = (): string => {
         switch (passwordStrength) {
             case 0: return 'Very weak';

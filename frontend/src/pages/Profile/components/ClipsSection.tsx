@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { FaGamepad } from 'react-icons/fa';
-import { Clip } from '../../../types/adminTypes';
 import { PublicProfile } from '../../../types/profileTypes';
-import { getClipsByUser } from '../../../services/clipService';
+import { useClipsByUser } from '../../../hooks/useClips';
 
 interface ClipsSectionProps {
   profile: PublicProfile;
@@ -18,39 +17,27 @@ const ClipsSection: React.FC<ClipsSectionProps> = ({
   viewSwitchTimestamp
 }) => {
   const navigate = useNavigate();
-  const [userClips, setUserClips] = useState<Clip[]>([]);
-  const [clipsLoading, setClipsLoading] = useState(false);
-  const [totalClips, setTotalClips] = useState(0);
   const [showAllClips, setShowAllClips] = useState(false);
+  
+  const limit = showAllClips ? 50 : 6;
+  const { 
+    data: clipsResponse, 
+    isLoading: clipsLoading, 
+    error: clipsError,
+    refetch: refetchClips
+  } = useClipsByUser(profile.discordId || '', 1, limit);
+  
+  const userClips = clipsResponse?.clips || [];
+  const totalClips = clipsResponse?.total || 0;
 
-  // Function to fetch user's clips
-  const fetchUserClips = async (discordId: string, showAll: boolean = false) => {
-    if (!discordId) return;
-    
-    setClipsLoading(true);
-    try {
-      const limit = showAll ? 50 : 6; // Show 6 clips initially, 50 when showing all
-      const response = await getClipsByUser(discordId, 1, limit);
-      setUserClips(response.clips || []);
-      setTotalClips(response.total || 0);
-    } catch (error) {
-      console.error('Error fetching user clips:', error);
-      setUserClips([]);
-      setTotalClips(0);
-    } finally {
-      setClipsLoading(false);
+  React.useEffect(() => {
+    if (viewSwitchTimestamp) {
+      refetchClips();
     }
-  };  useEffect(() => {
-    if (profile.discordId) {
-      fetchUserClips(profile.discordId, false);
-    }
-  }, [profile.discordId, viewSwitchTimestamp]);
+  }, [viewSwitchTimestamp, refetchClips]);
 
   const onShowAllClick = () => {
     setShowAllClips(true);
-    if (profile.discordId) {
-      fetchUserClips(profile.discordId, true);
-    }
   };
 
   const fadeIn = {

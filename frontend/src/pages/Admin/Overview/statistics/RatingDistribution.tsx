@@ -15,7 +15,6 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#FF0000'];
 const RatingDistribution: React.FC<RatingDistributionProps> = ({ userRatings, sortBy, setSortBy }) => {
   const [activeChart, setActiveChart] = useState<'bar' | 'pie'>('bar');
   
-  // Prepare data for pie chart
   const pieData: PieData[] = userRatings.reduce((acc: PieData[], user) => {
     (['1', '2', '3', '4', 'deny'] as const).forEach(rating => {
       const name = `Rated ${rating === 'deny' ? 'Deny' : rating}`;
@@ -32,19 +31,15 @@ const RatingDistribution: React.FC<RatingDistributionProps> = ({ userRatings, so
     return acc;
   }, []);
 
-  // Sort users based on criteria
   const sortedUsers = [...userRatings].sort((a, b) => {
     if (sortBy === 'username') {
       return a.username.localeCompare(b.username);
     } else if (sortBy === 'rating') {
       return b.total - a.total;
-    } else if (sortBy === 'percentage') {
-      return b.percentageRated - a.percentageRated;
     }
     return 0;
   });
 
-  const totalRatings = pieData.reduce((sum, item) => sum + item.value, 0);
 
   return (
     <div className="space-y-6">
@@ -60,20 +55,8 @@ const RatingDistribution: React.FC<RatingDistributionProps> = ({ userRatings, so
                 Rating Distribution Analysis
               </h3>
               <p className="text-neutral-600 dark:text-neutral-300 mt-1">
-                Comprehensive view of team rating patterns and preferences
+                View the team's rating patterns and preferences
               </p>
-            </div>
-          </div>
-          
-          {/* Quick Stats */}
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="bg-neutral-300 dark:bg-neutral-600 px-4 py-2 rounded-lg">
-              <span className="text-sm text-neutral-600 dark:text-neutral-300">Total Ratings:</span>
-              <span className="ml-2 font-bold text-neutral-800 dark:text-neutral-100">{totalRatings}</span>
-            </div>
-            <div className="bg-neutral-300 dark:bg-neutral-600 px-4 py-2 rounded-lg">
-              <span className="text-sm text-neutral-600 dark:text-neutral-300">Active Users:</span>
-              <span className="ml-2 font-bold text-neutral-800 dark:text-neutral-100">{userRatings.length}</span>
             </div>
           </div>
         </div>
@@ -114,7 +97,6 @@ const RatingDistribution: React.FC<RatingDistributionProps> = ({ userRatings, so
             >
               <option value="username">Username</option>
               <option value="rating">Total Ratings</option>
-              <option value="percentage">Completion %</option>
             </select>
           </div>
         </div>

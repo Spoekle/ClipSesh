@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useNotification } from '../context/AlertContext';
@@ -7,8 +7,9 @@ import MobileNavbar from './navbar/MobileNav';
 import DesktopNavbar from './navbar/DefaultNav';
 import LoginModal from './LoginModal';
 import useWindowWidth from '../hooks/useWindowWidth';
-import { getCurrentUser } from '../services/userService';
 import { User } from '../types/adminTypes';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
+import OfflineBanner from './common/OfflineBanner';
 
 interface NavbarProps {
   user: User | null;
@@ -19,9 +20,11 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
   const windowWidth = useWindowWidth();
   const isMobile = windowWidth < 768;
   
+  const isOnline = useOnlineStatus();
+
   const { showSuccess } = useNotification();
   const navigate = useNavigate();
-  
+
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
   const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState<boolean>(false);
@@ -30,15 +33,14 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
   const [searchInput, setSearchInput] = useState<string>('');
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [isScrolled, setIsScrolled] = useState<boolean>(false);
-  
+
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Check scroll position to add background effect
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
     };
-    
+
     window.addEventListener('scroll', handleScroll);
     return () => {
       window.removeEventListener('scroll', handleScroll);
@@ -47,38 +49,22 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
 
   const toggleLoginModal = (): void => {
     setIsLoginModalOpen(!isLoginModalOpen);
-  };  const fetchUser = useCallback(async (): Promise<User | null> => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        const userData = await getCurrentUser();
-        setUser(userData);
-        return userData;
-      } catch (error) {
-        localStorage.removeItem('token');
-        console.error('Error fetching user:', error);
-        return null;
-      }
-    }
-    return null;
-  }, [setUser]);
+  };
 
   useEffect(() => {
-    fetchUser();
     setRecentSearches(JSON.parse(localStorage.getItem('recentSearches') || '[]'));
-  }, [fetchUser]);
+  }, []);
 
   const handleSearch = (e: React.FormEvent): void => {
     e.preventDefault();
     if (searchInput.trim() !== '') {
       const trimmedInput = searchInput.trim();
       navigate(`/search?query=${encodeURIComponent(trimmedInput)}`);
-      
-      // Update recent searches
+
       const existingSearches = JSON.parse(localStorage.getItem('recentSearches') || '[]');
       const updatedSearches = [trimmedInput, ...existingSearches.filter((s: string) => s !== trimmedInput)].slice(0, 5);
       localStorage.setItem('recentSearches', JSON.stringify(updatedSearches));
-      
+
       setSearchInput('');
       setIsSearchDropdownOpen(false);
       setShowRecentSearched(false);
@@ -92,7 +78,7 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
       localStorage.setItem('recentSearches', JSON.stringify([]));
       return;
     }
-    
+
     const updatedSearches = recentSearches.filter((s) => s !== search);
     setRecentSearches(updatedSearches);
     localStorage.setItem('recentSearches', JSON.stringify(updatedSearches));
@@ -162,70 +148,75 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
       }
     }
   };
-  
+
   const logoVariants = {
     initial: { opacity: 0, rotate: -10 },
-    animate: { 
-      opacity: 1, 
+    animate: {
+      opacity: 1,
       rotate: 0,
       transition: {
         type: "spring",
         damping: 15
       }
     },
-    hover: { 
-      rotate: 10, 
-      transition: { 
+    hover: {
+      rotate: 10,
+      transition: {
         duration: 0.3,
         yoyo: Infinity,
         repeatDelay: 0.5
-      } 
+      }
     }
   };
 
   return (
     <>
+      <OfflineBanner isVisible={!isOnline} />
       <motion.nav
         initial="initial"
         animate="animate"
         variants={navbarVariants}
-        className={`p-2 z-50 sticky top-0 transition-all duration-300 ${
-          isScrolled 
-            ? 'bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md shadow-md' 
+        className={`p-2 z-50 sticky top-0 transition-all duration-300 ${isScrolled
+            ? 'bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md shadow-md'
             : 'bg-white/95 dark:bg-neutral-900/95 backdrop-blur-sm'
-        } text-neutral-800 dark:text-white`}
+          } text-neutral-800 dark:text-white`}
       >
         <div className="container mx-auto flex items-center justify-between flex-wrap">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
             className="flex items-center"
           >
-            <NavLink 
-              to="/" 
+            <NavLink
+              to="/"
               className="flex items-center mr-6 bg-transparent hover:text-transparent transition-all duration-300 group"
             >
-              <motion.img 
+              <motion.img
                 variants={logoVariants}
                 whileHover="hover"
                 transition={{ duration: 0.5 }}
-                src={logo} 
-                alt="Logo" 
-                className="h-10 mr-2" 
+                src={logo}
+                alt="Logo"
+                className="h-10 mr-2"
               />
-              <motion.span 
+              <motion.span
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.3 }}
-                className="font-bold text-xl tracking-tight text-neutral-800 dark:text-white group-hover:bg-gradient-to-r group-hover:from-cc-red group-hover:from-30% group-hover:to-cc-blue group-hover:bg-clip-text group-hover:text-transparent"
+                className="items-center font-bold text-xl tracking-tight text-neutral-800 dark:text-white hover:text-cc-red transition-colors duration-100"
               >
                 ClipSesh!
+                {process.env.NODE_ENV === 'development' && (
+                <span className="ml-2 text-sm text-white bg-cc-red rounded-lg px-2 py-1">
+                  DEV
+                </span>
+              )}
               </motion.span>
             </NavLink>
           </motion.div>
-          
-          <motion.div 
+
+          <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3 }}
@@ -273,13 +264,12 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
           </motion.div>
         </div>
       </motion.nav>
-      
+
       {/* LoginModal rendered outside the navbar for proper page-level centering */}
       {isLoginModalOpen && (
         <LoginModal
           isLoginModalOpen={isLoginModalOpen}
           setIsLoginModalOpen={setIsLoginModalOpen}
-          fetchUser={fetchUser}
         />
       )}
     </>

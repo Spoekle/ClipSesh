@@ -4,15 +4,19 @@ const apiUrl = import.meta.env.VITE_BACKEND_URL || 'https://api.spoekle.com';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TbLoader2 } from "react-icons/tb";
 import { FaDiscord, FaTimes, FaEnvelope, FaLock, FaUser } from "react-icons/fa";
-import { loginUser, registerUser, requestPasswordReset } from '../services/userService';
+import { useLoginUser, useRegisterUser } from '../hooks/useUser';
+import { requestPasswordReset } from '../services/userService';
+import OfflineWarning from './common/OfflineWarning';
 
 interface LoginModalProps {
   setIsLoginModalOpen: (isOpen: boolean) => void;
   isLoginModalOpen: boolean;
-  fetchUser: () => Promise<any>;
 }
 
-const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginModalOpen, fetchUser }) => {
+const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginModalOpen }) => {
+  const loginMutation = useLoginUser();
+  const registerMutation = useRegisterUser();
+  
   const [formMode, setFormMode] = useState('login');
   const [formData, setFormData] = useState({ username: '', password: '' });
   const [email, setEmail] = useState('');
@@ -21,7 +25,6 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Close modal when Escape key is pressed
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') handleClose();
@@ -33,7 +36,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-    setError(''); // Clear error when user types
+    setError('');
   };
 
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -63,7 +66,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
       
     try {
       if (formMode === 'register') {
-        await registerUser(formData);
+        await registerMutation.mutateAsync(formData);
         setFormMode('login');
         setFormData({ ...formData, password: '' });
         setResetMessage({ 
@@ -71,10 +74,9 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
           message: 'Registration successful! Please login with your credentials.' 
         });
       } else {
-        const response = await loginUser(formData);
+        const response = await loginMutation.mutateAsync(formData);
         localStorage.setItem('token', response.token);
         localStorage.setItem('username', response.username);
-        await fetchUser();
         handleClose();
       }
     } catch (error) {
@@ -131,7 +133,6 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
     window.location.href = `${apiUrl}/api/discord/auth`;
   };
 
-  // Modal animation variants
   const overlayVariants = {
     hidden: { opacity: 0 },
     visible: { opacity: 1, transition: { duration: 0.3 } },
@@ -191,6 +192,12 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
                       {resetMessage.message}
                     </div>
                   )}
+                  
+                  <OfflineWarning 
+                    message="Login requires an internet connection" 
+                    className="mb-4"
+                  />
+                  
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
                       <label htmlFor="login-username" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">

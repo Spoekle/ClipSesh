@@ -36,6 +36,10 @@ interface ClipViewerContentProps {
   };
   itemsPerPage: number;
   sortOption: string;
+  hasNextPage?: boolean;
+  isFetchingNextPage?: boolean;
+  fetchNextPage?: () => void;
+  useInfiniteScroll?: boolean;
 }
 
 const ClipViewerContent: React.FC<ClipViewerContentProps> = ({
@@ -65,14 +69,17 @@ const ClipViewerContent: React.FC<ClipViewerContentProps> = ({
   config,
   itemsPerPage,
   sortOption,
+  hasNextPage,
+  isFetchingNextPage,
+  fetchNextPage,
+  useInfiniteScroll = false,
 }) => {
   const [allStreamers, setAllStreamers] = useState<string[]>([]);
   const fetchAttempted = useRef(false);
   
-  // Fetch all unique streamers for the filter dropdown
   useEffect(() => {
     if (fetchAttempted.current) {
-      return; // Prevent multiple attempts
+      return;
     }
     
     const fetchStreamers = async () => {
@@ -84,31 +91,24 @@ const ClipViewerContent: React.FC<ClipViewerContentProps> = ({
         }
       } catch (error) {
         console.error('Error fetching streamers:', error);
-        // Fallback to current page streamers if API call fails
         const uniqueStreamers = [...new Set(unratedClips.map(clip => clip.streamer))];
         setAllStreamers(uniqueStreamers);
       }
     };
 
     fetchStreamers();
-  }, []); // Only run once on component mount
+  }, []);
 
-  // Use all streamers for the dropdown, fallback to current page streamers if not loaded yet
   const streamers = useMemo(() => {
     if (allStreamers.length > 0) {
       return allStreamers;
     }
-    // Fallback to streamers from current page while loading
     const uniqueStreamers = [...new Set(unratedClips.map(clip => clip.streamer))];
     return uniqueStreamers;
   }, [allStreamers, unratedClips]);
-  // We're not filtering clips client-side anymore since it's done on the server
   const filteredClips = unratedClips;
   
-  // Calculate total pages based on the clipAmount from config
-  // This ensures pagination works correctly by using the total count of all clips, not just the current page
   const totalPages = useMemo(() => {
-    // Get the clip amount from config, or fall back to calculating from the current page
     const totalClips = config.clipAmount || filteredClips.length;
     return Math.max(1, Math.ceil(totalClips / itemsPerPage));
   }, [config.clipAmount, filteredClips.length, itemsPerPage]);
@@ -118,7 +118,6 @@ const ClipViewerContent: React.FC<ClipViewerContentProps> = ({
     setFilterStreamer('');
     setCurrentPage(1);
     
-    // Trigger a new fetch with reset filters
     const userData = user;
     fetchClipsAndRatings(userData);
   };
@@ -126,21 +125,18 @@ const ClipViewerContent: React.FC<ClipViewerContentProps> = ({
   const handleSortChange = (newSortOption: string) => {
     setSortOptionState(newSortOption);
     
-    // Update URL params
     setSearchParams(new URLSearchParams({ 
       sort: newSortOption, 
-      page: '1', // Reset to page 1 when sorting changes
+      page: '1',
       ...(searchTerm && { q: searchTerm }),
       ...(filterStreamer && { streamer: filterStreamer }) 
     }), { replace: true });
     
-    // Trigger new fetch with updated sort
     const userData = user;
     fetchClipsAndRatings(userData);
   };
 
   const paginate = (pageNumber: number) => {
-    // Update URL params first
     const newParams = new URLSearchParams(); 
     newParams.append('sort', sortOption);
     newParams.append('page', pageNumber.toString());
@@ -149,10 +145,8 @@ const ClipViewerContent: React.FC<ClipViewerContentProps> = ({
     
     setSearchParams(newParams, { replace: true });
     
-    // Update state - this will trigger the useEffect in the parent
     setCurrentPage(pageNumber);
     
-    // Scroll to top of grid when paginating
     document.querySelector('.clip-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
   if (expandedClip === 'new') {
@@ -192,9 +186,9 @@ const ClipViewerContent: React.FC<ClipViewerContentProps> = ({
       </div>
     );  }
 
-  // Default view - clip grid with filters
   return (
-    <div className="animate-fade-in">      <ClipFilterBar
+    <div className="animate-fade-in">      
+    <ClipFilterBar
         sortOptionState={sortOptionState}
         setSortOptionState={setSortOptionState}
         handleSortChange={handleSortChange}
@@ -218,7 +212,7 @@ const ClipViewerContent: React.FC<ClipViewerContentProps> = ({
       <ClipGrid
         isLoading={isLoading}
         filteredClips={filteredClips}
-        currentClips={filteredClips} // Remove slicing - backend already handles pagination
+        currentClips={filteredClips}
         user={user}
         ratings={ratings}
         config={config}
@@ -229,6 +223,10 @@ const ClipViewerContent: React.FC<ClipViewerContentProps> = ({
         totalPages={totalPages}
         paginate={paginate}
         itemsPerPage={itemsPerPage}
+        hasNextPage={hasNextPage}
+        isFetchingNextPage={isFetchingNextPage}
+        fetchNextPage={fetchNextPage}
+        useInfiniteScroll={useInfiniteScroll}
       />
     </div>
   );

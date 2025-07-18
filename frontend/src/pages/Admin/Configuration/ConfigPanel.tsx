@@ -1,6 +1,8 @@
 import { motion } from 'framer-motion';
 import React, { useState } from 'react';
-import * as adminService from '../../../services/adminService';
+
+// React Query hooks
+import { useUpdateAdminConfig, useUpdatePublicConfig } from '../../../hooks/useAdmin';
 
 interface ConfigPanelProps {
   config: {
@@ -16,6 +18,10 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, handleConfigChange })
   const [channelIdsText, setChannelIdsText] = useState<string>(
     config?.clipChannelIds?.join('\n') || ''
   );
+  
+  // React Query mutations
+  const updateAdminConfigMutation = useUpdateAdminConfig();
+  const updatePublicConfigMutation = useUpdatePublicConfig();
   
   // Add a null check for the config object
   if (!config) {
@@ -65,8 +71,8 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, handleConfigChange })
       };
       
       // Make two separate API calls to update both configs
-      await adminService.updateAdminConfig(adminConfig);
-      await adminService.updatePublicConfig(publicConfig);
+      await updateAdminConfigMutation.mutateAsync(adminConfig);
+      await updatePublicConfigMutation.mutateAsync(publicConfig);
       
       alert('Configuration saved successfully');
     } catch (error) {

@@ -4,8 +4,6 @@ import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet';
 import { FaExclamationTriangle, FaArrowLeft, FaUser, FaChartBar } from 'react-icons/fa';
 import LoadingBar from 'react-top-loading-bar';
-import { getPublicProfile, getMyProfile } from '../../services/profileService';
-import { PublicProfile } from '../../types/profileTypes';
 import { User } from '../../types/adminTypes';
 import EditProfileModal from './EditModal';
 import ProfileHeader from './components/ProfileHeader';
@@ -14,105 +12,69 @@ import TrophiesSection from './components/TrophiesSection';
 import SocialLinks from './components/SocialLinks';
 import StatsSection from './components/StatsSection';
 
+import { usePublicProfile, useMyProfile } from '../../hooks/useProfile';
+import { useCurrentUser } from '../../hooks/useUser';
+
 const ProfilePage: React.FC<{ currentUser?: User }> = ({ currentUser }) => {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
 
-  const [profile, setProfile] = useState<PublicProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string>('');
+  const { data: currentUserData } = useCurrentUser();
+  const user = currentUser || currentUserData;
+  
+  const token = localStorage.getItem('token');
+  const currentUserId = user?._id || '';
+  
+  const isOwnProfile = !userId || userId === 'me' || userId === currentUserId;
+  
+  const { 
+    data: profile, 
+    isLoading, 
+    error,
+    refetch 
+  } = isOwnProfile 
+    ? useMyProfile() 
+    : usePublicProfile(userId || '');
+
+  const [showEditModal, setShowEditModal] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [isOwnProfile, setIsOwnProfile] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false); const [currentView, setCurrentView] = useState<'profile' | 'stats'>(() => {
-    // Remember user's last selected view if they have stats access
+  const [currentView, setCurrentView] = useState<'profile' | 'stats'>(() => {
     const savedView = localStorage.getItem('profileViewPreference');
     return (savedView === 'stats' || savedView === 'profile') ? savedView : 'profile';
   });
 
-  // Simple timestamp to trigger data refresh when switching views
   const [viewSwitchTimestamp, setViewSwitchTimestamp] = useState<number>(Date.now());
-  // Save view preference to localStorage and trigger refresh - simple direct state change like EditModal
+  
   const handleViewChange = (view: 'profile' | 'stats') => {
     console.log('Switching view from', currentView, 'to', view);
     setCurrentView(view);
     localStorage.setItem('profileViewPreference', view);
-    // Update timestamp to trigger fresh data fetch in components
     setViewSwitchTimestamp(Date.now());
     console.log('View switched to', view, 'timestamp:', Date.now());
   };
 
-  // Get current user info for comparison
-  const token = localStorage.getItem('token');
-  const [currentUserId, setCurrentUserId] = useState<string>('');
-
   useEffect(() => {
-    // Get current user ID if logged in
-    if (token) {
-      const getCurrentUser = async () => {
-        try {
-          const myProfile = await getMyProfile();
-          setCurrentUserId(myProfile._id);
-        } catch (err) {
-          // Not critical if this fails
-        }
-      };
-      getCurrentUser();
-    }
-  }, [token]); useEffect(() => {
-    // Handle special cases for routing
     if (userId === 'me' && token && currentUserId) {
-      // Redirect /profile/me to actual user ID
       navigate(`/profile/${currentUserId}`, { replace: true });
       return;
     }
 
-    // If no userId in URL but user is logged in, redirect to their own profile
     if (!userId && token && currentUserId) {
       navigate(`/profile/${currentUserId}`, { replace: true });
       return;
     }
-
-    const fetchProfile = async () => {
-      if (!userId || userId === 'me') return;
-
-      setProgress(10);
-      setLoading(true);
-      setError('');
-
-      try {
-        setProgress(50);
-
-        // Check if this is the user's own profile
-        const ownProfile = currentUserId === userId;
-        setIsOwnProfile(ownProfile);
-
-        let profileData: PublicProfile;
-
-        if (ownProfile && token) {
-          // Use private endpoint for own profile
-          profileData = await getMyProfile();
-        } else {
-          // Use public endpoint for other users
-          profileData = await getPublicProfile(userId);
-        }
-        console.log('Fetched profile:', profileData);
-        setProfile(profileData);
-
-        setProgress(100);
-      } catch (err: any) {
-        console.error('Error fetching profile:', err);
-        setError(err.message || 'Failed to load profile');
-        setProgress(100);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (userId && (currentUserId || !token)) {
-      fetchProfile();
-    }
   }, [userId, currentUserId, token, navigate]);
-  const hasClipteamRole = currentUser?.roles?.includes('clipteam') || false;
+
+  useEffect(() => {
+    if (isLoading) {
+      setProgress(50);
+    } else {
+      setProgress(100);
+      setTimeout(() => setProgress(0), 500);
+    }
+  }, [isLoading]);
+
+  const hasClipteamRole = user?.roles?.includes('clipteam') || false;
 
   const fadeIn = {
     hidden: { opacity: 0, y: 20 },
@@ -132,7 +94,8 @@ const ProfilePage: React.FC<{ currentUser?: User }> = ({ currentUser }) => {
       }
     }
   };
-  if (loading) {
+
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-neutral-200 dark:bg-neutral-900 transition-colors duration-200">
         <LoadingBar
@@ -152,6 +115,7 @@ const ProfilePage: React.FC<{ currentUser?: User }> = ({ currentUser }) => {
       </div>
     );
   }
+
   if (error || !profile) {
     return (
       <div className="min-h-screen bg-neutral-200 dark:bg-neutral-900 transition-colors duration-200">
@@ -169,7 +133,7 @@ const ProfilePage: React.FC<{ currentUser?: User }> = ({ currentUser }) => {
               Profile Not Found
             </h1>
             <p className="text-neutral-600 dark:text-neutral-400 mb-8 leading-relaxed">
-              {error || 'The profile you are looking for does not exist or is private.'}
+              {error?.message || 'The profile you are looking for does not exist or is private.'}
             </p>
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -185,7 +149,6 @@ const ProfilePage: React.FC<{ currentUser?: User }> = ({ currentUser }) => {
       </div>
     );
   }
-
 
   return (
     <motion.div
@@ -212,7 +175,6 @@ const ProfilePage: React.FC<{ currentUser?: User }> = ({ currentUser }) => {
 
       {/* Hero Background */}
       <div className="relative overflow-hidden">
-
         <div className="relative container mx-auto px-4 pt-8 pb-20">
           <motion.div
             initial="hidden"
@@ -228,11 +190,11 @@ const ProfilePage: React.FC<{ currentUser?: User }> = ({ currentUser }) => {
                 onEditClick={() => setShowEditModal(true)}
               />
             </motion.div>
+            
             {/* Content Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-4 xl:grid-cols-4 gap-6 lg:gap-8">
               {/* Left Sidebar - Social & Trophies */}
               <div className="lg:col-span-1 space-y-6">
-
                 {/* Social Links */}
                 {(profile.profile?.website || Object.values(profile.profile?.socialLinks || {}).some(link => link)) && (
                   <motion.div variants={fadeIn}>
@@ -250,10 +212,11 @@ const ProfilePage: React.FC<{ currentUser?: User }> = ({ currentUser }) => {
                   </motion.div>
                 )}
               </div>
+              
               {/* Main Content - Clips & Stats */}
               <div className="lg:col-span-3 space-y-6 lg:space-y-8">
                 {/* Tab Navigation - Only show if user has access to stats */}
-                {isOwnProfile && currentUser && hasClipteamRole && (
+                {isOwnProfile && user && hasClipteamRole && (
                   <motion.div variants={fadeIn}>
                     <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-lg border border-neutral-200 dark:border-neutral-700 overflow-hidden">
                       <div className="flex relative">
@@ -305,9 +268,9 @@ const ProfilePage: React.FC<{ currentUser?: User }> = ({ currentUser }) => {
                 {currentView === 'stats' && (
                   <>
                     {/* Stats Section - Only for logged-in users with clipteam role */}
-                    {isOwnProfile && currentUser && hasClipteamRole && (
+                    {isOwnProfile && user && hasClipteamRole && (
                       <StatsSection
-                        user={currentUser}
+                        user={user}
                         viewSwitchTimestamp={viewSwitchTimestamp}
                       />
                     )}
@@ -323,8 +286,8 @@ const ProfilePage: React.FC<{ currentUser?: User }> = ({ currentUser }) => {
       {showEditModal && (
         <EditProfileModal
           onClose={() => setShowEditModal(false)}
-          onSuccess={(updatedProfile) => {
-            setProfile(updatedProfile);
+          onSuccess={() => {
+            refetch();
             setShowEditModal(false);
           }}
         />

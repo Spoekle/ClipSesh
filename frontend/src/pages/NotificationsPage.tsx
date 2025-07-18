@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -9,44 +9,52 @@ import LoadingBar from 'react-top-loading-bar';
 import { format } from 'timeago.js';
 import * as notificationService from '../services/notificationService';
 
+import { 
+  useNotifications, 
+  useMarkNotificationAsRead, 
+  useMarkAllNotificationsAsRead, 
+  useDeleteNotification 
+} from '../hooks/useNotifications';
+
 const NotificationsPage: React.FC = () => {
-  const [notifications, setNotifications] = useState<UserNotification[]>([]);
+  const { data: notificationResponse, isLoading: loading, error } = useNotifications();
+  const notifications = notificationResponse?.notifications || [];
+  const markAsReadMutation = useMarkNotificationAsRead();
+  const markAllAsReadMutation = useMarkAllNotificationsAsRead();
+  const deleteNotificationMutation = useDeleteNotification();
+  
   const [activeTab, setActiveTab] = useState<'all' | 'personal' | 'team'>('all');
-  const [loading, setLoading] = useState<boolean>(true);
   const [progress, setProgress] = useState<number>(0);
   const { showSuccess, showError } = useNotification();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    fetchNotifications();
-  }, []);  const fetchNotifications = async (): Promise<void> => {
+  React.useEffect(() => {
+    if (loading) {
+      setProgress(30);
+    } else {
+      setProgress(100);
+      setTimeout(() => setProgress(0), 500);
+    }
+  }, [loading]);
+
+  React.useEffect(() => {
     if (!notificationService.isAuthenticated()) {
       navigate('/');
-      return;
     }
+  }, [navigate]);
 
-    try {
-      setProgress(30);
-      setLoading(true);
-      const response = await notificationService.fetchNotifications();
-      setProgress(100);
-      setNotifications(response.notifications);
-    } catch (error) {
-      console.error('Error fetching notifications', error);
+  React.useEffect(() => {
+    if (error) {
       showError('Failed to load notifications');
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [error, showError]);
 
-  // Filter notifications based on active tab
   const filteredNotifications = notifications.filter(notification => {
     if (activeTab === 'all') return true;
     if (activeTab === 'team') return notification.type === 'team_message';
-    return notification.type !== 'team_message'; // personal notifications
+    return notification.type !== 'team_message';
   });
   
-  // Group team messages by clipId
   const teamMessagesByClip = notifications
     .filter(n => n.type === 'team_message')
     .reduce((acc, notification) => {
@@ -59,48 +67,32 @@ const NotificationsPage: React.FC = () => {
     }, {} as Record<string, UserNotification[]>);
   const markAsRead = async (notificationId: string): Promise<void> => {
     try {
-      await notificationService.markNotificationAsRead(notificationId);
-      
-      setNotifications(prev => 
-        prev.map(notif => 
-          notif._id === notificationId ? { ...notif, read: true } : notif
-        )
-      );
-      
+      await markAsReadMutation.mutateAsync(notificationId);
     } catch (error) {
       console.error('Error marking notification as read', error);
       showError('Failed to update notification');
     }
   };
+
   const markAllAsRead = async (): Promise<void> => {
     try {
-      await notificationService.markAllNotificationsAsRead();
-      
-      setNotifications(prev => 
-        prev.map(notif => ({ ...notif, read: true }))
-      );
-      
+      await markAllAsReadMutation.mutateAsync();
       showSuccess('All notifications marked as read');
     } catch (error) {
       console.error('Error marking all notifications as read', error);
       showError('Failed to update notifications');
     }
   };
+
   const deleteNotificationItem = async (notificationId: string): Promise<void> => {
     try {
-      await notificationService.deleteNotification(notificationId);
-      
-      setNotifications(prev => 
-        prev.filter(notif => notif._id !== notificationId)
-      );
-      
+      await deleteNotificationMutation.mutateAsync(notificationId);
     } catch (error) {
       console.error('Error deleting notification', error);
       showError('Failed to delete notification');
     }
   };
   const navigateToClip = (notification: UserNotification): void => {
-    // Mark as read when navigating
     if (!notification.read) {
       markAsRead(notification._id);
     }
@@ -242,9 +234,7 @@ const NotificationsPage: React.FC = () => {
               </div>
             ) : (
               <AnimatePresence initial={false}>
-                {/* If we're in team view, group by clip */}
                 {activeTab === 'team' && Object.entries(teamMessagesByClip).map(([clipId, clipNotifications]) => {
-                  // Get the most recent notification for this clip to display clip details
                   const latestNotification = clipNotifications.sort(
                     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
                   )[0];

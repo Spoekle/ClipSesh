@@ -27,28 +27,29 @@ const DeniedClips: React.FC<DeniedClipsProps> = ({ clips, ratings, config, locat
     const [sortBy, setSortBy] = useState<SortBy>('newest');
     const clipsPerPage = 9;
 
-    // Filter denied clips
     const filteredClips = clips.filter(clip => {
         const ratingData = ratings[clip._id];
-        return ratingData && ratingData.ratingCounts.some(rateData => 
-            rateData.rating === 'deny' && rateData.count >= config.denyThreshold);
+        if (!ratingData || !ratingData.ratings) {
+            return false;
+        }
+        
+        const denyRatings = ratingData.ratings.deny;
+        return denyRatings && Array.isArray(denyRatings) && denyRatings.length >= config.denyThreshold;
     });
 
-    // Sort clips based on current sort criteria
     const sortedClips = [...filteredClips].sort((a, b) => {
         if (sortBy === 'newest') {
             return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
         } else if (sortBy === 'oldest') {
             return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
         } else if (sortBy === 'mostDenied') {
-            const aDenyCount = ratings[a._id]?.ratingCounts.find(rate => rate.rating === 'deny')?.count || 0;
-            const bDenyCount = ratings[b._id]?.ratingCounts.find(rate => rate.rating === 'deny')?.count || 0;
+            const aDenyCount = ratings[a._id]?.ratings?.deny?.length || 0;
+            const bDenyCount = ratings[b._id]?.ratings?.deny?.length || 0;
             return bDenyCount - aDenyCount;
         }
         return 0;
     });
 
-    // Pagination
     const totalPages = Math.ceil(sortedClips.length / clipsPerPage);
     const indexOfLastClip = currentPage * clipsPerPage;
     const indexOfFirstClip = indexOfLastClip - clipsPerPage;
@@ -127,7 +128,7 @@ const DeniedClips: React.FC<DeniedClipsProps> = ({ clips, ratings, config, locat
                     >
                         {currentClips.map((clip) => {
                             const ratingData = ratings[clip._id];
-                            const denyCount = ratingData?.ratingCounts.find(rate => rate.rating === 'deny')?.count || 0;
+                            const denyCount = ratingData?.ratings?.deny?.length || 0;
                             const denyPercentage = Math.round((denyCount / (config.denyThreshold * 2)) * 100);
                             
                             return (

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { saveAs } from 'file-saver';
 import LoadingBar from 'react-top-loading-bar';
@@ -15,37 +15,31 @@ import {
   FaInfoCircle
 } from 'react-icons/fa';
 import { getCurrentSeason } from '../utils/seasonHelpers';
-import { getConfig } from '../services/configService';
-import { getClipsWithRatings } from '../services/clipService';
-import { getZips } from '../services/adminService';
-import { useNotification } from '../context/AlertContext';
-import { Clip, Rating, Zip } from '../types/adminTypes';
 
-interface Config {
-  denyThreshold: number;
-  latestVideoLink: string;
-  clipAmount?: number;
-}
-
-interface SeasonInfo {
-  season?: string;
-  clipAmount?: number;
-}
+import { useCombinedConfig } from '../hooks/useConfig';
+import { useClipsWithRatings } from '../hooks/useClips';
+import { useZips } from '../hooks/useAdmin';
+import { useCurrentUser } from '../hooks/useUser';
 
 const EditorDash: React.FC = () => {
-  const [config, setConfig] = useState<Config>({ denyThreshold: 0, latestVideoLink: '' });
-  const [clips, setClips] = useState<Clip[]>([]);
-  const [ratings, setRatings] = useState<Record<string, Rating>>({});
-  const [loading, setLoading] = useState<boolean>(true);
+  const { data: user } = useCurrentUser();
+  const { data: config, isLoading: configLoading } = useCombinedConfig(user);
+  const { data: clipsData, isLoading: clipsLoading } = useClipsWithRatings();
+  const { data: zips = [], isLoading: zipsLoading } = useZips();
+
+  const clips = clipsData?.clips || [];
+  const ratings = clipsData?.ratings || {};
+  
   const [progress, setProgress] = useState<number>(0);
-  const [seasonInfo, setSeasonInfo] = useState<SeasonInfo>({});
-  const [zips, setZips] = useState<Zip[]>([]);
-  const [zipsLoading, setZipsLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<'current' | 'all'>('current');
 
-  const { showError } = useNotification();
+  const seasonInfo = {
+    season: getCurrentSeason().season,
+    clipAmount: clips.length
+  };
 
-  // Utility function to format file sizes properly
+  const loading = configLoading || clipsLoading;
+
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -54,151 +48,18 @@ const EditorDash: React.FC = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  useEffect(() => {
-    fetchInitialData();
-  }, []);
-
-  const fetchInitialData = async (): Promise<void> => {
-    try {
-      setProgress(10);
-      await fetchConfig();
-      setProgress(30);
-      getSeason();
-      setProgress(50);
-      await fetchClipsAndRatings();
-      await fetchZips();
-      setProgress(100);
-      setLoading(false);
-    } catch (error) {
-      console.error('Error fetching initial data:', error);
-      showError('Failed to load data. Please try again.');
-    }
-  };  const fetchConfig = async (): Promise<void> => {
-    try {
-      const configData = await getConfig();
-
-      if (configData) {
-        const publicConfig = configData.public || {};
-        const adminConfig = configData.admin || {};
-
-        // Merge configs and set clip count
-        setConfig({
-          denyThreshold: (adminConfig as any).denyThreshold ?? 5,
-          latestVideoLink: (publicConfig as any).latestVideoLink ?? '',
-          clipAmount: (publicConfig as any).clipAmount ?? 0
-        });
-
-        // Update total clip count for pagination
-        if ((publicConfig as any).clipAmount) {
-          setSeasonInfo(prevSeasonInfo => ({
-            ...prevSeasonInfo,
-            clipAmount: (publicConfig as any).clipAmount
-          }));
-        }
-
-        console.log("Fetched config with clip amount:", (publicConfig as any).clipAmount);
-      }
-    } catch (error) {
-      console.error('Error fetching config:', error);
-    }
-  };const fetchClipsAndRatings = async (): Promise<void> => {
-    try {
-      // Use the service function which already handles the API call
-      const { clips: clipsData, ratings: ratingsData } = await getClipsWithRatings();
-
-      // Update state with fetched data
-      setClips(clipsData);
-
-      // Transform ratings to ensure they have the expected format for the frontend
-      const transformedRatings = transformRatings(ratingsData);
-      setRatings(transformedRatings);
-
-    } catch (error) {
-      console.error('Error fetching clips and ratings:', error);    }
-  };
-
-  // Utility function to transform backend rating format to frontend expected format
-  const transformRatings = (ratings: Record<string, any>): Record<string, Rating> => {
-    const transformed: Record<string, Rating> = {};
-
-    Object.entries(ratings).forEach(([clipId, ratingData]) => {
-      // Check if we need to transform this rating data
-      if (ratingData && !ratingData.ratingCounts && ratingData.ratings) {
-        // Transform from backend format to frontend expected format
-        const ratingCounts = [
-          {
-            rating: '1',
-            count: Array.isArray(ratingData.ratings['1']) ? ratingData.ratings['1'].length : 0,
-            users: Array.isArray(ratingData.ratings['1']) ? ratingData.ratings['1'] : []
-          },
-          {
-            rating: '2',
-            count: Array.isArray(ratingData.ratings['2']) ? ratingData.ratings['2'].length : 0,
-            users: Array.isArray(ratingData.ratings['2']) ? ratingData.ratings['2'] : []
-          },
-          {
-            rating: '3',
-            count: Array.isArray(ratingData.ratings['3']) ? ratingData.ratings['3'].length : 0,
-            users: Array.isArray(ratingData.ratings['3']) ? ratingData.ratings['3'] : []
-          },
-          {
-            rating: '4',
-            count: Array.isArray(ratingData.ratings['4']) ? ratingData.ratings['4'].length : 0,
-            users: Array.isArray(ratingData.ratings['4']) ? ratingData.ratings['4'] : []
-          },
-          {
-            rating: 'deny',
-            count: Array.isArray(ratingData.ratings['deny']) ? ratingData.ratings['deny'].length : 0,
-            users: Array.isArray(ratingData.ratings['deny']) ? ratingData.ratings['deny'] : []
-          }
-        ];
-
-        transformed[clipId] = {
-          ...ratingData,
-          ratingCounts: ratingCounts
-        };
-      } else {
-        // Rating is already in the right format or is null/undefined
-        transformed[clipId] = ratingData;
-      }
-    });
-
-    return transformed;
-  };
-
   const deniedClips = clips.filter(clip => {
     const ratingData = ratings[clip._id];
-    return ratingData &&
-      ratingData.ratingCounts &&
-      Array.isArray(ratingData.ratingCounts) &&
-      ratingData.ratingCounts.some(rateData =>
-        rateData.rating === 'deny' && rateData.count >= config.denyThreshold
-      );
-  }).length;
-  const fetchZips = async (): Promise<void> => {
-    try {
-      const zipData = await getZips();
-      setZips(zipData);
-      setZipsLoading(false);
-    } catch (error) {
-      console.error('Error fetching zips:', error);
-      showError('Failed to load zip archives');
-      setZipsLoading(false);
+    if (!ratingData || !ratingData.ratings) {
+      return false;
     }
-  };
+    
+    const denyRatings = ratingData.ratings.deny;
+    return denyRatings && Array.isArray(denyRatings) && denyRatings.length >= (config?.denyThreshold || 5);
+  }).length;
 
   const approvedClips = (seasonInfo.clipAmount || 0) - deniedClips;
 
-  const getSeason = () => {
-    const { season } = getCurrentSeason();
-
-    setSeasonInfo(prevSeasonInfo => ({
-      ...prevSeasonInfo,
-      season
-    }));
-  };
-
-  // Calculate statistics
   const getApprovedPercentage = (): string => {
     if (!seasonInfo.clipAmount || seasonInfo.clipAmount === 0) return '0.0';
     return ((approvedClips / seasonInfo.clipAmount) * 100).toFixed(1);
@@ -208,7 +69,6 @@ const EditorDash: React.FC = () => {
     if (!seasonInfo.clipAmount || seasonInfo.clipAmount === 0) return '0.0';
     return ((deniedClips / seasonInfo.clipAmount) * 100).toFixed(1);
   };
-  // Skeleton component for loading states
   const SkeletonBox = ({ className = "" }: { className?: string }) => (
     <div className={`animate-pulse bg-neutral-400 dark:bg-neutral-600 rounded ${className}`}></div>
   );

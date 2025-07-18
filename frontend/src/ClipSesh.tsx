@@ -16,7 +16,7 @@ import { NotificationProvider } from './context/AlertContext';
 import NotificationContainer from './components/PopupAlerts/NotificationContainer';
 import NotificationsPage from './pages/NotificationsPage';
 import { User } from './types/adminTypes';
-import { getCurrentUser } from './services/userService';
+import { useCurrentUser } from './hooks/useUser';
 
 interface RequireAuthProps {
   children: ReactNode;
@@ -32,6 +32,9 @@ interface NavigateState {
 function ClipSesh() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
+  
+  // Use React Query hook for current user
+  const { data: userData, isLoading: userLoading, error: userError } = useCurrentUser();
 
   useEffect(() => {
     const extractTokenFromURL = (): void => {
@@ -42,24 +45,24 @@ function ClipSesh() {
         window.history.replaceState({}, document.title, window.location.pathname);
       }
     };    
-    const fetchUser = async (): Promise<void> => {
-      const token = localStorage.getItem('token');
-      setAuthLoading(true);
-      if (token) {
-        try {
-          const userData = await getCurrentUser();
-          setUser(userData);
-        } catch (error) {
-          console.error('Error fetching user:', error);
-          localStorage.removeItem('token');
-        }
-      }
-      setAuthLoading(false);
-    };
-
+    
     extractTokenFromURL();
-    fetchUser();
   }, []);
+
+  // Update user state when React Query data changes
+  useEffect(() => {
+    if (userData) {
+      setUser(userData);
+      setAuthLoading(false);
+    } else if (userError) {
+      setUser(null);
+      localStorage.removeItem('token');
+      setAuthLoading(false);
+    } else if (!userLoading) {
+      setUser(null);
+      setAuthLoading(false);
+    }
+  }, [userData, userError, userLoading]);
   const RequireAuth: React.FC<RequireAuthProps> = ({ 
     children, 
     isAdminRequired = false, 

@@ -22,9 +22,9 @@ import {
   FaShareAlt
 } from 'react-icons/fa';
 import LoadingBar from 'react-top-loading-bar';
-import { getMyProfile, updateProfile } from '../../services/profileService';
-import { updateMyBasicInfo, updateMyBasicInfoWithPassword, uploadProfilePicture } from '../../services/userService';
-import { linkDiscordAccount, unlinkDiscordAccount } from '../../services/discordService';
+import { useMyProfile, useUpdateProfile } from '../../hooks/useProfile';
+import { useUpdateMyBasicInfo, useUpdateMyBasicInfoWithPassword, useUploadProfilePicture } from '../../hooks/useUser';
+import { useLinkDiscordAccount, useUnlinkDiscordAccount } from '../../hooks/useDiscord';
 import { PublicProfile, ProfileFormData, BasicUserInfo, VR_HEADSETS } from '../../types/profileTypes';
 import { useNotification } from '../../context/AlertContext';
 
@@ -37,12 +37,18 @@ interface EditProfileModalProps {
 
 const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSuccess }) => {
   const { showSuccess, showError } = useNotification();
-  const [profile, setProfile] = useState<PublicProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  
+  const { data: profile, isLoading: loading } = useMyProfile();
+  const updateProfileMutation = useUpdateProfile();
+  const updateBasicInfoMutation = useUpdateMyBasicInfo();
+  const updateBasicInfoWithPasswordMutation = useUpdateMyBasicInfoWithPassword();
+  const uploadProfilePictureMutation = useUploadProfilePicture();
+  const linkDiscordAccount = useLinkDiscordAccount();
+  const unlinkDiscordAccountMutation = useUnlinkDiscordAccount();
+  
   const [saving, setSaving] = useState(false);
   const [progress, setProgress] = useState(0);
   const [activeTab, setActiveTab] = useState<TabType>('user-info');
-  // Form state
   const [formData, setFormData] = useState<ProfileFormData>({
     bio: '',
     website: '',
@@ -56,13 +62,11 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSuccess 
     vrheadset: 'Other',
     isPublic: true
   });
-  // User basic info form state
   const [userInfo, setUserInfo] = useState<BasicUserInfo>({
     username: '',
     email: ''
   });
 
-  // Password change state
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -80,7 +84,6 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSuccess 
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
-  // Utility functions for social links
   const getSocialPrefix = (platform: string) => {
     switch (platform) {
       case 'youtube': return 'https://youtube.com/@';
@@ -95,7 +98,6 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSuccess 
   const stripSocialPrefix = (platform: string, url: string): string => {
     if (!url) return '';
 
-    // If it's already a username (no protocol), return as is
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
       return url;
     }
@@ -105,7 +107,6 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSuccess 
       return url.slice(prefix.length);
     }
 
-    // Handle other URL formats for the platform
     switch (platform) {
       case 'youtube':
         if (url.includes('youtube.com/c/')) {
@@ -140,14 +141,12 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSuccess 
         break;
     }
 
-    // If we can't parse it, return the original URL
     return url;
   };
 
   const addSocialPrefix = (platform: string, username: string): string => {
     if (!username) return '';
 
-    // If it's already a full URL, return as is
     if (username.startsWith('http://') || username.startsWith('https://')) {
       return username;
     }
@@ -157,63 +156,45 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSuccess 
   };
 
   useEffect(() => {
-    const fetchProfile = async () => {
+    if (profile) {
       setProgress(10);
-      setLoading(true);
+      
+      setFormData({
+        bio: profile.profile?.bio || '',
+        website: profile.profile?.website || '',
+        socialLinks: {
+          youtube: stripSocialPrefix('youtube', profile.profile?.socialLinks?.youtube || ''),
+          twitch: stripSocialPrefix('twitch', profile.profile?.socialLinks?.twitch || ''),
+          twitter: stripSocialPrefix('twitter', profile.profile?.socialLinks?.twitter || ''),
+          instagram: stripSocialPrefix('instagram', profile.profile?.socialLinks?.instagram || ''),
+          github: stripSocialPrefix('github', profile.profile?.socialLinks?.github || '')
+        },
+        vrheadset: profile.profile?.vrheadset || 'Other',
+        isPublic: profile.profile?.isPublic !== false
+      });
 
-      try {
-        setProgress(50);
-        const profileData = await getMyProfile();
-        setProfile(profileData);        // Initialize profile form data with cleaned social links
-        setFormData({
-          bio: profileData.profile?.bio || '',
-          website: profileData.profile?.website || '',
-          socialLinks: {
-            youtube: stripSocialPrefix('youtube', profileData.profile?.socialLinks?.youtube || ''),
-            twitch: stripSocialPrefix('twitch', profileData.profile?.socialLinks?.twitch || ''),
-            twitter: stripSocialPrefix('twitter', profileData.profile?.socialLinks?.twitter || ''),
-            instagram: stripSocialPrefix('instagram', profileData.profile?.socialLinks?.instagram || ''),
-            github: stripSocialPrefix('github', profileData.profile?.socialLinks?.github || '')
-          },
-          vrheadset: profileData.profile?.vrheadset || 'Other',
-          isPublic: profileData.profile?.isPublic !== false // Default to true if undefined
-        });
+      setUserInfo({
+        username: profile.username || '',
+        email: profile.email || ''
+      });
 
-        // Initialize user info form data
-        setUserInfo({
-          username: profileData.username || '',
-          email: profileData.email || ''
-        });
-
-        setProfilePicturePreview(profileData.profilePicture || '');
-        setProgress(100);
-      } catch (err: unknown) {
-        console.error('Error fetching profile:', err);
-        showError('Failed to load profile');
-        onClose();
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProfile();
-  }, [onClose, showError]);
+      setProfilePicturePreview(profile.profilePicture || '');
+      setProgress(100);
+    }
+  }, [profile]);
   const validateForm = (): boolean => {
     const newErrors: { [key: string]: string } = {};
 
-    // Validate username
     if (!userInfo.username.trim()) {
       newErrors.username = 'Username is required';
     } else if (userInfo.username.length < 3) {
       newErrors.username = 'Username must be at least 3 characters';
     }
 
-    // Validate email
     if (userInfo.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userInfo.email)) {
       newErrors.email = 'Please enter a valid email address';
     }
 
-    // Validate password fields if any password field is filled
     const isChangingPassword = passwordData.currentPassword || passwordData.newPassword || passwordData.confirmPassword;
     if (isChangingPassword) {
       if (!passwordData.currentPassword) {
@@ -231,7 +212,6 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSuccess 
       }
     }
 
-    // Validate bio
     if (formData.bio && formData.bio.length > 500) {
       newErrors.bio = 'Bio must be 500 characters or less';
     }
@@ -262,30 +242,31 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSuccess 
     setSaving(true);
     setProgress(10);
 
-    try {      // Update profile picture first if there's a new one
+    try {
       if (profilePictureFile) {
         setProgress(30);
-        await uploadProfilePicture(profilePictureFile);
-      }      // Update user basic info (with or without password)
+        await uploadProfilePictureMutation.mutateAsync(profilePictureFile);
+      }
+
       setProgress(50);
       const isChangingPassword = passwordData.currentPassword || passwordData.newPassword || passwordData.confirmPassword;
       
       if (isChangingPassword) {
-        await updateMyBasicInfoWithPassword({
+        await updateBasicInfoWithPasswordMutation.mutateAsync({
           ...userInfo,
           password: passwordData.newPassword
         });
       } else {
-        await updateMyBasicInfo(userInfo);
+        await updateBasicInfoMutation.mutateAsync(userInfo);
       }
 
-      // Update profile data with cleaned social links
       setProgress(70);
       const cleanedFormData = cleanFormDataForSubmission();
-      await updateProfile(cleanedFormData); setProgress(100);
+      await updateProfileMutation.mutateAsync(cleanedFormData);
+      
+      setProgress(100);
       showSuccess('Profile updated successfully');
 
-      // Clear password fields after successful update
       if (isChangingPassword) {
         setPasswordData({
           currentPassword: '',
@@ -294,9 +275,9 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSuccess 
         });
       }
 
-      // Fetch updated profile and pass to parent
-      const updatedProfile = await getMyProfile();
-      onSuccess(updatedProfile);
+      if (profile) {
+        onSuccess(profile);
+      }
     } catch (err: unknown) {
       console.error('Error updating profile:', err);
       showError((err as Error)?.message || 'Failed to update profile');
@@ -323,7 +304,6 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSuccess 
       }));
     }
 
-    // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
@@ -334,7 +314,6 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSuccess 
       [field]: value
     }));
 
-    // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
@@ -346,7 +325,6 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSuccess 
       [field]: value
     }));
 
-    // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
@@ -375,15 +353,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSuccess 
 
     try {
       setSaving(true);
-      await unlinkDiscordAccount(profile._id);
-
-      // Update local state to reflect the change
-      setProfile(prev => prev ? {
-        ...prev,
-        discordId: undefined,
-        discordUsername: undefined
-      } : prev);
-
+      await unlinkDiscordAccountMutation.mutateAsync(profile._id);
       showSuccess('Discord account unlinked successfully');
     } catch (error: unknown) {
       showError((error as Error)?.message || 'Failed to unlink Discord account');
@@ -395,13 +365,11 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSuccess 
   const handleProfilePictureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validate file type
       if (!file.type.startsWith('image/')) {
         showError('Please select a valid image file');
         return;
       }
 
-      // Validate file size (5MB max)
       if (file.size > 5 * 1024 * 1024) {
         showError('Image file must be less than 5MB');
         return;
@@ -409,7 +377,6 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSuccess 
 
       setProfilePictureFile(file);
 
-      // Create preview
       const reader = new FileReader();
       reader.onload = () => {
         setProfilePicturePreview(reader.result as string);

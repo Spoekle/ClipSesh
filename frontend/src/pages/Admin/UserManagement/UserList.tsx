@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FaDiscord, 
@@ -13,13 +13,14 @@ import {
   FaUserShield,
   FaExclamationTriangle
 } from 'react-icons/fa';
-import * as adminService from '../../../services/adminService';
 import { useNotification } from '../../../context/AlertContext';
 import generateAvatar from '../../../utils/generateAvatar';
 import UserEditForm from './UserEditForm';
 import TrophyIndicator from './TrophyIndicator';
 import { User } from '../../../types/adminTypes';
 import ConfirmationDialog from '../../../components/common/ConfirmationDialog';
+
+import { useAllUsers, useDisableUser, useUpdateUser } from '../../../hooks/useAdmin';
 
 interface UserListProps {
   fetchUsers: () => void;
@@ -28,53 +29,34 @@ interface UserListProps {
   AVAILABLE_ROLES: string[];
 }
 
-const UserList: React.FC<UserListProps> = ({ fetchUsers, AVAILABLE_ROLES }) => {
+const UserList: React.FC<UserListProps> = ({ AVAILABLE_ROLES }) => {
   const [filter, setFilter] = useState<string>('all');
   const [search, setSearch] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [editUser, setEditUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [roleFilter, setRoleFilter] = useState<string[]>([]);
-  const [allRoles, setAllRoles] = useState<string[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
   const [showDisableConfirm, setShowDisableConfirm] = useState<boolean>(false);
   const [userToDisable, setUserToDisable] = useState<string | null>(null);
   const usersPerPage = 12;
   
   const { showSuccess, showError } = useNotification();
   
-  useEffect(() => {
-    fetchFilteredUsers();
-  }, [filter, roleFilter]);
-  const fetchFilteredUsers = async () => {
-    setLoading(true);
-    try {
-      const allUsers = await adminService.getAllUsers();
-      
-      // Filter users client-side based on active status
-      const activeUsers = allUsers.filter((user: User) => user.status === 'active');
-      setUsers(activeUsers);
-      setError(null);
-    } catch (error: any) {
-      console.error('Error fetching users:', error);
-      setError('Failed to load users');
-      showError('Error loading users');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Extract all unique roles on component mount or when users change
-  useEffect(() => {
-    const roles = [...new Set(
+  const { data: allUsers = [], isLoading: loading, error } = useAllUsers();
+  const disableUserMutation = useDisableUser();
+  const updateUserMutation = useUpdateUser();
+  
+  const users = useMemo(() => 
+    allUsers.filter((user: User) => user.status === 'active'), 
+    [allUsers]
+  );
+  
+  const allRoles = useMemo(() => {
+    return [...new Set(
       users.flatMap(user => user.roles || [])
     )].sort();
-    setAllRoles(roles);
   }, [users]);
 
-  // Toggle role filter
   const toggleRoleFilter = (role: string) => {
     setRoleFilter(prev => 
       prev.includes(role)
@@ -131,12 +113,8 @@ const UserList: React.FC<UserListProps> = ({ fetchUsers, AVAILABLE_ROLES }) => {
   const handleDisableUser = async (userId: string) => {
     setIsLoading(true);
     try {
-      await adminService.disableUser(userId);
+      await disableUserMutation.mutateAsync(userId);
       showSuccess('User disabled successfully');
-      // Update local state immediately for UI responsiveness
-      fetchFilteredUsers();
-      // Also update parent state for other components
-      fetchUsers();
     } catch (error: any) {
       console.error('Error disabling user:', error);
       showError('Error disabling user');
@@ -171,19 +149,14 @@ const UserList: React.FC<UserListProps> = ({ fetchUsers, AVAILABLE_ROLES }) => {
     try {
       const dataToSubmit = { ...editUser };
 
-      // Don't send empty password
       if (!dataToSubmit.password) {
         delete dataToSubmit.password;
       }
 
-      await adminService.updateUser(editUser._id, dataToSubmit);
+      await updateUserMutation.mutateAsync({ userId: editUser._id, updateData: dataToSubmit });
       
       showSuccess('User updated successfully');
       setEditUser(null);
-      // Update local state immediately for UI responsiveness
-      fetchFilteredUsers();
-      // Also update parent state for other components
-      fetchUsers();
     } catch (error: any) {
       console.error('Error updating user:', error);
       showError(error.response?.data?.message || 'Failed to update user');
@@ -192,19 +165,15 @@ const UserList: React.FC<UserListProps> = ({ fetchUsers, AVAILABLE_ROLES }) => {
     }
   };
   
-  // Apply client-side filtering for search and additional role filters
   const filteredUsers = users.filter(user => {
-    // Apply role dropdown filter - show only if user has the selected role
     if (filter !== 'all' && !user.roles.includes(filter)) {
       return false;
     }
     
-    // Apply role chip filters - show only if user has ALL selected roles
     if (roleFilter.length > 0 && !roleFilter.some(role => user.roles.includes(role))) {
       return false;
     }
     
-    // Apply search filter
     if (search && !user.username.toLowerCase().includes(search.toLowerCase())) {
       return false;
     }
@@ -212,16 +181,13 @@ const UserList: React.FC<UserListProps> = ({ fetchUsers, AVAILABLE_ROLES }) => {
     return true;
   });
 
-  // Sort filtered users by username
   const sortedUsers = [...filteredUsers].sort((a, b) => a.username.localeCompare(b.username));
 
-  // Pagination
   const indexOfLastUser = currentPage * usersPerPage;
   const indexOfFirstUser = indexOfLastUser - usersPerPage;
   const currentUsers = sortedUsers.slice(indexOfFirstUser, indexOfLastUser);
   const totalPages = Math.ceil(sortedUsers.length / usersPerPage);
 
-  // Role background colors for badges
   const getRoleColor = (role: string): string => {
     switch (role) {
       case 'admin': return 'bg-red-500 border-red-600';
@@ -232,21 +198,17 @@ const UserList: React.FC<UserListProps> = ({ fetchUsers, AVAILABLE_ROLES }) => {
     }
   };
 
-  // Show correct page buttons based on current page and total pages
   const getPaginationButtons = () => {
     const buttons: (number | string)[] = [];
     const maxButtonsToShow = 5;
     
     if (totalPages <= maxButtonsToShow) {
-      // If total pages is less than max buttons, show all pages
       for (let i = 1; i <= totalPages; i++) {
         buttons.push(i);
       }
     } else {
-      // Always show first page
       buttons.push(1);
       
-      // Calculate middle buttons
       if (currentPage < 4) {
         buttons.push(2, 3, 4, '...', totalPages);
       } else if (currentPage > totalPages - 3) {
@@ -346,13 +308,7 @@ const UserList: React.FC<UserListProps> = ({ fetchUsers, AVAILABLE_ROLES }) => {
         </div>
       ) : error ? (
         <div className="bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200 p-4 rounded-lg flex items-center justify-center">
-          <FaExclamationTriangle className="mr-2" /> {error}
-          <button 
-            onClick={fetchFilteredUsers}
-            className="ml-4 px-3 py-1 bg-red-200 dark:bg-red-800 rounded-md hover:bg-red-300 dark:hover:bg-red-700"
-          >
-            Retry
-          </button>
+          <FaExclamationTriangle className="mr-2" /> {error.message || 'Failed to load users'}
         </div>
       ) : (
         <>
@@ -375,7 +331,6 @@ const UserList: React.FC<UserListProps> = ({ fetchUsers, AVAILABLE_ROLES }) => {
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
             >
               {currentUsers.map((user, index) => {
-                // Generate avatar if user doesn't have a profile picture
                 const profileImage = user.profilePicture || generateAvatar(user.username) || undefined;
                 
                 return (
