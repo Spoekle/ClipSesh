@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Helmet } from 'react-helmet';
 import LoadingBar from 'react-top-loading-bar';
 import background from '../../media/admin.jpg';
-import { FaDiscord, FaUserClock, FaUsers, FaCog, FaThumbsDown, FaChartBar, FaTrophy } from "react-icons/fa";
+import { FaDiscord, FaUserClock, FaUsers, FaCog, FaThumbsDown, FaChartBar, FaTrophy, FaFlag } from "react-icons/fa";
 import { useLocation } from 'react-router-dom';
 import DeniedClips from './ContentManagement/DeniedClips';
 import UserList from './UserManagement/UserList';
@@ -12,6 +12,7 @@ import ConfigPanel from './Configuration/ConfigPanel';
 import AdminActions from './ContentManagement/AdminActions';
 import ZipManager from './ContentManagement/ZipManager';
 import TrophyManagement from './Trophies/TrophyManagement';
+import ReportsManagement from './Reports/ReportsManagement';
 import { getCurrentSeason } from '../../utils/seasonHelpers';
 import ProcessClipsModal from '../../components/admin/ProcessClipsModal';
 import useSocket from '../../hooks/useSocket';
@@ -34,7 +35,7 @@ import {
   useProcessClips
 } from '../../hooks/useAdmin';
 
-type TabName = 'overview' | 'users' | 'content' | 'config' | 'clips' | 'stats' | 'trophies';
+type TabName = 'overview' | 'users' | 'content' | 'config' | 'clips' | 'stats' | 'trophies' | 'reports';
 
 function AdminDash() {
   const [activeTab, setActiveTab] = useState<TabName>('overview');
@@ -182,6 +183,15 @@ function AdminDash() {
 
   const location = useLocation();
   const { isConnected } = useSocket();
+
+  // Handle URL parameters for tab switching (e.g., from notifications)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const tabParam = urlParams.get('tab');
+    if (tabParam && ['overview', 'users', 'content', 'config', 'clips', 'stats', 'trophies', 'reports'].includes(tabParam)) {
+      setActiveTab(tabParam as TabName);
+    }
+  }, [location.search]);
 
   useEffect(() => {
     if (clips.length > 0) {
@@ -595,6 +605,8 @@ function AdminDash() {
             onRefreshUsers={fetchUsers}
           />
         );
+      case 'reports':
+        return <ReportsManagement />;
       default:
         return (
           <div className="p-8 bg-neutral-300 dark:bg-neutral-800 rounded-xl text-center">
@@ -685,6 +697,15 @@ function AdminDash() {
                 }`}
             >
               <FaTrophy /> Trophies
+            </button>
+            <button
+              onClick={() => setActiveTab('reports')}
+              className={`px-4 py-2 rounded-t-lg flex items-center gap-2 transition-all ${activeTab === 'reports'
+                ? 'bg-blue-600 text-white font-medium'
+                : 'bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-400 dark:hover:bg-neutral-600 text-neutral-800 dark:text-white'
+                }`}
+            >
+              <FaFlag /> Reports
             </button>
           </div>
         </div>

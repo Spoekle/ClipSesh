@@ -11,12 +11,14 @@ import {
     FaLink,
     FaChevronLeft,
     FaChevronRight,
-    FaEdit
+    FaEdit,
+    FaFlag
 } from 'react-icons/fa';
 import { AiOutlineDelete, AiOutlineEdit } from 'react-icons/ai';
 import MessageComponent from './components/clipteam/MessagesPopup';
 import RatingsComponent from './components/clipteam/RatingsPopup';
 import EditModal from './components/EditClipModal';
+import ReportModal from './components/ReportModal';
 import ConfirmationDialog from '../../../components/common/ConfirmationDialog';
 import CustomPlayer from './components/CustomPlayer';
 import { useNotification } from '../../../context/AlertContext';
@@ -115,6 +117,7 @@ const ClipContent: React.FC<ClipContentProps> = ({
     // Local state
     const [popout, setPopout] = useState<string>('');
     const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+    const [isReportModalOpen, setIsReportModalOpen] = useState<boolean>(false);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false);
@@ -362,6 +365,19 @@ const ClipContent: React.FC<ClipContentProps> = ({
         showSuccess('Share link copied to clipboard!');
     };
 
+    const toggleReportModal = (): void => {
+        setIsReportModalOpen(!isReportModalOpen);
+    };
+
+    // Check if user has permission to report clips
+    const canReportClip = useMemo((): boolean => {
+        return !!(user && (
+            user.roles.includes('admin') ||
+            user.roles.includes('clipteam') ||
+            user.roles.includes('editor')
+        ));
+    }, [user]);
+
     return (
         <motion.div
             initial={{ opacity: 0 }}
@@ -421,6 +437,18 @@ const ClipContent: React.FC<ClipContentProps> = ({
                         <FaShare className="text-sm" />
                         <span className="hidden sm:inline">Share</span>
                     </button>
+
+                    {canReportClip && (
+                        <button
+                            className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition duration-200"
+                            onClick={toggleReportModal}
+                            disabled={isLoading}
+                            title="Report this clip"
+                        >
+                            <FaFlag className="text-sm" />
+                            <span className="hidden sm:inline">Report</span>
+                        </button>
+                    )}
 
                     {user && user.roles.includes('admin') && (
                         <>
@@ -745,6 +773,15 @@ const ClipContent: React.FC<ClipContentProps> = ({
                     setIsEditModalOpen={toggleEditModal}
                     clip={clipData}
                     setCurrentClip={() => {/* Refetch handled by React Query */}}
+                />
+            )}
+
+            {/* Report Modal */}
+            {isReportModalOpen && (
+                <ReportModal
+                    clip={clipData}
+                    isOpen={isReportModalOpen}
+                    onClose={() => setIsReportModalOpen(false)}
                 />
             )}
 

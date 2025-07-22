@@ -1,14 +1,16 @@
 import { motion } from 'framer-motion';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 // React Query hooks
-import { useUpdateAdminConfig, useUpdatePublicConfig } from '../../../hooks/useAdmin';
+import { useUpdateAdminConfig, useUpdatePublicConfig, useBlacklistedUsers } from '../../../hooks/useAdmin';
 
 interface ConfigPanelProps {
   config: {
     denyThreshold: number;
     latestVideoLink: string;
     clipChannelIds?: string[];
+    blacklistedSubmitterIds?: string[];
+    blacklistedStreamers?: string[];
   };
   handleConfigChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleConfigSubmit: (e: React.FormEvent) => void;
@@ -19,9 +21,23 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, handleConfigChange })
     config?.clipChannelIds?.join('\n') || ''
   );
   
-  // React Query mutations
+  // Blacklist form states
+  const [discordUserInput, setDiscordUserInput] = useState<string>('');
+  const [streamerInput, setStreamerInput] = useState<string>('');
+  const [isAddingUser, setIsAddingUser] = useState<boolean>(false);
+  const [isAddingStreamer, setIsAddingStreamer] = useState<boolean>(false);
+  const [previewUser, setPreviewUser] = useState<{id: string, username: string, global_name?: string, avatar?: string, discriminator?: string} | null>(null);
+  const [userNotFound, setUserNotFound] = useState<boolean>(false);
+  
+  // React Query mutations and queries
   const updateAdminConfigMutation = useUpdateAdminConfig();
   const updatePublicConfigMutation = useUpdatePublicConfig();
+  const { data: blacklistData, isLoading: blacklistLoading } = useBlacklistedUsers();
+
+  // Update channel IDs when config changes
+  useEffect(() => {
+    setChannelIdsText(config?.clipChannelIds?.join('\n') || '');
+  }, [config?.clipChannelIds]);
   
   // Add a null check for the config object
   if (!config) {
@@ -50,20 +66,172 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, handleConfigChange })
   const handleChannelIdsChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setChannelIdsText(e.target.value);
   };
+
+  // Function to fetch Discord user info
+  const fetchDiscordUserInfo = async (userId: string) => {
+    if (!userId.trim() || userId.length < 17) {
+      setPreviewUser(null);
+      setUserNotFound(false);
+      return;
+    }
+    
+    setUserNotFound(false);
+    
+    try {
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://api.spoekle.com';
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch(`${backendUrl}/api/admin/discord-user/${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const userData = await response.json();
+        setPreviewUser(userData);
+      } else {
+        setPreviewUser(null);
+        setUserNotFound(true);
+      }
+    } catch (error) {
+      console.error('Error fetching Discord user:', error);
+      setPreviewUser(null);
+      setUserNotFound(true);
+    }
+  };
+
+  // Auto-fetch Discord user info when input changes
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (discordUserInput && discordUserInput.length >= 17) {
+        fetchDiscordUserInfo(discordUserInput);
+      } else {
+        setPreviewUser(null);
+        setUserNotFound(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [discordUserInput]);
+
+  // Function to add a Discord user to blacklist
+  const handleAddDiscordUser = async () => {
+    if (!discordUserInput.trim()) return;
+    
+    setIsAddingUser(true);
+    const currentIds = config.blacklistedSubmitterIds || [];
+    
+    if (currentIds.includes(discordUserInput.trim())) {
+      alert('User is already blacklisted');
+      setIsAddingUser(false);
+      return;
+    }
+    
+    try {
+      const adminConfig = {
+        denyThreshold: config.denyThreshold,
+        clipChannelIds: channelIdsText.split('\n').map((id: string) => id.trim()).filter((id: string) => id !== ''),
+        blacklistedSubmitterIds: [...currentIds, discordUserInput.trim()],
+        blacklistedStreamers: config.blacklistedStreamers || []
+      };
+      
+      await updateAdminConfigMutation.mutateAsync(adminConfig);
+      setDiscordUserInput('');
+      setPreviewUser(null);
+      setUserNotFound(false);
+    } catch (error) {
+      console.error('Error adding user to blacklist:', error);
+      alert('Failed to add user to blacklist. Please try again.');
+    } finally {
+      setIsAddingUser(false);
+    }
+  };
+
+  // Function to remove a Discord user from blacklist
+  const handleRemoveDiscordUser = async (userId: string) => {
+    try {
+      const currentIds = config.blacklistedSubmitterIds || [];
+      const adminConfig = {
+        denyThreshold: config.denyThreshold,
+        clipChannelIds: channelIdsText.split('\n').map((id: string) => id.trim()).filter((id: string) => id !== ''),
+        blacklistedSubmitterIds: currentIds.filter(id => id !== userId),
+        blacklistedStreamers: config.blacklistedStreamers || []
+      };
+      
+      await updateAdminConfigMutation.mutateAsync(adminConfig);
+    } catch (error) {
+      console.error('Error removing user from blacklist:', error);
+      alert('Failed to remove user from blacklist. Please try again.');
+    }
+  };
+
+  // Function to add a streamer to blacklist
+  const handleAddStreamer = async () => {
+    if (!streamerInput.trim()) return;
+    
+    setIsAddingStreamer(true);
+    const currentStreamers = config.blacklistedStreamers || [];
+    const trimmedUsername = streamerInput.trim().toLowerCase();
+    
+    if (currentStreamers.some(s => s.toLowerCase() === trimmedUsername)) {
+      alert('Streamer is already blacklisted');
+      setIsAddingStreamer(false);
+      return;
+    }
+    
+    try {
+      const adminConfig = {
+        denyThreshold: config.denyThreshold,
+        clipChannelIds: channelIdsText.split('\n').map((id: string) => id.trim()).filter((id: string) => id !== ''),
+        blacklistedSubmitterIds: config.blacklistedSubmitterIds || [],
+        blacklistedStreamers: [...currentStreamers, streamerInput.trim()]
+      };
+      
+      await updateAdminConfigMutation.mutateAsync(adminConfig);
+      setStreamerInput('');
+    } catch (error) {
+      console.error('Error adding streamer to blacklist:', error);
+      alert('Failed to add streamer to blacklist. Please try again.');
+    } finally {
+      setIsAddingStreamer(false);
+    }
+  };
+
+  // Function to remove a streamer from blacklist
+  const handleRemoveStreamer = async (streamer: string) => {
+    try {
+      const currentStreamers = config.blacklistedStreamers || [];
+      const adminConfig = {
+        denyThreshold: config.denyThreshold,
+        clipChannelIds: channelIdsText.split('\n').map((id: string) => id.trim()).filter((id: string) => id !== ''),
+        blacklistedSubmitterIds: config.blacklistedSubmitterIds || [],
+        blacklistedStreamers: currentStreamers.filter(s => s !== streamer)
+      };
+      
+      await updateAdminConfigMutation.mutateAsync(adminConfig);
+    } catch (error) {
+      console.error('Error removing streamer from blacklist:', error);
+      alert('Failed to remove streamer from blacklist. Please try again.');
+    }
+  };
     const submitConfig = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Parse channel IDs from textarea (one ID per line)
     const clipChannelIds = channelIdsText
       .split('\n')
-      .map(id => id.trim())
-      .filter(id => id !== '');
+      .map((id: string) => id.trim())
+      .filter((id: string) => id !== '');
     
     try {
       // Create separate objects for admin and public configs
       const adminConfig = {
         denyThreshold: config.denyThreshold,
-        clipChannelIds: clipChannelIds
+        clipChannelIds: clipChannelIds,
+        blacklistedSubmitterIds: config.blacklistedSubmitterIds || [],
+        blacklistedStreamers: config.blacklistedStreamers || []
       };
       
       const publicConfig = {
@@ -151,6 +319,158 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, handleConfigChange })
           <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
             List of Discord channel IDs that the bot should monitor for clips (one per line)
           </p>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Discord User Blacklist Section */}
+          <div>
+            <label htmlFor="discordUserInput" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+              Add Discord User to Blacklist:
+            </label>
+            <div className="flex gap-2 mb-2">
+              <input
+                id="discordUserInput"
+                type="text"
+                value={discordUserInput}
+                onChange={(e) => setDiscordUserInput(e.target.value)}
+                className="flex-1 px-3 py-2 bg-white dark:bg-neutral-700 border border-neutral-400 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                placeholder="Enter Discord User ID"
+              />
+              <button
+                type="button"
+                onClick={handleAddDiscordUser}
+                disabled={!discordUserInput.trim() || isAddingUser}
+                className="px-4 py-2 bg-red-500 hover:bg-red-600 disabled:bg-neutral-400 text-white rounded-lg font-medium transition duration-200"
+              >
+                {isAddingUser ? 'Adding...' : 'Add'}
+              </button>
+            </div>
+            
+            {/* Discord User Preview */}
+            {discordUserInput && previewUser && (
+              <div className="mb-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div className="flex items-center space-x-2">
+                  {previewUser.avatar && (
+                    <img 
+                      src={`https://cdn.discordapp.com/avatars/${previewUser.id}/${previewUser.avatar}.png?size=32`}
+                      alt={previewUser.username}
+                      className="w-6 h-6 rounded-full"
+                    />
+                  )}
+                  <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                    {previewUser.global_name || previewUser.username}
+                  </span>
+                </div>
+              </div>
+            )}
+            
+            {discordUserInput && userNotFound && (
+              <div className="mb-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                  User not found or invalid ID
+                </p>
+              </div>
+            )}
+            
+            <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
+              Discord user IDs that are blocked from submitting clips
+            </p>
+            
+            {/* Display current blacklisted submitters */}
+            {!blacklistLoading && blacklistData?.blacklistedSubmitters && blacklistData.blacklistedSubmitters.length > 0 && (
+              <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                <h4 className="text-sm font-medium text-red-800 dark:text-red-200 mb-2">Blacklisted Users:</h4>
+                <div className="space-y-2">
+                  {blacklistData.blacklistedSubmitters.map((user) => (
+                    <div key={user.id} className="flex items-center justify-between bg-white dark:bg-neutral-800 p-2 rounded border">
+                      <div className="flex items-center space-x-2">
+                        {user.avatar && (
+                          <img 
+                            src={`https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=24`}
+                            alt={user.username}
+                            className="w-5 h-5 rounded-full"
+                          />
+                        )}
+                        <div>
+                          <span className="text-sm font-medium text-neutral-800 dark:text-neutral-200">
+                            {user.global_name || user.username}
+                          </span>
+                          <span className="text-xs text-neutral-500 dark:text-neutral-400 block">
+                            ID: {user.id}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveDiscordUser(user.id)}
+                        className="text-red-500 hover:text-red-700 p-1"
+                        title="Remove from blacklist"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Streamer Blacklist Section */}
+          <div>
+            <label htmlFor="streamerInput" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+              Add Streamer to Blacklist:
+            </label>
+            <div className="flex gap-2 mb-2">
+              <input
+                id="streamerInput"
+                type="text"
+                value={streamerInput}
+                onChange={(e) => setStreamerInput(e.target.value)}
+                className="flex-1 px-3 py-2 bg-white dark:bg-neutral-700 border border-neutral-400 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                placeholder="Enter streamer username"
+              />
+              <button
+                type="button"
+                onClick={handleAddStreamer}
+                disabled={!streamerInput.trim() || isAddingStreamer}
+                className="px-4 py-2 bg-red-500 hover:bg-red-600 disabled:bg-neutral-400 text-white rounded-lg font-medium transition duration-200"
+              >
+                {isAddingStreamer ? 'Adding...' : 'Add'}
+              </button>
+            </div>
+            
+            <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
+              Streamer usernames whose clips will be automatically blocked
+            </p>
+            
+            {/* Display current blacklisted streamers */}
+            {!blacklistLoading && blacklistData?.blacklistedStreamers && blacklistData.blacklistedStreamers.length > 0 && (
+              <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                <h4 className="text-sm font-medium text-red-800 dark:text-red-200 mb-2">Blacklisted Streamers:</h4>
+                <div className="space-y-2">
+                  {blacklistData.blacklistedStreamers.map((streamer, index) => (
+                    <div key={index} className="flex items-center justify-between bg-white dark:bg-neutral-800 p-2 rounded border">
+                      <span className="text-sm font-medium text-neutral-800 dark:text-neutral-200">
+                        {streamer}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveStreamer(streamer)}
+                        className="text-red-500 hover:text-red-700 p-1"
+                        title="Remove from blacklist"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
         
         <button

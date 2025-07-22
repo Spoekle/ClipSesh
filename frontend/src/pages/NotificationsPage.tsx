@@ -92,12 +92,12 @@ const NotificationsPage: React.FC = () => {
       showError('Failed to delete notification');
     }
   };
-  const navigateToClip = (notification: UserNotification): void => {
+  const navigateToClip = async (notification: UserNotification): Promise<void> => {
     if (!notification.read) {
       markAsRead(notification._id);
     }
     
-    const clipUrl = notificationService.getNotificationClipUrl(notification);
+    const clipUrl = await notificationService.getNotificationClipUrl(notification);
     const state = notificationService.getNotificationNavigationState(notification);
     navigate(clipUrl, { state });
   };
@@ -112,6 +112,8 @@ const NotificationsPage: React.FC = () => {
         return <FaBell className="text-green-500" />;
       case 'rating':
         return <FaBell className="text-yellow-500" />;
+      case 'report':
+        return <FaBell className="text-red-500" />;
       case 'system':
         return <FaBell className="text-purple-500" />;
       default:

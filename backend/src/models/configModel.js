@@ -40,6 +40,16 @@ const PublicConfigSchema = new mongoose.Schema({
  *           items:
  *             type: string
  *           description: List of Discord channel IDs to listen to
+ *         blacklistedSubmitterIds:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: List of Discord user IDs that are blacklisted from submitting clips
+ *         blacklistedStreamers:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: List of streamer usernames that are blacklisted
  *         backendUrl:
  *           type: string
  *           description: Backend URL for the Discord bot
@@ -54,6 +64,14 @@ const AdminConfigSchema = new mongoose.Schema({
     min: 1
   },
   clipChannelIds: {
+    type: [String],
+    default: []
+  },
+  blacklistedSubmitterIds: {
+    type: [String],
+    default: []
+  },
+  blacklistedStreamers: {
     type: [String],
     default: []
   }

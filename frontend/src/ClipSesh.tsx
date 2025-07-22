@@ -1,4 +1,4 @@
-import { useState, useEffect, ReactNode } from 'react';
+import { useState, useEffect, ReactNode, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -15,6 +15,7 @@ import { FaLock, FaShieldAlt, FaUserCheck } from 'react-icons/fa';
 import { NotificationProvider } from './context/AlertContext';
 import NotificationContainer from './components/PopupAlerts/NotificationContainer';
 import NotificationsPage from './pages/NotificationsPage';
+import { LazyRoutes } from './lib/lazy-routes';
 import { User } from './types/adminTypes';
 import { useCurrentUser } from './hooks/useUser';
 
@@ -32,7 +33,7 @@ interface NavigateState {
 function ClipSesh() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
-  
+
   // Use React Query hook for current user
   const { data: userData, isLoading: userLoading, error: userError } = useCurrentUser();
 
@@ -44,8 +45,8 @@ function ClipSesh() {
         localStorage.setItem('token', token);
         window.history.replaceState({}, document.title, window.location.pathname);
       }
-    };    
-    
+    };
+
     extractTokenFromURL();
   }, []);
 
@@ -63,11 +64,11 @@ function ClipSesh() {
       setAuthLoading(false);
     }
   }, [userData, userError, userLoading]);
-  const RequireAuth: React.FC<RequireAuthProps> = ({ 
-    children, 
-    isAdminRequired = false, 
-    isEditorRequired = false, 
-    isVerifiedRequired = false 
+  const RequireAuth: React.FC<RequireAuthProps> = ({
+    children,
+    isAdminRequired = false,
+    isEditorRequired = false,
+    isVerifiedRequired = false
   }) => {
     const [authCheckComplete, setAuthCheckComplete] = useState<boolean>(false);
     const [showVerificationModal, setShowVerificationModal] = useState<boolean>(true);
@@ -82,7 +83,7 @@ function ClipSesh() {
       } else if (isVerifiedRequired) {
         setLoadingMessage('Verifying ClipTeam privileges...');
       }
-      
+
       // Hide verification modal after a shorter delay for better responsiveness
       const timer = setTimeout(() => {
         setAuthCheckComplete(true);
@@ -91,7 +92,8 @@ function ClipSesh() {
         }, 200);
       }, 600);
 
-      return () => clearTimeout(timer);    }, [isAdminRequired, isEditorRequired, isVerifiedRequired]);
+      return () => clearTimeout(timer);
+    }, [isAdminRequired, isEditorRequired, isVerifiedRequired]);
 
     // Wait for authentication to complete before making any checks
     if (authLoading) {
@@ -147,23 +149,23 @@ function ClipSesh() {
         <div className={showVerificationModal ? "blur-sm pointer-events-none" : ""}>
           {children}
         </div>
-        
+
         {/* Verification Modal Overlay */}
         {showVerificationModal && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
           >
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
               className="bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4"
             >
               <div className="flex flex-col items-center text-center">
-                <motion.div 
+                <motion.div
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1, rotate: [0, 10, 0] }}
                   transition={{ duration: 0.5 }}
@@ -176,17 +178,17 @@ function ClipSesh() {
                   ) : (
                     <FaLock className="text-5xl text-amber-500" />
                   )}
-                  <motion.div 
+                  <motion.div
                     className="absolute -top-1 -right-1 w-3 h-3 bg-white rounded-full"
-                    animate={{ 
+                    animate={{
                       scale: [1, 1.5, 1],
-                      opacity: [1, 0.5, 1] 
+                      opacity: [1, 0.5, 1]
                     }}
                     transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
                   />
                 </motion.div>
-                
-                <motion.h2 
+
+                <motion.h2
                   className="text-2xl font-bold mb-3 text-neutral-900 dark:text-white"
                   initial={{ y: -10, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
@@ -194,8 +196,8 @@ function ClipSesh() {
                 >
                   Secure Access Required
                 </motion.h2>
-                
-                <motion.p 
+
+                <motion.p
                   className="text-lg text-neutral-600 dark:text-neutral-300 mb-6"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -203,13 +205,13 @@ function ClipSesh() {
                 >
                   {loadingMessage}
                 </motion.p>
-                
-                <motion.div 
+
+                <motion.div
                   className="flex justify-center items-center gap-2"
                   initial={{ opacity: 0 }}
-                  animate={{ 
+                  animate={{
                     opacity: authCheckComplete ? [1, 0] : 1,
-                    transition: { 
+                    transition: {
                       opacity: { duration: 0.2 },
                       delay: 0.4
                     }
@@ -219,21 +221,21 @@ function ClipSesh() {
                   <div className="w-2 h-2 rounded-full bg-blue-500 animate-ping" style={{ animationDelay: '0.2s' }}></div>
                   <div className="w-2 h-2 rounded-full bg-blue-500 animate-ping" style={{ animationDelay: '0.4s' }}></div>
                 </motion.div>
-                
-                <motion.div 
+
+                <motion.div
                   className="w-full mt-6"
                   initial={{ width: 0, opacity: 0 }}
                   animate={{ width: "100%", opacity: 1 }}
                   transition={{ delay: 0.5 }}
                 >
                   <div className="w-full h-1 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
-                    <motion.div 
+                    <motion.div
                       className="h-full bg-gradient-to-r from-blue-500 to-purple-500"
                       initial={{ width: 0 }}
                       animate={{ width: authCheckComplete ? '100%' : '85%' }}
-                      transition={{ 
+                      transition={{
                         duration: authCheckComplete ? 0.1 : 0.6,
-                        ease: "easeOut" 
+                        ease: "easeOut"
                       }}
                     />
                   </div>
@@ -261,7 +263,8 @@ function ClipSesh() {
               <Route path="/clips" element={<ClipViewer />} />
               <Route path="/clips/:clipId" element={<ClipViewer />} />
               <Route path="/search" element={<ClipSearch />} />
-              <Route path="/admin" element={<RequireAuth isAdminRequired={true}><AdminDash /></RequireAuth>} />              <Route path="/profile" element={
+              <Route path="/admin" element={<RequireAuth isAdminRequired={true}><AdminDash /></RequireAuth>} />
+              <Route path="/profile" element={
                 <RequireAuth>
                   <ProfilePage currentUser={user || undefined} />
                 </RequireAuth>
@@ -272,10 +275,18 @@ function ClipSesh() {
                   <NotificationsPage />
                 </RequireAuth>
               } />
+              <Route path="/my-reports" element={
+                <RequireAuth>
+                  <Suspense fallback={<div className="flex justify-center items-center h-64">Loading...</div>}>
+                    <LazyRoutes.UserReportsPage />
+                  </Suspense>
+                </RequireAuth>
+              } />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/privacystatement" element={<PrivacyStatement />} />
             </Routes>
-          </main>          <Footer />
+          </main>
+          <Footer />
           <NotificationContainer />
         </div>
       </NotificationProvider>

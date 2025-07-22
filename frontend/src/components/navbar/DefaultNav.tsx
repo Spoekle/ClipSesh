@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaSearch, FaTimes, FaUserCircle } from 'react-icons/fa';
-import { MdLogin, MdLogout, MdDashboard, MdNotifications } from "react-icons/md";
+import { FaFlag, FaSearch, FaTimes, FaUserCircle } from 'react-icons/fa';
+import { MdLogin, MdLogout } from "react-icons/md";
 import { User } from '../../types/adminTypes';
 import NotificationBadge from '../Notification/NotificationBadge';
 
@@ -334,26 +334,14 @@ function DesktopNavbar({
 
                       <motion.div whileHover={{ x: 3 }} transition={{ duration: 0.2 }}>
                         <NavLink
-                          to="/notifications"
+                          to="/my-reports"
                           onClick={() => setIsDropdownOpen(false)}
                           className="flex items-center px-4 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700"
                         >
-                          <MdNotifications className="mr-3 text-neutral-500" />
-                          <span>All Notifications</span>
+                          <FaFlag className="mr-3 text-neutral-500" />
+                          <span>My Reports</span>
                         </NavLink>
                       </motion.div>
-                      
-                      {user.roles.includes('admin') && (
-                        <motion.div whileHover={{ x: 3 }} transition={{ duration: 0.2 }}>
-                          <NavLink
-                            to="/admin"
-                            onClick={() => setIsDropdownOpen(false)}
-                            className="flex items-center px-4 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700"
-                          >
-                            <MdDashboard className="mr-3 text-neutral-500" />
-                            <span>Admin Dashboard</span>
-                          </NavLink>
-                        </motion.div>                      )}
                     </div>
                     
                     <div className="border-t border-neutral-200 dark:border-neutral-700 py-1">

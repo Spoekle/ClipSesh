@@ -220,7 +220,7 @@ const RatedClips: React.FC<RatedClipsProps> = ({ ratingsData, clipsData, locatio
                                             whileTap={{ scale: 0.9 }}
                                             onClick={() => paginate(number + 1)}
                                             className={`w-10 h-10 rounded-xl flex items-center justify-center font-semibold transition-all duration-200 ${currentPage === number + 1
-                                                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                                                    ? 'bg-blue-500 text-white shadow-lg'
                                                     : 'bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-700 dark:text-neutral-300'
                                                 }`}
                                         >

@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../lib/react-query';
 import * as adminService from '../services/adminService';
-import { User, AdminConfig, ProcessClipsRequest, CreateUserFormData } from '../types/adminTypes';
+import { User, AdminConfig, ProcessClipsRequest, CreateUserFormData, SendMessageRequest } from '../types/adminTypes';
 
 // Hook for fetching all users
 export const useAllUsers = () => {
@@ -181,10 +181,16 @@ export const useUpdateAdminConfig = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (adminConfig: { denyThreshold: number; clipChannelIds: string[] }) =>
+    mutationFn: (adminConfig: { 
+      denyThreshold: number; 
+      clipChannelIds: string[];
+      blacklistedSubmitterIds?: string[];
+      blacklistedStreamers?: string[];
+    }) =>
       adminService.updateAdminConfig(adminConfig),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.config.all });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'blacklisted-users'] });
     },
   });
 };
@@ -396,6 +402,88 @@ export const useValidateCustomCriteria = () => {
   return useMutation({
     mutationFn: ({ customCriteria, season, year }: { customCriteria: any; season: string; year: number }) =>
       adminService.validateCustomCriteria(customCriteria, season, year),
+  });
+};
+
+// Hook for fetching blacklisted users
+export const useBlacklistedUsers = () => {
+  return useQuery({
+    queryKey: ['admin', 'blacklisted-users'],
+    queryFn: () => adminService.getBlacklistedUsers(),
+    enabled: Boolean(localStorage.getItem('token')),
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  });
+};
+
+// Hook for fetching reports
+export const useReports = (status?: string, page: number = 1, limit: number = 20) => {
+  return useQuery({
+    queryKey: ['admin', 'reports', { status, page, limit }],
+    queryFn: () => adminService.getReports(status, page, limit),
+    enabled: Boolean(localStorage.getItem('token')),
+    staleTime: 1 * 60 * 1000, // 1 minute
+  });
+};
+
+// Mutation for updating report status
+export const useUpdateReport = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ reportId, updateData }: { reportId: string; updateData: any }) =>
+      adminService.updateReport(reportId, updateData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'reports'] });
+    },
+  });
+};
+
+// Mutation for deleting report
+export const useDeleteReport = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (reportId: string) => adminService.deleteReport(reportId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'reports'] });
+    },
+  });
+};
+
+// Hook for fetching report messages
+export const useReportMessages = (reportId: string) => {
+  return useQuery({
+    queryKey: ['admin', 'reports', reportId, 'messages'],
+    queryFn: () => adminService.getReportMessages(reportId),
+    enabled: Boolean(localStorage.getItem('token') && reportId),
+    staleTime: 30 * 1000, // 30 seconds
+  });
+};
+
+// Mutation for sending report message
+export const useSendReportMessage = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ reportId, messageData }: { reportId: string; messageData: SendMessageRequest }) =>
+      adminService.sendReportMessage(reportId, messageData),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'reports', variables.reportId, 'messages'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'reports'] });
+    },
+  });
+};
+
+// Mutation for deleting report message
+export const useDeleteReportMessage = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ reportId, messageId }: { reportId: string; messageId: string }) =>
+      adminService.deleteReportMessage(reportId, messageId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'reports', variables.reportId, 'messages'] });
+    },
   });
 };
 

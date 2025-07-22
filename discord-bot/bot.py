@@ -20,6 +20,10 @@ BOT_CONFIG = {}
 CLIP_CHANNEL_IDS = CONFIG_CHANNEL_IDS if isinstance(CONFIG_CHANNEL_IDS, list) else [CONFIG_CHANNEL_IDS] if CONFIG_CHANNEL_IDS else []
 DISCORD_BOT_TOKEN = CONFIG_BOT_TOKEN
 
+# Blacklist storage
+BLACKLISTED_SUBMITTER_IDS = []
+BLACKLISTED_STREAMERS = []
+
 # Semaphore to limit concurrent clip processing (will be initialized in main)
 CLIP_PROCESSING_SEMAPHORE = None
 
@@ -235,7 +239,7 @@ async def upload_clip_async(filename, streamer, title, link, submitter, discord_
                     
                     headers = {'Authorization': f'Bearer {BACKEND_TOKEN}'}
                     
-                    async with session.post(f'{BACKEND_URL}/api/clips', data=data, headers=headers, timeout=30) as response:
+                    async with session.post(f'{BACKEND_URL}/api/clips', data=data, headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as response:
                         response_text = await response.text()
                         logging.debug(f'Response from server: {response_text}')
                         return response
@@ -260,7 +264,7 @@ async def upload_clip_async(filename, streamer, title, link, submitter, discord_
     return None
 
 def fetch_channel_ids():
-    global BACKEND_URL, CLIP_CHANNEL_IDS, BACKEND_TOKEN
+    global BACKEND_URL, CLIP_CHANNEL_IDS, BACKEND_TOKEN, BLACKLISTED_SUBMITTER_IDS, BLACKLISTED_STREAMERS
     max_retries = 3
     retry_delay = 2
     
@@ -270,26 +274,42 @@ def fetch_channel_ids():
                 refresh_token()
             
             headers = {'Authorization': f'Bearer {BACKEND_TOKEN}'}
-            logging.debug(f"🔍 Fetching channel IDs from backend (attempt {attempt}/{max_retries})")
+            logging.debug(f"🔍 Fetching channel IDs and blacklists from backend (attempt {attempt}/{max_retries})")
             response = requests.get(f"{BACKEND_URL}/api/config/admin", headers=headers, timeout=10)
             
             if response.status_code == 200:
                 config = response.json()
                 
-                if config['admin'] and config['admin'].get('clipChannelIds'):
-                    channel_ids = config['admin']['clipChannelIds']
-                    if channel_ids and len(channel_ids) > 0:
-                        CLIP_CHANNEL_IDS = [int(channel_id) for channel_id in channel_ids if channel_id]
-                        logging.info(f"📺 Updated clip channel IDs from backend: {CLIP_CHANNEL_IDS}")
-                        return  # Success, exit the retry loop
+                if config['admin']:
+                    admin_config = config['admin']
+                    
+                    # Update channel IDs
+                    if admin_config.get('clipChannelIds'):
+                        channel_ids = admin_config['clipChannelIds']
+                        if channel_ids and len(channel_ids) > 0:
+                            CLIP_CHANNEL_IDS = [int(channel_id) for channel_id in channel_ids if channel_id]
+                            logging.info(f"📺 Updated clip channel IDs from backend: {CLIP_CHANNEL_IDS}")
+                        else:
+                            logging.warning("⚠️ Empty channel IDs list in config, keeping current list")
                     else:
-                        logging.warning("⚠️ Empty channel IDs list in config, keeping current list")
-                        return  # No retry needed for empty list
-                else:
-                    logging.warning("⚠️ No clip channel IDs found in config, keeping current list")
-                    return  # No retry needed for missing config
+                        logging.warning("⚠️ No clip channel IDs found in config, keeping current list")
+                    
+                    # Update blacklisted submitter IDs
+                    blacklisted_submitters = admin_config.get('blacklistedSubmitterIds', [])
+                    if blacklisted_submitters != BLACKLISTED_SUBMITTER_IDS:
+                        BLACKLISTED_SUBMITTER_IDS = [str(user_id) for user_id in blacklisted_submitters if user_id.strip()]
+                        logging.info(f"🚫 Updated blacklisted submitter IDs: {len(BLACKLISTED_SUBMITTER_IDS)} users")
+                    
+                    # Update blacklisted streamers
+                    blacklisted_streamers = admin_config.get('blacklistedStreamers', [])
+                    if blacklisted_streamers != BLACKLISTED_STREAMERS:
+                        BLACKLISTED_STREAMERS = [streamer.strip().lower() for streamer in blacklisted_streamers if streamer.strip()]
+                        logging.info(f"🚫 Updated blacklisted streamers: {len(BLACKLISTED_STREAMERS)} streamers")
+                    
+                    return  # Success, exit the retry loop
+                    
             elif response.status_code == 401:
-                logging.warning("🔑 Token expired while fetching channel IDs, refreshing...")
+                logging.warning("🔑 Token expired while fetching config, refreshing...")
                 try:
                     refresh_token()
                 except Exception as token_error:
@@ -297,16 +317,16 @@ def fetch_channel_ids():
                     if attempt == max_retries:
                         return
             else:
-                logging.warning(f"⚠️ Failed to fetch channel IDs, status code: {response.status_code}")
+                logging.warning(f"⚠️ Failed to fetch config, status code: {response.status_code}")
                 if attempt == max_retries:
                     return
                     
         except requests.exceptions.RequestException as e:
-            logging.error(f"🌐 Network error fetching channel IDs (attempt {attempt}/{max_retries}): {str(e)}")
+            logging.error(f"🌐 Network error fetching config (attempt {attempt}/{max_retries}): {str(e)}")
             if attempt == max_retries:
                 return
         except Exception as e:
-            logging.error(f"❌ Unexpected error fetching channel IDs (attempt {attempt}/{max_retries}): {str(e)}")
+            logging.error(f"❌ Unexpected error fetching config (attempt {attempt}/{max_retries}): {str(e)}")
             if attempt == max_retries:
                 return
         
@@ -315,6 +335,22 @@ def fetch_channel_ids():
             logging.debug(f"⏳ Waiting {retry_delay} seconds before retry...")
             time.sleep(retry_delay)
             retry_delay *= 1.5
+
+def is_blacklisted(streamer_name, discord_submitter_id):
+    """Check if a streamer or submitter is blacklisted"""
+    global BLACKLISTED_SUBMITTER_IDS, BLACKLISTED_STREAMERS
+    
+    # Check if submitter is blacklisted
+    if str(discord_submitter_id) in BLACKLISTED_SUBMITTER_IDS:
+        logging.info(f"🚫 Submitter {discord_submitter_id} is blacklisted")
+        return True, "submitter"
+    
+    # Check if streamer is blacklisted (case-insensitive)
+    if streamer_name and streamer_name.lower() in BLACKLISTED_STREAMERS:
+        logging.info(f"🚫 Streamer '{streamer_name}' is blacklisted")
+        return True, "streamer"
+    
+    return False, None
 
 def check_ffmpeg():
     try:
@@ -369,10 +405,10 @@ async def on_ready():
     
     logging.info("🎉 Bot startup completed successfully!")
 
-@tasks.loop(hours=1)
+@tasks.loop(minutes=20)
 async def refresh_config_task():
     fetch_channel_ids()
-    logging.info("Refreshed channel IDs from backend config")
+    logging.info("Refreshed channel IDs and blacklists from backend config")
     
     if refresh_config_task.current_loop % 3 == 0 and refresh_config_task.current_loop > 0:
         refresh_token()
@@ -413,9 +449,9 @@ async def on_message(message):
                 info = ydl.extract_info(url, download=True)
                 logging.debug(f'YoutubeDL info: {info}')
                 link = url
-                filename = ydl.prepare_filename(info)
-                streamer = info.get('creator') or info.get('channel') or info.get('uploader') or message.author.name
-                title = info.get('title', 'YT Clip')
+                filename = ydl.prepare_filename(info or {})
+                streamer = (info or {}).get('creator') or (info or {}).get('channel') or (info or {}).get('uploader') or message.author.name
+                title = (info or {}).get('title', 'YT Clip')
                 submitter = message.author.name
 
     elif message.attachments and 'cdn.discordapp.com' in message.attachments[0].url:
@@ -437,6 +473,14 @@ async def on_message(message):
             submitter = message.author.name
     
     if filename:
+        # Check if submitter or streamer is blacklisted
+        is_blocked, block_type = is_blacklisted(streamer, message.author.id)
+        if is_blocked:
+            logging.info(f"🚫 Clip blocked: {block_type} is blacklisted (submitter: {message.author.name}, streamer: {streamer})")
+            if os.path.exists(filename):
+                os.remove(filename)
+            return
+        
         # Schedule clip processing as a background task to avoid blocking
         asyncio.create_task(process_clip(filename, streamer, title, link, submitter, message.author.id))
 

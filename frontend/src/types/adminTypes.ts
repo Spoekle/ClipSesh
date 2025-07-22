@@ -158,6 +158,8 @@ export interface AdminConfig {
   denyThreshold: number;
   latestVideoLink: string;
   clipChannelIds?: string[];
+  blacklistedSubmitterIds?: string[];
+  blacklistedStreamers?: string[];
 }
 
 // Admin statistics interface
@@ -178,6 +180,8 @@ export interface ConfigResponse {
   admin?: {
     denyThreshold?: number;
     clipChannelIds?: string[];
+    blacklistedSubmitterIds?: string[];
+    blacklistedStreamers?: string[];
   };
 }
 
@@ -300,4 +304,79 @@ export interface AllTrophyPreviewResult {
   criteria: TrophyPreviewResult[];
   totalCriteria: number;
   totalTrophies: number;
+}
+
+// Blacklisted user interfaces
+export interface BlacklistedDiscordUser {
+  id: string;
+  username: string;
+  discriminator?: string;
+  global_name?: string;
+  avatar?: string;
+}
+
+export interface BlacklistData {
+  blacklistedSubmitters: BlacklistedDiscordUser[];
+  blacklistedStreamers: string[];
+}
+
+// Report-related types
+export interface Report {
+  _id: string;
+  clipId: string;
+  clipTitle: string;
+  clipStreamer: string;
+  clipSubmitter: string;
+  reporterId: string;
+  reporterUsername: string;
+  reason: string;
+  status: 'pending' | 'reviewed' | 'resolved' | 'dismissed';
+  reviewedBy?: string;
+  reviewedAt?: string;
+  adminNotes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReportResponse {
+  reports: Report[];
+  total: number;
+  page: number;
+  pages: number;
+  pendingCount: number;
+}
+
+export interface ReportUpdateRequest {
+  status?: 'pending' | 'reviewed' | 'resolved' | 'dismissed';
+  adminNotes?: string;
+}
+
+// Report message types
+export interface ReportMessageReadBy {
+  userId: string;
+  username: string;
+  readAt: string;
+}
+
+export interface ReportMessage {
+  _id: string;
+  reportId: string;
+  senderId: string;
+  senderUsername: string;
+  senderRole: 'reporter' | 'admin';
+  message: string;
+  isInternal: boolean;
+  readBy: ReportMessageReadBy[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SendMessageRequest {
+  message: string;
+  isInternal?: boolean;
+}
+
+export interface ReportWithMessages extends Report {
+  messages?: ReportMessage[];
+  unreadCount?: number;
 }

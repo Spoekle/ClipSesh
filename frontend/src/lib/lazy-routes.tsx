@@ -7,6 +7,7 @@ export const LazyRoutes = {
   Home: lazy(() => import('../pages/Home')),
   ClipSearch: lazy(() => import('../pages/ClipSearch')),
   NotificationsPage: lazy(() => import('../pages/NotificationsPage')),
+  UserReportsPage: lazy(() => import('../pages/UserReportsPage')),
   PrivacyStatement: lazy(() => import('../pages/PrivacyStatement')),
   ResetPassword: lazy(() => import('../pages/ResetPassword')),
   EditorDash: lazy(() => import('../pages/EditorDash')),

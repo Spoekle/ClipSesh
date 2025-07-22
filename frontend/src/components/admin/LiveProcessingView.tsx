@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FaCheckCircle, FaExclamationCircle, FaSpinner, FaCircleNotch, FaHourglassHalf, FaChevronLeft, FaChevronRight, FaInfoCircle } from 'react-icons/fa';
+import { FaCheckCircle, FaExclamationCircle, FaSpinner, FaCircleNotch, FaHourglassHalf } from 'react-icons/fa';
 import useSocket from '../../hooks/useSocket';
 
 interface ClipProcessingStatus {

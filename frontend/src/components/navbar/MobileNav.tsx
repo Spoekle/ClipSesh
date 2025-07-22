@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaSearch, FaBars, FaTimes, FaUserCircle } from 'react-icons/fa';
+import { FaSearch, FaBars, FaTimes, FaUserCircle, FaFlag } from 'react-icons/fa';
 import { MdLogin, MdLogout, MdDashboard, MdHome, MdNotifications } from "react-icons/md";
 import { User } from '../../types/adminTypes';
 import NotificationBadge from '../Notification/NotificationBadge';
@@ -47,7 +47,7 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
     } else {
       document.body.style.overflow = '';
     }
-    
+
     return () => {
       document.body.style.overflow = '';
     };
@@ -67,16 +67,16 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
     setShowSearch(false);
     setMenuOpen(false);
   };
-  
+
   // Animation variants
   const iconButtonVariants = {
-    hover: { 
+    hover: {
       scale: 1.1,
       transition: { type: "spring", stiffness: 400, damping: 10 }
     },
     tap: { scale: 0.9 }
   };
-  
+
   const menuVariants = {
     closed: {
       opacity: 0,
@@ -102,11 +102,11 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
       }
     }
   };
-  
+
   const menuItemVariants = {
     closed: { opacity: 0, y: -20 },
-    open: { 
-      opacity: 1, 
+    open: {
+      opacity: 1,
       y: 0,
       transition: {
         type: "spring",
@@ -143,7 +143,7 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
     <div className="relative">
       {/* Top right icons */}
       <div className="flex items-center gap-2">
-        <motion.button 
+        <motion.button
           variants={iconButtonVariants}
           whileHover="hover"
           whileTap="tap"
@@ -153,15 +153,15 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
         >
           <FaSearch size={18} />
         </motion.button>
-        
+
         {/* Add NotificationBadge here if user is logged in */}
         {user && (
-          <NotificationBadge 
+          <NotificationBadge
             isOpen={isNotificationDropdownOpen}
             onToggle={toggleNotificationDropdown}
           />
         )}
-        
+
         <motion.button
           variants={iconButtonVariants}
           whileHover="hover"
@@ -178,7 +178,7 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
       {/* Mobile search dropdown */}
       <AnimatePresence>
         {showSearch && (
-          <motion.div 
+          <motion.div
             variants={searchDropdownVariants}
             initial="hidden"
             animate="visible"
@@ -198,10 +198,10 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
                   onChange={(e) => setSearchInput(e.target.value)}
                   autoFocus
                 />
-                <motion.button 
+                <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  type="submit" 
+                  type="submit"
                   className="bg-blue-600 hover:bg-blue-700 text-white px-4 rounded-r-lg flex items-center"
                 >
                   <FaSearch />
@@ -210,7 +210,7 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
             </form>
 
             {recentSearches.length > 0 && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 transition={{ duration: 0.3, delay: 0.1 }}
@@ -230,27 +230,27 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
                     Clear All
                   </motion.button>
                 </div>
-                
+
                 <ul className="mt-1 max-h-64 overflow-y-auto">
                   {recentSearches.map((search, index) => (
-                    <motion.li 
+                    <motion.li
                       key={search}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.05 * index }}
                       className="py-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 px-2 rounded-lg"
                     >
-                      <button 
+                      <button
                         className="w-full text-left text-sm flex gap-2 items-center"
                         onClick={() => {
                           setSearchInput(search);
                           setShowSearch(false);
-                          
+
                           // Update recent searches
                           const existingSearches = JSON.parse(localStorage.getItem('recentSearches') || '[]');
                           const updatedSearches = [search, ...existingSearches.filter((s: string) => s !== search)].slice(0, 5);
                           localStorage.setItem('recentSearches', JSON.stringify(updatedSearches));
-                          
+
                           // Navigate to search page
                           navigate(`/search?query=${encodeURIComponent(search)}`);
                         }}
@@ -290,11 +290,11 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
             className="fixed top-0 left-0 right-0 bottom-0 width-[100vw] height[100vh] z-20 bg-white dark:bg-neutral-900"
           >
             {/* Close button */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.3 }}
-              style={{ 
+              style={{
                 position: 'absolute',
                 top: '1rem',
                 right: '1rem'
@@ -309,37 +309,36 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
                 <FaTimes size={24} className="text-neutral-700 dark:text-white" />
               </motion.button>
             </motion.div>
-            
+
             {/* Content container */}
-            <motion.div 
+            <motion.div
               variants={menuVariants}
               initial="closed"
               animate="open"
               exit="closed"
-              style={{ 
+              style={{
                 padding: '5rem 1.5rem 6rem',
                 maxWidth: '48rem',
                 margin: '0 auto'
               }}
             >
               {/* Navigation Links */}
-              <motion.h2 
+              <motion.h2
                 variants={menuItemVariants}
                 className="text-xl font-bold text-neutral-900 dark:text-white mb-6"
               >
                 Navigation
               </motion.h2>
-              
+
               <motion.nav variants={menuItemVariants} className="mb-8">
                 <ul className="space-y-1">
                   <motion.li variants={menuItemVariants}>
                     <NavLink
                       to="/"
-                      className={({isActive}) => `flex items-center p-3 rounded-lg ${
-                        isActive 
-                          ? 'bg-blue-500 text-white' 
+                      className={({ isActive }) => `flex items-center p-3 rounded-lg ${isActive
+                          ? 'bg-blue-500 text-white'
                           : 'text-neutral-800 dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800'
-                      }`}
+                        }`}
                       onClick={() => setMenuOpen(false)}
                     >
                       <MdHome size={22} className="mr-3" />
@@ -349,11 +348,10 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
                   <motion.li variants={menuItemVariants}>
                     <NavLink
                       to="/clips"
-                      className={({isActive}) => `flex items-center p-3 rounded-lg ${
-                        isActive 
-                          ? 'bg-blue-500 text-white' 
+                      className={({ isActive }) => `flex items-center p-3 rounded-lg ${isActive
+                          ? 'bg-blue-500 text-white'
                           : 'text-neutral-800 dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800'
-                      }`}
+                        }`}
                       onClick={() => setMenuOpen(false)}
                     >
                       <FaSearch size={22} className="mr-3" />
@@ -365,11 +363,10 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
                     <motion.li variants={menuItemVariants}>
                       <NavLink
                         to="/editor"
-                        className={({isActive}) => `flex items-center p-3 rounded-lg ${
-                          isActive 
-                            ? 'bg-blue-500 text-white' 
+                        className={({ isActive }) => `flex items-center p-3 rounded-lg ${isActive
+                            ? 'bg-blue-500 text-white'
                             : 'text-neutral-800 dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800'
-                        }`}
+                          }`}
                         onClick={() => setMenuOpen(false)}
                       >
                         <FaUserCircle size={22} className="mr-3" />
@@ -377,16 +374,15 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
                       </NavLink>
                     </motion.li>
                   )}
-                  
+
                   {user && user.roles?.includes('admin') && (
                     <motion.li variants={menuItemVariants}>
                       <NavLink
                         to="/admin"
-                        className={({isActive}) => `flex items-center p-3 rounded-lg ${
-                          isActive 
-                            ? 'bg-blue-500 text-white' 
+                        className={({ isActive }) => `flex items-center p-3 rounded-lg ${isActive
+                            ? 'bg-blue-500 text-white'
                             : 'text-neutral-800 dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800'
-                        }`}
+                          }`}
                         onClick={() => setMenuOpen(false)}
                       >
                         <MdDashboard size={22} className="mr-3" />
@@ -397,11 +393,10 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
                   <motion.li variants={menuItemVariants}>
                     <NavLink
                       to="/notifications"
-                      className={({isActive}) => `flex items-center p-2 rounded-lg ${
-                        isActive 
-                          ? 'bg-blue-500 text-white' 
+                      className={({ isActive }) => `flex items-center p-2 rounded-lg ${isActive
+                          ? 'bg-blue-500 text-white'
                           : 'text-neutral-800 dark:text-white hover:bg-neutral-200 dark:hover:bg-neutral-700'
-                      }`}
+                        }`}
                       onClick={() => setMenuOpen(false)}
                     >
                       <MdNotifications size={18} className="mr-3" />
@@ -410,31 +405,31 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
                   </motion.li>
                 </ul>
               </motion.nav>
-              
+
               {/* User Account */}
               {user ? (
                 <motion.div variants={menuItemVariants}>
-                  <motion.h2 
+                  <motion.h2
                     variants={menuItemVariants}
                     className="text-xl font-bold text-neutral-900 dark:text-white mb-4"
                   >
                     Account
                   </motion.h2>
-                  <motion.div 
+                  <motion.div
                     variants={menuItemVariants}
                     className="bg-neutral-100 dark:bg-neutral-800 rounded-xl p-4 mb-6"
                   >
-                    <motion.div 
+                    <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.2 }}
                       className="flex items-center gap-4 mb-4"
                     >
-                      <motion.img 
+                      <motion.img
                         whileHover={{ scale: 1.1, rotate: 5 }}
-                        src={user.profilePicture || `https://ui-avatars.com/api/?name=${user.username}&background=random`} 
-                        alt={user.username} 
-                        className="w-12 h-12 rounded-full object-cover" 
+                        src={user.profilePicture || `https://ui-avatars.com/api/?name=${user.username}&background=random`}
+                        alt={user.username}
+                        className="w-12 h-12 rounded-full object-cover"
                       />
                       <div>
                         <h3 className="font-bold text-neutral-900 dark:text-white">{user.username}</h3>
@@ -443,26 +438,42 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
                         </p>
                       </div>
                     </motion.div>
-                    
+
                     <ul className="space-y-1 mb-4">
-                      <motion.li 
+                      <motion.li
                         variants={menuItemVariants}
                         whileHover={{ x: 3 }}
                       >
                         <NavLink
                           to="/profile/me"
-                          className={({isActive}) => `flex items-center p-2 rounded-lg ${
-                            isActive 
-                              ? 'bg-blue-500 text-white' 
+                          className={({ isActive }) => `flex items-center p-2 rounded-lg ${isActive
+                              ? 'bg-blue-500 text-white'
                               : 'text-neutral-800 dark:text-white hover:bg-neutral-200 dark:hover:bg-neutral-700'
-                          }`}
+                            }`}
                           onClick={() => setMenuOpen(false)}
                         >
                           <FaUserCircle size={18} className="mr-3" />
                           <span>Profile</span>
-                        </NavLink>                      </motion.li>
+                        </NavLink>
+                      </motion.li>
+                      <motion.li
+                        variants={menuItemVariants}
+                        whileHover={{ x: 3 }}
+                      >
+                        <NavLink
+                          to="/my-reports"
+                          className={({ isActive }) => `flex items-center p-2 rounded-lg ${isActive
+                              ? 'bg-blue-500 text-white'
+                              : 'text-neutral-800 dark:text-white hover:bg-neutral-200 dark:hover:bg-neutral-700'
+                            }`}
+                          onClick={() => setMenuOpen(false)}
+                        >
+                          <FaFlag size={18} className="mr-3" />
+                          <span>My Reports</span>
+                        </NavLink>
+                      </motion.li>
                     </ul>
-                    
+
                     <motion.button
                       variants={menuItemVariants}
                       whileHover={{ scale: 1.03 }}
@@ -479,7 +490,7 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
                   </motion.div>
                 </motion.div>
               ) : (
-                <motion.div 
+                <motion.div
                   variants={menuItemVariants}
                   className="bg-neutral-100 dark:bg-neutral-800 rounded-xl p-6 mb-6 flex flex-col items-center"
                 >
@@ -499,20 +510,20 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
                   </motion.button>
                 </motion.div>
               )}
-              
+
               {/* Search box */}
-              <motion.div 
+              <motion.div
                 variants={menuItemVariants}
                 className="mt-8 mb-20"
               >
-                <motion.h2 
+                <motion.h2
                   variants={menuItemVariants}
                   className="text-xl font-bold text-neutral-900 dark:text-white mb-4"
                 >
                   Search
                 </motion.h2>
                 <form onSubmit={handleSubmitSearch}>
-                  <motion.div 
+                  <motion.div
                     variants={menuItemVariants}
                     className="flex"
                   >
@@ -523,10 +534,10 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
                       value={searchInput}
                       onChange={(e) => setSearchInput(e.target.value)}
                     />
-                    <motion.button 
+                    <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
-                      type="submit" 
+                      type="submit"
                       className="bg-blue-600 hover:bg-blue-700 text-white px-5 rounded-r-lg flex items-center"
                     >
                       <FaSearch size={18} />

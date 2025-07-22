@@ -10,6 +10,11 @@ import {
   ConfigResponse,
   ProcessClipsRequest,
   ProcessJobStatus,
+  Report,
+  ReportResponse,
+  ReportUpdateRequest,
+  ReportMessage,
+  SendMessageRequest,
 } from '../types/adminTypes';
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://api.spoekle.com';
@@ -139,7 +144,12 @@ export const updateConfig = async (config: AdminConfig): Promise<void> => {
 };
 
 // Update admin configuration specifically
-export const updateAdminConfig = async (adminConfig: { denyThreshold: number; clipChannelIds: string[] }): Promise<void> => {
+export const updateAdminConfig = async (adminConfig: { 
+  denyThreshold: number; 
+  clipChannelIds: string[];
+  blacklistedSubmitterIds?: string[];
+  blacklistedStreamers?: string[];
+}): Promise<void> => {
   try {
     await axios.put(`${backendUrl}/api/config/admin`, adminConfig, {
       headers: getAuthHeaders()
@@ -159,6 +169,32 @@ export const updatePublicConfig = async (publicConfig: { latestVideoLink: string
   } catch (error: any) {
     console.error('Error updating public config:', error);
     throw new Error(error.response?.data?.message || 'Failed to update public configuration');
+  }
+};
+
+/**
+ * Blacklist Management
+ */
+
+// Fetch blacklisted users with Discord info
+export const getBlacklistedUsers = async (): Promise<{
+  blacklistedSubmitters: Array<{
+    id: string;
+    username: string;
+    discriminator?: string;
+    global_name?: string;
+    avatar?: string;
+  }>;
+  blacklistedStreamers: string[];
+}> => {
+  try {
+    const response = await axios.get(`${backendUrl}/api/admin/blacklisted-users`, {
+      headers: getAuthHeaders()
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error('Error fetching blacklisted users:', error);
+    throw new Error(error.response?.data?.message || 'Failed to fetch blacklisted users');
   }
 };
 
@@ -615,4 +651,95 @@ export const transformRatings = (ratings: Record<string, any>): Record<string, a
   });
   
   return transformed;
+};
+
+/**
+ * Report Management
+ */
+
+// Get all reports
+export const getReports = async (status?: string, page: number = 1, limit: number = 20): Promise<ReportResponse> => {
+  try {
+    const params = new URLSearchParams();
+    if (status && status !== 'all') {
+      params.append('status', status);
+    }
+    params.append('page', page.toString());
+    params.append('limit', limit.toString());
+
+    const response = await axios.get<ReportResponse>(`${backendUrl}/api/admin/reports?${params}`, {
+      headers: getAuthHeaders()
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error('Error fetching reports:', error);
+    throw new Error(error.response?.data?.message || 'Failed to fetch reports');
+  }
+};
+
+// Update report status
+export const updateReport = async (reportId: string, updateData: ReportUpdateRequest): Promise<Report> => {
+  try {
+    const response = await axios.patch<Report>(`${backendUrl}/api/admin/reports/${reportId}`, updateData, {
+      headers: getAuthHeaders()
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error('Error updating report:', error);
+    throw new Error(error.response?.data?.message || 'Failed to update report');
+  }
+};
+
+// Delete report
+export const deleteReport = async (reportId: string): Promise<void> => {
+  try {
+    await axios.delete(`${backendUrl}/api/admin/reports/${reportId}`, {
+      headers: getAuthHeaders()
+    });
+  } catch (error: any) {
+    console.error('Error deleting report:', error);
+    throw new Error(error.response?.data?.message || 'Failed to delete report');
+  }
+};
+
+/**
+ * Report Messaging
+ */
+
+// Get messages for a report
+export const getReportMessages = async (reportId: string): Promise<ReportMessage[]> => {
+  try {
+    const response = await axios.get<ReportMessage[]>(`${backendUrl}/api/admin/reports/${reportId}/messages`, {
+      headers: getAuthHeaders()
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error('Error fetching report messages:', error);
+    throw new Error(error.response?.data?.message || 'Failed to fetch report messages');
+  }
+};
+
+// Send message to a report
+export const sendReportMessage = async (reportId: string, messageData: SendMessageRequest): Promise<ReportMessage> => {
+  try {
+    const response = await axios.post<ReportMessage>(`${backendUrl}/api/admin/reports/${reportId}/messages`, messageData, {
+      headers: getAuthHeaders()
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error('Error sending report message:', error);
+    throw new Error(error.response?.data?.message || 'Failed to send message');
+  }
+};
+
+// Delete a report message (admin only)
+export const deleteReportMessage = async (reportId: string, messageId: string): Promise<void> => {
+  try {
+    await axios.delete(`${backendUrl}/api/admin/reports/${reportId}/messages/${messageId}`, {
+      headers: getAuthHeaders()
+    });
+  } catch (error: any) {
+    console.error('Error deleting report message:', error);
+    throw new Error(error.response?.data?.message || 'Failed to delete message');
+  }
 };

@@ -157,7 +157,14 @@ router.get('/admin', authorizeRoles(['admin']), async (req, res) => {
  */
 router.put('/admin', authorizeRoles(['admin']), async (req, res) => {
   try {
-    const { denyThreshold, clipChannelIds, backendUrl, discordBotToken } = req.body;
+    const { 
+      denyThreshold, 
+      clipChannelIds, 
+      blacklistedSubmitterIds, 
+      blacklistedStreamers, 
+      backendUrl, 
+      discordBotToken 
+    } = req.body;
     
     // Find or create the admin config
     let adminConfig = await AdminConfig.findOne();
@@ -168,6 +175,8 @@ router.put('/admin', authorizeRoles(['admin']), async (req, res) => {
     // Update fields if provided
     if (denyThreshold !== undefined) adminConfig.denyThreshold = denyThreshold;
     if (clipChannelIds !== undefined) adminConfig.clipChannelIds = clipChannelIds;
+    if (blacklistedSubmitterIds !== undefined) adminConfig.blacklistedSubmitterIds = blacklistedSubmitterIds;
+    if (blacklistedStreamers !== undefined) adminConfig.blacklistedStreamers = blacklistedStreamers;
     if (backendUrl !== undefined) adminConfig.backendUrl = backendUrl;
     if (discordBotToken !== undefined) adminConfig.discordBotToken = discordBotToken;
     

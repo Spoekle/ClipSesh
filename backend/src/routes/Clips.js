@@ -16,6 +16,8 @@ const mongoose = require('mongoose');
 const Clip = require('../models/clipModel');
 const IpVote = require('../models/ipVoteModel');
 const { PublicConfig } = require('../models/configModel');
+const Report = require('../models/reportModel');
+const ReportMessage = require('../models/reportMessageModel');
 const authorizeRoles = require('./middleware/AuthorizeRoles');
 const searchLimiter = require('./middleware/SearchLimiter');
 const clipUpload = require('./storage/ClipUpload');
@@ -1746,6 +1748,250 @@ router.get('/user/:discordId', async (req, res) => {
         });
     } catch (error) {
         console.error('Error fetching user clips:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+/**
+ * Report a clip
+ */
+router.post('/:id/report', authorizeRoles(['clipteam', 'editor', 'admin']), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { reason } = req.body;
+        const reporterId = req.user.id;
+        const reporterUsername = req.user.username;
+        
+        // Validate required fields
+        if (!reason || reason.trim() === '') {
+            return res.status(400).json({ error: 'Report reason is required' });
+        }
+        
+        // Check if clip exists
+        const clip = await Clip.findById(id);
+        if (!clip) {
+            return res.status(404).json({ error: 'Clip not found' });
+        }
+        
+        // Check if user has already reported this clip
+        const existingReport = await Report.findOne({
+            clipId: id,
+            reporterId: reporterId
+        });
+        
+        if (existingReport) {
+            return res.status(400).json({ error: 'You have already reported this clip' });
+        }
+        
+        // Create the report
+        const report = new Report({
+            clipId: id,
+            clipTitle: clip.title,
+            clipStreamer: clip.streamer,
+            clipSubmitter: clip.submitter,
+            reporterId: reporterId,
+            reporterUsername: reporterUsername,
+            reason: reason.trim()
+        });
+        
+        await report.save();
+        
+        // Create notifications for all admins
+        const adminUsers = await User.find({ roles: 'admin' });
+        
+        const notifications = adminUsers.map(admin => new Notification({
+            recipientId: admin._id,
+            senderId: reporterId,
+            senderUsername: reporterUsername,
+            type: 'report',
+            clipId: id,
+            message: `${reporterUsername} reported a clip: "${clip.title}" by ${clip.streamer}`,
+            entityId: report._id // Store the report ID as the entity ID
+        }));
+        
+        await Notification.insertMany(notifications);
+        
+        res.status(201).json({
+            message: 'Clip reported successfully',
+            report: {
+                _id: report._id,
+                clipId: report.clipId,
+                reason: report.reason,
+                status: report.status,
+                createdAt: report.createdAt
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error reporting clip:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+/**
+ * Get user's own reports
+ */
+router.get('/reports/my', authorizeRoles(['user', 'clipteam', 'editor', 'admin']), async (req, res) => {
+    try {
+        const userId = req.user.id;
+        
+        const reports = await Report.find({ reporterId: userId })
+            .sort({ createdAt: -1 });
+        
+        res.json(reports);
+        
+    } catch (error) {
+        console.error('Error fetching user reports:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+/**
+ * Get messages for user's own report
+ */
+router.get('/reports/:reportId/messages', authorizeRoles(['user', 'clipteam', 'editor', 'admin']), async (req, res) => {
+    try {
+        const { reportId } = req.params;
+        const userId = req.user.id;
+        
+        // Check if report exists and belongs to user (or user is admin)
+        const report = await Report.findById(reportId);
+        if (!report) {
+            return res.status(404).json({ error: 'Report not found' });
+        }
+        
+        const isAdmin = req.user.roles && req.user.roles.includes('admin');
+        const isReporter = report.reporterId.toString() === userId;
+        
+        if (!isAdmin && !isReporter) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        
+        // Get messages (exclude internal messages if not admin)
+        const query = { reportId };
+        if (!isAdmin) {
+            query.isInternal = false;
+        }
+        
+        const messages = await ReportMessage.find(query)
+            .sort({ createdAt: 1 });
+        
+        // Mark messages as read by current user
+        const unreadMessages = messages.filter(msg => 
+            !msg.readBy.some(read => read.userId.toString() === userId)
+        );
+        
+        if (unreadMessages.length > 0) {
+            await Promise.all(unreadMessages.map(msg => 
+                ReportMessage.findByIdAndUpdate(msg._id, {
+                    $push: {
+                        readBy: {
+                            userId,
+                            username: req.user.username,
+                            readAt: new Date()
+                        }
+                    }
+                })
+            ));
+        }
+        
+        res.json(messages);
+        
+    } catch (error) {
+        console.error('Error fetching report messages:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+/**
+ * Send message to report
+ */
+router.post('/reports/:reportId/messages', authorizeRoles(['user', 'clipteam', 'editor', 'admin']), async (req, res) => {
+    try {
+        const { reportId } = req.params;
+        const { message } = req.body;
+        const userId = req.user.id;
+        const username = req.user.username;
+        
+        if (!message || message.trim().length === 0) {
+            return res.status(400).json({ error: 'Message content is required' });
+        }
+        
+        // Check if report exists and belongs to user (or user is admin)
+        const report = await Report.findById(reportId);
+        if (!report) {
+            return res.status(404).json({ error: 'Report not found' });
+        }
+        
+        const isAdmin = req.user.roles && req.user.roles.includes('admin');
+        const isReporter = report.reporterId.toString() === userId;
+        
+        if (!isAdmin && !isReporter) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        
+        // Prevent messaging if report is resolved or dismissed (only for non-admin users)
+        if (!isAdmin && (report.status === 'resolved' || report.status === 'dismissed')) {
+            return res.status(400).json({ 
+                error: 'Cannot send messages to resolved or dismissed reports',
+                message: `This report has been ${report.status} and no longer accepts new messages.`
+            });
+        }
+        
+        // Create message
+        const newMessage = new ReportMessage({
+            reportId,
+            senderId: userId,
+            senderUsername: username,
+            senderRole: isAdmin ? 'admin' : 'reporter',
+            message: message.trim(),
+            isInternal: false, // User-facing messages are never internal
+            readBy: [{
+                userId,
+                username,
+                readAt: new Date()
+            }]
+        });
+        
+        await newMessage.save();
+        
+        // Create notification for the other party
+        if (isAdmin) {
+            // Admin messaging reporter
+            const notification = new Notification({
+                recipientId: report.reporterId,
+                senderId: userId,
+                senderUsername: username,
+                type: 'report',
+                entityId: reportId,
+                clipId: report.clipId,
+                message: `Admin replied to your report on "${report.clipTitle}": ${message.substring(0, 100)}${message.length > 100 ? '...' : ''}`,
+                read: false
+            });
+            
+            await notification.save();
+        } else {
+            // Reporter messaging admins
+            const adminUsers = await User.find({ roles: 'admin', status: 'active' });
+            
+            const notifications = adminUsers.map(admin => new Notification({
+                recipientId: admin._id,
+                senderId: userId,
+                senderUsername: username,
+                type: 'report',
+                entityId: reportId,
+                clipId: report.clipId,
+                message: `New message on report for "${report.clipTitle}": ${message.substring(0, 100)}${message.length > 100 ? '...' : ''}`,
+                read: false
+            }));
+            
+            await Notification.insertMany(notifications);
+        }
+        
+        res.status(201).json(newMessage);
+        
+    } catch (error) {
+        console.error('Error sending report message:', error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });

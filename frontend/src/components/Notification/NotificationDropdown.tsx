@@ -120,18 +120,15 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
       showError('Failed to delete notification');
     }
   };
-  const navigateToClip = (notification: UserNotification): void => {
-    // Mark as read when navigating
-    if (!notification.read) {
-      markAsRead(notification._id);
-    }
-    
-    onClose();
-    
-    const clipUrl = notificationService.getNotificationClipUrl(notification);
-    const state = notificationService.getNotificationNavigationState(notification);
-    navigate(clipUrl, { state });
-  };
+  const navigateToClip = async (notification: UserNotification): Promise<void> => {
+      if (!notification.read) {
+        markAsRead(notification._id);
+      }
+      
+      const clipUrl = await notificationService.getNotificationClipUrl(notification);
+      const state = notificationService.getNotificationNavigationState(notification);
+      navigate(clipUrl, { state });
+    };
 
   const viewAllNotifications = (): void => {
     onClose();
@@ -148,6 +145,8 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
         return <FaBell className="text-green-500" />;
       case 'rating':
         return <FaBell className="text-yellow-500" />;
+      case 'report':
+        return <FaBell className="text-red-500" />;
       case 'system':
         return <FaBell className="text-purple-500" />;
       default:

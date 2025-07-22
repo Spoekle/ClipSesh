@@ -18,8 +18,8 @@ export interface NotificationContextType {
 }
 
 // Backend user notification types
-// Update to include team_message type
-export type UserNotificationType = 'comment_reply' | 'mention' | 'rating' | 'system' | 'team_message';
+// Update to include team_message and report types
+export type UserNotificationType = 'comment_reply' | 'mention' | 'rating' | 'system' | 'team_message' | 'report';
 
 export interface UserNotification {
   _id: string;

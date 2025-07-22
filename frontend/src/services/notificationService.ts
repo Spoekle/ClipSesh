@@ -1,5 +1,7 @@
 import axios from 'axios';
 import { UserNotification, UserNotificationResponse, UnreadCountResponse } from '../types/notificationTypes';
+import { getCurrentUser } from './userService';
+import { User } from '../types/adminTypes';
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://api.spoekle.com';
 
@@ -129,6 +131,10 @@ export const getNotificationNavigationState = (notification: UserNotification) =
       highlightComment: notification.entityId,
       highlightReply: notification.replyId
     };
+  } else if (notification.type === 'report') {
+    return {
+      highlightReport: notification.entityId
+    };
   } else {
     return {
       highlightComment: notification.entityId
@@ -139,7 +145,28 @@ export const getNotificationNavigationState = (notification: UserNotification) =
 /**
  * Get the clip URL for a notification
  */
-export const getNotificationClipUrl = (notification: UserNotification): string => {
+export const getNotificationClipUrl = async (notification: UserNotification): Promise<string> => {
+  // For report notifications, route based on the current user's role
+  if (notification.type === 'report') {
+    // Get current user data to check their role
+    const currentUser: User = await getCurrentUser();
+    if (currentUser) {
+      try {
+        // Route based on the current user's role
+        const isAdmin = currentUser.roles && Array.isArray(currentUser.roles) && currentUser.roles.includes('admin');
+        
+        if (isAdmin) {
+          return '/admin?tab=reports';
+        } else {
+          return '/my-reports';
+        }
+      } catch (error) {
+        console.error('Error parsing user data from localStorage:', error);
+        return '/my-reports';
+      }
+    }
+    return '/my-reports';
+  }
   return `/clips/${notification.clipId}`;
 };
 
