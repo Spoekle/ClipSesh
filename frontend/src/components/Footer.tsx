@@ -92,6 +92,9 @@ function Footer() {
             <p className="text-sm text-neutral-600 dark:text-neutral-400 text-center md:text-left mb-4">
               Discover, rate, and discuss the best Beat Saber clips from across the community.
             </p>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+              Version {import.meta.env.VITE_APP_VERSION || 'unknown'}
+            </p>
           </div>
           
           {/* Links */}
