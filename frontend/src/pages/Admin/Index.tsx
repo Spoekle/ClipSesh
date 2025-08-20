@@ -30,7 +30,6 @@ import {
   useApproveUser,
   useDeleteAllClips,
   useDeleteUser,
-  useUpdateConfig,
   useUploadZip,
   useProcessClips
 } from '../../hooks/useAdmin';
@@ -50,7 +49,6 @@ function AdminDash() {
   const approveUserMutation = useApproveUser();
   const deleteAllClipsMutation = useDeleteAllClips();
   const deleteUserMutation = useDeleteUser();
-  const updateConfigMutation = useUpdateConfig();
   const uploadZipMutation = useUploadZip();
   const processClipsMutation = useProcessClips();
 
@@ -227,21 +225,6 @@ function AdminDash() {
       await approveUserMutation.mutateAsync(userId);
     } catch (error) {
       console.error('Error approving user:', error);
-    }
-  };
-
-  const handleConfigChange = (_e: React.ChangeEvent<HTMLInputElement>): void => {
-    // For now, just trigger form updates without local state changes
-    // The mutation will handle the actual update
-  };
-  const handleConfigSubmit = async (e: React.FormEvent): Promise<void> => {
-    e.preventDefault();
-    try {
-      await updateConfigMutation.mutateAsync(config);
-      alert('Config updated successfully');
-    } catch (error) {
-      console.error('Error updating config:', error);
-      alert('Failed to update config. Please try again.');
     }
   };
 
@@ -602,8 +585,6 @@ function AdminDash() {
       case 'config':
         return (<ConfigPanel
           config={config}
-          handleConfigChange={handleConfigChange}
-          handleConfigSubmit={handleConfigSubmit}
         />
         );
       case 'trophies':

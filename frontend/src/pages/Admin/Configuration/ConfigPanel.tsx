@@ -12,14 +12,16 @@ interface ConfigPanelProps {
     blacklistedSubmitters?: Array<{username: string; userId: string}>;
     blacklistedStreamers?: string[];
   };
-  handleConfigChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  handleConfigSubmit: (e: React.FormEvent) => void;
 }
 
-const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, handleConfigChange }) => {
+const ConfigPanel: React.FC<ConfigPanelProps> = ({ config }) => {
   const [channelIdsText, setChannelIdsText] = useState<string>(
     config?.clipChannelIds?.join('\n') || ''
   );
+  
+  // Local state for editable config fields
+  const [denyThreshold, setDenyThreshold] = useState<number>(config?.denyThreshold || 5);
+  const [latestVideoLink, setLatestVideoLink] = useState<string>(config?.latestVideoLink || '');
   
   // Blacklist form states
   const [discordUserInput, setDiscordUserInput] = useState<string>('');
@@ -38,6 +40,12 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, handleConfigChange })
   useEffect(() => {
     setChannelIdsText(config?.clipChannelIds?.join('\n') || '');
   }, [config?.clipChannelIds]);
+  
+  // Update local state when config changes
+  useEffect(() => {
+    setDenyThreshold(config?.denyThreshold || 5);
+    setLatestVideoLink(config?.latestVideoLink || '');
+  }, [config?.denyThreshold, config?.latestVideoLink]);
   
   // Add a null check for the config object
   if (!config) {
@@ -131,7 +139,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, handleConfigChange })
     
     try {
       const adminConfig = {
-        denyThreshold: config.denyThreshold,
+        denyThreshold: denyThreshold,
         clipChannelIds: channelIdsText.split('\n').map((id: string) => id.trim()).filter((id: string) => id !== ''),
         blacklistedSubmitters: [...currentSubmitters, {
           userId: discordUserInput.trim(),
@@ -157,7 +165,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, handleConfigChange })
     try {
       const currentSubmitters = config.blacklistedSubmitters || [];
       const adminConfig = {
-        denyThreshold: config.denyThreshold,
+        denyThreshold: denyThreshold,
         clipChannelIds: channelIdsText.split('\n').map((id: string) => id.trim()).filter((id: string) => id !== ''),
         blacklistedSubmitters: currentSubmitters.filter(submitter => submitter.userId !== userId),
         blacklistedStreamers: config.blacklistedStreamers || []
@@ -186,7 +194,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, handleConfigChange })
     
     try {
       const adminConfig = {
-        denyThreshold: config.denyThreshold,
+        denyThreshold: denyThreshold,
         clipChannelIds: channelIdsText.split('\n').map((id: string) => id.trim()).filter((id: string) => id !== ''),
         blacklistedSubmitters: config.blacklistedSubmitters || [],
         blacklistedStreamers: [...currentStreamers, streamerInput.trim()]
@@ -207,7 +215,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, handleConfigChange })
     try {
       const currentStreamers = config.blacklistedStreamers || [];
       const adminConfig = {
-        denyThreshold: config.denyThreshold,
+        denyThreshold: denyThreshold,
         clipChannelIds: channelIdsText.split('\n').map((id: string) => id.trim()).filter((id: string) => id !== ''),
         blacklistedSubmitters: config.blacklistedSubmitters || [],
         blacklistedStreamers: currentStreamers.filter(s => s !== streamer)
@@ -231,14 +239,14 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, handleConfigChange })
     try {
       // Create separate objects for admin and public configs
       const adminConfig = {
-        denyThreshold: config.denyThreshold,
+        denyThreshold: denyThreshold,
         clipChannelIds: clipChannelIds,
         blacklistedSubmitters: config.blacklistedSubmitters || [],
         blacklistedStreamers: config.blacklistedStreamers || []
       };
       
       const publicConfig = {
-        latestVideoLink: config.latestVideoLink
+        latestVideoLink: latestVideoLink
       };
       
       // Make two separate API calls to update both configs
@@ -278,8 +286,8 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, handleConfigChange })
               type="number"
               id="denyThreshold"
               name="denyThreshold"
-              value={config.denyThreshold || 5}
-              onChange={handleConfigChange}
+              value={denyThreshold}
+              onChange={(e) => setDenyThreshold(parseInt(e.target.value) || 5)}
               className="w-full px-4 py-2 bg-white dark:bg-neutral-700 border border-neutral-400 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
               min="1"
@@ -297,8 +305,8 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, handleConfigChange })
               type="text"
               id="latestVideoLink"
               name="latestVideoLink"
-              value={config.latestVideoLink || ''}
-              onChange={handleConfigChange}
+              value={latestVideoLink}
+              onChange={(e) => setLatestVideoLink(e.target.value)}
               className="w-full px-4 py-2 bg-white dark:bg-neutral-700 border border-neutral-400 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="https://www.youtube.com/watch?v=..."
             />
