@@ -147,7 +147,7 @@ export const updateConfig = async (config: AdminConfig): Promise<void> => {
 export const updateAdminConfig = async (adminConfig: { 
   denyThreshold: number; 
   clipChannelIds: string[];
-  blacklistedSubmitterIds?: string[];
+  blacklistedSubmitters?: Array<{username: string; userId: string}>;
   blacklistedStreamers?: string[];
 }): Promise<void> => {
   try {

@@ -295,9 +295,11 @@ def fetch_channel_ids():
                         logging.warning("⚠️ No clip channel IDs found in config, keeping current list")
                     
                     # Update blacklisted submitter IDs
-                    blacklisted_submitters = admin_config.get('blacklistedSubmitterIds', [])
-                    if blacklisted_submitters != BLACKLISTED_SUBMITTER_IDS:
-                        BLACKLISTED_SUBMITTER_IDS = [str(user_id) for user_id in blacklisted_submitters if user_id.strip()]
+                    blacklisted_submitters = admin_config.get('blacklistedSubmitters', [])
+                    # Extract user IDs from the new structure
+                    current_ids = [str(submitter.get('userId', '')) for submitter in blacklisted_submitters if submitter.get('userId', '').strip()]
+                    if current_ids != BLACKLISTED_SUBMITTER_IDS:
+                        BLACKLISTED_SUBMITTER_IDS = current_ids
                         logging.info(f"🚫 Updated blacklisted submitter IDs: {len(BLACKLISTED_SUBMITTER_IDS)} users")
                     
                     # Update blacklisted streamers

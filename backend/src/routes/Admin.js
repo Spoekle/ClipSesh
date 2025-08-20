@@ -970,70 +970,17 @@ router.get('/blacklisted-users', authorizeRoles(['admin']), async (req, res) => 
   try {
     // Get admin config
     const adminConfig = await AdminConfig.findOne();
-    const blacklistedSubmitterIds = adminConfig?.blacklistedSubmitterIds || [];
+    const blacklistedSubmitters = adminConfig?.blacklistedSubmitters || [];
     const blacklistedStreamers = adminConfig?.blacklistedStreamers || [];
 
-    // Fetch Discord user information for blacklisted submitter IDs
-    const blacklistedSubmittersInfo = [];
-    const discordBotToken = adminConfig?.discordBotToken;
-
-    if (discordBotToken && blacklistedSubmitterIds.length > 0) {
-      try {
-        for (const userId of blacklistedSubmitterIds) {
-          try {
-            const response = await fetch(`https://discord.com/api/v10/users/${userId}`, {
-              headers: {
-                'Authorization': `Bot ${discordBotToken}`,
-                'Content-Type': 'application/json'
-              }
-            });
-
-            if (response.ok) {
-              const userData = await response.json();
-              blacklistedSubmittersInfo.push({
-                id: userData.id,
-                username: userData.username,
-                discriminator: userData.discriminator,
-                global_name: userData.global_name,
-                avatar: userData.avatar
-              });
-            } else {
-              // If we can't fetch the user info, still return the ID
-              blacklistedSubmittersInfo.push({
-                id: userId,
-                username: `Unknown User (${userId})`,
-                discriminator: null,
-                global_name: null,
-                avatar: null
-              });
-            }
-          } catch (userError) {
-            console.error(`Error fetching Discord user ${userId}:`, userError);
-            // Add placeholder info for users we can't fetch
-            blacklistedSubmittersInfo.push({
-              id: userId,
-              username: `Unknown User (${userId})`,
-              discriminator: null,
-              global_name: null,
-              avatar: null
-            });
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching Discord user information:', error);
-      }
-    } else {
-      // If no token or no blacklisted IDs, return basic info
-      for (const userId of blacklistedSubmitterIds) {
-        blacklistedSubmittersInfo.push({
-          id: userId,
-          username: `User ID: ${userId}`,
-          discriminator: null,
-          global_name: null,
-          avatar: null
-        });
-      }
-    }
+    // Convert stored blacklistedSubmitters to the expected format
+    const blacklistedSubmittersInfo = blacklistedSubmitters.map(submitter => ({
+      id: submitter.userId,
+      username: submitter.username,
+      discriminator: submitter.discriminator,
+      global_name: submitter.global_name,
+      avatar: submitter.avatar
+    }));
 
     res.json({
       blacklistedSubmitters: blacklistedSubmittersInfo,

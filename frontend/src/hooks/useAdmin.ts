@@ -184,7 +184,7 @@ export const useUpdateAdminConfig = () => {
     mutationFn: (adminConfig: { 
       denyThreshold: number; 
       clipChannelIds: string[];
-      blacklistedSubmitterIds?: string[];
+      blacklistedSubmitters?: Array<{username: string; userId: string}>;
       blacklistedStreamers?: string[];
     }) =>
       adminService.updateAdminConfig(adminConfig),

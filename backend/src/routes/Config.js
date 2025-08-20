@@ -160,7 +160,7 @@ router.put('/admin', authorizeRoles(['admin']), async (req, res) => {
     const { 
       denyThreshold, 
       clipChannelIds, 
-      blacklistedSubmitterIds, 
+      blacklistedSubmitters, 
       blacklistedStreamers, 
       backendUrl, 
       discordBotToken 
@@ -175,7 +175,7 @@ router.put('/admin', authorizeRoles(['admin']), async (req, res) => {
     // Update fields if provided
     if (denyThreshold !== undefined) adminConfig.denyThreshold = denyThreshold;
     if (clipChannelIds !== undefined) adminConfig.clipChannelIds = clipChannelIds;
-    if (blacklistedSubmitterIds !== undefined) adminConfig.blacklistedSubmitterIds = blacklistedSubmitterIds;
+    if (blacklistedSubmitters !== undefined) adminConfig.blacklistedSubmitters = blacklistedSubmitters;
     if (blacklistedStreamers !== undefined) adminConfig.blacklistedStreamers = blacklistedStreamers;
     if (backendUrl !== undefined) adminConfig.backendUrl = backendUrl;
     if (discordBotToken !== undefined) adminConfig.discordBotToken = discordBotToken;

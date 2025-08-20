@@ -347,7 +347,7 @@ const processingJobs = {};
 const WebSocketManager = require('../utils/WebSocketManager');
 let wsManager = null;
 
-// Process clips with WebSockets support
+// Process clips
 router.post('/process', authorizeRoles(['clipteam', 'admin']), async (req, res) => {
     try {
         const io = req.app.get('io');

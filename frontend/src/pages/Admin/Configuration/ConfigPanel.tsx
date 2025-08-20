@@ -9,7 +9,7 @@ interface ConfigPanelProps {
     denyThreshold: number;
     latestVideoLink: string;
     clipChannelIds?: string[];
-    blacklistedSubmitterIds?: string[];
+    blacklistedSubmitters?: Array<{username: string; userId: string}>;
     blacklistedStreamers?: string[];
   };
   handleConfigChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -118,12 +118,12 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, handleConfigChange })
 
   // Function to add a Discord user to blacklist
   const handleAddDiscordUser = async () => {
-    if (!discordUserInput.trim()) return;
+    if (!discordUserInput.trim() || !previewUser) return;
     
     setIsAddingUser(true);
-    const currentIds = config.blacklistedSubmitterIds || [];
+    const currentSubmitters = config.blacklistedSubmitters || [];
     
-    if (currentIds.includes(discordUserInput.trim())) {
+    if (currentSubmitters.some(submitter => submitter.userId === discordUserInput.trim())) {
       alert('User is already blacklisted');
       setIsAddingUser(false);
       return;
@@ -133,7 +133,10 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, handleConfigChange })
       const adminConfig = {
         denyThreshold: config.denyThreshold,
         clipChannelIds: channelIdsText.split('\n').map((id: string) => id.trim()).filter((id: string) => id !== ''),
-        blacklistedSubmitterIds: [...currentIds, discordUserInput.trim()],
+        blacklistedSubmitters: [...currentSubmitters, {
+          userId: discordUserInput.trim(),
+          username: previewUser.username
+        }],
         blacklistedStreamers: config.blacklistedStreamers || []
       };
       
@@ -152,11 +155,11 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, handleConfigChange })
   // Function to remove a Discord user from blacklist
   const handleRemoveDiscordUser = async (userId: string) => {
     try {
-      const currentIds = config.blacklistedSubmitterIds || [];
+      const currentSubmitters = config.blacklistedSubmitters || [];
       const adminConfig = {
         denyThreshold: config.denyThreshold,
         clipChannelIds: channelIdsText.split('\n').map((id: string) => id.trim()).filter((id: string) => id !== ''),
-        blacklistedSubmitterIds: currentIds.filter(id => id !== userId),
+        blacklistedSubmitters: currentSubmitters.filter(submitter => submitter.userId !== userId),
         blacklistedStreamers: config.blacklistedStreamers || []
       };
       
@@ -185,7 +188,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, handleConfigChange })
       const adminConfig = {
         denyThreshold: config.denyThreshold,
         clipChannelIds: channelIdsText.split('\n').map((id: string) => id.trim()).filter((id: string) => id !== ''),
-        blacklistedSubmitterIds: config.blacklistedSubmitterIds || [],
+        blacklistedSubmitters: config.blacklistedSubmitters || [],
         blacklistedStreamers: [...currentStreamers, streamerInput.trim()]
       };
       
@@ -206,7 +209,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, handleConfigChange })
       const adminConfig = {
         denyThreshold: config.denyThreshold,
         clipChannelIds: channelIdsText.split('\n').map((id: string) => id.trim()).filter((id: string) => id !== ''),
-        blacklistedSubmitterIds: config.blacklistedSubmitterIds || [],
+        blacklistedSubmitters: config.blacklistedSubmitters || [],
         blacklistedStreamers: currentStreamers.filter(s => s !== streamer)
       };
       
@@ -230,7 +233,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, handleConfigChange })
       const adminConfig = {
         denyThreshold: config.denyThreshold,
         clipChannelIds: clipChannelIds,
-        blacklistedSubmitterIds: config.blacklistedSubmitterIds || [],
+        blacklistedSubmitters: config.blacklistedSubmitters || [],
         blacklistedStreamers: config.blacklistedStreamers || []
       };
       
@@ -339,7 +342,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, handleConfigChange })
               <button
                 type="button"
                 onClick={handleAddDiscordUser}
-                disabled={!discordUserInput.trim() || isAddingUser}
+                disabled={!discordUserInput.trim() || !previewUser || isAddingUser}
                 className="px-4 py-2 bg-red-500 hover:bg-red-600 disabled:bg-neutral-400 text-white rounded-lg font-medium transition duration-200"
               >
                 {isAddingUser ? 'Adding...' : 'Add'}

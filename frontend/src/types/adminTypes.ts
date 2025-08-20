@@ -158,7 +158,7 @@ export interface AdminConfig {
   denyThreshold: number;
   latestVideoLink: string;
   clipChannelIds?: string[];
-  blacklistedSubmitterIds?: string[];
+  blacklistedSubmitters?: Array<{username: string; userId: string}>;
   blacklistedStreamers?: string[];
 }
 
@@ -180,7 +180,7 @@ export interface ConfigResponse {
   admin?: {
     denyThreshold?: number;
     clipChannelIds?: string[];
-    blacklistedSubmitterIds?: string[];
+    blacklistedSubmitters?: Array<{username: string; userId: string}>;
     blacklistedStreamers?: string[];
   };
 }

@@ -59,8 +59,16 @@ function AdminDash() {
   const config = configData ? {
     denyThreshold: configData.admin?.denyThreshold ?? 5,
     latestVideoLink: configData.public?.latestVideoLink ?? '',
-    clipChannelIds: configData.admin?.clipChannelIds ?? []
-  } : { denyThreshold: 5, latestVideoLink: '', clipChannelIds: [] };
+    clipChannelIds: configData.admin?.clipChannelIds ?? [],
+    blacklistedSubmitters: configData.admin?.blacklistedSubmitters ?? [],
+    blacklistedStreamers: configData.admin?.blacklistedStreamers ?? []
+  } : { 
+    denyThreshold: 5, 
+    latestVideoLink: '', 
+    clipChannelIds: [],
+    blacklistedSubmitters: [],
+    blacklistedStreamers: []
+  };
   
   const admins = allUsers.filter(user => user.roles?.includes('admin') || false);
   const clipTeam = allUsers.filter(user => user.roles?.includes('clipteam') || false);
