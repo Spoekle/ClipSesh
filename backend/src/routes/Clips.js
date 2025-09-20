@@ -15,7 +15,7 @@ const mongoose = require('mongoose');
 // Import necessary modules and models
 const Clip = require('../models/clipModel');
 const IpVote = require('../models/ipVoteModel');
-const { PublicConfig } = require('../models/configModel');
+const { PublicConfig, AdminConfig } = require('../models/configModel');
 const Report = require('../models/reportModel');
 const ReportMessage = require('../models/reportMessageModel');
 const authorizeRoles = require('./middleware/AuthorizeRoles');
@@ -163,6 +163,31 @@ function createRatingCountField() {
     };
 }
 
+function createDenyCountField() {
+    return {
+        denyCount: {
+            $cond: {
+                if: { $eq: [{ $size: '$ratingData' }, 0] },
+                then: 0,
+                else: {
+                    $let: {
+                        vars: { rating: { $arrayElemAt: ['$ratingData', 0] } },
+                        in: {
+                            $cond: {
+                                if: { $not: { $ifNull: ['$$rating.ratings', false] } },
+                                then: 0,
+                                else: {
+                                    $size: { $ifNull: ['$$rating.ratings.deny', []] }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    };
+}
+
 function createSortPipeline(sortBy, sortOrder, query) {
     const pipeline = [{ $match: query }];
     
@@ -173,7 +198,7 @@ function createSortPipeline(sortBy, sortOrder, query) {
         Object.assign(addFields, createRatioField());
     }
     
-    if (sortBy === 'averageRating' || sortBy === 'ratingCount') {
+    if (sortBy === 'averageRating' || sortBy === 'ratingCount' || sortBy === 'denyCount') {
         pipeline.push({
             $lookup: {
                 from: 'ratings',
@@ -185,8 +210,10 @@ function createSortPipeline(sortBy, sortOrder, query) {
         
         if (sortBy === 'averageRating') {
             Object.assign(addFields, createAverageRatingField());
-        } else {
+        } else if (sortBy === 'ratingCount') {
             Object.assign(addFields, createRatingCountField());
+        } else if (sortBy === 'denyCount') {
+            Object.assign(addFields, createDenyCountField());
         }
     }
     
@@ -240,6 +267,28 @@ async function getUserRatedClipIds(userId) {
         }).map(rating => rating.clipId);
     } catch (error) {
         console.error('Error fetching user ratings:', error);
+        return [];
+    }
+}
+
+async function getDeniedClipIds() {
+    try {
+        // Get the deny threshold from admin config
+        const adminConfig = await AdminConfig.findOne({});
+        const denyThreshold = adminConfig?.denyThreshold || 5;
+        
+        console.log(`Using deny threshold: ${denyThreshold}`);
+        
+        const ratings = await Rating.find({});
+        const deniedClipIds = ratings.filter(rating => {
+            const denyRatings = rating.ratings?.deny;
+            return Array.isArray(denyRatings) && denyRatings.length >= denyThreshold;
+        }).map(rating => rating.clipId);
+        
+        console.log(`Found ${deniedClipIds.length} clips with ${denyThreshold}+ deny ratings`);
+        return deniedClipIds;
+    } catch (error) {
+        console.error('Error fetching denied clip IDs:', error);
         return [];
     }
 }
@@ -303,13 +352,14 @@ router.get('/', async (req, res) => {
             streamer = '',
             search = '',
             excludeRatedByUser = '',
+            excludeDeniedClips = '',
         } = req.query;
 
         // Parse and validate inputs
         page = Math.max(1, parseInt(page) || 1);
         limit = Math.min(Math.max(1, parseInt(limit) || 12)); // Cap at 100
         
-        console.log(`Clips query: page=${page}, limit=${limit}, sortBy=${sortBy}, sortOrder=${sortOrder}, streamer=${streamer}, search=${search}, excludeRatedByUser=${excludeRatedByUser}`);
+        console.log(`Clips query: page=${page}, limit=${limit}, sortBy=${sortBy}, sortOrder=${sortOrder}, streamer=${streamer}, search=${search}, excludeRatedByUser=${excludeRatedByUser}, excludeDeniedClips=${excludeDeniedClips}`);
           // Build base query
         const query = {};
         
@@ -332,6 +382,23 @@ router.get('/', async (req, res) => {
         if (userRatedClipIds.length > 0) {
             query._id = { $nin: userRatedClipIds };
             console.log(`Excluding ${userRatedClipIds.length} clips rated by user ${excludeRatedByUser}`);
+        }
+
+        // Handle denied clips exclusion
+        if (excludeDeniedClips === 'true') {
+            const deniedClipIds = await getDeniedClipIds();
+            if (deniedClipIds.length > 0) {
+                if (query._id && query._id.$nin) {
+                    // If we already have exclusions, add to the existing array
+                    query._id.$nin = [...query._id.$nin, ...deniedClipIds];
+                } else {
+                    // Otherwise create new exclusion array
+                    query._id = { $nin: deniedClipIds };
+                }
+                console.log(`Excluding ${deniedClipIds.length} clips that exceed deny threshold`);
+            } else {
+                console.log('No clips found that exceed deny threshold');
+            }
         }        // Get total counts
         const totalClipsBeforeFiltering = await Clip.countDocuments({ archived: { $ne: true } });
         const totalClipsAfterAllFilters = await Clip.countDocuments(query);
@@ -345,7 +412,7 @@ router.get('/', async (req, res) => {
         
         // Execute query
         let clips;
-        const complexSortFields = ['ratio', 'averageRating', 'ratingCount'];
+        const complexSortFields = ['ratio', 'averageRating', 'ratingCount', 'denyCount'];
         
         if (complexSortFields.includes(sortBy)) {
             // Use aggregation for complex sorting
@@ -379,6 +446,7 @@ router.get('/', async (req, res) => {
                 streamer: streamer || null,
                 search: search || null,
                 excludeRatedByUser: excludeRatedByUser || null,
+                excludeDeniedClips: excludeDeniedClips === 'true' || null,
             }
         };
         

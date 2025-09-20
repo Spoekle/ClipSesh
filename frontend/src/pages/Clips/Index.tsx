@@ -84,18 +84,25 @@ function ClipViewer() {
           params.sortBy = 'ratingCount';
           params.sortOrder = 'desc';
           break;
+        case 'mostDenied':
+          params.sortBy = 'denyCount';
+          params.sortOrder = 'desc';
+          break;
       }
     }
 
     if (filterStreamer) params.streamer = filterStreamer;
     if (searchTerm) params.search = searchTerm;
     if (filterRatedClips && user?._id) params.excludeRatedByUser = user._id;
+    if (filterDeniedClips && user && (user.roles?.includes('admin') || user.roles?.includes('clipteam'))) {
+      params.excludeDeniedClips = true;
+    }
     if (user && (user.roles?.includes('admin') || user.roles?.includes('clipteam'))) {
       params.includeRatings = true;
     }
 
     return params;
-  }, [sortOption, filterStreamer, searchTerm, filterRatedClips, user]);
+  }, [sortOption, filterStreamer, searchTerm, filterRatedClips, filterDeniedClips, user]);
 
   const { 
     data: clipsData, 
@@ -193,9 +200,12 @@ function ClipViewer() {
     if (searchTerm) newSearchParams.set('q', searchTerm);
     if (filterStreamer) newSearchParams.set('streamer', filterStreamer);
     if (filterRatedClips && user?._id) newSearchParams.set('excludeRatedByUser', user._id);
+    if (filterDeniedClips && user && (user.roles?.includes('admin') || user.roles?.includes('clipteam'))) {
+      newSearchParams.set('excludeDeniedClips', 'true');
+    }
     
     setSearchParams(newSearchParams, { replace: true });
-  }, [sortOption, searchTerm, filterStreamer, filterRatedClips, user, setSearchParams]);
+  }, [sortOption, searchTerm, filterStreamer, filterRatedClips, filterDeniedClips, user, setSearchParams]);
 
   const triggerClipRefetch = useCallback(async () => {
     await refetchClips();

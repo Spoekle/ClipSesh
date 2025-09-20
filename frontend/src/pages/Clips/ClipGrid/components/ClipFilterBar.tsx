@@ -88,6 +88,22 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
     // The parent component will handle the refetch via useEffect
   };
 
+  // Toggle the denied clips filter
+  const toggleFilterDeniedClips = () => {
+    const newValue = !filterDeniedClips;
+    localStorage.setItem('filterDeniedClips', newValue.toString());
+    setFilterDeniedClips(newValue);
+      // Reset to page 1 when changing filters to prevent potential empty pages
+    setSearchParams({ 
+      sort: sortOptionState, 
+      page: "1",
+      ...(searchTerm && { q: searchTerm }),
+      ...(filterStreamer && { streamer: filterStreamer }) 
+    });
+
+    // The parent component will handle the refetch via useEffect
+  };
+
   
   // Debounced search
   useEffect(() => {
@@ -239,6 +255,19 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
                   {filterRatedClips ? <FaEyeSlash /> : <FaEye />}
                   <span>{filterRatedClips ? 'Hiding Rated' : 'Hide Rated'}</span>
                 </button>
+                
+                <button
+                  onClick={toggleFilterDeniedClips}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${
+                    filterDeniedClips
+                      ? 'bg-red-500 hover:bg-red-600 text-white'
+                      : 'bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-700 dark:text-neutral-200'
+                  }`}
+                  title={filterDeniedClips ? 'Show all clips' : 'Hide denied clips'}
+                >
+                  {filterDeniedClips ? <FaEyeSlash /> : <FaEye />}
+                  <span>{filterDeniedClips ? 'Hiding Denied' : 'Hide Denied'}</span>
+                </button>
               </>
             )}
             
@@ -357,6 +386,7 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
                         <>
                           <option value="averageRating">Average Rating</option>
                           <option value="ratingCount">Rating Count</option>
+                          <option value="denyCount">Deny Count</option>
                         </>
                       )}
                     </select>
@@ -403,17 +433,31 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
               {/* Action buttons row */}
               <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-neutral-300 dark:border-neutral-600">
                 {isTeamMember && (
-                  <button
-                    onClick={toggleFilterRatedClips}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${
-                      filterRatedClips
-                        ? 'bg-blue-500 hover:bg-blue-600 text-white'
-                        : 'bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-700 dark:text-neutral-200'
-                    }`}
-                  >
-                    {filterRatedClips ? <FaEye /> : <FaEyeSlash />}
-                    <span className="text-sm">{filterRatedClips ? 'Show All' : 'Hide Rated'}</span>
-                  </button>
+                  <>
+                    <button
+                      onClick={toggleFilterRatedClips}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${
+                        filterRatedClips
+                          ? 'bg-blue-500 hover:bg-blue-600 text-white'
+                          : 'bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-700 dark:text-neutral-200'
+                      }`}
+                    >
+                      {filterRatedClips ? <FaEye /> : <FaEyeSlash />}
+                      <span className="text-sm">{filterRatedClips ? 'Show All' : 'Hide Rated'}</span>
+                    </button>
+                    
+                    <button
+                      onClick={toggleFilterDeniedClips}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${
+                        filterDeniedClips
+                          ? 'bg-red-500 hover:bg-red-600 text-white'
+                          : 'bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-700 dark:text-neutral-200'
+                      }`}
+                    >
+                      {filterDeniedClips ? <FaEye /> : <FaEyeSlash />}
+                      <span className="text-sm">{filterDeniedClips ? 'Show All' : 'Hide Denied'}</span>
+                    </button>
+                  </>
                 )}
 
                 {isLoggedIn && isAdmin && (
@@ -528,6 +572,7 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
                         <>
                           <option value="averageRating">Average Rating</option>
                           <option value="ratingCount">Rating Count</option>
+                          <option value="denyCount">Deny Count</option>
                         </>
                       )}
                     </select>

@@ -52,7 +52,7 @@ const ClipGrid: React.FC<ClipGridProps> = ({
         const isVisible = rect.top < window.innerHeight + 500;
         
         if (isVisible && hasNextPage && fetchNextPage) {
-          console.log('🚀 Loading more - element is visible');
+          console.log('Loading more - element is visible');
           fetchNextPage();
         }
       }

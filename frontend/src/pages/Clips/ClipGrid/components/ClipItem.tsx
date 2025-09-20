@@ -228,7 +228,7 @@ const ClipItem: React.FC<ClipItemProps> = ({
             }`}
           >
 
-            {userRating === 'deny' ? 'Denied' : <><FaStar className="text-yellow-300" /> {userRating}</>}
+            {userRating === 'deny' ? 'Deny' : <><FaStar className="text-yellow-300" /> {userRating}</>}
           </motion.div>
         )} 
 

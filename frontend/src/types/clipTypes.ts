@@ -13,6 +13,8 @@ export interface ClipQueryParams {
   submitter?: string;
   status?: string;
   search?: string;
+  excludeRatedByUser?: string;
+  excludeDeniedClips?: boolean;
 }
 
 // Interface for clip response
