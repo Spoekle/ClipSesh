@@ -49,7 +49,7 @@ echo Press Ctrl+C to stop the servers when done.
 echo.
 start cmd /k "cd backend && npm run dev"
 timeout /t 5
-start cmd /k "cd frontend && npm run dev -- --host 192.168.1.38"
+start cmd /k "cd frontend && npm run dev -- --host 127.0.0.1"
 echo.
 echo Both servers are now running!
 echo - Backend: http://localhost:5000
