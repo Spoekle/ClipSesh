@@ -190,6 +190,7 @@ export interface ProcessClipsRequest {
   clips: Array<Clip & { rating: string; index: number }>;
   season: string;
   year: number;
+  assignTrophies?: boolean;
 }
 
 // Process job status interface

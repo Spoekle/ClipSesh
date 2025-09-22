@@ -14,16 +14,17 @@ import ZipManager from './ContentManagement/ZipManager';
 import TrophyManagement from './Trophies/TrophyManagement';
 import ReportsManagement from './Reports/ReportsManagement';
 import { getCurrentSeason } from '../../utils/seasonHelpers';
+import { Clip } from '../../types/adminTypes';
 import ProcessClipsModal from '../../components/admin/ProcessClipsModal';
 import useSocket from '../../hooks/useSocket';
 import ConfirmationDialog from '../../components/common/ConfirmationDialog';
 
 import { getProcessStatus } from '../../services/adminService';
 
-import { 
-  useAllUsers, 
-  useAdminConfig, 
-  useAdminStats, 
+import {
+  useAllUsers,
+  useAdminConfig,
+  useAdminStats,
   useClipsWithRatings,
   useZips,
   useDeleteZip,
@@ -60,42 +61,43 @@ function AdminDash() {
     clipChannelIds: configData.admin?.clipChannelIds ?? [],
     blacklistedSubmitters: configData.admin?.blacklistedSubmitters ?? [],
     blacklistedStreamers: configData.admin?.blacklistedStreamers ?? []
-  } : { 
-    denyThreshold: 5, 
-    latestVideoLink: '', 
+  } : {
+    denyThreshold: 5,
+    latestVideoLink: '',
     clipChannelIds: [],
     blacklistedSubmitters: [],
     blacklistedStreamers: []
   };
-  
+
   const admins = allUsers.filter(user => user.roles?.includes('admin') || false);
   const clipTeam = allUsers.filter(user => user.roles?.includes('clipteam') || false);
   const disabledUsers = allUsers.filter(user => user.status === 'disabled');
 
   const AVAILABLE_ROLES = ['user', 'admin', 'editor', 'uploader', 'clipteam'];
-  
+
   // Placeholder functions for components that still expect them (will be removed as components are updated)
-  const fetchUsers = () => {}; // React Query handles this automatically
-  const fetchZips = () => {}; // React Query handles this automatically  
-  const fetchClipsAndRatings = () => {}; // React Query handles this automatically
-  const setDisabledUsers = () => {}; // Data comes from React Query, no local state needed
+  const fetchUsers = () => { }; // React Query handles this automatically
+  const fetchZips = () => { }; // React Query handles this automatically  
+  const fetchClipsAndRatings = () => { }; // React Query handles this automatically
+  const setDisabledUsers = () => { }; // Data comes from React Query, no local state needed
   const downloading = false; // This can be removed once component is updated
-  
+
   const [progress, setProgress] = useState<number>(0);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
-  
+
   const seasonInfo = useMemo(() => {
-    const { season } = getCurrentSeason();
+    const { season, year } = getCurrentSeason();
     const clipAmount = clips.length;
     return {
       season,
+      year,
       clipAmount
     };
   }, [clips]);
-  
+
   const userRatings = useMemo(() => {
     if (Object.keys(ratings).length === 0) return [];
-    
+
     const userRatingCount: Record<string, any> = {};
 
     [...clipTeam, ...admins]
@@ -108,15 +110,15 @@ function AdminDash() {
 
     Object.keys(ratings).forEach(clipId => {
       const clipRatingData = ratings[clipId].ratings;
-      
+
       if (!clipRatingData) {
         return;
       }
-      
+
       const ratingLevels = ['1', '2', '3', '4', 'deny'] as const;
       ratingLevels.forEach(rating => {
         const usersWithThisRating = clipRatingData[rating];
-        
+
         if (Array.isArray(usersWithThisRating)) {
           usersWithThisRating.forEach(userObj => {
             const username = userObj.username;
@@ -145,30 +147,30 @@ function AdminDash() {
 
   const clipStats = useMemo(() => {
     const totalClips = clips.length;
-    
+
     let ratedClips = 0;
     let deniedClips = 0;
-    
+
     Object.keys(ratings).forEach(clipId => {
       const clipRatingData = ratings[clipId]?.ratings;
       if (clipRatingData) {
         const ratingLevels = ['1', '2', '3', '4', 'deny'] as const;
-        const hasRatings = ratingLevels.some(rating => 
+        const hasRatings = ratingLevels.some(rating =>
           clipRatingData[rating] && Array.isArray(clipRatingData[rating]) && clipRatingData[rating].length > 0
         );
-        
+
         if (hasRatings) {
           ratedClips++;
         }
-        
+
         if (clipRatingData.deny && Array.isArray(clipRatingData.deny) && clipRatingData.deny.length >= config.denyThreshold) {
           deniedClips++;
         }
       }
     });
-    
+
     const unratedClips = totalClips - ratedClips;
-    
+
     return {
       totalClips,
       ratedClips,
@@ -176,15 +178,15 @@ function AdminDash() {
       deniedClips
     };
   }, [clips, ratings]);
-  
+
   const [processModalOpen, setProcessModalOpen] = useState<boolean>(false);
   const [processingClips, setProcessingClips] = useState<boolean>(false);
   const [processProgress, setProcessProgress] = useState<number>(0);
   const [processJobId, setProcessJobId] = useState<string | null>(null);
   const [showDeleteUserConfirmation, setShowDeleteUserConfirmation] = useState<boolean>(false);
   const [showDeleteAllClipsConfirmation, setShowDeleteAllClipsConfirmation] = useState<boolean>(false);
-  const [currentYear, setCurrentYear] = useState<number>(new Date().getFullYear());
-  
+  const [currentYear, setCurrentYear] = useState<number>(seasonInfo.year || new Date().getFullYear());
+
   const loading = usersLoading || configLoading || statsLoading || clipsLoading || zipsLoading;
 
   const location = useLocation();
@@ -290,7 +292,7 @@ function AdminDash() {
     }
   };
 
-  const processClips = async (season: string, year: number): Promise<void> => {
+  const processClips = async (season: string, year: number, assignTrophies: boolean = true): Promise<void> => {
     setProcessingClips(true);
     setProcessProgress(0);
 
@@ -300,20 +302,11 @@ function AdminDash() {
         return false;
       }
 
-      const ratingData = ratings[clip._id];
-      if (!ratingData) {
-        console.warn(`No rating data found for clip: ${clip._id}`);
-        return true;
-      }
+      const clipSeason = clip.season?.toLowerCase();
+      const clipYear = clip.year;
+      const selectedSeason = season.toLowerCase();
 
-      if (!ratingData.ratingCounts || !Array.isArray(ratingData.ratingCounts)) {
-        console.warn(`Invalid rating counts for clip: ${clip._id}`);
-        return true;
-      }
-
-      return ratingData.ratingCounts.every(
-        (rateData) => rateData.rating !== 'deny' || rateData.count < config.denyThreshold
-      );
+      return clipSeason === selectedSeason && clipYear === year;
     });
 
     if (filteredClips.length === 0) {
@@ -322,43 +315,63 @@ function AdminDash() {
       setProcessModalOpen(false);
       return;
     } try {
-      console.log(`Starting clip processing for ${season} ${year} with ${filteredClips.length} clips`);
+      console.log(`Processing ${filteredClips.length} clips for ${season} ${year}`);
 
       const processData = {
         clips: filteredClips.map((clip, index) => {
           const ratingData = ratings[clip._id];
 
+          // Check if we need to convert raw ratings to ratingCounts format
+          if (ratingData && !ratingData.ratingCounts && ratingData.ratings) {
+            // Convert the raw ratings object to ratingCounts array
+            const ratingsObj = ratingData.ratings as any; // Type assertion for dynamic object access
+            ratingData.ratingCounts = Object.keys(ratingsObj).map(rating => ({
+              rating: rating,
+              count: ratingsObj[rating]?.length || 0,
+              users: ratingsObj[rating] || []
+            }));
+          }
+
+          // If no rating data exists, skip this clip or give it a neutral rating
           if (!ratingData || !ratingData.ratingCounts || !Array.isArray(ratingData.ratingCounts) || !ratingData.ratingCounts.length) {
-            return { ...clip, rating: '1', index };
+            return { ...clip, rating: '3', index }; // Use neutral rating instead of '1'
           }
 
           let totalRatingSum = 0;
           let totalRatingCount = 0;
-          
+
           ratingData.ratingCounts.forEach(rateData => {
             if (rateData.rating !== 'deny' && rateData.count > 0) {
               const numericRating = parseInt(rateData.rating);
-              if (!isNaN(numericRating)) {
+
+              if (!isNaN(numericRating) && numericRating >= 1 && numericRating <= 4) {
                 totalRatingSum += numericRating * rateData.count;
                 totalRatingCount += rateData.count;
               }
             }
           });
-          
-          let averageRating = '4';
+
+          // Check if this clip has any actual ratings
+          const hasActualRatings = ratingData.ratingCounts.some(rateData => rateData.count > 0);
+
+          let averageRating = '3'; // Default to neutral if no valid ratings
           if (totalRatingCount > 0) {
             const avgValue = totalRatingSum / totalRatingCount;
-            averageRating = Math.round(avgValue).toString();
-            
-            const roundedRating = Math.max(1, Math.min(4, parseInt(averageRating)));
+            const roundedRating = Math.max(1, Math.min(4, Math.round(avgValue)));
             averageRating = roundedRating.toString();
+          } else if (!hasActualRatings) {
+            // This clip has never been rated by anyone - exclude it from processing
+            return null; // This will filter out the clip
           }
-          
+
           return { ...clip, rating: averageRating, index };
-        }),
+        }).filter((clip): clip is Clip & { rating: string; index: number } => clip !== null), // Type guard filter
         season: season,
-        year: year
+        year: year,
+        assignTrophies: assignTrophies
       };
+
+      console.log(`Sending ${processData.clips.length} rated clips to backend for processing`);
 
       const response = await processClipsMutation.mutateAsync(processData);
 
@@ -423,7 +436,8 @@ function AdminDash() {
   };
 
   const getSeason = (): void => {
-    setCurrentYear(new Date().getFullYear());
+    const { year } = getCurrentSeason();
+    setCurrentYear(year);
   };
 
   const openProcessModal = async (): Promise<void> => {
@@ -633,7 +647,8 @@ function AdminDash() {
           <div className="flex flex-col justify-center items-center">
             <h1 className="text-4xl font-bold mb-4 text-center">Admin Dashboard</h1>
             <h2 className="text-3xl mb-4 text-center">Manage the unmanaged...</h2>
-          </div>        </div>
+          </div>
+        </div>
       </div>
 
       {/* Main content with skeleton states */}
@@ -710,8 +725,17 @@ function AdminDash() {
         processing={processingClips}
         progress={processProgress}
         currentSeason={seasonInfo.season || ''}
-        currentYear={currentYear}
+        currentYear={seasonInfo.year || currentYear}
         clipCount={clips.filter(clip => {
+          // Filter by current season and year first
+          const clipSeason = clip.season?.toLowerCase();
+          const clipYear = clip.year;
+          const currentSeason = seasonInfo.season?.toLowerCase();
+
+          if (clipSeason !== currentSeason || clipYear !== seasonInfo.year) {
+            return false;
+          }
+
           const ratingData = ratings[clip._id];
           return (
             ratingData &&
@@ -723,6 +747,9 @@ function AdminDash() {
           );
         }).length}
         processJobId={processJobId}
+        clips={clips}
+        ratings={ratings}
+        denyThreshold={config.denyThreshold}
       />
 
       {/* Confirmation Dialogs */}

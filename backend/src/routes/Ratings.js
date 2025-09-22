@@ -409,7 +409,7 @@ router.get('/:id', authorizeRoles(['clipteam', 'admin']), async (req, res) => {
         }
 
         const ratingCounts = Object.keys(ratingDoc.ratings).map(rating => ({
-            rating: rating === 'deny' ? 'deny' : parseInt(rating),
+            rating: rating, // Keep as string for consistency
             count: ratingDoc.ratings[rating].length,
             users: ratingDoc.ratings[rating]
         }));
@@ -417,6 +417,7 @@ router.get('/:id', authorizeRoles(['clipteam', 'admin']), async (req, res) => {
         const totalRatings = ratingCounts.reduce((acc, curr) => acc + curr.count, 0);
 
         res.json({
+            clipId: clipId,
             totalRatings,
             ratingCounts
         });

@@ -8,7 +8,8 @@ const path = require('path');
 const authorizeRoles = require('./middleware/AuthorizeRoles');
 const Zip = require('../models/zipModel');
 const Clip = require('../models/clipModel');
-const { PublicConfig } = require('../models/configModel');
+const { PublicConfig, AdminConfig } = require('../models/configModel');
+const Rating = require('../models/ratingModel');
 const TrophyService = require('../services/trophyService');
 const { clipsZipUpload, chunkUpload, downloadDir, chunksDir, ensureDirectoryExists } = require('./storage/ClipsZipUpload');
 const backendUrl = process.env.BACKEND_URL || 'https://api.spoekle.com';
@@ -355,16 +356,52 @@ router.post('/process', authorizeRoles(['clipteam', 'admin']), async (req, res) 
             wsManager = new WebSocketManager(io);
         }
 
-        const { clips, season, year } = req.body;
+        const { clips, season, year, assignTrophies = true } = req.body;
         
         if (!clips || !season || !year) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
+        
+        console.log(`Processing ${clips.length} clips for ${season} ${year} (Trophy assignment: ${assignTrophies ? 'enabled' : 'disabled'})`);
+
+        // Get deny threshold from admin config
+        const adminConfig = await AdminConfig.findOne();
+        const denyThreshold = adminConfig?.denyThreshold || 5; // Default to 5 if not set
+        
+        console.log(`Using deny threshold: ${denyThreshold}`);
+
+        // Filter out denied clips based on their ratings
+        const allowedClips = [];
+        const deniedClips = [];
+        for (const clip of clips) {
+            try {
+                // Get rating data for this clip
+                const ratingDoc = await Rating.findOne({ clipId: clip._id });
+                
+                if (!ratingDoc || !ratingDoc.ratings) {
+                    // No ratings data - include the clip
+                    allowedClips.push(clip);
+                    continue;
+                }
+                
+                // Check deny count
+                const denyCount = ratingDoc.ratings.deny?.length || 0;
+                
+                if (denyCount >= denyThreshold) {
+                    deniedClips.push(clip);
+                } else {
+                    allowedClips.push(clip);
+                }
+            } catch (error) {
+                console.error(`Error checking ratings for clip ${clip._id}:`, error);
+                // Include clip if there's an error checking ratings
+                allowedClips.push(clip);
+            }
+        }
+        
+        console.log(`${deniedClips.length} clips excluded`);
 
         const jobId = `job-${Date.now()}`;
-        // Filter out denied clips - clips come with average ratings calculated on frontend
-        // Note: Rating values are now calculated as averages (rounded to nearest integer) rather than most chosen
-        const allowedClips = clips.filter(clip => clip.rating !== 'denied');
         const totalClips = allowedClips.length;
 
         // Initialize the processing job status with more detailed information
@@ -415,7 +452,7 @@ router.post('/process', authorizeRoles(['clipteam', 'admin']), async (req, res) 
         }
 
         // Start processing in the background
-        processClipsAsync(jobId, allowedClips, season, year);
+        processClipsAsync(jobId, allowedClips, clips, season, year, assignTrophies);
 
     } catch (error) {
         console.error('Error processing zip:', error.message);
@@ -424,7 +461,7 @@ router.post('/process', authorizeRoles(['clipteam', 'admin']), async (req, res) 
 });
 
 // Process clips asynchronously with WebSocket updates
-async function processClipsAsync(jobId, clips, season, year) {
+async function processClipsAsync(jobId, clips, allClips, season, year, assignTrophies = true) {
     const job = processingJobs[jobId];
     if (!job) return;
     
@@ -476,11 +513,12 @@ async function processClipsAsync(jobId, clips, season, year) {
     };
 
     try {
+        logAndEmit('=============================', 'info', 'starting');
         logAndEmit('Starting clip processing task', 'info', 'starting');
 
-        const zipFilename = `processed-${Date.now()}.zip`;
+        const zipFilename = `${year}-${season}-processed-${Date.now()}.zip`;
         const zipPath = path.join(downloadDir, zipFilename);
-        logAndEmit(`Creating zip at ${zipPath}`, 'info', 'setup');
+        logAndEmit(`Creating zip for ${season} ${year} at ${zipPath}`, 'info', 'setup');
         
         // Improve writeStream with higher highWaterMark to reduce drain events
         const zipStream = fs.createWriteStream(zipPath, { 
@@ -575,11 +613,12 @@ async function processClipsAsync(jobId, clips, season, year) {
                     const size = stats.size;
                     logAndEmit(`Archive completed: ${zipFilename}, size: ${formatBytes(size)}`, 'info');
 
-                    // Create database entry
+                    // Create database entry - ensure season is capitalized
                     logAndEmit('Creating database entry...', 'info', 'database');
+                    const capitalizedSeason = season.charAt(0).toUpperCase() + season.slice(1).toLowerCase();
                     const seasonZip = new Zip({
                         url: `${backendUrl}/download/${zipFilename}`,
-                        season: season,
+                        season: capitalizedSeason,
                         year: parseInt(year),
                         name: zipFilename,
                         size: size,
@@ -590,12 +629,12 @@ async function processClipsAsync(jobId, clips, season, year) {
                     await seasonZip.save();
                     logAndEmit(`Saved to database with ID ${seasonZip._id}`, 'info');
                     
-                    // Archive clips after successful zip creation
-                    logAndEmit('Archiving processed clips...', 'info', 'archiving_clips');
+                    // Archive ALL clips from this season/year (both approved and denied)
+                    logAndEmit('Archiving all clips from season...', 'info', 'archiving_clips');
                     try {                        
-                        const clipIds = clips.map(clip => clip._id);
+                        const allClipIds = allClips.map(clip => clip._id);
                         const archiveResult = await Clip.updateMany(
-                            { _id: { $in: clipIds } },
+                            { _id: { $in: allClipIds } },
                             { 
                                 $set: { 
                                     archived: true,
@@ -605,7 +644,7 @@ async function processClipsAsync(jobId, clips, season, year) {
                                 }
                             }
                         );
-                        logAndEmit(`Archived ${archiveResult.modifiedCount} clips`, 'info');
+                        logAndEmit(`Archived ${archiveResult.modifiedCount} clips (${clips.length} approved, ${allClips.length - clips.length} denied)`, 'info');
                     } catch (archiveError) {
                         logAndEmit(`Error archiving clips: ${archiveError.message}`, 'warning');
                     }
@@ -619,13 +658,17 @@ async function processClipsAsync(jobId, clips, season, year) {
                         logAndEmit(`Error updating clip count: ${countError.message}`, 'warning');
                     }
                     
-                    // Assign trophies for this season
-                    logAndEmit('Assigning trophies...', 'info', 'trophy_assignment');
-                    try {
-                        const trophyAssignments = await TrophyService.assignTrophiesForSeason(season, parseInt(year));
-                        logAndEmit(`Assigned ${trophyAssignments.length} trophies`, 'info');
-                    } catch (trophyError) {
-                        logAndEmit(`Error assigning trophies: ${trophyError.message}`, 'warning');
+                    // Assign trophies for this season (if enabled)
+                    if (assignTrophies) {
+                        logAndEmit('Assigning trophies...', 'info', 'trophy_assignment');
+                        try {
+                            const trophyAssignments = await TrophyService.assignTrophiesForSeason(season, parseInt(year));
+                            logAndEmit(`Assigned ${trophyAssignments.length} trophies`, 'info');
+                        } catch (trophyError) {
+                            logAndEmit(`Error assigning trophies: ${trophyError.message}`, 'warning');
+                        }
+                    } else {
+                        logAndEmit('Trophy assignment disabled for this processing run', 'info');
                     }
                     
                     // Update job status
@@ -692,12 +735,8 @@ async function processClipsAsync(jobId, clips, season, year) {
             }
         });
 
-        // Fix the entry event handler to prevent NaN errors
         archive.on('entry', (entry) => {
             try {
-                const size = entry.size || 0;
-                const formattedSize = isNaN(size) ? "Unknown size" : formatBytes(size);
-                logAndEmit(`Added ${entry.name} to archive (${formattedSize})`, 'debug');
             } catch (err) {
                 logAndEmit(`Added ${entry.name || 'unnamed file'} to archive (error logging size)`, 'debug');
             }
@@ -737,9 +776,9 @@ async function processClipsAsync(jobId, clips, season, year) {
                     
                     // Validate that rating is a valid numeric value (1-4) or 'deny'
                     const validRatings = ['1', '2', '3', '4', 'deny'];
-                    const finalRating = validRatings.includes(rating) ? rating : '1';
+                    const finalRating = validRatings.includes(rating) ? rating : '3'; // Default to neutral '3' instead of '1'
                     if (finalRating !== rating) {
-                        logAndEmit(`Warning: Invalid rating '${rating}' for clip ${title}, defaulting to '1'`, 'warning');
+                        logAndEmit(`Warning: Invalid rating '${rating}' for clip ${title}, defaulting to '3' (neutral)`, 'warning');
                     }
                     
                     const clipData = { url, streamer, rating: finalRating, title, _id };
@@ -750,7 +789,6 @@ async function processClipsAsync(jobId, clips, season, year) {
                     }
                     
                     const startTime = Date.now();
-                    logAndEmit(`Fetching clip: ${streamer} - ${title}`, 'debug');
                     
                     // Add download timeout and better stream handling
                     const response = await axios.get(url, { 

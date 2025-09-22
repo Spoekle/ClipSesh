@@ -267,6 +267,7 @@ export const getClipsWithRatings = async (params?: {
       );
       
       const ratingResponses = await Promise.all(ratingPromises);
+      
       ratingsData = ratingResponses.reduce<Record<string, Rating>>((acc, res, index) => {
         acc[clipsData[index]._id] = res.data;
         return acc;

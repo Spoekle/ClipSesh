@@ -1,21 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaSpinner, FaTimes, FaCheck, FaCog, FaExclamationTriangle } from 'react-icons/fa';
 import ConfirmationDialog from '../common/ConfirmationDialog';
 import LiveProcessingView from './LiveProcessingView';
 import { forceCompleteProcessJob } from '../../services/adminService';
+import { Clip, Rating } from '../../types/adminTypes';
 
 interface ProcessClipsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onProcess: (season: string, year: number) => void;
-  onProcessingComplete?: () => void; // New prop for handling completion
+  onProcess: (season: string, year: number, assignTrophies: boolean) => void;
+  onProcessingComplete?: () => void;
   processing: boolean;
   progress: number;
   currentSeason: string;
   currentYear: number;
   clipCount: number;
   processJobId?: string | null;
+  clips?: Clip[];
+  ratings?: Record<string, Rating>;
+  denyThreshold?: number;
 }
 
 const ProcessClipsModal: React.FC<ProcessClipsModalProps> = ({
@@ -27,11 +31,15 @@ const ProcessClipsModal: React.FC<ProcessClipsModalProps> = ({
   progress,
   currentSeason,
   currentYear,
-  clipCount,
-  processJobId
+  clipCount: fallbackClipCount,
+  processJobId,
+  clips = [],
+  ratings = {},
+  denyThreshold = 5
 }) => {
   const [season, setSeason] = useState(currentSeason);
   const [year, setYear] = useState(currentYear);
+  const [assignTrophies, setAssignTrophies] = useState(true);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showForceCompleteConfirmation, setShowForceCompleteConfirmation] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -39,6 +47,32 @@ const ProcessClipsModal: React.FC<ProcessClipsModalProps> = ({
   const [stuckForTooLong, setStuckForTooLong] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Calculate clip count based on selected season and year
+  const clipCount = useMemo(() => {
+    if (clips.length === 0) return fallbackClipCount;
+    
+    return clips.filter(clip => {
+      // Filter by selected season and year
+      const clipSeason = clip.season?.toLowerCase();
+      const clipYear = clip.year;
+      const selectedSeason = season.toLowerCase();
+      
+      if (clipSeason !== selectedSeason || clipYear !== year) {
+        return false;
+      }
+
+      // Filter out denied clips
+      const ratingData = ratings[clip._id];
+      if (!ratingData || !ratingData.ratingCounts || !Array.isArray(ratingData.ratingCounts)) {
+        return true; // Include clips without ratings
+      }
+
+      return ratingData.ratingCounts.every(
+        (rateData) => rateData.rating !== 'deny' || rateData.count < denyThreshold
+      );
+    }).length;
+  }, [clips, ratings, season, year, denyThreshold, fallbackClipCount]);
 
   // Track elapsed time during processing
   useEffect(() => {
@@ -106,7 +140,7 @@ const ProcessClipsModal: React.FC<ProcessClipsModalProps> = ({
         return;
       }
       
-      onProcess(season, year);
+      onProcess(season, year, assignTrophies);
     } catch (error) {
       console.error("Error in process clips:", error);
       setErrorMessage(error instanceof Error ? error.message : "An unknown error occurred");
@@ -296,6 +330,39 @@ const ProcessClipsModal: React.FC<ProcessClipsModalProps> = ({
                       </div>
                     </div>
 
+                    {/* Trophy Assignment Toggle */}
+                    <div className="border-t pt-4 mt-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <h3 className="text-sm font-medium text-neutral-900 dark:text-white">
+                            Trophy Assignment
+                          </h3>
+                          <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
+                            Automatically assign trophies based on criteria after processing
+                          </p>
+                        </div>
+                        <div className="ml-4">
+                          <label className="flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={assignTrophies}
+                              onChange={(e) => setAssignTrophies(e.target.checked)}
+                              className="sr-only"
+                            />
+                            <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                              assignTrophies ? 'bg-blue-600' : 'bg-neutral-300 dark:bg-neutral-600'
+                            }`}>
+                              <span
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                  assignTrophies ? 'translate-x-6' : 'translate-x-1'
+                                }`}
+                              />
+                            </div>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="flex justify-end space-x-3 pt-2">
                       <button
                         type="button"
@@ -322,7 +389,7 @@ const ProcessClipsModal: React.FC<ProcessClipsModalProps> = ({
       <ConfirmationDialog
         isOpen={showConfirmation}
         title="Confirm Processing"
-        message={`Are you sure you want to process ${clipCount} clips for ${season} ${year}? This operation may take several minutes depending on the number of clips.`}
+        message={`Are you sure you want to process ${clipCount} clips for ${season} ${year}? This operation may take several minutes depending on the number of clips.${assignTrophies ? '\n\nTrophies will be automatically assigned after processing.' : '\n\nTrophy assignment is disabled.'}`}
         confirmText="Start Processing"
         confirmVariant="primary"
         onConfirm={handleConfirmProcess}
