@@ -38,7 +38,7 @@ export const BarTooltip: React.FC<TooltipProps<ValueType, NameType>> = ({ active
           </div>
           <div className="flex justify-between items-center">
             <span className="text-sm text-neutral-600 dark:text-neutral-300">Coverage:</span> 
-            <span className="font-semibold text-neutral-800 dark:text-white bg-green-200 dark:bg-green-800 px-2 py-1 rounded">{userData.percentageRated.toFixed(1)}%</span>
+            <span className={`font-semibold text-neutral-800 dark:text-white ${userData.percentageRated >= 20 ? 'bg-green-200 dark:bg-green-800' : 'bg-red-200 dark:bg-red-800'} px-2 py-1 rounded`}>{userData.percentageRated.toFixed(1)}%</span>
           </div>
           <div className="mt-3 pt-2 border-t border-neutral-300 dark:border-neutral-600">
             <div className="grid grid-cols-2 gap-2">

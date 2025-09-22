@@ -29,6 +29,7 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = () => {
   });
   const [showPerUser, setShowPerUser] = useState<boolean>(false);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [showAllUsers, setShowAllUsers] = useState<boolean>(false);
 
   useEffect(() => {
     fetchActivityData();
@@ -210,6 +211,28 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = () => {
     return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
   };
 
+  // Create merged dataset for multiple users
+  const createMergedUserData = () => {
+    if (!showPerUser || selectedUsers.length === 0) {
+      return activityData;
+    }
+
+    // Get all dates from the activity data
+    const allDates = activityData.map(item => item.date);
+    
+    // Create merged data structure
+    return allDates.map(date => {
+      const dataPoint: any = { date };
+      
+      selectedUsers.forEach(username => {
+        const userDataForDate = userActivityData[username]?.find(item => item.date === date);
+        dataPoint[username] = userDataForDate?.count || 0;
+      });
+      
+      return dataPoint;
+    });
+  };
+
   return (
     <div className="space-y-6">
       {/* Header Section */}
@@ -267,28 +290,36 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = () => {
               
               {showPerUser && Object.keys(userActivityData).length > 0 && (
                 <div className="flex flex-wrap gap-2">
-                  {Object.keys(userActivityData).slice(0, 4).map(username => (
+                  {/* Show first 4 users or all users based on showAllUsers state */}
+                  {(showAllUsers ? Object.keys(userActivityData) : Object.keys(userActivityData).slice(0, 10)).map(username => (
                     <button
                       key={username}
                       onClick={() => toggleUserSelection(username)}
-                      className={`px-3 py-1 rounded-full text-sm transition-all duration-200 ${
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 border-2 shadow-sm hover:shadow-md transform hover:scale-105 ${
                         selectedUsers.includes(username)
-                          ? 'text-white shadow-md'
-                          : 'bg-neutral-300 dark:bg-neutral-600 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-400 dark:hover:bg-neutral-500'
+                          ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 shadow-purple-200 dark:shadow-purple-800/20'
+                          : 'border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 hover:border-neutral-400 dark:hover:border-neutral-500'
                       }`}
-                      style={{
-                        backgroundColor: selectedUsers.includes(username)
-                          ? generateColor(username)
-                          : undefined
-                      }}
                     >
-                      {username}
+                      <span className="flex items-center gap-2">
+                        {selectedUsers.includes(username) && (
+                          <div 
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: generateColor(username) }}
+                          />
+                        )}
+                        {username}
+                      </span>
                     </button>
                   ))}
+                  {/* Show expand/collapse button when there are more than 4 users */}
                   {Object.keys(userActivityData).length > 4 && (
-                    <span className="text-sm text-neutral-600 dark:text-neutral-400 px-2 py-1">
-                      +{Object.keys(userActivityData).length - 4} more
-                    </span>
+                    <button
+                      onClick={() => setShowAllUsers(!showAllUsers)}
+                      className="text-sm text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 px-2 py-1 rounded transition-colors duration-200 bg-neutral-300 dark:bg-neutral-600 hover:bg-neutral-400 dark:hover:bg-neutral-500"
+                    >
+                      {showAllUsers ? 'Show Less' : `+${Object.keys(userActivityData).length - 10} more`}
+                    </button>
                   )}
                 </div>
               )}
@@ -327,7 +358,7 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = () => {
             <div className="bg-neutral-300 dark:bg-neutral-800 rounded-xl p-4" style={{ height: 400 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart
-                  data={showPerUser ? userActivityData[selectedUsers[0]] || [] : activityData}
+                  data={createMergedUserData()}
                   margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#9ca3af" strokeOpacity={0.5} />
@@ -354,17 +385,16 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = () => {
                       name="Total Activity"
                     />
                   ) : (
-                    selectedUsers.slice(0, 5).map((username) => (
+                    selectedUsers.slice(0, 10).map((username) => (
                       <Line
                         key={username}
                         type="monotone"
-                        dataKey="count"
+                        dataKey={username}
                         stroke={generateColor(username)}
                         strokeWidth={2}
                         dot={{ fill: generateColor(username), strokeWidth: 2, r: 3 }}
                         activeDot={{ r: 5 }}
                         name={username}
-                        data={userActivityData[username]}
                       />
                     ))
                   )}

@@ -225,7 +225,7 @@ function DesktopNavbar({
                       className="px-3 py-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center justify-between group"
                     >
                       <button
-                        className="text-sm text-left flex-grow truncate hover:cursor-pointer"
+                        className="text-sm text-left flex-grow truncate"
                         onClick={() => {
                           // Directly perform the search action
                           setSearchInput(search);

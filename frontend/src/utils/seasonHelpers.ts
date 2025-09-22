@@ -1,12 +1,13 @@
 /**
  * Determine the current season based on the date
  * 
- * @returns Object containing season name and other info
+ * @returns Object containing season name and year
  */
-export const getCurrentSeason = (): { season: string; } => {
+export const getCurrentSeason = (): { season: string; year: number } => {
   const now = new Date();
   const month = now.getMonth() + 1;
   const day = now.getDate();
+  const year = now.getFullYear();
   let season = '';
 
   if (
@@ -31,7 +32,7 @@ export const getCurrentSeason = (): { season: string; } => {
     season = 'Winter';
   }
 
-  return { season };
+  return { season, year };
 };
 
 /**

@@ -8,3 +8,7 @@
   --blurple: oklch(47.4% 0.2127 283.43);
   --blurple-dark: oklch(36.08% 0.1638 283.12);
 }
+
+button {
+  @apply hover:cursor-pointer;
+}

@@ -336,7 +336,7 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
                     {localSearchTerm && (
                       <button
                         onClick={handleClearSearch}
-                        className="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition"
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition"
                         aria-label="Clear search"
                       >
                         <FaTimes />
