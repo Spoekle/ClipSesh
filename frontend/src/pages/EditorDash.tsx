@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet';
-import { saveAs } from 'file-saver';
 import LoadingBar from 'react-top-loading-bar';
 import background from '../media/editor.webp';
 import { motion } from 'framer-motion';
@@ -14,9 +13,11 @@ import {
   FaInfoCircle,
   FaTimes,
   FaVideo,
-  FaPercentage
+  FaPercentage,
+  FaSpinner
 } from 'react-icons/fa';
 import { getCurrentSeason } from '../utils/seasonHelpers';
+import { downloadWithProgress } from '../utils/downloadHelpers';
 
 import { useCombinedConfig } from '../hooks/useConfig';
 import { useClipsWithRatings } from '../hooks/useClips';
@@ -25,8 +26,8 @@ import { useCurrentUser } from '../hooks/useUser';
 
 const EditorDash: React.FC = () => {
   const { data: user } = useCurrentUser();
-  const { data: config, isLoading: configLoading } = useCombinedConfig(user);
-  const { data: clipsData, isLoading: clipsLoading } = useClipsWithRatings();
+  const { data: config } = useCombinedConfig(user);
+  const { data: clipsData } = useClipsWithRatings();
   const { data: zips = [], isLoading: zipsLoading } = useZips();
 
   const clips = clipsData?.clips || [];
@@ -34,6 +35,11 @@ const EditorDash: React.FC = () => {
 
   const [progress, setProgress] = useState<number>(0);
   const [activeTab, setActiveTab] = useState<'latest' | 'all'>('latest');
+  const [downloadStates, setDownloadStates] = useState<{ [key: string]: { 
+    isDownloading: boolean; 
+    progress: number; 
+  } }>({});
+  const [downloadProgress, setDownloadProgress] = useState<number>(0);
 
   const seasonInfo = {
     season: getCurrentSeason().season,
@@ -70,6 +76,71 @@ const EditorDash: React.FC = () => {
     return ((deniedClips / seasonInfo.clipAmount) * 100).toFixed(1);
   };
 
+  const handleDownload = async (zipId: string, url: string, filename: string) => {
+    try {
+      // Set download state for this specific zip
+      setDownloadStates(prev => ({
+        ...prev,
+        [zipId]: { isDownloading: true, progress: 0 }
+      }));
+
+      // Start the download with progress tracking
+      await downloadWithProgress({
+        url,
+        filename,
+        onStart: () => {
+          setProgress(0);
+          setDownloadProgress(0);
+        },
+        onProgress: (progressValue) => {
+          setProgress(progressValue);
+          setDownloadProgress(progressValue);
+          setDownloadStates(prev => ({
+            ...prev,
+            [zipId]: { isDownloading: true, progress: progressValue }
+          }));
+        },
+        onComplete: () => {
+          setProgress(0);
+          setDownloadProgress(0);
+          setDownloadStates(prev => ({
+            ...prev,
+            [zipId]: { isDownloading: false, progress: 100 }
+          }));
+          
+          // Clear the download state after a short delay
+          setTimeout(() => {
+            setDownloadStates(prev => {
+              const newState = { ...prev };
+              delete newState[zipId];
+              return newState;
+            });
+          }, 2000);
+        },
+        onError: (error) => {
+          console.error('Download failed:', error);
+          setProgress(0);
+          setDownloadProgress(0);
+          setDownloadStates(prev => ({
+            ...prev,
+            [zipId]: { isDownloading: false, progress: 0 }
+          }));
+          
+          // Clear the download state after a short delay
+          setTimeout(() => {
+            setDownloadStates(prev => {
+              const newState = { ...prev };
+              delete newState[zipId];
+              return newState;
+            });
+          }, 2000);
+        }
+      });
+    } catch (error) {
+      console.error('Download error:', error);
+    }
+  };
+
   return (
     <div className="min-h-screen text-white flex flex-col items-center bg-neutral-200 dark:bg-neutral-900 transition duration-200">
       <Helmet>
@@ -80,7 +151,15 @@ const EditorDash: React.FC = () => {
         />
       </Helmet>
       <div className='w-full'>
-        <LoadingBar color='#f11946' height={4} progress={progress} onLoaderFinished={() => setProgress(0)} />
+        <LoadingBar 
+          color='#f11946' 
+          height={4} 
+          progress={downloadProgress > 0 ? downloadProgress : progress} 
+          onLoaderFinished={() => {
+            setProgress(0);
+            setDownloadProgress(0);
+          }} 
+        />
       </div>
       <div className="w-full flex h-96 justify-center items-center animate-fade"
         style={{
@@ -336,13 +415,27 @@ const EditorDash: React.FC = () => {
                         </div>
 
                         <motion.button
-                          onClick={() => { saveAs(displayZips[0].url); }}
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.95 }}
-                          className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-200"
-                          title="Download Latest Archive"
+                          onClick={() => handleDownload(displayZips[0]._id, displayZips[0].url, displayZips[0].name)}
+                          whileHover={{ scale: downloadStates[displayZips[0]._id]?.isDownloading ? 1 : 1.1 }}
+                          whileTap={{ scale: downloadStates[displayZips[0]._id]?.isDownloading ? 1 : 0.95 }}
+                          disabled={downloadStates[displayZips[0]._id]?.isDownloading}
+                          className={`${
+                            downloadStates[displayZips[0]._id]?.isDownloading
+                              ? 'bg-gradient-to-r from-amber-600 to-amber-700 cursor-not-allowed'
+                              : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
+                          } text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center min-w-[64px] min-h-[64px]`}
+                          title={downloadStates[displayZips[0]._id]?.isDownloading ? 'Downloading...' : 'Download Latest Archive'}
                         >
-                          <FaDownload size={24} />
+                          {downloadStates[displayZips[0]._id]?.isDownloading ? (
+                            <div className="flex flex-col items-center">
+                              <FaSpinner className="animate-spin" size={24} />
+                              <span className="text-xs mt-1">
+                                {downloadStates[displayZips[0]._id]?.progress || 0}%
+                              </span>
+                            </div>
+                          ) : (
+                            <FaDownload size={24} />
+                          )}
                         </motion.button>
                       </motion.div>
                     </div>
@@ -378,13 +471,27 @@ const EditorDash: React.FC = () => {
                           </div>
 
                           <motion.button
-                            onClick={() => { saveAs(zip.url); }}
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.95 }}
-                            className="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full shadow-md hover:shadow-lg transition-all duration-200"
-                            title="Download Archive"
+                            onClick={() => handleDownload(zip._id, zip.url, zip.name)}
+                            whileHover={{ scale: downloadStates[zip._id]?.isDownloading ? 1 : 1.1 }}
+                            whileTap={{ scale: downloadStates[zip._id]?.isDownloading ? 1 : 0.95 }}
+                            disabled={downloadStates[zip._id]?.isDownloading}
+                            className={`${
+                              downloadStates[zip._id]?.isDownloading
+                                ? 'bg-amber-600 cursor-not-allowed'
+                                : 'bg-blue-600 hover:bg-blue-700'
+                            } text-white p-3 rounded-full shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center min-w-[48px] min-h-[48px]`}
+                            title={downloadStates[zip._id]?.isDownloading ? 'Downloading...' : 'Download Archive'}
                           >
-                            <FaDownload size={18} />
+                            {downloadStates[zip._id]?.isDownloading ? (
+                              <div className="flex flex-col items-center">
+                                <FaSpinner className="animate-spin" size={14} />
+                                <span className="text-xs mt-0.5">
+                                  {downloadStates[zip._id]?.progress || 0}%
+                                </span>
+                              </div>
+                            ) : (
+                              <FaDownload size={18} />
+                            )}
                           </motion.button>
                         </motion.div>
                       ))}

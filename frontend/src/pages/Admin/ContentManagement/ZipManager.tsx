@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { FaDownload, FaTrash, FaUpload, FaFile, FaSpinner, FaExclamationTriangle, FaRedo } from 'react-icons/fa';
-import { saveAs } from 'file-saver';
 
 import ConfirmationDialog from '../../../components/common/ConfirmationDialog';
 import { formatFileSize, formatDate } from '../../../utils/fileHelpers';
 import { uploadFileInChunks } from '../../../utils/zipHelpers';
+import { downloadWithProgress } from '../../../utils/downloadHelpers';
 import { Zip, SeasonInfo } from '../../../types/adminTypes';
 
 interface ZipManagerProps {
@@ -39,6 +39,10 @@ const ZipManager: React.FC<ZipManagerProps> = ({
   const [retryAttempt, setRetryAttempt] = useState(0);
   const [currentChunk, setCurrentChunk] = useState(0);
   const [totalChunks, setTotalChunks] = useState(0);
+  const [downloadStates, setDownloadStates] = useState<{ [key: string]: { 
+    isDownloading: boolean; 
+    progress: number; 
+  } }>({});
 
   // Confirmation dialog state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -122,6 +126,61 @@ const ZipManager: React.FC<ZipManagerProps> = ({
     setShowDeleteConfirm(false);
     setZipToDelete(null);
     setSelectedZipName("");
+  };
+
+  const handleDownload = async (zipId: string, url: string, filename: string) => {
+    try {
+      // Set download state for this specific zip
+      setDownloadStates(prev => ({
+        ...prev,
+        [zipId]: { isDownloading: true, progress: 0 }
+      }));
+
+      // Start the download with progress tracking
+      await downloadWithProgress({
+        url,
+        filename,
+        onProgress: (progressValue) => {
+          setDownloadStates(prev => ({
+            ...prev,
+            [zipId]: { isDownloading: true, progress: progressValue }
+          }));
+        },
+        onComplete: () => {
+          setDownloadStates(prev => ({
+            ...prev,
+            [zipId]: { isDownloading: false, progress: 100 }
+          }));
+          
+          // Clear the download state after a short delay
+          setTimeout(() => {
+            setDownloadStates(prev => {
+              const newState = { ...prev };
+              delete newState[zipId];
+              return newState;
+            });
+          }, 2000);
+        },
+        onError: (error) => {
+          console.error('Download failed:', error);
+          setDownloadStates(prev => ({
+            ...prev,
+            [zipId]: { isDownloading: false, progress: 0 }
+          }));
+          
+          // Clear the download state after a short delay
+          setTimeout(() => {
+            setDownloadStates(prev => {
+              const newState = { ...prev };
+              delete newState[zipId];
+              return newState;
+            });
+          }, 2000);
+        }
+      });
+    } catch (error) {
+      console.error('Download error:', error);
+    }
   };
 
   return (
@@ -357,13 +416,27 @@ const ZipManager: React.FC<ZipManagerProps> = ({
 
                       <div className="flex gap-2">
                         <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => saveAs(zip.url, zip.name)}
-                          className="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-md transition duration-200"
-                          title="Download"
+                          whileHover={{ scale: downloadStates[zip._id]?.isDownloading ? 1 : 1.1 }}
+                          whileTap={{ scale: downloadStates[zip._id]?.isDownloading ? 1 : 0.9 }}
+                          onClick={() => handleDownload(zip._id, zip.url, zip.name)}
+                          disabled={downloadStates[zip._id]?.isDownloading}
+                          className={`${
+                            downloadStates[zip._id]?.isDownloading
+                              ? 'bg-amber-500 cursor-not-allowed'
+                              : 'bg-blue-500 hover:bg-blue-600'
+                          } text-white p-2 rounded-md transition duration-200 flex items-center justify-center min-w-[36px] min-h-[36px]`}
+                          title={downloadStates[zip._id]?.isDownloading ? 'Downloading...' : 'Download'}
                         >
-                          <FaDownload />
+                          {downloadStates[zip._id]?.isDownloading ? (
+                            <div className="flex flex-col items-center">
+                              <FaSpinner className="animate-spin" size={12} />
+                              <span className="text-xs mt-0.5">
+                                {downloadStates[zip._id]?.progress || 0}%
+                              </span>
+                            </div>
+                          ) : (
+                            <FaDownload />
+                          )}
                         </motion.button>
 
                         <motion.button
