@@ -8,20 +8,20 @@ interface ConfirmationDialogProps {
   message: string;
   confirmText?: string;
   cancelText?: string;
-  confirmVariant?: 'danger' | 'primary' | 'success'; 
+  confirmVariant?: 'danger' | 'primary' | 'success';
   onConfirm: () => void;
   onCancel: () => void;
 }
 
-const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({ 
-  isOpen, 
-  title, 
-  message, 
-  confirmText = 'Confirm', 
+const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
+  isOpen,
+  title,
+  message,
+  confirmText = 'Confirm',
   cancelText = 'Cancel',
   confirmVariant = 'danger',
-  onConfirm, 
-  onCancel 
+  onConfirm,
+  onCancel
 }) => {
   // Map variants to colors
   const variantClasses = {
@@ -30,53 +30,53 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
     success: 'bg-green-600 hover:bg-green-700'
   };
 
-  const buttonClass = `px-4 py-2 text-white rounded-lg transition-colors font-medium ${variantClasses[confirmVariant]}`;
+  const buttonClass = `px-4 py-2.5 text-white rounded-xl transition-colors font-medium ${variantClasses[confirmVariant]}`;
 
   return (
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           {/* Backdrop */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
-            animate={{ opacity: 0.5 }}
+            animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={onCancel}
           />
-          
+
           {/* Dialog */}
-          <motion.div 
+          <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
-            transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-            className="bg-neutral-200 dark:bg-neutral-800 rounded-xl p-6 shadow-xl max-w-md w-full mx-4 z-10"
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-2xl max-w-md w-full mx-4 z-10 border border-neutral-200/50 dark:border-neutral-700/50"
           >
             <div className="flex items-start">
-              <div className="mr-4 text-yellow-500 dark:text-yellow-400 flex-shrink-0">
-                <FaExclamationTriangle size={24} />
+              <div className="mr-4 p-2 bg-amber-100 dark:bg-amber-900/30 rounded-xl flex-shrink-0">
+                <FaExclamationTriangle className="text-amber-500 dark:text-amber-400" size={20} />
               </div>
-              
+
               <div className="flex-1 text-neutral-900 dark:text-white">
-                <h3 className="text-xl font-semibold mb-2">{title}</h3>
-                <p className="mb-6">{message}</p>
-                
+                <h3 className="text-xl font-bold mb-2">{title}</h3>
+                <p className="text-neutral-600 dark:text-neutral-400 mb-6">{message}</p>
+
                 <div className="flex justify-end gap-3">
                   <motion.button
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={onCancel}
-                    className="px-4 py-2 bg-neutral-300 dark:bg-neutral-700 rounded-lg text-neutral-800 dark:text-neutral-100 hover:bg-neutral-400 dark:hover:bg-neutral-600 transition-colors"
+                    className="px-4 py-2.5 bg-neutral-100 dark:bg-neutral-700 rounded-xl text-neutral-800 dark:text-neutral-100 hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-colors font-medium"
                   >
                     <div className="flex items-center">
                       <FaTimes className="mr-2" /> {cancelText}
                     </div>
                   </motion.button>
-                  
+
                   <motion.button
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={onConfirm}
                     className={buttonClass}
                   >

@@ -14,10 +14,10 @@ const ResetPassword: React.FC = () => {
     const [error, setError] = useState<string>('');
     const [loading, setLoading] = useState<boolean>(false);
     const [passwordStrength, setPasswordStrength] = useState<number>(0);
-    
+
     // Use notification context
     const { showSuccess, showError } = useNotification();
-    
+
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -56,7 +56,7 @@ const ResetPassword: React.FC = () => {
         if (passwordStrength < 2) {
             setError('Password is too weak. Include uppercase, lowercase, numbers, or special characters.');
             return;
-        }        setLoading(true);
+        } setLoading(true);
         try {
             if (!token) throw new Error('Invalid token');
             const response = await confirmPasswordReset(token, password);
@@ -108,40 +108,40 @@ const ResetPassword: React.FC = () => {
                 />
             </Helmet>
             <div
-                className="w-full flex h-96 justify-center items-center animate-fade"
-                style={{ backgroundImage: `url(${background})`, backgroundSize: 'cover', backgroundPosition: 'center', clipPath: 'polygon(0 0, 100% 0, 100% 80%, 0 100%)' }}
+                className="w-full flex h-[500px] justify-center items-center rounded-b-4xl overflow-hidden relative animate-fade mx-6"
+                style={{ backgroundImage: `url(${background})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
             >
-                <div className="flex bg-gradient-to-b from-neutral-900/80 to-bg-black/40 backdrop-blur-md justify-center items-center w-full h-full">
-                    <div className="flex flex-col justify-center items-center px-4 md:px-0">
-                        <motion.h1 
+                <div className="flex bg-gradient-to-b from-black/70 via-black/50 to-black/30 dark:from-neutral-900/80 dark:to-black/40 backdrop-blur-md justify-center items-center w-full h-full">
+                    <div className="flex flex-col justify-center items-center px-4 md:px-0 w-full">
+                        <motion.h1
                             initial={{ opacity: 0, y: -20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.5 }}
-                            className="text-4xl md:text-5xl font-bold mb-4 text-center text-white drop-shadow-lg"
+                            className="text-7xl sm:text-8xl md:text-9xl font-black text-white leading-tight mb-4 text-center drop-shadow-lg"
                         >
-                            Reset Password
+                            RESET PASSWORD
                         </motion.h1>
-                        <motion.h1 
+                        <motion.h2
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.5, delay: 0.2 }}
-                            className="text-2xl md:text-3xl mb-4 text-center text-white/90 drop-shadow-md"
+                            className="text-2xl sm:text-3xl md:text-4xl font-light text-neutral-300 max-w-3xl mx-auto leading-relaxed mb-4 text-center drop-shadow-md"
                         >
                             It happens to the best of us...
-                        </motion.h1>
+                        </motion.h2>
                     </div>
                 </div>
             </div>
 
             <div className="container max-w-md px-4 pt-16 pb-12 bg-neutral-200 dark:bg-neutral-900 transition duration-200 justify-center justify-items-center">
-                <motion.div 
+                <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
                     className="w-full p-6 md:p-8 bg-neutral-300 dark:bg-neutral-800 text-neutral-900 dark:text-white transition duration-200 rounded-xl shadow-lg"
                 >
                     {message && (
-                        <motion.div 
+                        <motion.div
                             initial={{ opacity: 0, height: 0 }}
                             animate={{ opacity: 1, height: 'auto' }}
                             className="mb-6 p-4 bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200 rounded-lg flex items-center"
@@ -150,9 +150,9 @@ const ResetPassword: React.FC = () => {
                             {message}
                         </motion.div>
                     )}
-                    
+
                     {error && (
-                        <motion.div 
+                        <motion.div
                             initial={{ opacity: 0, height: 0 }}
                             animate={{ opacity: 1, height: 'auto' }}
                             className="mb-6 p-4 bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200 rounded-lg flex items-center"
@@ -161,7 +161,7 @@ const ResetPassword: React.FC = () => {
                             {error}
                         </motion.div>
                     )}
-                    
+
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div className="flex flex-col">
                             <label className="mb-2 font-medium text-neutral-800 dark:text-gray-200 flex items-center">
@@ -178,7 +178,7 @@ const ResetPassword: React.FC = () => {
                                 />
                                 <FaLock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-500 dark:text-neutral-400" />
                             </div>
-                            
+
                             {password && (
                                 <div className="mt-2">
                                     <div className="flex justify-between mb-1">
@@ -187,7 +187,7 @@ const ResetPassword: React.FC = () => {
                                         </div>
                                     </div>
                                     <div className="h-2 w-full bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
-                                        <motion.div 
+                                        <motion.div
                                             initial={{ width: 0 }}
                                             animate={{ width: `${passwordStrength * 25}%` }}
                                             transition={{ duration: 0.3 }}
@@ -197,7 +197,7 @@ const ResetPassword: React.FC = () => {
                                 </div>
                             )}
                         </div>
-                        
+
                         <div className="flex flex-col">
                             <label className="mb-2 font-medium text-neutral-800 dark:text-gray-200 flex items-center">
                                 <FaLock className="mr-2" /> Confirm Password:
@@ -214,7 +214,7 @@ const ResetPassword: React.FC = () => {
                                 <FaLock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-500 dark:text-neutral-400" />
                             </div>
                             {password && confirmPassword && password !== confirmPassword && (
-                                <motion.p 
+                                <motion.p
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     className="mt-1 text-sm text-red-500 flex items-center"
@@ -223,7 +223,7 @@ const ResetPassword: React.FC = () => {
                                 </motion.p>
                             )}
                         </div>
-                        
+
                         <motion.button
                             type="submit"
                             disabled={loading}

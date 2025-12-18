@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaFlag, FaSearch, FaTimes, FaUserCircle } from 'react-icons/fa';
+import { FaFlag, FaSearch, FaTimes, FaUserCircle, FaSun, FaMoon, FaSnowflake } from 'react-icons/fa';
 import { MdLogin, MdLogout } from "react-icons/md";
 import { User } from '../../types/adminTypes';
 import NotificationBadge from '../Notification/NotificationBadge';
@@ -48,6 +48,43 @@ function DesktopNavbar({
   const searchRef = useRef<HTMLDivElement>(null);
   const [searchFocused, setSearchFocused] = useState(false);
 
+  // Dark mode state
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const savedTheme = localStorage.getItem('theme');
+    return savedTheme !== 'light';
+  });
+
+  // Snow state (only shows in December/January)
+  const [isSnowMonth] = useState(() => {
+    const month = new Date().getMonth();
+    return month === 11 || month === 0;
+  });
+
+  const [snow, setSnow] = useState(() => {
+    const savedSnow = localStorage.getItem('snow');
+    return savedSnow !== 'false';
+  });
+
+  // Handle dark mode toggle
+  const toggleDarkMode = () => {
+    const newMode = !isDarkMode;
+    setIsDarkMode(newMode);
+    if (newMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  };
+
+  // Handle snow toggle
+  const toggleSnow = () => {
+    const newSnow = !snow;
+    setSnow(newSnow);
+    localStorage.setItem('snow', newSnow ? 'true' : 'false');
+  };
+
   // Close recent searches dropdown when clicking outside
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
@@ -55,7 +92,7 @@ function DesktopNavbar({
         setShowRecentSearched(false);
       }
     };
-    
+
     document.addEventListener('mousedown', handleOutsideClick);
     return () => {
       document.removeEventListener('mousedown', handleOutsideClick);
@@ -64,38 +101,38 @@ function DesktopNavbar({
 
   // Animation variants
   const navItemVariants = {
-    hover: { 
+    hover: {
       y: -2,
       transition: { type: "spring", stiffness: 300, damping: 10 }
     },
     tap: { scale: 0.95 }
   };
-  
+
   const buttonVariants = {
-    hover: { 
+    hover: {
       scale: 1.05,
       transition: { type: "spring", stiffness: 400, damping: 10 }
     },
     tap: { scale: 0.95 }
   };
-  
+
   const searchInputVariants = {
-    focused: { 
+    focused: {
       width: "14rem",
       boxShadow: "0 0 0 2px rgba(59, 130, 246, 0.5)",
       transition: { type: "spring", stiffness: 300, damping: 20 }
     },
-    blur: { 
+    blur: {
       width: "10rem",
       boxShadow: "0 0 0 0px rgba(59, 130, 246, 0)",
       transition: { duration: 0.3 }
     }
   };
 
-  const navLinkClass = ({ isActive }: { isActive: boolean }): string => 
+  const navLinkClass = ({ isActive }: { isActive: boolean }): string =>
     `relative text-md font-medium px-3 py-2 rounded-lg transition duration-300 
-    ${isActive 
-      ? 'text-blue-600 dark:text-blue-400 bg-blue-100/50 dark:bg-blue-900/30' 
+    ${isActive
+      ? 'text-blue-600 dark:text-blue-400 bg-blue-100/50 dark:bg-blue-900/30'
       : 'text-neutral-800 dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-blue-600 dark:hover:text-blue-400'
     }`;
 
@@ -113,7 +150,7 @@ function DesktopNavbar({
   return (
     <>
       <div className="flex items-center space-x-2">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.3 }}
@@ -133,7 +170,7 @@ function DesktopNavbar({
               )}
             </NavLink>
           </motion.div>
-          
+
           {user && (user.roles.includes('admin') || user.roles.includes('editor')) && (
             <motion.div
               whileHover="hover"
@@ -150,7 +187,7 @@ function DesktopNavbar({
               </NavLink>
             </motion.div>
           )}
-          
+
           {user && user.roles.includes('admin') && (
             <motion.div
               whileHover="hover"
@@ -165,15 +202,15 @@ function DesktopNavbar({
                   </>
                 )}
               </NavLink>
-            </motion.div>          )}
+            </motion.div>)}
         </motion.div>
-        
+
         {/* Search bar with animations */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.3, duration: 0.3 }}
-          ref={searchRef} 
+          ref={searchRef}
           className="relative search-container"
         >
           <form onSubmit={handleSearch} className="flex">
@@ -197,7 +234,7 @@ function DesktopNavbar({
               <FaSearch className="absolute left-3 text-neutral-500 dark:text-neutral-400" />
             </div>
           </form>
-          
+
           <AnimatePresence>
             {showRecentSearched && recentSearches.length > 0 && (
               <motion.div
@@ -220,8 +257,8 @@ function DesktopNavbar({
                 </div>
                 <div className="max-h-60 overflow-auto">
                   {recentSearches.map((search) => (
-                    <motion.div 
-                      key={search} 
+                    <motion.div
+                      key={search}
                       className="px-3 py-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center justify-between group"
                     >
                       <button
@@ -230,12 +267,12 @@ function DesktopNavbar({
                           // Directly perform the search action
                           setSearchInput(search);
                           setShowRecentSearched(false);
-                          
+
                           // Update recent searches
                           const existingSearches = JSON.parse(localStorage.getItem('recentSearches') || '[]');
                           const updatedSearches = [search, ...existingSearches.filter((s: string) => s !== search)].slice(0, 5);
                           localStorage.setItem('recentSearches', JSON.stringify(updatedSearches));
-                          
+
                           // Navigate to search page
                           navigate(`/search?query=${encodeURIComponent(search)}`);
                         }}
@@ -257,7 +294,24 @@ function DesktopNavbar({
             )}
           </AnimatePresence>
         </motion.div>
-        
+
+        {/* Dark mode toggle - only show when NOT logged in */}
+        {!user && (
+          <motion.button
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.35, duration: 0.3 }}
+            whileHover={{ scale: 1.1, rotate: 15 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={toggleDarkMode}
+            className="p-2 rounded-lg bg-neutral-100/80 dark:bg-neutral-800/80 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
+            title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            aria-label={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          >
+            {isDarkMode ? <FaSun size={16} /> : <FaMoon size={16} />}
+          </motion.button>
+        )}
+
         {/* User menu or login button with animations */}
         <motion.div
           initial={{ opacity: 0, x: 20 }}
@@ -268,11 +322,11 @@ function DesktopNavbar({
             <div className="relative" ref={dropdownRef}>
               <div className="flex items-center space-x-2">
                 {/* NotificationBadge with external state management */}
-                <NotificationBadge 
+                <NotificationBadge
                   isOpen={isNotificationDropdownOpen}
                   onToggle={toggleNotificationDropdown}
                 />
-                
+
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -292,7 +346,7 @@ function DesktopNavbar({
                   <span className="hidden lg:block ml-2 font-medium">{user.username}</span>
                 </motion.button>
               </div>
-              
+
               <AnimatePresence>
                 {isDropdownOpen && (
                   <motion.div
@@ -319,7 +373,7 @@ function DesktopNavbar({
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="py-1">
                       <motion.div whileHover={{ x: 3 }} transition={{ duration: 0.2 }}>
                         <NavLink
@@ -342,8 +396,43 @@ function DesktopNavbar({
                           <span>My Reports</span>
                         </NavLink>
                       </motion.div>
+
+                      {/* Appearance section */}
+                      <div className="border-t border-neutral-200 dark:border-neutral-700 my-1"></div>
+                      <div className="px-4 py-1">
+                        <span className="text-xs font-medium text-neutral-400 uppercase tracking-wider">Appearance</span>
+                      </div>
+
+                      {/* Dark mode toggle */}
+                      <motion.div whileHover={{ x: 3 }} transition={{ duration: 0.2 }}>
+                        <button
+                          onClick={toggleDarkMode}
+                          className="flex w-full items-center px-4 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700"
+                        >
+                          {isDarkMode ? (
+                            <FaSun className="mr-3 text-yellow-500" />
+                          ) : (
+                            <FaMoon className="mr-3 text-neutral-500" />
+                          )}
+                          <span>{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
+                        </button>
+                      </motion.div>
+
+                      {/* Snow toggle (seasonal) */}
+                      {isSnowMonth && (
+                        <motion.div whileHover={{ x: 3 }} transition={{ duration: 0.2 }}>
+                          <button
+                            onClick={toggleSnow}
+                            className="flex w-full items-center px-4 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700"
+                          >
+                            <FaSnowflake className={`mr-3 ${snow ? 'text-blue-400' : 'text-neutral-400'}`} />
+                            <span>Snow Effect</span>
+                            {snow && <span className="ml-auto text-xs text-blue-400">ON</span>}
+                          </button>
+                        </motion.div>
+                      )}
                     </div>
-                    
+
                     <div className="border-t border-neutral-200 dark:border-neutral-700 py-1">
                       <motion.div whileHover={{ x: 3 }} transition={{ duration: 0.2 }}>
                         <button

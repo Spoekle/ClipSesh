@@ -23,9 +23,9 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = () => {
   const [userActivityData, setUserActivityData] = useState<UserActivityData>({});
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [dateRange, setDateRange] = useState<{ start: Date | null, end: Date | null }>({ 
-    start: new Date(Date.now() - 29 * 24 * 60 * 60 * 1000), 
-    end: new Date(Date.now()) 
+  const [dateRange, setDateRange] = useState<{ start: Date | null, end: Date | null }>({
+    start: new Date(Date.now() - 29 * 24 * 60 * 60 * 1000),
+    end: new Date(Date.now())
   });
   const [showPerUser, setShowPerUser] = useState<boolean>(false);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
@@ -219,53 +219,53 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = () => {
 
     // Get all dates from the activity data
     const allDates = activityData.map(item => item.date);
-    
+
     // Create merged data structure
     return allDates.map(date => {
       const dataPoint: any = { date };
-      
+
       selectedUsers.forEach(username => {
         const userDataForDate = userActivityData[username]?.find(item => item.date === date);
         dataPoint[username] = userDataForDate?.count || 0;
       });
-      
+
       return dataPoint;
     });
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header Section */}
-      <div className="bg-neutral-200 dark:bg-neutral-700 p-6 rounded-xl shadow-lg">
+      <div className="bg-white/80 dark:bg-neutral-800/50 backdrop-blur-sm p-4 rounded-xl shadow-sm border border-neutral-200/80 dark:border-neutral-700/50">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="bg-purple-500 p-3 rounded-xl shadow-lg">
-              <FaChartLine className="text-white text-xl" />
+          <div className="flex items-center space-x-3">
+            <div className="bg-gradient-to-br from-purple-500 to-purple-600 p-2.5 rounded-lg shadow-sm">
+              <FaChartLine className="text-white text-lg" />
             </div>
             <div>
-              <h3 className="text-2xl font-bold text-neutral-800 dark:text-neutral-100">
-                Activity Timeline Analysis
+              <h3 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">
+                Activity Timeline
               </h3>
-              <p className="text-neutral-600 dark:text-neutral-300 mt-1">
-                Track rating activity patterns and trends over time
+              <p className="text-neutral-500 dark:text-neutral-400 text-sm">
+                Track rating activity patterns over time
               </p>
             </div>
           </div>
-          
+
           {/* Activity Stats */}
           {!isLoading && activityData.length > 0 && (
-            <div className="hidden md:flex items-center space-x-6">
+            <div className="hidden md:flex items-center space-x-4">
               <div className="text-center">
-                <div className="text-2xl font-bold text-neutral-800 dark:text-neutral-200">
+                <div className="text-lg font-bold text-neutral-800 dark:text-neutral-200">
                   {activityData.reduce((sum, day) => sum + day.count, 0)}
                 </div>
-                <div className="text-sm text-neutral-600 dark:text-neutral-400">Total Activity</div>
+                <div className="text-xs text-neutral-500 dark:text-neutral-400">Total Activity</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-neutral-800 dark:text-neutral-200">
+                <div className="text-lg font-bold text-neutral-800 dark:text-neutral-200">
                   {Object.keys(userActivityData).length}
                 </div>
-                <div className="text-sm text-neutral-600 dark:text-neutral-400">Active Users</div>
+                <div className="text-xs text-neutral-500 dark:text-neutral-400">Active Users</div>
               </div>
             </div>
           )}
@@ -273,21 +273,20 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = () => {
       </div>
 
       {/* Controls and Chart Section */}
-      <div className="bg-neutral-200 dark:bg-neutral-700 rounded-xl shadow-lg overflow-hidden">
-        <div className="p-6 border-b border-neutral-300 dark:border-neutral-600">
-          <div className="flex flex-col sm:flex-row sm:justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-3">
+      <div className="bg-white/80 dark:bg-neutral-800/50 backdrop-blur-sm rounded-xl shadow-sm border border-neutral-200/80 dark:border-neutral-700/50 overflow-hidden">
+        <div className="p-4 border-b border-neutral-200 dark:border-neutral-700">
+          <div className="flex flex-col sm:flex-row sm:justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => setShowPerUser(!showPerUser)}
-                className={`px-4 py-2 rounded-lg transition-all duration-200 ${
-                  showPerUser
-                    ? 'bg-purple-600 text-white shadow-lg'
-                    : 'bg-neutral-300 dark:bg-neutral-600 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-400 dark:hover:bg-neutral-500'
-                }`}
+                className={`px-3 py-2 rounded-lg transition-all duration-200 text-sm font-medium ${showPerUser
+                  ? 'bg-purple-600 text-white shadow-sm'
+                  : 'bg-neutral-100 dark:bg-neutral-700/50 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 border border-neutral-200 dark:border-neutral-600'
+                  }`}
               >
                 {showPerUser ? 'Show Overall' : 'Show Per User'}
               </button>
-              
+
               {showPerUser && Object.keys(userActivityData).length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {/* Show first 4 users or all users based on showAllUsers state */}
@@ -295,15 +294,14 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = () => {
                     <button
                       key={username}
                       onClick={() => toggleUserSelection(username)}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 border-2 shadow-sm hover:shadow-md transform hover:scale-105 ${
-                        selectedUsers.includes(username)
-                          ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 shadow-purple-200 dark:shadow-purple-800/20'
-                          : 'border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 hover:border-neutral-400 dark:hover:border-neutral-500'
-                      }`}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 border-2 shadow-sm hover:shadow-md transform hover:scale-105 ${selectedUsers.includes(username)
+                        ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 shadow-purple-200 dark:shadow-purple-800/20'
+                        : 'border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 hover:border-neutral-400 dark:hover:border-neutral-500'
+                        }`}
                     >
                       <span className="flex items-center gap-2">
                         {selectedUsers.includes(username) && (
-                          <div 
+                          <div
                             className="w-3 h-3 rounded-full"
                             style={{ backgroundColor: generateColor(username) }}
                           />
@@ -373,7 +371,7 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = () => {
                   <YAxis tick={{ fill: '#6b7280', fontSize: 12 }} />
                   <Tooltip content={<CustomTooltip />} />
                   <Legend />
-                  
+
                   {!showPerUser ? (
                     <Line
                       type="monotone"
@@ -402,29 +400,29 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = () => {
               </ResponsiveContainer>
             </div>
           )}
-          
+
           {/* Summary Stats */}
           {!isLoading && activityData.length > 0 && (
-            <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-neutral-300 dark:bg-neutral-800 p-4 rounded-lg text-center">
-                <div className="text-sm text-neutral-600 dark:text-neutral-400">Total Ratings</div>
-                <div className="text-2xl font-bold text-neutral-800 dark:text-neutral-200 mt-1">
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="bg-neutral-100 dark:bg-neutral-800/50 p-3 rounded-lg text-center border border-neutral-200 dark:border-neutral-700">
+                <div className="text-xs text-neutral-500 dark:text-neutral-400">Total Ratings</div>
+                <div className="text-xl font-bold text-neutral-800 dark:text-neutral-200 mt-0.5">
                   {activityData.reduce((sum, item) => sum + item.count, 0)}
                 </div>
               </div>
-              <div className="bg-neutral-300 dark:bg-neutral-800 p-4 rounded-lg text-center">
-                <div className="text-sm text-neutral-600 dark:text-neutral-400">Most Active Day</div>
-                <div className="text-lg font-bold text-neutral-800 dark:text-neutral-200 mt-1">
+              <div className="bg-neutral-100 dark:bg-neutral-800/50 p-3 rounded-lg text-center border border-neutral-200 dark:border-neutral-700">
+                <div className="text-xs text-neutral-500 dark:text-neutral-400">Most Active Day</div>
+                <div className="text-base font-bold text-neutral-800 dark:text-neutral-200 mt-0.5">
                   {activityData.length > 0
                     ? formatTooltipDate(activityData.reduce((max, item) =>
                       item.count > max.count ? item : max, activityData[0]).date)
                     : 'N/A'}
                 </div>
               </div>
-              <div className="bg-neutral-300 dark:bg-neutral-800 p-4 rounded-lg text-center">
-                <div className="text-sm text-neutral-600 dark:text-neutral-400">Average Daily</div>
-                <div className="text-2xl font-bold text-neutral-800 dark:text-neutral-200 mt-1">
-                  {activityData.length > 0 
+              <div className="bg-neutral-100 dark:bg-neutral-800/50 p-3 rounded-lg text-center border border-neutral-200 dark:border-neutral-700">
+                <div className="text-xs text-neutral-500 dark:text-neutral-400">Average Daily</div>
+                <div className="text-xl font-bold text-neutral-800 dark:text-neutral-200 mt-0.5">
+                  {activityData.length > 0
                     ? Math.round(activityData.reduce((sum, item) => sum + item.count, 0) / activityData.length)
                     : 0}
                 </div>

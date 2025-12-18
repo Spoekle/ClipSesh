@@ -1,14 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  FaDiscord, 
-  FaSearch, 
-  FaFilter, 
-  FaEdit, 
-  FaBan, 
-  FaChevronLeft, 
-  FaChevronRight, 
-  FaCheck, 
+import {
+  FaDiscord,
+  FaSearch,
+  FaFilter,
+  FaEdit,
+  FaBan,
+  FaChevronLeft,
+  FaChevronRight,
+  FaCheck,
   FaTimes,
   FaUserShield,
   FaExclamationTriangle
@@ -39,18 +39,18 @@ const UserList: React.FC<UserListProps> = ({ AVAILABLE_ROLES }) => {
   const [showDisableConfirm, setShowDisableConfirm] = useState<boolean>(false);
   const [userToDisable, setUserToDisable] = useState<string | null>(null);
   const usersPerPage = 12;
-  
+
   const { showSuccess, showError } = useNotification();
-  
+
   const { data: allUsers = [], isLoading: loading, error } = useAllUsers();
   const disableUserMutation = useDisableUser();
   const updateUserMutation = useUpdateUser();
-  
-  const users = useMemo(() => 
-    allUsers.filter((user: User) => user.status === 'active'), 
+
+  const users = useMemo(() =>
+    allUsers.filter((user: User) => user.status === 'active'),
     [allUsers]
   );
-  
+
   const allRoles = useMemo(() => {
     return [...new Set(
       users.flatMap(user => user.roles || [])
@@ -58,7 +58,7 @@ const UserList: React.FC<UserListProps> = ({ AVAILABLE_ROLES }) => {
   }, [users]);
 
   const toggleRoleFilter = (role: string) => {
-    setRoleFilter(prev => 
+    setRoleFilter(prev =>
       prev.includes(role)
         ? prev.filter(r => r !== role)
         : [...prev, role]
@@ -80,8 +80,8 @@ const UserList: React.FC<UserListProps> = ({ AVAILABLE_ROLES }) => {
     if (editUser && editUser._id === user._id) {
       setEditUser(null);
     } else {
-      setEditUser({ 
-        ...user, 
+      setEditUser({
+        ...user,
         roles: user.roles || ['user'],
         password: ''
       });
@@ -90,7 +90,7 @@ const UserList: React.FC<UserListProps> = ({ AVAILABLE_ROLES }) => {
 
   const handleEditChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!editUser) return;
-    
+
     const { name, value, type, checked } = e.target;
     if (name === 'roles') {
       let updatedRoles = [...editUser.roles];
@@ -144,8 +144,8 @@ const UserList: React.FC<UserListProps> = ({ AVAILABLE_ROLES }) => {
   const handleEditSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!editUser) return;
-    
-    setIsLoading(true);    
+
+    setIsLoading(true);
     try {
       const dataToSubmit = { ...editUser };
 
@@ -154,7 +154,7 @@ const UserList: React.FC<UserListProps> = ({ AVAILABLE_ROLES }) => {
       }
 
       await updateUserMutation.mutateAsync({ userId: editUser._id, updateData: dataToSubmit });
-      
+
       showSuccess('User updated successfully');
       setEditUser(null);
     } catch (error: any) {
@@ -164,20 +164,20 @@ const UserList: React.FC<UserListProps> = ({ AVAILABLE_ROLES }) => {
       setIsLoading(false);
     }
   };
-  
+
   const filteredUsers = users.filter(user => {
     if (filter !== 'all' && !user.roles.includes(filter)) {
       return false;
     }
-    
+
     if (roleFilter.length > 0 && !roleFilter.some(role => user.roles.includes(role))) {
       return false;
     }
-    
+
     if (search && !user.username.toLowerCase().includes(search.toLowerCase())) {
       return false;
     }
-    
+
     return true;
   });
 
@@ -201,14 +201,14 @@ const UserList: React.FC<UserListProps> = ({ AVAILABLE_ROLES }) => {
   const getPaginationButtons = () => {
     const buttons: (number | string)[] = [];
     const maxButtonsToShow = 5;
-    
+
     if (totalPages <= maxButtonsToShow) {
       for (let i = 1; i <= totalPages; i++) {
         buttons.push(i);
       }
     } else {
       buttons.push(1);
-      
+
       if (currentPage < 4) {
         buttons.push(2, 3, 4, '...', totalPages);
       } else if (currentPage > totalPages - 3) {
@@ -217,7 +217,7 @@ const UserList: React.FC<UserListProps> = ({ AVAILABLE_ROLES }) => {
         buttons.push('...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
       }
     }
-    
+
     return buttons;
   };
 
@@ -226,19 +226,21 @@ const UserList: React.FC<UserListProps> = ({ AVAILABLE_ROLES }) => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="col-span-1 md:col-span-2 lg:col-span-3 p-6 md:p-8 bg-neutral-300 dark:bg-neutral-800 text-neutral-900 dark:text-white transition duration-200 rounded-xl shadow-lg hover:shadow-xl"
+      className="col-span-1 md:col-span-2 lg:col-span-3 p-6 bg-white/80 dark:bg-neutral-800/50 backdrop-blur-sm text-neutral-900 dark:text-white transition duration-200 rounded-xl shadow-sm border border-neutral-200/80 dark:border-neutral-700/50"
     >
-      <div className="flex items-center justify-between mb-6 border-b pb-3 border-neutral-400 dark:border-neutral-700">
-        <h2 className="text-2xl md:text-3xl font-bold flex items-center">
-          <FaUserShield className="mr-3 text-blue-500" />
-          User Management
+      <div className="flex items-center justify-between mb-6 pb-3 border-b border-neutral-200 dark:border-neutral-700">
+        <h2 className="text-xl font-semibold flex items-center">
+          <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-2 rounded-lg mr-3 shadow-sm">
+            <FaUserShield className="text-white text-sm" />
+          </div>
+          Users
         </h2>
-        
-        <div className="text-sm text-neutral-600 dark:text-neutral-400">
+
+        <div className="text-sm text-neutral-500 dark:text-neutral-400">
           <span>{filteredUsers.length} users</span>
         </div>
       </div>
-      
+
       {/* Search and Filter Controls */}
       <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Search Box */}
@@ -248,24 +250,24 @@ const UserList: React.FC<UserListProps> = ({ AVAILABLE_ROLES }) => {
             placeholder="Search users..."
             value={search}
             onChange={handleSearchChange}
-            className="w-full px-4 py-3 pl-10 bg-neutral-200 dark:bg-neutral-700 border border-neutral-400 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2.5 pl-10 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
           />
-          <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-500" />
+          <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400" />
         </div>
-        
+
         {/* Role Dropdown */}
         <div className="relative">
           <select
             value={filter}
             onChange={handleFilterChange}
-            className="w-full px-4 py-3 pl-10 bg-neutral-200 dark:bg-neutral-700 border border-neutral-400 dark:border-neutral-600 rounded-lg appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2.5 pl-10 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 rounded-lg appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
           >
             <option value="all">All Roles</option>
             {[...AVAILABLE_ROLES].sort().map(role => (
               <option key={role} value={role}>{role.charAt(0).toUpperCase() + role.slice(1)}</option>
             ))}
           </select>
-          <FaFilter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-500" />
+          <FaFilter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400" />
           <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
             <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
               <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
@@ -273,18 +275,17 @@ const UserList: React.FC<UserListProps> = ({ AVAILABLE_ROLES }) => {
           </div>
         </div>
       </div>
-      
+
       {/* Role Filter Chips */}
       <div className="mb-6 flex flex-wrap gap-2">
         {allRoles.map(role => (
           <button
             key={role}
             onClick={() => toggleRoleFilter(role)}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-1.5 transition-all duration-200 ${
-              roleFilter.includes(role)
-                ? `${getRoleColor(role)} text-white`
-                : 'bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600'
-            }`}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-all duration-200 ${roleFilter.includes(role)
+                ? `${getRoleColor(role)} text-white shadow-sm`
+                : 'bg-neutral-100 dark:bg-neutral-700/50 hover:bg-neutral-200 dark:hover:bg-neutral-700 border border-neutral-200 dark:border-neutral-600'
+              }`}
           >
             {roleFilter.includes(role) && <FaCheck className="text-xs" />}
             {role.charAt(0).toUpperCase() + role.slice(1)}
@@ -293,18 +294,18 @@ const UserList: React.FC<UserListProps> = ({ AVAILABLE_ROLES }) => {
         {roleFilter.length > 0 && (
           <button
             onClick={() => setRoleFilter([])}
-            className="px-3 py-1.5 rounded-full text-sm font-medium bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 flex items-center gap-1.5"
+            className="px-3 py-1.5 rounded-lg text-sm font-medium bg-neutral-100 dark:bg-neutral-700/50 hover:bg-neutral-200 dark:hover:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 flex items-center gap-1.5"
           >
             <FaTimes className="text-xs" />
-            Clear filters
+            Clear
           </button>
         )}
       </div>
-      
+
       {/* Show loading state */}
       {loading ? (
         <div className="flex justify-center items-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent"></div>
         </div>
       ) : error ? (
         <div className="bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200 p-4 rounded-lg flex items-center justify-center">
@@ -317,35 +318,35 @@ const UserList: React.FC<UserListProps> = ({ AVAILABLE_ROLES }) => {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="flex flex-col items-center justify-center p-8 bg-neutral-200 dark:bg-neutral-700 rounded-lg"
+              className="flex flex-col items-center justify-center p-8 bg-neutral-100 dark:bg-neutral-700/50 rounded-lg border border-neutral-200 dark:border-neutral-600"
             >
-              <FaExclamationTriangle className="text-4xl text-yellow-500 mb-3" />
-              <h3 className="text-xl font-bold mb-2">No Users Found</h3>
-              <p className="text-neutral-600 dark:text-neutral-400 text-center">
+              <FaExclamationTriangle className="text-3xl text-amber-500 mb-3" />
+              <h3 className="text-lg font-semibold mb-2">No Users Found</h3>
+              <p className="text-neutral-500 dark:text-neutral-400 text-center text-sm">
                 No users match your current filters. Try adjusting your search criteria.
               </p>
             </motion.div>
           ) : (
-            <motion.div 
+            <motion.div
               layout
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
             >
               {currentUsers.map((user, index) => {
                 const profileImage = user.profilePicture || generateAvatar(user.username) || undefined;
-                
+
                 return (
                   <motion.div
                     key={user._id}
                     layout="position"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ 
-                      duration: 0.3, 
+                    transition={{
+                      duration: 0.3,
                       delay: index * 0.05,
                       layout: { type: "spring", stiffness: 200, damping: 25 }
                     }}
                   >
-                    <div className="relative bg-neutral-200 dark:bg-neutral-700 rounded-lg shadow-md overflow-hidden h-full">
+                    <div className="relative bg-white dark:bg-neutral-800/80 rounded-xl shadow-sm overflow-hidden h-full border border-neutral-200/80 dark:border-neutral-700/50 hover:shadow-md transition-shadow">
                       {/* User card with background image */}
                       <div className="relative h-full">
                         {/* Profile Image Background */}
@@ -355,15 +356,15 @@ const UserList: React.FC<UserListProps> = ({ AVAILABLE_ROLES }) => {
                             backgroundImage: `url(${profileImage})`,
                           }}
                         />
-                        
+
                         {/* Content */}
-                        <div className="relative p-5 flex flex-col min-h-[180px]">
+                        <div className="relative p-4 flex flex-col min-h-[160px]">
                           <div className="flex items-start justify-between mb-4">
                             {/* User avatar and name */}
                             <div className="flex items-center">
-                              <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-neutral-300 dark:border-neutral-600 mr-3">
-                                <img 
-                                  src={profileImage} 
+                              <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-neutral-200 dark:border-neutral-600 mr-3">
+                                <img
+                                  src={profileImage}
                                   alt={user.username}
                                   className="w-full h-full object-cover"
                                 />
@@ -375,7 +376,7 @@ const UserList: React.FC<UserListProps> = ({ AVAILABLE_ROLES }) => {
                                   )}
                                 </div>
                                 <div className="flex items-center">
-                                  <FaDiscord 
+                                  <FaDiscord
                                     className="mr-1.5"
                                     style={{ color: user.discordId ? '#7289da' : 'rgba(114, 137, 218, 0.3)' }}
                                   />
@@ -408,17 +409,17 @@ const UserList: React.FC<UserListProps> = ({ AVAILABLE_ROLES }) => {
                               </motion.button>
                             </div>
                           </div>
-                          
+
                           {/* Email section - make it always take up space */}
                           <div className="text-sm text-neutral-600 dark:text-neutral-400 mb-4 min-h-[1.5rem]">
                             {user.email || ''}
                           </div>
-                          
+
                           {/* Roles - push to bottom with flex */}
                           <div className="flex flex-wrap gap-2 mt-auto">
                             {user.roles && user.roles.sort().map(role => (
-                              <span 
-                                key={role} 
+                              <span
+                                key={role}
                                 className={`px-2 py-0.5 rounded-md text-xs font-medium text-white ${getRoleColor(role)}`}
                               >
                                 {role}
@@ -433,7 +434,7 @@ const UserList: React.FC<UserListProps> = ({ AVAILABLE_ROLES }) => {
               })}
             </motion.div>
           )}
-          
+
           {/* Pagination */}
           {totalPages > 1 && (
             <div className="mt-8 flex flex-wrap justify-center items-center gap-2">
@@ -445,7 +446,7 @@ const UserList: React.FC<UserListProps> = ({ AVAILABLE_ROLES }) => {
               >
                 <FaChevronLeft />
               </button>
-              
+
               {getPaginationButtons().map((btn, i) => (
                 btn === '...' ? (
                   <span key={`ellipsis-${i}`} className="px-2">...</span>
@@ -453,17 +454,16 @@ const UserList: React.FC<UserListProps> = ({ AVAILABLE_ROLES }) => {
                   <button
                     key={`page-${btn}`}
                     onClick={() => setCurrentPage(Number(btn))}
-                    className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${
-                      currentPage === btn
+                    className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${currentPage === btn
                         ? 'bg-blue-600 text-white'
                         : 'bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600'
-                    }`}
+                      }`}
                   >
                     {btn}
                   </button>
                 )
               ))}
-              
+
               <button
                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                 disabled={currentPage === totalPages}
@@ -476,7 +476,7 @@ const UserList: React.FC<UserListProps> = ({ AVAILABLE_ROLES }) => {
           )}
         </>
       )}
-      
+
       {/* User Edit Modal */}
       <AnimatePresence>
         {editUser && (

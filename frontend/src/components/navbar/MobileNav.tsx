@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaSearch, FaBars, FaTimes, FaUserCircle, FaFlag } from 'react-icons/fa';
+import { FaSearch, FaBars, FaTimes, FaUserCircle, FaFlag, FaSun, FaMoon, FaSnowflake } from 'react-icons/fa';
 import { MdLogin, MdLogout, MdDashboard, MdHome, MdNotifications } from "react-icons/md";
 import { User } from '../../types/adminTypes';
 import NotificationBadge from '../Notification/NotificationBadge';
@@ -39,6 +39,43 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
 }) => {
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
   const [showSearch, setShowSearch] = useState<boolean>(false);
+
+  // Dark mode state
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const savedTheme = localStorage.getItem('theme');
+    return savedTheme !== 'light';
+  });
+
+  // Snow state (only shows in December/January)
+  const [isSnowMonth] = useState(() => {
+    const month = new Date().getMonth();
+    return month === 11 || month === 0;
+  });
+
+  const [snow, setSnow] = useState(() => {
+    const savedSnow = localStorage.getItem('snow');
+    return savedSnow !== 'false';
+  });
+
+  // Handle dark mode toggle
+  const toggleDarkMode = () => {
+    const newMode = !isDarkMode;
+    setIsDarkMode(newMode);
+    if (newMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  };
+
+  // Handle snow toggle
+  const toggleSnow = () => {
+    const newSnow = !snow;
+    setSnow(newSnow);
+    localStorage.setItem('snow', newSnow ? 'true' : 'false');
+  };
 
   // Prevent body scrolling when menu is open
   useEffect(() => {
@@ -142,16 +179,16 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
   return (
     <div className="relative">
       {/* Top right icons */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <motion.button
           variants={iconButtonVariants}
           whileHover="hover"
           whileTap="tap"
           onClick={toggleSearch}
-          className="p-2 rounded-full bg-neutral-100/50 dark:bg-neutral-800/50 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700"
+          className="p-2.5 rounded-xl bg-neutral-100 dark:bg-neutral-800/80 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 border border-neutral-200/50 dark:border-neutral-700/50 transition-colors"
           aria-label="Search"
         >
-          <FaSearch size={18} />
+          <FaSearch size={16} />
         </motion.button>
 
         {/* Add NotificationBadge here if user is logged in */}
@@ -162,16 +199,29 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
           />
         )}
 
+        {/* Dark mode toggle */}
+        <motion.button
+          variants={iconButtonVariants}
+          whileHover="hover"
+          whileTap="tap"
+          onClick={toggleDarkMode}
+          className="p-2.5 rounded-xl bg-neutral-100 dark:bg-neutral-800/80 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 border border-neutral-200/50 dark:border-neutral-700/50 transition-colors"
+          title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          aria-label={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+        >
+          {isDarkMode ? <FaSun size={16} /> : <FaMoon size={16} />}
+        </motion.button>
+
         <motion.button
           variants={iconButtonVariants}
           whileHover="hover"
           whileTap="tap"
           onClick={toggleMenu}
-          className="p-2 rounded-full bg-neutral-100/50 dark:bg-neutral-800/50 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700"
+          className="p-2.5 rounded-xl bg-neutral-100 dark:bg-neutral-800/80 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 border border-neutral-200/50 dark:border-neutral-700/50 transition-colors"
           aria-label="Menu"
           aria-expanded={menuOpen}
         >
-          {menuOpen ? <FaTimes size={20} /> : <FaBars size={20} />}
+          {menuOpen ? <FaTimes size={18} /> : <FaBars size={18} />}
         </motion.button>
       </div>
 
@@ -183,7 +233,7 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
             initial="hidden"
             animate="visible"
             exit="hidden"
-            className="absolute top-12 right-0 bg-white dark:bg-neutral-800 shadow-lg rounded-lg p-3 w-screen max-w-md z-30"
+            className="absolute top-14 right-0 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl shadow-lg rounded-xl p-4 w-screen max-w-sm z-30 border border-neutral-200/80 dark:border-neutral-700/50"
           >
             <form onSubmit={handleSubmitSearch}>
               <div className="flex">
@@ -192,19 +242,19 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
                   animate={{ width: "100%" }}
                   transition={{ duration: 0.3 }}
                   type="text"
-                  className="flex-grow px-3 py-2 bg-neutral-100 dark:bg-neutral-700 text-neutral-900 dark:text-white rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-grow px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800/80 text-neutral-900 dark:text-white rounded-l-lg border border-neutral-200 dark:border-neutral-700 focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm"
                   placeholder="Search clips..."
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   autoFocus
                 />
                 <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                   type="submit"
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 rounded-r-lg flex items-center"
+                  className="bg-blue-500 hover:bg-blue-600 text-white px-4 rounded-r-lg flex items-center transition-colors shadow-sm"
                 >
-                  <FaSearch />
+                  <FaSearch size={14} />
                 </motion.button>
               </div>
             </form>
@@ -287,7 +337,7 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
               zIndex: 9999999,
               overflowY: 'auto'
             }}
-            className="fixed top-0 left-0 right-0 bottom-0 width-[100vw] height[100vh] z-20 bg-white dark:bg-neutral-900"
+            className="fixed inset-0 z-20 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl"
           >
             {/* Close button */}
             <motion.div
@@ -304,9 +354,9 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
                 whileHover={{ scale: 1.1, rotate: 90 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={() => setMenuOpen(false)}
-                className="p-3 rounded-full bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700"
+                className="p-2.5 rounded-xl bg-neutral-100 dark:bg-neutral-800/80 hover:bg-neutral-200 dark:hover:bg-neutral-700 border border-neutral-200/50 dark:border-neutral-700/50 transition-colors"
               >
-                <FaTimes size={24} className="text-neutral-700 dark:text-white" />
+                <FaTimes size={20} className="text-neutral-600 dark:text-white" />
               </motion.button>
             </motion.div>
 
@@ -325,36 +375,36 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
               {/* Navigation Links */}
               <motion.h2
                 variants={menuItemVariants}
-                className="text-xl font-bold text-neutral-900 dark:text-white mb-6"
+                className="text-sm font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-4"
               >
                 Navigation
               </motion.h2>
 
               <motion.nav variants={menuItemVariants} className="mb-8">
-                <ul className="space-y-1">
+                <ul className="space-y-1.5">
                   <motion.li variants={menuItemVariants}>
                     <NavLink
                       to="/"
-                      className={({ isActive }) => `flex items-center p-3 rounded-lg ${isActive
-                          ? 'bg-blue-500 text-white'
-                          : 'text-neutral-800 dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                      className={({ isActive }) => `flex items-center p-3 rounded-xl transition-all ${isActive
+                        ? 'bg-blue-500 text-white shadow-sm'
+                        : 'text-neutral-700 dark:text-neutral-200 bg-neutral-50/50 dark:bg-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-neutral-200/50 dark:border-neutral-700/50'
                         }`}
                       onClick={() => setMenuOpen(false)}
                     >
-                      <MdHome size={22} className="mr-3" />
+                      <MdHome size={20} className="mr-3" />
                       <span className="font-medium">Home</span>
                     </NavLink>
                   </motion.li>
                   <motion.li variants={menuItemVariants}>
                     <NavLink
                       to="/clips"
-                      className={({ isActive }) => `flex items-center p-3 rounded-lg ${isActive
-                          ? 'bg-blue-500 text-white'
-                          : 'text-neutral-800 dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                      className={({ isActive }) => `flex items-center p-3 rounded-xl transition-all ${isActive
+                        ? 'bg-blue-500 text-white shadow-sm'
+                        : 'text-neutral-700 dark:text-neutral-200 bg-neutral-50/50 dark:bg-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-neutral-200/50 dark:border-neutral-700/50'
                         }`}
                       onClick={() => setMenuOpen(false)}
                     >
-                      <FaSearch size={22} className="mr-3" />
+                      <FaSearch size={18} className="mr-3" />
                       <span className="font-medium">Browse Clips</span>
                     </NavLink>
                   </motion.li>
@@ -363,13 +413,13 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
                     <motion.li variants={menuItemVariants}>
                       <NavLink
                         to="/editor"
-                        className={({ isActive }) => `flex items-center p-3 rounded-lg ${isActive
-                            ? 'bg-blue-500 text-white'
-                            : 'text-neutral-800 dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                        className={({ isActive }) => `flex items-center p-3 rounded-xl transition-all ${isActive
+                          ? 'bg-blue-500 text-white shadow-sm'
+                          : 'text-neutral-700 dark:text-neutral-200 bg-neutral-50/50 dark:bg-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-neutral-200/50 dark:border-neutral-700/50'
                           }`}
                         onClick={() => setMenuOpen(false)}
                       >
-                        <FaUserCircle size={22} className="mr-3" />
+                        <FaUserCircle size={18} className="mr-3" />
                         <span className="font-medium">Editor Dashboard</span>
                       </NavLink>
                     </motion.li>
@@ -379,13 +429,13 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
                     <motion.li variants={menuItemVariants}>
                       <NavLink
                         to="/admin"
-                        className={({ isActive }) => `flex items-center p-3 rounded-lg ${isActive
-                            ? 'bg-blue-500 text-white'
-                            : 'text-neutral-800 dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                        className={({ isActive }) => `flex items-center p-3 rounded-xl transition-all ${isActive
+                          ? 'bg-blue-500 text-white shadow-sm'
+                          : 'text-neutral-700 dark:text-neutral-200 bg-neutral-50/50 dark:bg-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-neutral-200/50 dark:border-neutral-700/50'
                           }`}
                         onClick={() => setMenuOpen(false)}
                       >
-                        <MdDashboard size={22} className="mr-3" />
+                        <MdDashboard size={18} className="mr-3" />
                         <span className="font-medium">Admin Dashboard</span>
                       </NavLink>
                     </motion.li>
@@ -394,8 +444,8 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
                     <NavLink
                       to="/notifications"
                       className={({ isActive }) => `flex items-center p-2 rounded-lg ${isActive
-                          ? 'bg-blue-500 text-white'
-                          : 'text-neutral-800 dark:text-white hover:bg-neutral-200 dark:hover:bg-neutral-700'
+                        ? 'bg-blue-500 text-white'
+                        : 'text-neutral-800 dark:text-white hover:bg-neutral-200 dark:hover:bg-neutral-700'
                         }`}
                       onClick={() => setMenuOpen(false)}
                     >
@@ -411,13 +461,13 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
                 <motion.div variants={menuItemVariants}>
                   <motion.h2
                     variants={menuItemVariants}
-                    className="text-xl font-bold text-neutral-900 dark:text-white mb-4"
+                    className="text-sm font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-4"
                   >
                     Account
                   </motion.h2>
                   <motion.div
                     variants={menuItemVariants}
-                    className="bg-neutral-100 dark:bg-neutral-800 rounded-xl p-4 mb-6"
+                    className="bg-neutral-50/80 dark:bg-neutral-800/50 rounded-xl p-4 mb-6 border border-neutral-200/50 dark:border-neutral-700/50 backdrop-blur-sm"
                   >
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
@@ -447,8 +497,8 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
                         <NavLink
                           to="/profile/me"
                           className={({ isActive }) => `flex items-center p-2 rounded-lg ${isActive
-                              ? 'bg-blue-500 text-white'
-                              : 'text-neutral-800 dark:text-white hover:bg-neutral-200 dark:hover:bg-neutral-700'
+                            ? 'bg-blue-500 text-white'
+                            : 'text-neutral-800 dark:text-white hover:bg-neutral-200 dark:hover:bg-neutral-700'
                             }`}
                           onClick={() => setMenuOpen(false)}
                         >
@@ -463,8 +513,8 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
                         <NavLink
                           to="/my-reports"
                           className={({ isActive }) => `flex items-center p-2 rounded-lg ${isActive
-                              ? 'bg-blue-500 text-white'
-                              : 'text-neutral-800 dark:text-white hover:bg-neutral-200 dark:hover:bg-neutral-700'
+                            ? 'bg-blue-500 text-white'
+                            : 'text-neutral-800 dark:text-white hover:bg-neutral-200 dark:hover:bg-neutral-700'
                             }`}
                           onClick={() => setMenuOpen(false)}
                         >
@@ -474,39 +524,77 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
                       </motion.li>
                     </ul>
 
+                    {/* Appearance section */}
+                    <div className="border-t border-neutral-200 dark:border-neutral-700 my-3 pt-3">
+                      <span className="text-xs font-medium text-neutral-400 uppercase tracking-wider">Appearance</span>
+                      <ul className="space-y-1 mt-2">
+                        <motion.li
+                          variants={menuItemVariants}
+                          whileHover={{ x: 3 }}
+                        >
+                          <button
+                            onClick={toggleDarkMode}
+                            className="flex items-center p-2 rounded-lg w-full text-neutral-800 dark:text-white hover:bg-neutral-200 dark:hover:bg-neutral-700"
+                          >
+                            {isDarkMode ? (
+                              <FaSun size={18} className="mr-3 text-yellow-500" />
+                            ) : (
+                              <FaMoon size={18} className="mr-3" />
+                            )}
+                            <span>{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
+                          </button>
+                        </motion.li>
+                        {isSnowMonth && (
+                          <motion.li
+                            variants={menuItemVariants}
+                            whileHover={{ x: 3 }}
+                          >
+                            <button
+                              onClick={toggleSnow}
+                              className="flex items-center p-2 rounded-lg w-full text-neutral-800 dark:text-white hover:bg-neutral-200 dark:hover:bg-neutral-700"
+                            >
+                              <FaSnowflake size={18} className={`mr-3 ${snow ? 'text-blue-400' : ''}`} />
+                              <span>Snow Effect</span>
+                              {snow && <span className="ml-auto text-xs text-blue-400 bg-blue-400/20 px-2 py-0.5 rounded">ON</span>}
+                            </button>
+                          </motion.li>
+                        )}
+                      </ul>
+                    </div>
+
                     <motion.button
                       variants={menuItemVariants}
-                      whileHover={{ scale: 1.03 }}
-                      whileTap={{ scale: 0.97 }}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                       onClick={() => {
                         handleLogout();
                         setMenuOpen(false);
                       }}
-                      className="w-full py-2 px-4 bg-red-500 hover:bg-red-600 text-white rounded-lg flex items-center justify-center gap-2"
+                      className="w-full py-2.5 px-4 bg-red-500 hover:bg-red-600 text-white rounded-xl flex items-center justify-center gap-2 shadow-sm transition-colors"
                     >
-                      <MdLogout size={20} />
-                      <span>Sign out</span>
+                      <MdLogout size={18} />
+                      <span className="font-medium">Sign out</span>
                     </motion.button>
                   </motion.div>
                 </motion.div>
               ) : (
                 <motion.div
                   variants={menuItemVariants}
-                  className="bg-neutral-100 dark:bg-neutral-800 rounded-xl p-6 mb-6 flex flex-col items-center"
+                  className="bg-neutral-50/80 dark:bg-neutral-800/50 rounded-xl p-5 mb-6 flex flex-col items-center border border-neutral-200/50 dark:border-neutral-700/50 backdrop-blur-sm"
                 >
-                  <h3 className="text-center text-lg font-medium text-neutral-900 dark:text-white mb-4">Sign in to your account</h3>
+                  <h3 className="text-center text-base font-medium text-neutral-700 dark:text-neutral-200 mb-4">Sign in to your account</h3>
                   <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     transition={{ type: "spring", stiffness: 400, damping: 10 }}
                     onClick={() => {
                       setMenuOpen(false);
                       toggleLoginModal();
                     }}
-                    className="py-3 px-6 bg-blue-500 hover:bg-blue-600 text-white rounded-lg flex items-center gap-2"
+                    className="py-2.5 px-5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl flex items-center gap-2 shadow-sm transition-colors"
                   >
-                    <MdLogin size={20} />
-                    <span>Sign In</span>
+                    <MdLogin size={18} />
+                    <span className="font-medium">Sign In</span>
                   </motion.button>
                 </motion.div>
               )}
@@ -514,11 +602,11 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
               {/* Search box */}
               <motion.div
                 variants={menuItemVariants}
-                className="mt-8 mb-20"
+                className="mt-6 mb-20"
               >
                 <motion.h2
                   variants={menuItemVariants}
-                  className="text-xl font-bold text-neutral-900 dark:text-white mb-4"
+                  className="text-sm font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-4"
                 >
                   Search
                 </motion.h2>
@@ -529,18 +617,18 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
                   >
                     <input
                       type="text"
-                      className="flex-grow px-4 py-3 bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white rounded-l-lg border border-neutral-200 dark:border-neutral-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="flex-grow px-4 py-3 bg-neutral-50 dark:bg-neutral-800/80 text-neutral-900 dark:text-white rounded-l-xl border border-neutral-200 dark:border-neutral-700 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-colors"
                       placeholder="Search clips..."
                       value={searchInput}
                       onChange={(e) => setSearchInput(e.target.value)}
                     />
                     <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                       type="submit"
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-5 rounded-r-lg flex items-center"
+                      className="bg-blue-500 hover:bg-blue-600 text-white px-5 rounded-r-xl flex items-center shadow-sm transition-colors"
                     >
-                      <FaSearch size={18} />
+                      <FaSearch size={16} />
                     </motion.button>
                   </motion.div>
                 </form>

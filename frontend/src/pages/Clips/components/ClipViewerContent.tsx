@@ -76,12 +76,12 @@ const ClipViewerContent: React.FC<ClipViewerContentProps> = ({
 }) => {
   const [allStreamers, setAllStreamers] = useState<string[]>([]);
   const fetchAttempted = useRef(false);
-  
+
   useEffect(() => {
     if (fetchAttempted.current) {
       return;
     }
-    
+
     const fetchStreamers = async () => {
       fetchAttempted.current = true;
       try {
@@ -107,7 +107,7 @@ const ClipViewerContent: React.FC<ClipViewerContentProps> = ({
     return uniqueStreamers;
   }, [allStreamers, unratedClips]);
   const filteredClips = unratedClips;
-  
+
   const totalPages = useMemo(() => {
     const totalClips = config.clipAmount || filteredClips.length;
     return Math.max(1, Math.ceil(totalClips / itemsPerPage));
@@ -117,36 +117,36 @@ const ClipViewerContent: React.FC<ClipViewerContentProps> = ({
     setSearchTerm('');
     setFilterStreamer('');
     setCurrentPage(1);
-    
+
     const userData = user;
     fetchClipsAndRatings(userData);
   };
 
   const handleSortChange = (newSortOption: string) => {
     setSortOptionState(newSortOption);
-    
-    setSearchParams(new URLSearchParams({ 
-      sort: newSortOption, 
+
+    setSearchParams(new URLSearchParams({
+      sort: newSortOption,
       page: '1',
       ...(searchTerm && { q: searchTerm }),
-      ...(filterStreamer && { streamer: filterStreamer }) 
+      ...(filterStreamer && { streamer: filterStreamer })
     }), { replace: true });
-    
+
     const userData = user;
     fetchClipsAndRatings(userData);
   };
 
   const paginate = (pageNumber: number) => {
-    const newParams = new URLSearchParams(); 
+    const newParams = new URLSearchParams();
     newParams.append('sort', sortOption);
     newParams.append('page', pageNumber.toString());
     if (searchTerm) newParams.append('q', searchTerm);
     if (filterStreamer) newParams.append('streamer', filterStreamer);
-    
+
     setSearchParams(newParams, { replace: true });
-    
+
     setCurrentPage(pageNumber);
-    
+
     document.querySelector('.clip-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
   if (expandedClip === 'new') {
@@ -160,7 +160,7 @@ const ClipViewerContent: React.FC<ClipViewerContentProps> = ({
           <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500"></div>
         </div>
       );
-    }    if (currentClip) {
+    } if (currentClip) {
       return (
         <ClipContent
           clip={currentClip}
@@ -171,24 +171,25 @@ const ClipViewerContent: React.FC<ClipViewerContentProps> = ({
         />
       );
     }
-    
+
     return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] bg-white dark:bg-neutral-800 p-8 rounded-xl shadow-lg">
+      <div className="flex flex-col items-center justify-center min-h-[50vh] bg-white/80 dark:bg-neutral-800/80 backdrop-blur-sm p-8 rounded-xl shadow-sm border border-neutral-200/80 dark:border-neutral-700/50">
         <div className="text-9xl mb-4 text-neutral-400">🤔</div>
-        <h2 className="text-2xl font-bold text-neutral-700 dark:text-neutral-300 mb-2">Clip Not Found</h2>
+        <h2 className="text-2xl font-semibold text-neutral-700 dark:text-neutral-300 mb-2">Clip Not Found</h2>
         <p className="text-neutral-600 dark:text-neutral-400 mb-6">The clip you're looking for may have been deleted or doesn't exist.</p>
         <button
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+          className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors shadow-sm"
           onClick={() => setExpandedClip(null)}
         >
           Back to All Clips
         </button>
       </div>
-    );  }
+    );
+  }
 
   return (
-    <div className="animate-fade-in">      
-    <ClipFilterBar
+    <div className="animate-fade-in">
+      <ClipFilterBar
         sortOptionState={sortOptionState}
         setSortOptionState={setSortOptionState}
         handleSortChange={handleSortChange}
@@ -208,7 +209,7 @@ const ClipViewerContent: React.FC<ClipViewerContentProps> = ({
         fetchClipsAndRatings={fetchClipsAndRatings}
         setSearchParams={setSearchParams}
       />
-      
+
       <ClipGrid
         isLoading={isLoading}
         filteredClips={filteredClips}

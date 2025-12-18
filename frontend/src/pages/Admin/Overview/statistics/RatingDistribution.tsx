@@ -14,7 +14,7 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#FF0000'];
 
 const RatingDistribution: React.FC<RatingDistributionProps> = ({ userRatings, sortBy, setSortBy }) => {
   const [activeChart, setActiveChart] = useState<'bar' | 'pie'>('bar');
-  
+
   const pieData: PieData[] = userRatings.reduce((acc: PieData[], user) => {
     (['1', '2', '3', '4', 'deny'] as const).forEach(rating => {
       const name = `Rated ${rating === 'deny' ? 'Deny' : rating}`;
@@ -42,20 +42,20 @@ const RatingDistribution: React.FC<RatingDistributionProps> = ({ userRatings, so
 
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header Section */}
-      <div className="bg-neutral-200 dark:bg-neutral-700 p-6 rounded-xl shadow-lg">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-          <div className="flex items-center space-x-4">
-            <div className="bg-blue-500 p-3 rounded-xl shadow-lg">
-              <FaChartBar className="text-white text-xl" />
+      <div className="bg-white/80 dark:bg-neutral-800/50 backdrop-blur-sm p-4 rounded-xl shadow-sm border border-neutral-200/80 dark:border-neutral-700/50">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-3 lg:space-y-0">
+          <div className="flex items-center space-x-3">
+            <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-2.5 rounded-lg shadow-sm">
+              <FaChartBar className="text-white text-lg" />
             </div>
             <div>
-              <h3 className="text-2xl font-bold text-neutral-800 dark:text-neutral-100">
-                Rating Distribution Analysis
+              <h3 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">
+                Rating Distribution
               </h3>
-              <p className="text-neutral-600 dark:text-neutral-300 mt-1">
-                View the team's rating patterns and preferences
+              <p className="text-neutral-500 dark:text-neutral-400 text-sm">
+                View the team's rating patterns
               </p>
             </div>
           </div>
@@ -63,37 +63,35 @@ const RatingDistribution: React.FC<RatingDistributionProps> = ({ userRatings, so
       </div>
 
       {/* Controls Section */}
-      <div className="bg-neutral-200 dark:bg-neutral-700 p-4 rounded-xl">
-        <div className="flex flex-col sm:flex-row sm:justify-between gap-4">
+      <div className="bg-white/80 dark:bg-neutral-800/50 backdrop-blur-sm p-3 rounded-xl shadow-sm border border-neutral-200/80 dark:border-neutral-700/50">
+        <div className="flex flex-col sm:flex-row sm:justify-between gap-3">
           <div className="flex space-x-2">
             <button
               onClick={() => setActiveChart('bar')}
-              className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-all duration-200 ${
-                activeChart === 'bar'
-                  ? 'bg-blue-600 text-white shadow-lg scale-105'
-                  : 'bg-neutral-300 dark:bg-neutral-600 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-400 dark:hover:bg-neutral-500'
-              }`}
+              className={`px-3 py-2 rounded-lg flex items-center gap-2 transition-all duration-200 text-sm font-medium ${activeChart === 'bar'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'bg-neutral-100 dark:bg-neutral-700/50 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 border border-neutral-200 dark:border-neutral-600'
+                }`}
             >
-              <FaChartBar /> Individual Chart
+              <FaChartBar /> Individual
             </button>
             <button
               onClick={() => setActiveChart('pie')}
-              className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-all duration-200 ${
-                activeChart === 'pie'
-                  ? 'bg-blue-600 text-white shadow-lg scale-105'
-                  : 'bg-neutral-300 dark:bg-neutral-600 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-400 dark:hover:bg-neutral-500'
-              }`}
+              className={`px-3 py-2 rounded-lg flex items-center gap-2 transition-all duration-200 text-sm font-medium ${activeChart === 'pie'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'bg-neutral-100 dark:bg-neutral-700/50 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 border border-neutral-200 dark:border-neutral-600'
+                }`}
             >
-              <FaChartPie /> Overall Chart
+              <FaChartPie /> Overall
             </button>
           </div>
-          
-          <div className="flex items-center space-x-3">
-            <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Sort by:</span>
+
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Sort:</span>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="px-3 py-2 rounded-lg bg-neutral-300 dark:bg-neutral-600 text-neutral-800 dark:text-white border-none focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all duration-200"
+              className="px-2 py-1.5 rounded-lg bg-neutral-50 dark:bg-neutral-900/50 text-neutral-800 dark:text-white border border-neutral-200 dark:border-neutral-700 focus:ring-2 focus:ring-blue-500/50 focus:outline-none transition-all duration-200 text-sm"
             >
               <option value="username">Username</option>
               <option value="rating">Total Ratings</option>
@@ -101,29 +99,29 @@ const RatingDistribution: React.FC<RatingDistributionProps> = ({ userRatings, so
           </div>
         </div>
       </div>
-      
+
       {/* Chart Section */}
-      <div className="bg-neutral-200 dark:bg-neutral-700 rounded-xl shadow-lg overflow-hidden">
-        <div className="p-6 border-b border-neutral-300 dark:border-neutral-600">
-          <h4 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">
+      <div className="bg-white/80 dark:bg-neutral-800/50 backdrop-blur-sm rounded-xl shadow-sm border border-neutral-200/80 dark:border-neutral-700/50 overflow-hidden">
+        <div className="p-4 border-b border-neutral-200 dark:border-neutral-700">
+          <h4 className="text-base font-medium text-neutral-800 dark:text-neutral-100">
             {activeChart === 'bar' ? 'Individual Rating Performance' : 'Team Rating Distribution'}
           </h4>
-          <p className="text-neutral-600 dark:text-neutral-400 text-sm mt-1">
-            {activeChart === 'bar' 
-              ? 'Compare each team member\'s total ratings' 
+          <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-0.5">
+            {activeChart === 'bar'
+              ? 'Compare each team member\'s total ratings'
               : 'Overall breakdown of rating types across the team'
             }
           </p>
         </div>
-        
-        <div className="p-6">
-          <div className="bg-neutral-300 dark:bg-neutral-800 rounded-xl p-4" style={{ height: 450 }}>
+
+        <div className="p-4">
+          <div className="bg-neutral-100 dark:bg-neutral-800 rounded-lg p-4" style={{ height: 400 }}>
             <ResponsiveContainer width="100%" height="100%">
               {activeChart === 'bar' ? (
                 <BarChart data={sortedUsers} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#9ca3af" strokeOpacity={0.5} />
-                  <XAxis 
-                    dataKey="username" 
+                  <XAxis
+                    dataKey="username"
                     angle={-45}
                     textAnchor="end"
                     height={80}
@@ -133,10 +131,10 @@ const RatingDistribution: React.FC<RatingDistributionProps> = ({ userRatings, so
                   <YAxis tick={{ fill: '#6b7280', fontSize: 12 }} />
                   <Tooltip content={<BarTooltip />} />
                   <Legend />
-                  <Bar 
-                    name="Total Ratings" 
-                    dataKey="total" 
-                    fill="#3b82f6" 
+                  <Bar
+                    name="Total Ratings"
+                    dataKey="total"
+                    fill="#3b82f6"
                     radius={[4, 4, 0, 0]}
                     maxBarSize={60}
                   />

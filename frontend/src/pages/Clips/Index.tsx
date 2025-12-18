@@ -24,12 +24,12 @@ function ClipViewer() {
 
   const { data: user, isLoading: userLoading } = useCurrentUser();
   const { isLoading: configLoading } = useCombinedConfig(user);
-  
+
   const [filterRatedClips, setFilterRatedClips] = useState<boolean>(() => {
     const storedValue = localStorage.getItem('filterRatedClips');
     return storedValue === 'true';
   });
-  
+
   const [filterDeniedClips, setFilterDeniedClips] = useState<boolean>(() => {
     const storedValue = localStorage.getItem('filterDeniedClips');
     return storedValue === 'true';
@@ -104,9 +104,9 @@ function ClipViewer() {
     return params;
   }, [sortOption, filterStreamer, searchTerm, filterRatedClips, filterDeniedClips, user]);
 
-  const { 
-    data: clipsData, 
-    isLoading: clipsLoading, 
+  const {
+    data: clipsData,
+    isLoading: clipsLoading,
     error: clipsError,
     refetch: refetchClips,
     fetchNextPage,
@@ -114,9 +114,9 @@ function ClipViewer() {
     isFetchingNextPage
   } = useInfiniteClips(buildClipParams());
 
-  const { 
-    data: currentClip, 
-    isLoading: isClipLoading 
+  const {
+    data: currentClip,
+    isLoading: isClipLoading
   } = useClip(expandedClip || '');
 
   const { data: currentClipRatings } = useBulkRatings(
@@ -124,11 +124,11 @@ function ClipViewer() {
   );
 
   const unratedClips = clipsData?.pages.flatMap(page => page.clips || []).filter((clip): clip is NonNullable<typeof clip> => Boolean(clip)) || [];
-  
+
   const ratings = clipsData?.pages.reduce((allRatings, page) => {
     return { ...allRatings, ...(page.ratings || {}) };
   }, {} as Record<string, any>) || (currentClipRatings || {});
-  
+
   const totalClips = clipsData?.pages[0]?.total || 0;
   const isLoggedIn = Boolean(user);
   const isLoading = clipsLoading || userLoading || configLoading;
@@ -203,7 +203,7 @@ function ClipViewer() {
     if (filterDeniedClips && user && (user.roles?.includes('admin') || user.roles?.includes('clipteam'))) {
       newSearchParams.set('excludeDeniedClips', 'true');
     }
-    
+
     setSearchParams(newSearchParams, { replace: true });
   }, [sortOption, searchTerm, filterStreamer, filterRatedClips, filterDeniedClips, user, setSearchParams]);
 
@@ -216,7 +216,7 @@ function ClipViewer() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
-      className="min-h-screen text-white flex flex-col items-center bg-neutral-200 dark:bg-neutral-900 transition duration-200"
+      className="min-h-screen text-white flex flex-col items-center bg-neutral-100 dark:bg-neutral-900 transition duration-200"
     >
       <Helmet>
         <title>Clip Viewer | ClipSesh</title>
@@ -237,14 +237,14 @@ function ClipViewer() {
       </div>
 
       {/* Seasonal header */}
-      <ClipViewerHeader 
-        season={(seasonInfo.season as 'Winter' | 'Spring' | 'Summer' | 'Fall') || 'Winter'} 
+      <ClipViewerHeader
+        season={(seasonInfo.season as 'Winter' | 'Spring' | 'Summer' | 'Fall') || 'Winter'}
         totalClips={totalClips}
         isFiltered={!!(searchTerm || filterStreamer || filterRatedClips || filterDeniedClips)}
       />
 
       {/* Main content container */}
-      <div className="container mx-auto px-4 py-8 bg-neutral-200 dark:bg-neutral-900 transition duration-200">
+      <div className="container mx-auto px-4 py-8 bg-neutral-100 dark:bg-neutral-900 transition duration-200">
         <ClipViewerContent
           expandedClip={expandedClip}
           setExpandedClip={setExpandedClip}
@@ -290,7 +290,7 @@ function ClipViewer() {
           isFetchingNextPage={isFetchingNextPage}
           useInfiniteScroll={true}
           currentPage={1}
-          setCurrentPage={() => {}}
+          setCurrentPage={() => { }}
           setSearchParams={setSearchParams}
           isLoading={isLoading}
           config={{

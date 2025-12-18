@@ -25,14 +25,15 @@ import { useNotification } from '../../../context/AlertContext';
 import { Clip, User, Rating } from '../../../types/adminTypes';
 import RatingPanel from './components/clipteam/RatingPanel';
 import CommentSection from './components/CommentSection';
+import TeamSidebar from './components/TeamSidebar';
 
 // React Query hooks
-import { 
-  useClip, 
-  useAdjacentClipsFromCache, 
-  useClipVoteStatus, 
-  useVoteOnClip,
-  useDeleteClip 
+import {
+    useClip,
+    useAdjacentClipsFromCache,
+    useClipVoteStatus,
+    useVoteOnClip,
+    useDeleteClip
 } from '../../../hooks/useClips';
 
 
@@ -66,21 +67,21 @@ const ClipContent: React.FC<ClipContentProps> = ({
     // Get clip ID from URL params to ensure we always have the current clip ID
     const { clipId } = useParams<{ clipId: string }>();
     const currentClipId = clipId || clip._id;
-    
+
     console.log('🎬 ClipContent - URL clip ID:', clipId);
     console.log('🎬 ClipContent - Prop clip ID:', clip._id);
     console.log('🎬 ClipContent - Using clip ID:', currentClipId);
-    
+
     // React Query hooks - get current clip data
     const { data: currentClip, isLoading: isClipLoading } = useClip(currentClipId);
-    
+
     // Build params for adjacent clips based on current URL parameters
     const adjacentClipParams = useMemo(() => {
         const urlParams = new URLSearchParams(window.location.search);
         const params: any = {
             sort: urlParams.get('sort') || 'newest',
         };
-        
+
         // Add optional parameters only if they exist
         if (urlParams.get('streamer')) {
             params.streamer = urlParams.get('streamer');
@@ -91,25 +92,25 @@ const ClipContent: React.FC<ClipContentProps> = ({
         if (urlParams.get('q')) {
             params.search = urlParams.get('q');
         }
-        
+
         // Add includeRatings for admin/clipteam users (matching main page logic)
         if (user && (user.roles?.includes('admin') || user.roles?.includes('clipteam'))) {
             params.includeRatings = true;
         }
-        
+
         console.log('🎬 ClipView - Building adjacent clips params:', params);
         console.log('🎬 ClipView - Current clip ID:', currentClipId);
         console.log('🎬 ClipView - Full URL search:', window.location.search);
         console.log('🎬 ClipView - User roles:', user?.roles);
         return params;
     }, [currentClipId, user]);
-    
+
     // Get adjacent clips from cached data using the current clip ID from URL
     const { data: adjacentClips, isLoading: loadingAdjacentClips } = useAdjacentClipsFromCache(currentClipId, adjacentClipParams);
-    
+
     // Get vote status for current clip  
     const { data: voteStatus } = useClipVoteStatus(currentClipId);
-    
+
     // Mutations
     const voteOnClipMutation = useVoteOnClip();
     const deleteClipMutation = useDeleteClip();
@@ -125,17 +126,17 @@ const ClipContent: React.FC<ClipContentProps> = ({
     // Extract adjacent clips for navigation
     const nextClip = adjacentClips?.next || null;
     const prevClip = adjacentClips?.previous || null;
-    
+
     // Use the fetched clip data or fallback to prop
     const clipData = currentClip || clip;
-    
+
     console.log('🎬 Adjacent clips state:');
     console.log('   Previous:', prevClip?._id || 'none');
     console.log('   Next:', nextClip?._id || 'none');
     console.log('   Current clip prop:', clip._id);
     console.log('   Current clip data:', clipData?._id);
     console.log('   URL clip ID:', currentClipId);
-    
+
     // Set share URL
     const shareUrl = clipData ? `${window.location.origin}/clips/${clipData._id}` : '';
 
@@ -228,13 +229,13 @@ const ClipContent: React.FC<ClipContentProps> = ({
         console.log('🎬 Is loading:', isClipLoading);
         console.log('🎬 Target clipId type:', typeof clipId);
         console.log('🎬 Target clipId value:', JSON.stringify(clipId));
-        
+
         // Prevent navigation if already loading
         if (isClipLoading) {
             console.log('🎬 Navigation blocked - already loading');
             return;
         }
-        
+
         // Validate clip ID
         if (!clipId || typeof clipId !== 'string') {
             console.log('🎬 Navigation blocked - invalid clip ID:', clipId);
@@ -268,7 +269,7 @@ const ClipContent: React.FC<ClipContentProps> = ({
             state: { from: cleanFromState },
             replace: true // Replace current history entry to avoid back button issues
         });
-        
+
         console.log('🎬 Navigation completed, new URL should be:', `/clips/${clipId}${searchString ? `?${searchString}` : ''}`);
     }, [isClipLoading, from.pathname, navigate, currentClipId]);
 
@@ -323,7 +324,7 @@ const ClipContent: React.FC<ClipContentProps> = ({
                     clipId: clipData._id,
                     voteType
                 });
-                
+
                 showSuccess(`Clip ${voteType}d successfully!`);
             }
         } catch (error: any) {
@@ -378,13 +379,23 @@ const ClipContent: React.FC<ClipContentProps> = ({
         ));
     }, [user]);
 
+    // Check if user is team member (for sidebar display)
+    const isTeamMember = useMemo((): boolean => {
+        return !!(user && (
+            user.roles.includes('admin') ||
+            user.roles.includes('clipteam') ||
+            user.roles.includes('editor') ||
+            user.roles.includes('uploader')
+        ));
+    }, [user]);
+
     return (
         <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="flex flex-col min-h-screen bg-gray-50 dark:bg-neutral-900"
+            className="flex flex-col min-h-screen bg-neutral-100 dark:bg-neutral-900"
         >
             {/* Loading overlay */}
             {isClipLoading && (
@@ -407,7 +418,7 @@ const ClipContent: React.FC<ClipContentProps> = ({
             )}
 
             {/* Header */}
-            <div className="sticky top-12 z-10 flex justify-between items-center bg-white dark:bg-neutral-800 p-4 shadow-md rounded-xl">
+            <div className="sticky top-12 z-10 flex justify-between items-center bg-white/80 dark:bg-neutral-800/80 backdrop-blur-sm p-4 shadow-sm border-b border-neutral-200/80 dark:border-neutral-700/50 rounded-xl">
                 <Link
                     className="bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 text-neutral-800 dark:text-white px-4 py-2 rounded-lg transition flex items-center gap-2 font-medium"
                     to={{
@@ -474,8 +485,8 @@ const ClipContent: React.FC<ClipContentProps> = ({
             </div>
 
             <div className="container mx-auto px-4 py-6 flex flex-col lg:flex-row gap-6">
-                {/* Main content area with side navigation buttons */}
-                <div className="flex-grow lg:w-2/3 relative">
+                {/* Main content area */}
+                <div className={`flex-grow relative ${isTeamMember ? 'lg:w-3/5' : 'lg:w-full'}`}>
                     {/* Video player container */}
                     <div className="flex items-center">
                         {/* Previous clip button - positioned outside the video */}
@@ -578,12 +589,11 @@ const ClipContent: React.FC<ClipContentProps> = ({
                             </button>
                         </div>
 
-                        {/* Video and content */}
                         <motion.div
                             initial={{ y: 20, opacity: 0 }}
                             animate={{ y: 0, opacity: 1 }}
                             transition={{ delay: 0.1 }}
-                            className="bg-white dark:bg-neutral-800 rounded-xl shadow-lg overflow-hidden w-full"
+                            className="bg-white/80 dark:bg-neutral-800/80 backdrop-blur-sm rounded-xl shadow-sm border border-neutral-200/80 dark:border-neutral-700/50 overflow-hidden w-full"
                         >
                             <CustomPlayer currentClip={clipData} />
 
@@ -690,8 +700,8 @@ const ClipContent: React.FC<ClipContentProps> = ({
                                             ))}
                                         </div>
                                     </div>
-                                </div>                                {/* Rating panel for all logged-in users */}
-                                {user && (
+                                </div>                                {/* Rating panel for non-team users, or always on mobile/tablet for team members (since sidebar is hidden there) */}
+                                {user && !isTeamMember && (
                                     <RatingPanel
                                         clip={clipData}
                                         currentClip={clipData}
@@ -701,7 +711,20 @@ const ClipContent: React.FC<ClipContentProps> = ({
                                         fetchClipsAndRatings={fetchClipsAndRatings}
                                     />
                                 )}
-                                
+                                {/* Show rating panel on mobile/tablet for team members since sidebar is hidden */}
+                                {user && isTeamMember && (
+                                    <div className="lg:hidden">
+                                        <RatingPanel
+                                            clip={clipData}
+                                            currentClip={clipData}
+                                            user={user}
+                                            isLoading={isLoading}
+                                            ratings={ratings}
+                                            fetchClipsAndRatings={fetchClipsAndRatings}
+                                        />
+                                    </div>
+                                )}
+
                             </div>
                         </motion.div>
                     </div>                    {/* Comments section */}
@@ -714,18 +737,31 @@ const ClipContent: React.FC<ClipContentProps> = ({
                         setHighlightedMessageId={setHighlightedMessageId}
                         setPopout={setPopout}
                         isClipLoading={isClipLoading}
-                        setIsClipLoading={() => {/* No-op since React Query handles loading state */}}
+                        setIsClipLoading={() => {/* No-op since React Query handles loading state */ }}
                     />
-                    
+
                 </div>
+
+                {/* Team Sidebar - integrated panel for team members */}
+                {isTeamMember && (
+                    <div className="hidden lg:block lg:w-2/5">
+                        <TeamSidebar
+                            clip={clipData}
+                            user={user}
+                            ratings={ratings}
+                            fetchClipsAndRatings={fetchClipsAndRatings}
+                            highlightedMessageId={highlightedMessageId}
+                        />
+                    </div>
+                )}
             </div>
 
-            {/* Floating buttons for team members */}
-            {user && (user.roles.includes('admin') || user.roles.includes('clipteam') || user.roles.includes('editor') || user.roles.includes('uploader')) && popout === '' && (
+            {/* Mobile: Floating buttons for team members (only on mobile where sidebar is hidden) */}
+            {isTeamMember && popout === '' && (
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="fixed flex space-x-3 bottom-20 md:bottom-6 right-6 z-20"
+                    className="lg:hidden fixed flex space-x-3 bottom-20 right-4 z-20"
                 >
                     <button
                         className="flex items-center gap-2 bg-indigo-600/90 hover:bg-indigo-700/90 backdrop-blur text-white px-4 py-3 rounded-full shadow-lg transition transform hover:scale-105"
@@ -772,7 +808,7 @@ const ClipContent: React.FC<ClipContentProps> = ({
                     isEditModalOpen={isEditModalOpen}
                     setIsEditModalOpen={toggleEditModal}
                     clip={clipData}
-                    setCurrentClip={() => {/* Refetch handled by React Query */}}
+                    setCurrentClip={() => {/* Refetch handled by React Query */ }}
                 />
             )}
 

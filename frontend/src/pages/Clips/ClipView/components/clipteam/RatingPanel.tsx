@@ -83,7 +83,7 @@ const RatingPanel: React.FC<RatingPanelProps> = ({
                 }
             }
         }
-        
+
         setUserCurrentRating(null);
     }, [user, currentRatingsData]);
 
@@ -98,16 +98,16 @@ const RatingPanel: React.FC<RatingPanelProps> = ({
 
     const rateOrDenyClip = useCallback(async (id: string, rating: number | null = null, deny: boolean = false): Promise<void> => {
         if (isSubmitting) return; // Prevent double submissions
-        
+
         setIsSubmitting(true);
         try {
             const ratingValue = rating !== null ? rating.toString() as '1' | '2' | '3' | '4' : 'deny';
-            
+
             // Check if user is removing their current rating
             const isRemovingRating = userCurrentRating === ratingValue;
-            
+
             await submitRating(id, ratingValue);
-            
+
             // Update local state immediately for better UX
             if (isRemovingRating) {
                 setUserCurrentRating(null);
@@ -116,14 +116,14 @@ const RatingPanel: React.FC<RatingPanelProps> = ({
             } else if (deny) {
                 setUserCurrentRating('deny');
             }
-            
+
             // Show appropriate success message
             if (isRemovingRating) {
                 showSuccess('Rating removed successfully!');
             } else {
                 showSuccess('Rating submitted successfully!');
             }
-            
+
             await fetchClipsAndRatings(user);
         } catch (error: any) {
             showError('Error rating clip: ' + (error.message || 'Unknown error'));
@@ -138,11 +138,11 @@ const RatingPanel: React.FC<RatingPanelProps> = ({
         const username = user.username.toLowerCase();
         const currentClipSubmitter = currentClip.submitter.toLowerCase();
         const currentClipStreamer = currentClip.streamer.toLowerCase();
-        
+
         // Check if user submitted this clip via Discord
         const userDiscordId = user.discordId;
         const clipDiscordSubmitterId = currentClip.discordSubmitterId;
-        
+
         return Boolean(
             username === currentClipSubmitter ||
             username === currentClipStreamer ||
@@ -157,7 +157,7 @@ const RatingPanel: React.FC<RatingPanelProps> = ({
         if (currentRatingsData.ratingCounts) {
             const denyRating = currentRatingsData.ratingCounts.find(r => r.rating === 'deny');
             if (!denyRating) return false;
-            
+
             const denyUsers = denyRating.users || [];
             return denyUsers.some((u: { userId: string }) => u.userId === user._id);
         }
@@ -202,68 +202,95 @@ const RatingPanel: React.FC<RatingPanelProps> = ({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="mt-6 p-4 bg-neutral-100 dark:bg-neutral-700 rounded-lg"
+            className="mt-6 p-6 bg-neutral-100 dark:bg-neutral-700/50 rounded-xl border border-neutral-200 dark:border-neutral-600"
         >
-            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-3 flex items-center">
-                <IoMdInformationCircleOutline className="mr-2" />
-                Clip Team Controls
+            <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-neutral-900 dark:text-white flex items-center">
+                    <span className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
+                        <IoMdInformationCircleOutline className="text-white" />
+                    </span>
+                    Rate This Clip
+                </h3>
                 {isSubmitting && (
-                    <div className="ml-2 flex items-center">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-                        <span className="ml-1 text-sm text-neutral-600 dark:text-neutral-400">Submitting...</span>
+                    <div className="flex items-center bg-blue-100 dark:bg-blue-900/30 px-3 py-1 rounded-full">
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
+                        <span className="ml-2 text-sm text-blue-700 dark:text-blue-300 font-medium">Submitting...</span>
                     </div>
                 )}
-            </h3>
-            
+            </div>
+
             {cannotRateOwnClip && (
-                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md p-3 mb-4">
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg p-3 mb-4">
                     <p className="text-amber-800 dark:text-amber-200 text-sm font-medium">
                         ⚠️ You cannot rate clips you submitted or are the streamer of.
                     </p>
                 </div>
             )}
 
-            {isLoading && (
-                <div className="flex items-center justify-center py-4">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-                    <span className="ml-2 text-neutral-600 dark:text-neutral-400">Loading ratings...</span>
+            {isLoading ? (
+                <div className="flex items-center justify-center py-6">
+                    <div className="animate-spin rounded-full h-8 w-8 border-4 border-neutral-300 dark:border-neutral-600 border-t-blue-600"></div>
+                    <span className="ml-3 text-neutral-600 dark:text-neutral-400">Loading ratings...</span>
+                </div>
+            ) : (
+                <div className="space-y-4">
+                    {/* Rating description */}
+                    <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                        Select a rating (1 = Best, 4 = Worst) or deny if inappropriate
+                    </p>
+
+                    {/* Rating buttons - larger and more prominent */}
+                    <div className="grid grid-cols-5 gap-3">
+                        {[1, 2, 3, 4].map((rate) => {
+                            const isSelected = userCurrentRating === rate.toString();
+                            const ratingLabels = ['Best', 'Good', 'Okay', 'Poor'];
+
+                            return (
+                                <button
+                                    key={rate}
+                                    className={`flex flex-col items-center justify-center py-4 px-2 rounded-xl font-bold transition-all duration-200 ${getButtonColors(rate, isSelected)} ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    onClick={() => !isDisabled && rateOrDenyClip(clip._id, rate)}
+                                    disabled={isDisabled}
+                                    title={cannotRateOwnClip ? "You cannot rate your own clips" : `Rate ${rate} - ${ratingLabels[rate - 1]}`}
+                                >
+                                    <span className="text-2xl">{rate}</span>
+                                    <span className="text-xs mt-1 opacity-80">{ratingLabels[rate - 1]}</span>
+                                    {isSelected && <span className="text-xs mt-1">★ Selected</span>}
+                                </button>
+                            );
+                        })}
+
+                        {/* Deny button */}
+                        <button
+                            className={`flex flex-col items-center justify-center py-4 px-2 rounded-xl font-bold transition-all duration-200 ${isDenied
+                                    ? 'bg-red-600 text-white shadow-lg ring-2 ring-red-300 dark:ring-red-800'
+                                    : cannotRateOwnClip
+                                        ? 'bg-neutral-300 dark:bg-neutral-600 text-neutral-500 dark:text-neutral-400 cursor-not-allowed'
+                                        : 'bg-neutral-200 dark:bg-neutral-600 text-neutral-800 dark:text-white hover:bg-red-600 hover:text-white'
+                                } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            onClick={() => !isDisabled && rateOrDenyClip(clip._id, null, true)}
+                            disabled={isDisabled}
+                            title={cannotRateOwnClip ? "You cannot deny your own clips" : "Deny this clip"}
+                        >
+                            <span className="text-2xl">✕</span>
+                            <span className="text-xs mt-1 opacity-80">Deny</span>
+                            {isDenied && <span className="text-xs mt-1">✓ Denied</span>}
+                        </button>
+                    </div>
+
+                    {/* Current rating indicator */}
+                    {userCurrentRating && (
+                        <div className="text-center pt-2 border-t border-neutral-200 dark:border-neutral-600">
+                            <span className="text-sm text-neutral-500 dark:text-neutral-400">
+                                Your current rating: <span className="font-bold text-neutral-700 dark:text-neutral-200">
+                                    {userCurrentRating === 'deny' ? 'Denied' : `${userCurrentRating} star${userCurrentRating !== '1' ? 's' : ''}`}
+                                </span>
+                                <span className="text-xs ml-2">(click again to remove)</span>
+                            </span>
+                        </div>
+                    )}
                 </div>
             )}
-
-            <div className="flex flex-wrap gap-3 justify-center sm:justify-start">
-                {[1, 2, 3, 4].map((rate) => {
-                    const isSelected = userCurrentRating === rate.toString();
-                    
-                    return (
-                        <button
-                            key={rate}
-                            className={`px-4 py-2 rounded-full font-semibold transition-all duration-200 transform ${getButtonColors(rate, isSelected)} ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            onClick={() => !isDisabled && rateOrDenyClip(clip._id, rate)}
-                            disabled={isDisabled}
-                            title={cannotRateOwnClip ? "You cannot rate your own clips" : `Rate this clip ${rate} stars`}
-                        >
-                            {rate}
-                            {isSelected && <span className="ml-1">★</span>}
-                        </button>
-                    );
-                })}
-                
-                <button
-                    className={`px-4 py-2 rounded-full font-semibold transition-all duration-200 transform ${
-                        isDenied
-                            ? 'bg-red-600 text-white shadow-lg scale-110 ring-2 ring-red-300 dark:ring-red-800 hover:grayscale'
-                            : cannotRateOwnClip
-                                ? 'bg-neutral-300 dark:bg-neutral-600 text-neutral-500 dark:text-neutral-400 cursor-not-allowed'
-                                : 'bg-neutral-200 dark:bg-neutral-600 text-neutral-800 dark:text-white hover:bg-red-600 hover:text-white hover:scale-105'
-                    } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    onClick={() => !isDisabled && rateOrDenyClip(clip._id, null, true)}
-                    disabled={isDisabled}
-                    title={cannotRateOwnClip ? "You cannot deny your own clips" : "Deny this clip"}
-                >
-                    Deny
-                    {isDenied && <span className="ml-1">✓</span>}
-                </button>
-            </div>
         </motion.div>
     );
 };

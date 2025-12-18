@@ -15,18 +15,18 @@ interface SummaryStatsProps {
 const SummaryStats: React.FC<SummaryStatsProps> = ({
   totalRatings,
   averageRatings,
-  mostActiveUser, 
+  mostActiveUser,
   totalClips,
   ratedClips,
   unratedClips,
   deniedClips
-}) => { 
+}) => {
   return (
-    <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-lg border border-neutral-200 dark:border-neutral-700 p-6">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+    <div className="bg-white/80 dark:bg-neutral-800/50 backdrop-blur-sm rounded-xl shadow-sm border border-neutral-200/80 dark:border-neutral-700/50 p-5">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <motion.div
           whileHover={{ scale: 1.02 }}
-          className="bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-blue-900/20 dark:to-blue-800/40 p-5 rounded-lg shadow"
+          className="bg-neutral-50 dark:bg-neutral-700/50 p-5 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-600 hover:shadow-md transition-shadow duration-200"
         >
           <div className="flex items-start justify-between">
             <div>
@@ -41,7 +41,7 @@ const SummaryStats: React.FC<SummaryStatsProps> = ({
 
         <motion.div
           whileHover={{ scale: 1.02 }}
-          className="bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-green-900/20 dark:to-green-800/40 p-5 rounded-lg shadow"
+          className="bg-neutral-50 dark:bg-neutral-700/50 p-5 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-600 hover:shadow-md transition-shadow duration-200"
         >
           <div className="flex items-start justify-between">
             <div>
@@ -56,7 +56,7 @@ const SummaryStats: React.FC<SummaryStatsProps> = ({
 
         <motion.div
           whileHover={{ scale: 1.02 }}
-          className="bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-orange-900/20 dark:to-orange-800/40 p-5 rounded-lg shadow"
+          className="bg-neutral-50 dark:bg-neutral-700/50 p-5 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-600 hover:shadow-md transition-shadow duration-200"
         >
           <div className="flex items-start justify-between">
             <div>
@@ -71,7 +71,7 @@ const SummaryStats: React.FC<SummaryStatsProps> = ({
 
         <motion.div
           whileHover={{ scale: 1.02 }}
-          className="bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-red-900/20 dark:to-red-800/40 p-5 rounded-lg shadow"
+          className="bg-neutral-50 dark:bg-neutral-700/50 p-5 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-600 hover:shadow-md transition-shadow duration-200"
         >
           <div className="flex items-start justify-between">
             <div>
@@ -84,11 +84,11 @@ const SummaryStats: React.FC<SummaryStatsProps> = ({
           </div>
         </motion.div>
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <motion.div
           whileHover={{ scale: 1.02 }}
-          className="bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-blue-900/20 dark:to-blue-800/40 p-5 rounded-lg shadow"
+          className="bg-neutral-50 dark:bg-neutral-700/50 p-4 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-600 hover:shadow-md transition-shadow duration-200"
         >
           <div className="flex items-start justify-between">
             <div>
@@ -103,7 +103,7 @@ const SummaryStats: React.FC<SummaryStatsProps> = ({
 
         <motion.div
           whileHover={{ scale: 1.02 }}
-          className="bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-green-900/20 dark:to-green-800/40 p-5 rounded-lg shadow"
+          className="bg-neutral-50 dark:bg-neutral-700/50 p-5 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-600 hover:shadow-md transition-shadow duration-200"
         >
           <div className="flex items-start justify-between">
             <div>
@@ -118,7 +118,7 @@ const SummaryStats: React.FC<SummaryStatsProps> = ({
 
         <motion.div
           whileHover={{ scale: 1.02 }}
-          className="bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-purple-900/20 dark:to-purple-800/40 p-5 rounded-lg shadow"
+          className="bg-neutral-50 dark:bg-neutral-700/50 p-5 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-600 hover:shadow-md transition-shadow duration-200"
         >
           <div className="flex items-start justify-between">
             <div>

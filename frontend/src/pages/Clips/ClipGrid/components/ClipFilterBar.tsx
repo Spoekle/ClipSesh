@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  FaFilter, FaSort, FaSearch, FaTimes, 
+import {
+  FaFilter, FaSort, FaSearch, FaTimes,
   FaChevronDown, FaUpload, FaEye, FaEyeSlash,
   FaArrowUp, FaArrowDown
 } from 'react-icons/fa';
@@ -21,14 +21,14 @@ interface ClipFilterBarProps {
   isLoggedIn: boolean;
   searchTerm: string;
   setSearchTerm: (term: string) => void;
-  filterStreamer: string;  setFilterStreamer: (streamer: string) => void;
+  filterStreamer: string; setFilterStreamer: (streamer: string) => void;
   streamers: string[];
   handleFilterReset: () => void;
   fetchClipsAndRatings: (user: User | null) => Promise<void>;
   setSearchParams: (params: any) => void;
 }
 
-const ClipFilterBar: React.FC<ClipFilterBarProps> = ({ 
+const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
   sortOptionState,
   handleSortChange,
   filterRatedClips,
@@ -51,7 +51,7 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [activeFiltersCount, setActiveFiltersCount] = useState(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  
+
   // Update local search term when prop changes
   useEffect(() => {
     setLocalSearchTerm(searchTerm);
@@ -65,7 +65,7 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
     if (filterDeniedClips) count++;
     setActiveFiltersCount(count);
   }, [searchTerm, filterStreamer, filterDeniedClips]);
-    // Focus search input when filters panel opens
+  // Focus search input when filters panel opens
   useEffect(() => {
     if (showFilters && searchInputRef.current) {
       setTimeout(() => searchInputRef.current?.focus(), 300);
@@ -77,12 +77,12 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
     const newValue = !filterRatedClips;
     localStorage.setItem('filterRatedClips', newValue.toString());
     setFilterRatedClips(newValue);
-      // Reset to page 1 when changing filters to prevent potential empty pages
-    setSearchParams({ 
-      sort: sortOptionState, 
+    // Reset to page 1 when changing filters to prevent potential empty pages
+    setSearchParams({
+      sort: sortOptionState,
       page: "1",
       ...(searchTerm && { q: searchTerm }),
-      ...(filterStreamer && { streamer: filterStreamer }) 
+      ...(filterStreamer && { streamer: filterStreamer })
     });
 
     // The parent component will handle the refetch via useEffect
@@ -93,25 +93,25 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
     const newValue = !filterDeniedClips;
     localStorage.setItem('filterDeniedClips', newValue.toString());
     setFilterDeniedClips(newValue);
-      // Reset to page 1 when changing filters to prevent potential empty pages
-    setSearchParams({ 
-      sort: sortOptionState, 
+    // Reset to page 1 when changing filters to prevent potential empty pages
+    setSearchParams({
+      sort: sortOptionState,
       page: "1",
       ...(searchTerm && { q: searchTerm }),
-      ...(filterStreamer && { streamer: filterStreamer }) 
+      ...(filterStreamer && { streamer: filterStreamer })
     });
 
     // The parent component will handle the refetch via useEffect
   };
 
-  
+
   // Debounced search
   useEffect(() => {
     const timer = setTimeout(() => {
       // Check if the search term has changed before triggering a search
       if (localSearchTerm !== searchTerm) {
         setSearchTerm(localSearchTerm);
-        
+
         // Update URL params
         setSearchParams({
           sort: sortOptionState,
@@ -119,26 +119,26 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
           ...(localSearchTerm && { q: localSearchTerm }),
           ...(filterStreamer && { streamer: filterStreamer })
         });
-      
+
         // The parent component will handle the refetch via useEffect
       }
     }, 500); // 500ms debounce
-    
+
     return () => clearTimeout(timer);
   }, [localSearchTerm, searchTerm, setSearchTerm, setSearchParams, sortOptionState, filterStreamer]);
-  
+
   // Handle streamer filter change
   const handleStreamerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newStreamer = e.target.value;
     setFilterStreamer(newStreamer);
-      // Update URL params
+    // Update URL params
     setSearchParams({
       sort: sortOptionState,
       page: "1", // Reset to page 1 when filtering
       ...(searchTerm && { q: searchTerm }),
       ...(newStreamer && { streamer: newStreamer })
     });
-    
+
     // The parent component will handle the refetch via useEffect
   };
 
@@ -146,28 +146,28 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
   const handleClearSearch = () => {
     setLocalSearchTerm('');
     setSearchTerm('');
-      // Update URL params
+    // Update URL params
     setSearchParams({
       sort: sortOptionState,
       page: "1",
       ...(filterStreamer && { streamer: filterStreamer })
     });
-    
+
     // The parent component will handle the refetch via useEffect
   };
-  
+
   // Handle reset all filters
   const handleResetAll = () => {
     setLocalSearchTerm('');
     setSearchTerm('');
     setFilterStreamer('');
     setFilterDeniedClips(false);
-      // Reset URL params but keep sort
+    // Reset URL params but keep sort
     setSearchParams({
       sort: sortOptionState,
       page: "1",
     });
-    
+
     // The parent component will handle the refetch via useEffect
   };
   // Handle successful clip upload
@@ -179,8 +179,8 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
   const isTeamMember = user?.roles?.includes('admin') || user?.roles?.includes('clipteam');
 
   // Parse current sort option into field and direction
-  const [sortField, sortDirection] = sortOptionState.includes('_') 
-    ? sortOptionState.split('_') 
+  const [sortField, sortDirection] = sortOptionState.includes('_')
+    ? sortOptionState.split('_')
     : [sortOptionState === 'oldest' ? 'createdAt' : sortOptionState, sortOptionState === 'oldest' ? 'asc' : 'desc'];
 
   // Handle sort field change
@@ -196,13 +196,13 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
   };
 
   return (
-    <div className="sticky top-14 z-10 bg-white dark:bg-neutral-800 rounded-xl shadow-md mb-6">
+    <div className="sticky top-14 z-10 bg-white/80 dark:bg-neutral-800/80 backdrop-blur-sm rounded-xl shadow-sm border border-neutral-200/80 dark:border-neutral-700/50 mb-6">
       {/* Controls panel */}
       <div className="flex md:flex-row justify-between items-start md:items-center gap-4 p-4">
-        <h2 className="text-2xl font-bold text-neutral-900 dark:text-white flex items-center">
+        <h2 className="text-xl font-semibold text-neutral-900 dark:text-white flex items-center">
           <span>Browse Clips</span>
           {activeFiltersCount > 0 && (
-            <motion.div 
+            <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               className="ml-2 w-5 h-5 bg-blue-500 text-white text-xs rounded-full flex items-center justify-center"
@@ -211,7 +211,7 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
             </motion.div>
           )}
         </h2>
-        
+
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowControlPanel(!showControlPanel)}
@@ -220,15 +220,14 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
             <span>Controls</span>
             <FaChevronDown className={`transition ${showControlPanel ? 'rotate-180' : ''}`} />
           </button>
-          
+
           <div className="hidden md:flex items-center gap-3">
             <button
               onClick={handleResetAll}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-neutral-700 dark:text-neutral-200 transition ${
-                activeFiltersCount > 0 
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-neutral-700 dark:text-neutral-200 transition ${activeFiltersCount > 0
                   ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 hover:bg-orange-200 dark:hover:bg-orange-800/30'
                   : 'bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600'
-              }`}
+                }`}
               title="Reset all filters"
               disabled={activeFiltersCount === 0}
             >
@@ -240,29 +239,27 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
                 </span>
               )}
             </button>
-            
+
             {isTeamMember && (
               <>
                 <button
                   onClick={toggleFilterRatedClips}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${
-                    filterRatedClips
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${filterRatedClips
                       ? 'bg-blue-500 hover:bg-blue-600 text-white'
                       : 'bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-700 dark:text-neutral-200'
-                  }`}
+                    }`}
                   title={filterRatedClips ? 'Show all clips' : 'Hide rated clips'}
                 >
                   {filterRatedClips ? <FaEyeSlash /> : <FaEye />}
                   <span>{filterRatedClips ? 'Hiding Rated' : 'Hide Rated'}</span>
                 </button>
-                
+
                 <button
                   onClick={toggleFilterDeniedClips}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${
-                    filterDeniedClips
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${filterDeniedClips
                       ? 'bg-red-500 hover:bg-red-600 text-white'
                       : 'bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-700 dark:text-neutral-200'
-                  }`}
+                    }`}
                   title={filterDeniedClips ? 'Show all clips' : 'Hide denied clips'}
                 >
                   {filterDeniedClips ? <FaEyeSlash /> : <FaEye />}
@@ -270,14 +267,13 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
                 </button>
               </>
             )}
-            
+
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${
-                showFilters || activeFiltersCount > 0
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${showFilters || activeFiltersCount > 0
                   ? 'bg-blue-500 hover:bg-blue-600 text-white'
                   : 'bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-700 dark:text-neutral-200'
-              }`}
+                }`}
               title="Filter clips"
             >
               <FaFilter />
@@ -288,7 +284,7 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
                 </span>
               )}
             </button>
-            
+
             {/* Admin-only Upload Clip button */}
             {isLoggedIn && isAdmin && (
               <button
@@ -303,7 +299,7 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
           </div>
         </div>
       </div>
-      
+
       {/* Mobile controls that show/hide */}
       <AnimatePresence>
         {showControlPanel && (
@@ -344,7 +340,7 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
                     )}
                   </div>
                 </div>
-                
+
                 {/* Streamer Filter */}
                 <div>
                   <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-neutral-300">
@@ -363,7 +359,7 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
                     ))}
                   </select>
                 </div>
-                
+
                 {/* Sort Field */}
                 <div>
                   <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-neutral-300">
@@ -406,22 +402,20 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
                   <div className="flex border border-neutral-300 dark:border-neutral-600 rounded-lg overflow-hidden w-fit">
                     <button
                       onClick={() => handleSortDirectionChange('desc')}
-                      className={`w-20 h-10 flex items-center justify-center transition-colors ${
-                        sortDirection === 'desc'
+                      className={`w-20 h-10 flex items-center justify-center transition-colors ${sortDirection === 'desc'
                           ? 'bg-blue-500 text-white'
                           : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-600'
-                      }`}
+                        }`}
                       title="Descending"
                     >
                       <FaArrowDown className="text-xs" />
                     </button>
                     <button
                       onClick={() => handleSortDirectionChange('asc')}
-                      className={`w-20 h-10 flex items-center justify-center transition-colors border-l border-neutral-300 dark:border-neutral-600 ${
-                        sortDirection === 'asc'
+                      className={`w-20 h-10 flex items-center justify-center transition-colors border-l border-neutral-300 dark:border-neutral-600 ${sortDirection === 'asc'
                           ? 'bg-blue-500 text-white'
                           : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-600'
-                      }`}
+                        }`}
                       title="Ascending"
                     >
                       <FaArrowUp className="text-xs" />
@@ -436,23 +430,21 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
                   <>
                     <button
                       onClick={toggleFilterRatedClips}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${
-                        filterRatedClips
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${filterRatedClips
                           ? 'bg-blue-500 hover:bg-blue-600 text-white'
                           : 'bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-700 dark:text-neutral-200'
-                      }`}
+                        }`}
                     >
                       {filterRatedClips ? <FaEye /> : <FaEyeSlash />}
                       <span className="text-sm">{filterRatedClips ? 'Show All' : 'Hide Rated'}</span>
                     </button>
-                    
+
                     <button
                       onClick={toggleFilterDeniedClips}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${
-                        filterDeniedClips
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${filterDeniedClips
                           ? 'bg-red-500 hover:bg-red-600 text-white'
                           : 'bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-700 dark:text-neutral-200'
-                      }`}
+                        }`}
                     >
                       {filterDeniedClips ? <FaEye /> : <FaEyeSlash />}
                       <span className="text-sm">{filterDeniedClips ? 'Show All' : 'Hide Denied'}</span>
@@ -469,14 +461,13 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
                     <span className="text-sm">Upload Clip</span>
                   </button>
                 )}
-                
+
                 <button
                   onClick={handleResetAll}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition ${
-                    activeFiltersCount > 0 
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition ${activeFiltersCount > 0
                       ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 hover:bg-orange-200 dark:hover:bg-orange-800/30'
                       : 'bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-700 dark:text-neutral-200'
-                  }`}
+                    }`}
                   disabled={activeFiltersCount === 0}
                 >
                   <FaTimes />
@@ -492,7 +483,7 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
           </motion.div>
         )}
       </AnimatePresence>
-      
+
       {/* Desktop filters panel */}
       <AnimatePresence>
         {showFilters && (
@@ -532,7 +523,7 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
                     )}
                   </div>
                 </div>
-                
+
                 <div>
                   <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-neutral-300">
                     Filter by Streamer
@@ -550,7 +541,7 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
                     ))}
                   </select>
                 </div>
-                
+
                 <div>
                   <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-neutral-300">
                     Sort by Field
@@ -591,22 +582,20 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
                   <div className="flex border border-neutral-300 dark:border-neutral-600 rounded-lg overflow-hidden w-fit">
                     <button
                       onClick={() => handleSortDirectionChange('desc')}
-                      className={`w-20 h-10 flex items-center justify-center transition-colors ${
-                        sortDirection === 'desc'
+                      className={`w-20 h-10 flex items-center justify-center transition-colors ${sortDirection === 'desc'
                           ? 'bg-blue-500 text-white'
                           : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-600'
-                      }`}
+                        }`}
                       title="Descending"
                     >
                       <FaArrowDown className="text-xs" />
                     </button>
                     <button
                       onClick={() => handleSortDirectionChange('asc')}
-                      className={`w-20 h-10 flex items-center justify-center transition-colors border-l border-neutral-300 dark:border-neutral-600 ${
-                        sortDirection === 'asc'
+                      className={`w-20 h-10 flex items-center justify-center transition-colors border-l border-neutral-300 dark:border-neutral-600 ${sortDirection === 'asc'
                           ? 'bg-blue-500 text-white'
                           : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-600'
-                      }`}
+                        }`}
                       title="Ascending"
                     >
                       <FaArrowUp className="text-xs" />
@@ -620,7 +609,7 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
       </AnimatePresence>
 
       {/* Admin Upload Clip Modal */}
-      <UploadClipModal 
+      <UploadClipModal
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
         onSuccess={handleUploadSuccess}
