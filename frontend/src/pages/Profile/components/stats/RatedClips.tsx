@@ -97,12 +97,12 @@ const RatedClips: React.FC<RatedClipsProps> = ({ ratingsData, clipsData, locatio
         setCurrentPage(pageNumber);
     };
     const getRatingColor = (rating: string | number) => {
-        if (rating === 1 || rating === '1') return "bg-gradient-to-r from-blue-500 to-blue-600";
-        if (rating === 2 || rating === '2') return "bg-gradient-to-r from-green-500 to-green-600";
-        if (rating === 3 || rating === '3') return "bg-gradient-to-r from-amber-500 to-amber-600";
-        if (rating === 4 || rating === '4') return "bg-gradient-to-r from-orange-500 to-orange-600";
-        if (rating === "deny") return "bg-gradient-to-r from-red-500 to-red-600";
-        return "bg-gradient-to-r from-neutral-500 to-neutral-600";
+        if (rating === 1 || rating === '1') return "bg-blue-600";
+        if (rating === 2 || rating === '2') return "bg-green-600";
+        if (rating === 3 || rating === '3') return "bg-amber-500";
+        if (rating === 4 || rating === '4') return "bg-orange-600";
+        if (rating === "deny") return "bg-red-600";
+        return "bg-neutral-600";
     };
 
     return (
@@ -119,9 +119,9 @@ const RatedClips: React.FC<RatedClipsProps> = ({ ratingsData, clipsData, locatio
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="flex flex-col items-center justify-center py-16 text-center bg-gradient-to-br from-neutral-50 to-neutral-100 dark:from-neutral-800 dark:to-neutral-700 rounded-2xl border border-neutral-200 dark:border-neutral-600 shadow-sm"
+                        className="flex flex-col items-center justify-center py-16 text-center bg-neutral-50 dark:bg-neutral-800 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm"
                     >
-                        <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
+                        <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mb-6 shadow-md">
                             <div className="text-4xl">🎬</div>
                         </div>
                         <h3 className="text-2xl font-bold text-neutral-800 dark:text-neutral-200 mb-3">
@@ -132,7 +132,7 @@ const RatedClips: React.FC<RatedClipsProps> = ({ ratingsData, clipsData, locatio
                         </p>
                         <Link
                             to="/clips"
-                            className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-8 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-semibold shadow-md hover:shadow-lg transition-all duration-200"
                         >
                             Browse Clips
                         </Link>
@@ -152,8 +152,8 @@ const RatedClips: React.FC<RatedClipsProps> = ({ ratingsData, clipsData, locatio
                                     to={`/clips/${clip._id}`}
                                     state={{ from: location }}
                                     className="block w-full h-full"
-                                >                                    
-                                {/* Rating badge */}
+                                >
+                                    {/* Rating badge */}
                                     <div className={`absolute z-30 top-3 right-3 backdrop-blur-sm text-white px-3 py-2 rounded-xl flex items-center font-bold text-sm shadow-lg border border-white/20 ${getRatingColor(clip.userRating || 'unknown')}`}>
                                         {clip.userRating === "deny" ? "Denied" : `Rated ${clip.userRating || 'Unknown'}`}
                                     </div>
@@ -180,7 +180,7 @@ const RatedClips: React.FC<RatedClipsProps> = ({ ratingsData, clipsData, locatio
                                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all duration-300">
                                             <motion.div
                                                 whileHover={{ scale: 1.2 }}
-                                                className="bg-gradient-to-br from-white/5 via-white/10 to-white/5 px-5 py-4 rounded-full shadow-xl border-2 border-white/10 backdrop-blur-xs"
+                                                className="bg-white/10 px-5 py-4 rounded-full shadow-xl border border-white/20 backdrop-blur-sm"
                                             >
                                                 <FaPlay className="text-2xl text-white/50 ml-1" />
                                             </motion.div>
@@ -188,7 +188,7 @@ const RatedClips: React.FC<RatedClipsProps> = ({ ratingsData, clipsData, locatio
                                     </div>
 
                                     {/* Title overlay at bottom */}
-                                    <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
+                                    <div className="absolute bottom-0 left-0 right-0 p-3 bg-black/70">
                                         <h3 className="text-white text-sm font-medium line-clamp-2">{clip.title}</h3>
                                     </div>
                                 </Link>
@@ -205,8 +205,8 @@ const RatedClips: React.FC<RatedClipsProps> = ({ ratingsData, clipsData, locatio
                                     onClick={() => paginate(Math.max(1, currentPage - 1))}
                                     disabled={currentPage === 1}
                                     className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 ${currentPage === 1
-                                            ? 'bg-neutral-100 dark:bg-neutral-700 text-neutral-400 cursor-not-allowed'
-                                            : 'bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-700 dark:text-neutral-300'
+                                        ? 'bg-neutral-100 dark:bg-neutral-700 text-neutral-400 cursor-not-allowed'
+                                        : 'bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-700 dark:text-neutral-300'
                                         }`}
                                 >
                                     Previous
@@ -220,8 +220,8 @@ const RatedClips: React.FC<RatedClipsProps> = ({ ratingsData, clipsData, locatio
                                             whileTap={{ scale: 0.9 }}
                                             onClick={() => paginate(number + 1)}
                                             className={`w-10 h-10 rounded-xl flex items-center justify-center font-semibold transition-all duration-200 ${currentPage === number + 1
-                                                    ? 'bg-blue-500 text-white shadow-lg'
-                                                    : 'bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-700 dark:text-neutral-300'
+                                                ? 'bg-blue-500 text-white shadow-lg'
+                                                : 'bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-700 dark:text-neutral-300'
                                                 }`}
                                         >
                                             {number + 1}
@@ -235,8 +235,8 @@ const RatedClips: React.FC<RatedClipsProps> = ({ ratingsData, clipsData, locatio
                                     onClick={() => paginate(Math.min(totalPages, currentPage + 1))}
                                     disabled={currentPage === totalPages}
                                     className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 ${currentPage === totalPages
-                                            ? 'bg-neutral-100 dark:bg-neutral-700 text-neutral-400 cursor-not-allowed'
-                                            : 'bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-700 dark:text-neutral-300'
+                                        ? 'bg-neutral-100 dark:bg-neutral-700 text-neutral-400 cursor-not-allowed'
+                                        : 'bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-700 dark:text-neutral-300'
                                         }`}
                                 >
                                     Next

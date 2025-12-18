@@ -16,7 +16,7 @@ interface LoginModalProps {
 const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginModalOpen }) => {
   const loginMutation = useLoginUser();
   const registerMutation = useRegisterUser();
-  
+
   const [formMode, setFormMode] = useState('login');
   const [formData, setFormData] = useState({ username: '', password: '' });
   const [email, setEmail] = useState('');
@@ -29,7 +29,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') handleClose();
     };
-    
+
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
   }, []);
@@ -47,7 +47,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
   const handleClose = () => {
     const modalContent = document.querySelector('.modal-content') as HTMLElement;
     const modalOverlay = document.querySelector('.login-modal-overlay') as HTMLElement;
-    
+
     if (modalContent && modalOverlay) {
       modalContent.style.transition = 'transform 300ms, opacity 300ms';
       modalContent.style.transform = 'scale(0.9)';
@@ -63,15 +63,15 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
     e.preventDefault();
     setError('');
     setIsSubmitting(true);
-      
+
     try {
       if (formMode === 'register') {
         await registerMutation.mutateAsync(formData);
         setFormMode('login');
         setFormData({ ...formData, password: '' });
-        setResetMessage({ 
-          type: 'success', 
-          message: 'Registration successful! Please login with your credentials.' 
+        setResetMessage({
+          type: 'success',
+          message: 'Registration successful! Please login with your credentials.'
         });
       } else {
         const response = await loginMutation.mutateAsync(formData);
@@ -107,16 +107,16 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
       setResetMessage({ type: 'error', message: 'Please enter your email address.' });
       return;
     }
-    
+
     try {
       setAwaitingReset(true);
       setResetMessage({ type: '', message: '' });
-      
+
       await requestPasswordReset(email);
-      
-      setResetMessage({ 
-        type: 'success', 
-        message: `Password reset instructions sent to ${email}. Please check your inbox.` 
+
+      setResetMessage({
+        type: 'success',
+        message: `Password reset instructions sent to ${email}. Please check your inbox.`
       });
     } catch (error) {
       if (axios.isAxiosError(error) && error.response && error.response.status === 404) {
@@ -157,8 +157,8 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
           animate="visible"
           exit="exit"
         >
-          <motion.div 
-            className="modal-content relative bg-white dark:bg-neutral-800 rounded-2xl shadow-xl max-w-md w-full mx-4"
+          <motion.div
+            className="modal-content relative bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl max-w-md w-full mx-4 border border-neutral-200/50 dark:border-neutral-700/50"
             style={{ maxHeight: '90vh', overflowY: 'auto' }}
             variants={modalVariants}
             initial="hidden"
@@ -168,10 +168,10 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
           >
             <button
               onClick={handleClose}
-              className="absolute top-4 right-4 text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors p-1 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-700"
+              className="absolute top-4 right-4 p-2 text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-700"
               aria-label="Close"
             >
-              <FaTimes size={20} />
+              <FaTimes size={18} />
             </button>
 
             <div className="p-8">
@@ -192,12 +192,12 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
                       {resetMessage.message}
                     </div>
                   )}
-                  
-                  <OfflineWarning 
-                    message="Login requires an internet connection" 
+
+                  <OfflineWarning
+                    message="Login requires an internet connection"
                     className="mb-4"
                   />
-                  
+
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
                       <label htmlFor="login-username" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
@@ -214,12 +214,12 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
                           placeholder="Enter your username"
                           value={formData.username}
                           onChange={handleChange}
-                          className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded-xl text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                           required
                         />
                       </div>
                     </div>
-                    
+
                     <div className="space-y-2">
                       <label htmlFor="login-password" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
                         Password
@@ -235,16 +235,16 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
                           placeholder="Enter your password"
                           value={formData.password}
                           onChange={handleChange}
-                          className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded-xl text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                           required
                         />
                       </div>
                     </div>
-                    
+
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg transition duration-200 flex items-center justify-center font-medium"
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl transition duration-200 flex items-center justify-center font-medium"
                     >
                       {isSubmitting ? (
                         <>
@@ -255,7 +255,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
                         'Sign In'
                       )}
                     </button>
-                    
+
                     <div className="relative py-2">
                       <div className="absolute inset-0 flex items-center">
                         <div className="w-full border-t border-neutral-300 dark:border-neutral-700"></div>
@@ -266,17 +266,17 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
                         </span>
                       </div>
                     </div>
-                    
+
                     <button
                       type="button"
                       onClick={handleDiscordLogin}
-                      className="w-full flex items-center justify-center gap-2 bg-indigo-700 hover:bg-indigo-800 text-white py-2.5 rounded-lg transition duration-200"
+                      className="w-full flex items-center justify-center gap-2 bg-indigo-700 hover:bg-indigo-800 text-white py-2.5 rounded-xl transition duration-200"
                     >
                       <FaDiscord size={20} />
                       Sign in with Discord
                     </button>
                   </form>
-                  
+
                   <div className="mt-6 flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-4 text-center justify-center">
                     <button
                       onClick={() => {
@@ -308,7 +308,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
                 >
                   <h2 className="text-3xl font-bold text-neutral-900 dark:text-white mb-6">Create Account</h2>
                   {error && (
-                    <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-900 text-red-800 dark:text-red-300 rounded-lg text-sm">
+                    <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-900 text-red-800 dark:text-red-300 rounded-xl text-sm">
                       {error}
                     </div>
                   )}
@@ -329,19 +329,18 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
                           value={formData.username}
                           onChange={handleChange}
                           maxLength={30}
-                          className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded-xl text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                           required
                         />
                         {formData.username.length > 0 && (
-                          <div className={`absolute bottom-2 right-2 text-xs px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-600 ${
-                            formData.username.length === 30 ? 'text-red-600 dark:text-red-400' : 'text-neutral-500 dark:text-neutral-400'
-                          }`}>
+                          <div className={`absolute bottom-2 right-2 text-xs px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-600 ${formData.username.length === 30 ? 'text-red-600 dark:text-red-400' : 'text-neutral-500 dark:text-neutral-400'
+                            }`}>
                             {formData.username.length}/30
                           </div>
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="space-y-2">
                       <label htmlFor="register-password" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
                         Password
@@ -357,16 +356,16 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
                           placeholder="Create a strong password"
                           value={formData.password}
                           onChange={handleChange}
-                          className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded-xl text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                           required
                         />
                       </div>
                     </div>
-                    
+
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg transition duration-200 flex items-center justify-center font-medium"
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl transition duration-200 flex items-center justify-center font-medium"
                     >
                       {isSubmitting ? (
                         <>
@@ -377,7 +376,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
                         'Create Account'
                       )}
                     </button>
-                    
+
                     <div className="relative py-2">
                       <div className="absolute inset-0 flex items-center">
                         <div className="w-full border-t border-neutral-300 dark:border-neutral-700"></div>
@@ -388,17 +387,17 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
                         </span>
                       </div>
                     </div>
-                    
+
                     <button
                       type="button"
                       onClick={handleDiscordLogin}
-                      className="w-full flex items-center justify-center gap-2 bg-indigo-700 hover:bg-indigo-800 text-white py-2.5 rounded-lg transition duration-200"
+                      className="w-full flex items-center justify-center gap-2 bg-indigo-700 hover:bg-indigo-800 text-white py-2.5 rounded-xl transition duration-200"
                     >
                       <FaDiscord size={20} />
                       Register with Discord
                     </button>
                   </form>
-                  
+
                   <div className="mt-6 text-center">
                     <button
                       onClick={() => {
@@ -423,17 +422,16 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
                   <p className="mb-6 text-neutral-600 dark:text-neutral-400 text-sm">
                     Enter your email address and we'll send you instructions to reset your password.
                   </p>
-                  
+
                   {resetMessage.type && (
-                    <div className={`mb-4 p-3 rounded-lg text-sm ${
-                      resetMessage.type === 'success' 
-                        ? 'bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-900 text-green-800 dark:text-green-300' 
-                        : 'bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-900 text-red-800 dark:text-red-300'
-                    }`}>
+                    <div className={`mb-4 p-3 rounded-xl text-sm ${resetMessage.type === 'success'
+                      ? 'bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-900 text-green-800 dark:text-green-300'
+                      : 'bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-900 text-red-800 dark:text-red-300'
+                      }`}>
                       {resetMessage.message}
                     </div>
                   )}
-                  
+
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <label htmlFor="reset-email" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
@@ -449,15 +447,15 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
                           placeholder="Enter your email"
                           value={email}
                           onChange={handleEmailChange}
-                          className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded-xl text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
                     </div>
-                    
+
                     <button
                       onClick={handlePasswordReset}
                       disabled={awaitingReset || !email.trim()}
-                      className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 dark:disabled:bg-blue-800 disabled:cursor-not-allowed text-white py-2.5 rounded-lg transition duration-200 flex items-center justify-center font-medium"
+                      className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 dark:disabled:bg-blue-800 disabled:cursor-not-allowed text-white py-2.5 rounded-xl transition duration-200 flex items-center justify-center font-medium"
                     >
                       {awaitingReset ? (
                         <>
@@ -469,7 +467,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
                       )}
                     </button>
                   </div>
-                  
+
                   <div className="mt-6 text-center">
                     <button
                       onClick={() => {

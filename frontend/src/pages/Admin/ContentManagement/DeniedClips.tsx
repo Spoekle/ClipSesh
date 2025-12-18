@@ -1,25 +1,25 @@
 import React, { useState } from 'react';
 import { Link, Location } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
-  FaThumbsDown, 
-  FaBan, 
-  FaExclamationTriangle,
-  FaChevronLeft, 
-  FaChevronRight,
-  FaFilter
+import {
+    FaThumbsDown,
+    FaBan,
+    FaExclamationTriangle,
+    FaChevronLeft,
+    FaChevronRight,
+    FaFilter
 } from 'react-icons/fa';
 import { Clip, Rating } from '../../../types/adminTypes';
 
 type SortBy = 'newest' | 'oldest' | 'mostDenied';
 
 interface DeniedClipsProps {
-  clips: Clip[];
-  ratings: Record<string, Rating>;
-  config: {
-    denyThreshold: number;
-  };
-  location: Location;
+    clips: Clip[];
+    ratings: Record<string, Rating>;
+    config: {
+        denyThreshold: number;
+    };
+    location: Location;
 }
 
 const DeniedClips: React.FC<DeniedClipsProps> = ({ clips, ratings, config, location }) => {
@@ -32,7 +32,7 @@ const DeniedClips: React.FC<DeniedClipsProps> = ({ clips, ratings, config, locat
         if (!ratingData || !ratingData.ratings) {
             return false;
         }
-        
+
         const denyRatings = ratingData.ratings.deny;
         return denyRatings && Array.isArray(denyRatings) && denyRatings.length >= config.denyThreshold;
     });
@@ -75,52 +75,54 @@ const DeniedClips: React.FC<DeniedClipsProps> = ({ clips, ratings, config, locat
     };
 
     return (
-        <motion.div 
+        <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
-            className="lg:col-span-3 md:col-span-2 col-span-1 w-full h-auto bg-neutral-300 dark:bg-neutral-800 text-neutral-900 dark:text-white transition duration-200 p-6 md:p-8 rounded-xl shadow-lg hover:shadow-xl"
+            className="lg:col-span-3 md:col-span-2 col-span-1 w-full h-auto bg-white/80 dark:bg-neutral-800/50 backdrop-blur-sm text-neutral-900 dark:text-white transition duration-200 p-6 rounded-xl shadow-sm border border-neutral-200/80 dark:border-neutral-700/50"
         >
-            <div className="flex justify-between items-center mb-6 border-b pb-3 border-neutral-400 dark:border-neutral-700">
-                <h2 className="text-2xl md:text-3xl font-bold flex items-center">
-                    <FaBan className="mr-3 text-red-500" /> 
+            <div className="flex justify-between items-center mb-5 pb-3 border-b border-neutral-200 dark:border-neutral-700">
+                <h2 className="text-xl font-semibold flex items-center">
+                    <div className="bg-gradient-to-br from-red-500 to-red-600 p-2 rounded-lg mr-3 shadow-sm">
+                        <FaBan className="text-white text-sm" />
+                    </div>
                     Denied Clips
                 </h2>
-                
+
                 <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium hidden sm:block">Sort by:</span>
-                    <div className="inline-flex bg-neutral-200 dark:bg-neutral-700 rounded-lg relative">
+                    <span className="text-sm font-medium hidden sm:block text-neutral-500 dark:text-neutral-400">Sort:</span>
+                    <div className="inline-flex bg-neutral-100 dark:bg-neutral-700/50 rounded-lg relative border border-neutral-200 dark:border-neutral-600">
                         <select
                             value={sortBy}
                             onChange={(e) => setSortBy(e.target.value as SortBy)}
-                            className="bg-transparent text-sm font-medium px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="bg-transparent text-sm font-medium px-2.5 py-1.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                         >
                             <option value="newest">Newest</option>
                             <option value="oldest">Oldest</option>
                             <option value="mostDenied">Most Denied</option>
                         </select>
                         <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
-                            <FaFilter className="text-neutral-500 dark:text-neutral-400" />
+                            <FaFilter className="text-neutral-400 dark:text-neutral-500 text-xs" />
                         </div>
                     </div>
                 </div>
             </div>
-            
+
             {!filteredClips.length ? (
                 <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="p-8 bg-neutral-200 dark:bg-neutral-700 rounded-lg text-center flex flex-col items-center"
+                    className="p-6 bg-neutral-100 dark:bg-neutral-800/50 rounded-lg text-center flex flex-col items-center border border-neutral-200 dark:border-neutral-700"
                 >
-                    <FaExclamationTriangle className="text-4xl text-yellow-500 mb-3" />
-                    <h3 className="text-xl font-semibold mb-2">No Denied Clips</h3>
-                    <p className="text-neutral-600 dark:text-neutral-400">
+                    <FaExclamationTriangle className="text-3xl text-amber-500 mb-3" />
+                    <h3 className="text-lg font-semibold mb-1">No Denied Clips</h3>
+                    <p className="text-neutral-500 dark:text-neutral-400 text-sm">
                         There are currently no clips that exceed the denial threshold of {config.denyThreshold} votes.
                     </p>
                 </motion.div>
             ) : (
                 <>
-                    <motion.div 
+                    <motion.div
                         variants={containerVariants}
                         initial="hidden"
                         animate="visible"
@@ -130,7 +132,7 @@ const DeniedClips: React.FC<DeniedClipsProps> = ({ clips, ratings, config, locat
                             const ratingData = ratings[clip._id];
                             const denyCount = ratingData?.ratings?.deny?.length || 0;
                             const denyPercentage = Math.round((denyCount / (config.denyThreshold * 2)) * 100);
-                            
+
                             return (
                                 <motion.div
                                     key={clip._id}
@@ -170,10 +172,10 @@ const DeniedClips: React.FC<DeniedClipsProps> = ({ clips, ratings, config, locat
                                                     {new Date(clip.createdAt).toLocaleDateString() || 'Unknown date'}
                                                 </p>
                                             </div>
-                                            
+
                                             <div className="w-full bg-neutral-200 dark:bg-neutral-800 rounded-full h-1.5 mt-2">
-                                                <div 
-                                                    className="bg-red-500 h-1.5 rounded-full" 
+                                                <div
+                                                    className="bg-red-500 h-1.5 rounded-full"
                                                     style={{ width: `${Math.min(100, denyPercentage)}%` }}
                                                 />
                                             </div>
@@ -187,7 +189,7 @@ const DeniedClips: React.FC<DeniedClipsProps> = ({ clips, ratings, config, locat
                             );
                         })}
                     </motion.div>
-                    
+
                     {/* Pagination */}
                     {totalPages > 1 && (
                         <div className="flex justify-center items-center mt-8 gap-1">
@@ -199,7 +201,7 @@ const DeniedClips: React.FC<DeniedClipsProps> = ({ clips, ratings, config, locat
                             >
                                 <FaChevronLeft />
                             </button>
-                            
+
                             <div className="flex gap-1">
                                 {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                                     let pageToShow: number | string;
@@ -212,7 +214,7 @@ const DeniedClips: React.FC<DeniedClipsProps> = ({ clips, ratings, config, locat
                                     } else {
                                         pageToShow = currentPage - 2 + i;
                                     }
-                                    
+
                                     if (typeof pageToShow === 'number') {
                                         return (
                                             <motion.button
@@ -220,11 +222,10 @@ const DeniedClips: React.FC<DeniedClipsProps> = ({ clips, ratings, config, locat
                                                 whileHover={{ scale: 1.1 }}
                                                 whileTap={{ scale: 0.95 }}
                                                 onClick={() => paginate(pageToShow as number)}
-                                                className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${
-                                                    currentPage === pageToShow
+                                                className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${currentPage === pageToShow
                                                         ? 'bg-blue-600 text-white'
                                                         : 'bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600'
-                                                }`}
+                                                    }`}
                                             >
                                                 {pageToShow}
                                             </motion.button>
@@ -236,7 +237,7 @@ const DeniedClips: React.FC<DeniedClipsProps> = ({ clips, ratings, config, locat
                                     }
                                 })}
                             </div>
-                            
+
                             <button
                                 onClick={() => paginate(currentPage + 1)}
                                 disabled={currentPage === totalPages}

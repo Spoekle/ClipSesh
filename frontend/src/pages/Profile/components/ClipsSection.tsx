@@ -11,22 +11,22 @@ interface ClipsSectionProps {
   viewSwitchTimestamp?: number;
 }
 
-const ClipsSection: React.FC<ClipsSectionProps> = ({ 
-  profile, 
+const ClipsSection: React.FC<ClipsSectionProps> = ({
+  profile,
   isOwnProfile,
   viewSwitchTimestamp
 }) => {
   const navigate = useNavigate();
   const [showAllClips, setShowAllClips] = useState(false);
-  
+
   const limit = showAllClips ? 50 : 6;
-  const { 
-    data: clipsResponse, 
-    isLoading: clipsLoading, 
+  const {
+    data: clipsResponse,
+    isLoading: clipsLoading,
     error: clipsError,
     refetch: refetchClips
   } = useClipsByUser(profile.discordId || '', 1, limit);
-  
+
   const userClips = clipsResponse?.clips || [];
   const totalClips = clipsResponse?.total || 0;
 
@@ -42,8 +42,8 @@ const ClipsSection: React.FC<ClipsSectionProps> = ({
 
   const fadeIn = {
     hidden: { opacity: 0, y: 20 },
-    visible: { 
-      opacity: 1, 
+    visible: {
+      opacity: 1,
       y: 0,
       transition: { duration: 0.6 }
     }
@@ -55,7 +55,7 @@ const ClipsSection: React.FC<ClipsSectionProps> = ({
     >
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold text-neutral-900 dark:text-white flex items-center group">
-          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
             <FaGamepad className="text-white text-sm" />
           </div>
           Submitted Clips
@@ -70,13 +70,13 @@ const ClipsSection: React.FC<ClipsSectionProps> = ({
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={onShowAllClick}
-            className="px-3 py-1.5 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white text-sm font-medium rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
+            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
           >
             View All
           </motion.button>
         )}
       </div>
-      
+
       {clipsLoading ? (
         <div className="flex justify-center items-center py-12">
           <motion.div
@@ -111,16 +111,16 @@ const ClipsSection: React.FC<ClipsSectionProps> = ({
                   />
                 </div>
               ) : (
-                <div className="aspect-video bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-neutral-600 dark:to-neutral-700 flex items-center justify-center">
+                <div className="aspect-video bg-neutral-200 dark:bg-neutral-600 flex items-center justify-center">
                   <FaGamepad className="text-neutral-400 dark:text-neutral-500 text-2xl" />
                 </div>
               )}
-              
+
               <div className="p-3">
                 <h3 className="text-sm font-semibold text-neutral-900 dark:text-white mb-2 line-clamp-2 leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200">
                   {clip.title}
                 </h3>
-                
+
                 <div className="flex items-center justify-between text-xs text-neutral-600 dark:text-neutral-400 mb-2">
                   <span className="truncate font-medium">{clip.streamer}</span>
                   {clip.upvotes !== undefined && clip.downvotes !== undefined && (
@@ -136,7 +136,7 @@ const ClipsSection: React.FC<ClipsSectionProps> = ({
                     </div>
                   )}
                 </div>
-                
+
                 <div className="flex items-center gap-1">
                   <div className="w-1 h-1 bg-neutral-400 rounded-full"></div>
                   <p className="text-neutral-500 dark:text-neutral-500 text-xs">
@@ -149,7 +149,7 @@ const ClipsSection: React.FC<ClipsSectionProps> = ({
         </div>
       ) : (
         <div className="text-center py-12">
-          <div className="w-16 h-16 bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-neutral-700 dark:to-neutral-600 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="w-16 h-16 bg-neutral-200 dark:bg-neutral-700 rounded-full flex items-center justify-center mx-auto mb-4">
             <FaGamepad className="text-neutral-400 dark:text-neutral-500 text-xl" />
           </div>
           <h3 className="text-lg font-semibold text-neutral-700 dark:text-neutral-300 mb-2">

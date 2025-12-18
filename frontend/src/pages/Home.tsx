@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
-import { 
-  FaYoutube, 
-  FaPlay, 
-  FaArrowRight, 
-  FaGamepad, 
-  FaStar, 
-  FaUsers, 
+import {
+  FaYoutube,
+  FaPlay,
+  FaArrowRight,
+  FaGamepad,
+  FaStar,
+  FaUsers,
   FaLongArrowAltRight,
   FaDiscord,
   FaRocket,
@@ -48,21 +48,21 @@ function HomePage() {
     };
 
     fetchConfig();
-    
+
     // Add scroll listener for animations
     const handleScroll = () => {
       const elements = document.querySelectorAll('.scroll-animate');
-      
+
       elements.forEach(el => {
         const rect = el.getBoundingClientRect();
         const isInViewport = rect.top <= window.innerHeight * 0.8;
-        
+
         if (isInViewport) {
           el.classList.add('fade-in-element');
         }
       });
     };
-    
+
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
@@ -98,17 +98,17 @@ function HomePage() {
     {
       title: "Browse Clips",
       description: "Explore a variety of Beat Saber clips submitted by players from around the world.",
-      icon: <FaGamepad className="text-4xl text-blue-500" />
+      icon: <FaGamepad className="text-4xl text-white" />
     },
     {
       title: "Rate & Discuss",
       description: "Vote on clips and join discussions about techniques, funny moments, and stunning gameplay.",
-      icon: <FaStar className="text-4xl text-amber-500" />
+      icon: <FaStar className="text-4xl text-white" />
     },
     {
       title: "Shape the Highlights",
       description: "Your ratings help determine which clips make it into the official highlights.",
-      icon: <FaYoutube className="text-4xl text-red-500" />
+      icon: <FaYoutube className="text-4xl text-white" />
     }
   ];
 
@@ -128,11 +128,11 @@ function HomePage() {
       }
     }
   };
-  
+
   const item = {
     hidden: { opacity: 0, y: 20 },
-    show: { 
-      opacity: 1, 
+    show: {
+      opacity: 1,
       y: 0,
       transition: {
         duration: 0.5
@@ -174,7 +174,7 @@ function HomePage() {
         {/* Background - either video or image */}
         <div className="absolute inset-0 w-full h-full">
           {showVideo && embedUrl ? (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: isVideoLoaded ? 1 : 0 }}
               transition={{ duration: 0.8 }}
@@ -200,7 +200,7 @@ function HomePage() {
               )}
             </motion.div>
           ) : (
-            <motion.div 
+            <motion.div
               initial={{ scale: 1.1 }}
               animate={{ scale: 1 }}
               transition={{ duration: 10, ease: "easeOut" }}
@@ -213,7 +213,7 @@ function HomePage() {
 
         {/* Hero Content */}
         <div className="absolute inset-0 flex flex-col items-center justify-center text-white z-10 px-4">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 1 }}
@@ -225,23 +225,23 @@ function HomePage() {
               transition={{ duration: 0.8, type: "spring" }}
               className="mb-6 inline-block"
             >
-              <h1 className="text-6xl md:text-7xl lg:text-8xl font-bold text-cc-red tracking-tight">
+              <h1 className="text-7xl sm:text-8xl md:text-9xl font-black text-white leading-tight mb-4 text-center drop-shadow-lg">
                 ClipSesh!
               </h1>
             </motion.div>
-            
-            <motion.p 
+
+            <motion.p
               custom={1}
               variants={fadeIn}
               initial="hidden"
               animate="visible"
-              className="text-xl md:text-2xl text-neutral-200 max-w-3xl mx-auto mb-10 leading-relaxed"
+              className="text-2xl sm:text-3xl md:text-4xl font-light text-neutral-300 max-w-3xl mx-auto leading-relaxed mb-4 text-center drop-shadow-md"
             >
-              Discover, rate, and discuss the best Beat Saber clips from the community. 
+              Discover, rate, and discuss the best Beat Saber clips from the community.
               Shape the future of Seasonal Highlights!
             </motion.p>
-            
-            <motion.div 
+
+            <motion.div
               custom={2}
               variants={fadeIn}
               initial="hidden"
@@ -249,19 +249,19 @@ function HomePage() {
               className="flex flex-wrap gap-4 justify-center"
             >
               <Link to="/clips">
-                <motion.button 
-                  whileHover={{ scale: 1.05 }} 
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   className="bg-cc-red hover:bg-red-600 text-white text-lg px-8 py-4 rounded-lg shadow-lg transition duration-200 flex items-center group"
                 >
-                  Browse Clips 
+                  Browse Clips
                   <FaArrowRight className="ml-2 transform group-hover:translate-x-1 transition-transform" />
                 </motion.button>
               </Link>
-              
+
               {!showVideo && videoId && (
-                <motion.button 
-                  whileHover={{ scale: 1.05 }} 
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setShowVideo(true)}
                   className="bg-neutral-800/80 hover:bg-neutral-700 backdrop-blur-sm text-white text-lg px-8 py-4 rounded-lg shadow-lg transition duration-200 flex items-center"
@@ -271,17 +271,17 @@ function HomePage() {
               )}
             </motion.div>
           </motion.div>
-          
+
           {/* Scroll indicator */}
-          <motion.div 
+          <motion.div
             onClick={scrollToNextSection}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ 
-              delay: 1, 
-              duration: 0.8, 
-              repeat: Infinity, 
-              repeatType: "reverse" 
+            transition={{
+              delay: 1,
+              duration: 0.8,
+              repeat: Infinity,
+              repeatType: "reverse"
             }}
             className="absolute bottom-8 cursor-pointer"
           >
@@ -299,55 +299,55 @@ function HomePage() {
           <h2 className="text-3xl md:text-4xl font-bold mb-12 text-center">
             A New Era for <span className="text-cc-red">Beat Saber Highlights</span>
           </h2>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {/* Feature 1 */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
               viewport={{ once: true }}
-              className="bg-neutral-100 dark:bg-neutral-700 rounded-xl p-6 shadow-lg"
+              className="bg-white/80 dark:bg-neutral-800/50 backdrop-blur-sm rounded-xl p-6 shadow-sm border border-neutral-200/80 dark:border-neutral-700/50 hover:shadow-md transition-shadow"
             >
-              <div className="w-14 h-14 bg-blue-500 rounded-full flex items-center justify-center mb-4">
-                <FaGamepad className="text-white text-2xl" />
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center mb-4 shadow-sm">
+                <FaGamepad className="text-white text-xl" />
               </div>
-              <h3 className="text-xl font-bold mb-3">Discover Amazing Clips</h3>
-              <p className="text-neutral-700 dark:text-neutral-300">
+              <h3 className="text-lg font-semibold mb-2">Discover Amazing Clips</h3>
+              <p className="text-neutral-600 dark:text-neutral-400 text-sm">
                 Browse through a curated collection of the most impressive Beat Saber plays from talented players across the community.
               </p>
             </motion.div>
-            
+
             {/* Feature 2 */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
               viewport={{ once: true }}
-              className="bg-neutral-100 dark:bg-neutral-700 rounded-xl p-6 shadow-lg"
+              className="bg-white/80 dark:bg-neutral-800/50 backdrop-blur-sm rounded-xl p-6 shadow-sm border border-neutral-200/80 dark:border-neutral-700/50 hover:shadow-md transition-shadow"
             >
-              <div className="w-14 h-14 bg-cc-red rounded-full flex items-center justify-center mb-4">
-                <FaStar className="text-white text-2xl" />
+              <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center mb-4 shadow-sm">
+                <FaStar className="text-white text-xl" />
               </div>
-              <h3 className="text-xl font-bold mb-3">Rate and Influence</h3>
-              <p className="text-neutral-700 dark:text-neutral-300">
+              <h3 className="text-lg font-semibold mb-2">Rate and Influence</h3>
+              <p className="text-neutral-600 dark:text-neutral-400 text-sm">
                 Vote on your favorite clips and help determine which ones make it into the official Cube Community highlights video.
               </p>
             </motion.div>
-            
+
             {/* Feature 3 */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.4 }}
               viewport={{ once: true }}
-              className="bg-neutral-100 dark:bg-neutral-700 rounded-xl p-6 shadow-lg"
+              className="bg-white/80 dark:bg-neutral-800/50 backdrop-blur-sm rounded-xl p-6 shadow-sm border border-neutral-200/80 dark:border-neutral-700/50 hover:shadow-md transition-shadow"
             >
-              <div className="w-14 h-14 bg-indigo-500 rounded-full flex items-center justify-center mb-4">
-                <FaUsers className="text-white text-2xl" />
+              <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center mb-4 shadow-sm">
+                <FaUsers className="text-white text-xl" />
               </div>
-              <h3 className="text-xl font-bold mb-3">Join the Community</h3>
-              <p className="text-neutral-700 dark:text-neutral-300">
+              <h3 className="text-lg font-semibold mb-2">Join the Community</h3>
+              <p className="text-neutral-600 dark:text-neutral-400 text-sm">
                 Comment on clips, discuss techniques, and connect with other Beat Saber enthusiasts from around the world.
               </p>
             </motion.div>
@@ -356,9 +356,9 @@ function HomePage() {
       </section>
 
       {/* How It Works Section */}
-      <section className="py-20 px-4 bg-gradient-to-br from-neutral-100 to-neutral-200 dark:from-neutral-900 dark:to-neutral-800 transition-colors duration-300">
+      <section className="py-20 px-4 bg-neutral-50 dark:bg-neutral-900 transition-colors duration-300">
         <div className="container mx-auto max-w-6xl">
-          <motion.h2 
+          <motion.h2
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
@@ -367,7 +367,7 @@ function HomePage() {
           >
             How <span className="text-blue-600 dark:text-blue-400">ClipSesh</span> Works
           </motion.h2>
-          <motion.p 
+          <motion.p
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.1 }}
@@ -376,8 +376,8 @@ function HomePage() {
           >
             Our platform connects the Beat Saber community with a simple and engaging process
           </motion.p>
-          
-          <motion.div 
+
+          <motion.div
             className="grid grid-cols-1 md:grid-cols-3 gap-10"
             variants={container}
             initial="hidden"
@@ -385,37 +385,37 @@ function HomePage() {
             viewport={{ once: true }}
           >
             {howItWorksSteps.map((step, index) => (
-              <motion.div 
-                key={step.title} 
+              <motion.div
+                key={step.title}
                 className="relative"
                 variants={item}
               >
-                <div className="bg-white dark:bg-neutral-700 rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow border-t-4 border-blue-500 h-full flex flex-col">
-                  <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-lg">
+                <div className="bg-white/80 dark:bg-neutral-800/50 backdrop-blur-sm rounded-xl p-6 shadow-sm border border-neutral-200/80 dark:border-neutral-700/50 hover:shadow-md transition-all duration-200 h-full flex flex-col">
+                  <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-sm">
                     {step.icon}
                   </div>
-                  
+
                   {index < howItWorksSteps.length - 1 && (
-                    <div className="absolute top-20 -right-12 w-16 h-4 hidden md:flex items-center justify-center">
+                    <div className="absolute top-20 -right-13 w-16 h-4 hidden md:flex items-center justify-center">
                       <FaLongArrowAltRight className="text-blue-500 text-3xl" />
                     </div>
                   )}
-                  
-                  <h3 className="text-xl font-bold mt-6 text-center mb-4">{step.title}</h3>
-                  <p className="text-neutral-700 dark:text-neutral-300 text-center">{step.description}</p>
+
+                  <h3 className="text-lg font-semibold mt-4 text-center mb-3">{step.title}</h3>
+                  <p className="text-neutral-600 dark:text-neutral-400 text-center text-sm">{step.description}</p>
                 </div>
               </motion.div>
             ))}
           </motion.div>
-          
+
           <div className="mt-16 flex justify-center">
             <Link to="/clips">
-              <motion.button 
-                whileHover={{ scale: 1.05 }} 
+              <motion.button
+                whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 className="bg-blue-600 hover:bg-blue-700 text-white text-lg px-8 py-4 rounded-lg shadow-lg transition duration-200 flex items-center gap-2"
               >
-                Try It Now <FaRocket className="ml-1" />
+                Rate some clips here!
               </motion.button>
             </Link>
           </div>
@@ -428,7 +428,7 @@ function HomePage() {
           <h2 className="text-3xl md:text-4xl font-bold mb-12 text-center">
             Latest <span className="text-cc-red">Highlights</span>
           </h2>
-          
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <motion.div
               initial={{ opacity: 0, x: -20 }}
@@ -438,17 +438,17 @@ function HomePage() {
             >
               <h3 className="text-2xl font-bold mb-4">Watch the Latest Compilation</h3>
               <p className="text-neutral-700 dark:text-neutral-300 mb-6">
-                The Cube Community team creates seasonal highlight videos featuring the best-rated clips from our community. 
+                The Cube Community team creates seasonal highlight videos featuring the best-rated clips from our community.
                 Check out the latest compilation and see if your favorite clips made it in!
               </p>
-              
+
               <Link to="https://www.youtube.com/@CubeCommunity" target="_blank" rel="noopener noreferrer">
                 <button className="flex items-center bg-cc-red hover:bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg transition transform duration-200 hover:scale-105">
                   Subscribe on YouTube <FaYoutube className="ml-2 text-xl" />
                 </button>
               </Link>
             </motion.div>
-            
+
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -473,11 +473,11 @@ function HomePage() {
           </div>
         </div>
       </section>
-      
+
       {/* Community Stats Section - New Addition */}
       <section className="py-20 px-4 bg-white dark:bg-neutral-800 transition-colors duration-300">
         <div className="container mx-auto max-w-6xl">
-          <motion.h2 
+          <motion.h2
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
@@ -486,44 +486,44 @@ function HomePage() {
           >
             Join Our <span className="text-cc-red">Thriving</span> Community
           </motion.h2>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
             {communityStats.map((stat, index) => (
-              <motion.div 
+              <motion.div
                 key={stat.label}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
                 viewport={{ once: true }}
-                className="bg-neutral-100 dark:bg-neutral-700 rounded-xl p-8 shadow-lg text-center hover:shadow-xl transition-shadow"
+                className="bg-white/80 dark:bg-neutral-800/50 backdrop-blur-sm rounded-xl p-6 shadow-sm border border-neutral-200/80 dark:border-neutral-700/50 text-center hover:shadow-md transition-shadow"
               >
-                <div className="flex justify-center mb-4 text-5xl">
+                <div className="flex justify-center mb-3 text-4xl">
                   {stat.icon}
                 </div>
-                <h3 className="text-4xl font-bold mb-2">{stat.number}</h3>
-                <p className="text-neutral-700 dark:text-neutral-300 text-lg">{stat.label}</p>
+                <h3 className="text-3xl font-bold mb-1">{stat.number}</h3>
+                <p className="text-neutral-600 dark:text-neutral-400">{stat.label}</p>
               </motion.div>
             ))}
           </div>
-          
-          <motion.div 
+
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.4 }}
             viewport={{ once: true }}
-            className="mt-16 bg-gradient-to-r from-neutral-200 to-neutral-100 dark:from-neutral-700 dark:to-neutral-600 p-8 rounded-xl shadow-lg text-center"
+            className="mt-12 bg-white/80 dark:bg-neutral-800/50 backdrop-blur-sm p-6 rounded-xl shadow-sm border border-neutral-200/80 dark:border-neutral-700/50 text-center"
           >
-            <div className="flex items-center justify-center mb-4">
-              <FaDiscord className="text-indigo-500 text-4xl mr-3" />
-              <h3 className="text-2xl font-bold">Join Our Discord Community</h3>
+            <div className="flex items-center justify-center mb-3">
+              <FaDiscord className="text-indigo-500 text-3xl mr-3" />
+              <h3 className="text-xl font-semibold">Join Our Discord Community</h3>
             </div>
-            <p className="text-neutral-700 dark:text-neutral-300 mb-6 max-w-2xl mx-auto">
-              Connect with other Beat Saber enthusiasts, get notified about new clips, 
+            <p className="text-neutral-600 dark:text-neutral-400 mb-5 max-w-2xl mx-auto text-sm">
+              Connect with other Beat Saber enthusiasts, get notified about new clips,
               and participate in exclusive community events.
             </p>
-            <a 
-              href="https://discord.gg/dwe8mbC" 
-              target="_blank" 
+            <a
+              href="https://discord.gg/dwe8mbC"
+              target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-md transition duration-200 font-medium"
             >
@@ -532,83 +532,11 @@ function HomePage() {
           </motion.div>
         </div>
       </section>
-      
-      {/* Testimonials - New Addition
-      <section className="py-20 px-4 bg-neutral-100 dark:bg-neutral-900 transition-colors duration-300">
-        <div className="container mx-auto max-w-6xl">
-          <motion.h2 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            viewport={{ once: true }}
-            className="text-3xl md:text-4xl font-bold mb-4 text-center"
-          >
-            What Players Are <span className="text-cc-red">Saying</span>
-          </motion.h2>
-          
-          <motion.p 
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            viewport={{ once: true }}
-            className="text-center text-neutral-700 dark:text-neutral-300 mb-16 max-w-2xl mx-auto"
-          >
-            Don't just take our word for it - see what our community has to share
-          </motion.p>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              {
-                name: "SaberMaster",
-                role: "Community Member",
-                quote: "ClipSesh has completely changed how I discover new Beat Saber content. I love being part of the rating process!",
-                avatar: "M"
-              },
-              {
-                name: "RhythmSlice",
-                role: "Content Creator",
-                quote: "As a creator, getting my clips featured through ClipSesh has helped me grow my audience tremendously.",
-                avatar: "R"
-              },
-              {
-                name: "CubeSlasher",
-                role: "Team Member",
-                quote: "The quality of clips has improved dramatically since we started using community ratings to select highlights.",
-                avatar: "C"
-              }
-            ].map((testimonial, index) => (
-              <motion.div 
-                key={testimonial.name}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                viewport={{ once: true }}
-                className="bg-white dark:bg-neutral-800 p-6 rounded-xl shadow-lg"
-              >
-                <div className="flex items-start mb-4">
-                  <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-lg mr-4">
-                    {testimonial.avatar}
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-lg">{testimonial.name}</h4>
-                    <p className="text-blue-600 dark:text-blue-400 text-sm">{testimonial.role}</p>
-                  </div>
-                </div>
-                <div className="text-neutral-700 dark:text-neutral-300">
-                  <div className="text-2xl text-cc-red mb-2">❝</div>
-                  <p className="italic">{testimonial.quote}</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-      */}
-      
+
       {/* Call to Action */}
-      <section className="py-20 px-4 bg-gradient-to-br from-blue-600 to-indigo-800 text-white">
+      <section className="py-20 px-4 bg-blue-600 dark:bg-blue-700 text-white">
         <div className="container mx-auto max-w-4xl text-center">
-          <motion.h2 
+          <motion.h2
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
@@ -617,8 +545,8 @@ function HomePage() {
           >
             Ready to Join the Community?
           </motion.h2>
-          
-          <motion.p 
+
+          <motion.p
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
@@ -627,8 +555,8 @@ function HomePage() {
           >
             Start exploring, rating, and discussing the best Beat Saber clips today!
           </motion.p>
-          
-          <motion.div 
+
+          <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             whileInView={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5, delay: 0.4 }}
@@ -636,22 +564,22 @@ function HomePage() {
             className="flex flex-col sm:flex-row gap-4 justify-center"
           >
             <Link to="/clips">
-              <motion.button 
-                whileHover={{ scale: 1.05 }} 
+              <motion.button
+                whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 className="bg-white text-blue-600 text-xl font-bold px-10 py-4 rounded-lg shadow-lg transition transform duration-200 hover:bg-neutral-100 w-full sm:w-auto"
               >
                 Get Started Now
               </motion.button>
             </Link>
-            
-            <a 
-              href="https://discord.gg/dwe8mbC" 
-              target="_blank" 
+
+            <a
+              href="https://discord.gg/dwe8mbC"
+              target="_blank"
               rel="noopener noreferrer"
             >
-              <motion.button 
-                whileHover={{ scale: 1.05 }} 
+              <motion.button
+                whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 className="bg-indigo-900/40 backdrop-blur-sm border border-white/30 hover:bg-indigo-800/60 text-white text-xl font-bold px-10 py-4 rounded-lg shadow-lg transition transform duration-200 flex items-center gap-2 w-full sm:w-auto"
               >

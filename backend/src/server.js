@@ -5,7 +5,7 @@ const cors = require('cors');
 const path = require('path');
 const http = require('http');
 const socketIo = require('socket.io');
-const swaggerJsDoc = require('swagger-jsdoc');
+
 const swaggerUi = require('swagger-ui-express');
 const fs = require('fs');
 require('dotenv').config();
@@ -32,18 +32,18 @@ mongoose.connect(process.env.MONGODB_URI || "mongodb://mongo:27017/clipsDB", {
   socketTimeoutMS: 45000,
   connectTimeoutMS: 30000,
 })
-.then(() => {
-  console.log(`Connected to MongoDB at ${process.env.MONGODB_URI || "mongodb://mongo:27017/clipsDB"}`);
-  // Only require CreateAdmin after successful MongoDB connection
-  require('./scripts/CreateAdmin');
-  console.log('Admin user credentials:');
-  console.log(`Username: ${process.env.ADMIN_USERNAME}`);
-  console.log(`Password: ${process.env.ADMIN_PASSWORD}`);
-})
-.catch(err => {
-  console.error('MongoDB connection error:', err);
-  console.error(`Please check if MongoDB is running at ${process.env.MONGODB_URI || "mongodb://mongo:27017/clipsDB"}`);
-});
+  .then(() => {
+    console.log(`Connected to MongoDB at ${process.env.MONGODB_URI || "mongodb://mongo:27017/clipsDB"}`);
+    // Only require CreateAdmin after successful MongoDB connection
+    require('./scripts/CreateAdmin');
+    console.log('Admin user credentials:');
+    console.log(`Username: ${process.env.ADMIN_USERNAME}`);
+    console.log(`Password: ${process.env.ADMIN_PASSWORD}`);
+  })
+  .catch(err => {
+    console.error('MongoDB connection error:', err);
+    console.error(`Please check if MongoDB is running at ${process.env.MONGODB_URI || "mongodb://mongo:27017/clipsDB"}`);
+  });
 
 const app = express();
 // Create HTTP server for Socket.IO
@@ -119,52 +119,26 @@ app.use('/api/trophies', trophiesRoute);
 // Configure WebSocket event handlers
 io.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
-  
+
   // Authenticate socket connection
   socket.on('authenticate', (token) => {
     console.log('Client authenticated:', socket.id);
     socket.join('authenticated');
   });
-  
+
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
   });
 });
 
 // Swagger API documentation configuration
-const swaggerOptions = {
-  swaggerDefinition: {
-    openapi: '3.0.0',
-    info: {
-      title: 'ClipSesh API',
-      version: '1.0.0',
-      description: 'API for ClipSesh',
-    },
-    servers: [
-      {
-        url: `${backendUrl}`,
-      },
-    ],
-    components: {
-      securitySchemes: {
-        bearerAuth: {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT',
-        },
-      },
-    },
-  },
-  apis: [path.join(__dirname, './routes/*.js'), path.join(__dirname, './models/*.js')],
-};
-
-const swaggerDocs = swaggerJsDoc(swaggerOptions);
+const swaggerDocs = require('./swagger.json');
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 // Global error handler
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
-  res.status(500).json({ 
+  res.status(500).json({
     error: 'Internal Server Error',
     message: err.message || 'Something went wrong'
   });

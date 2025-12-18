@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  FaFlag, 
-  FaEye, 
-  FaCheck, 
-  FaTimes, 
-  FaBan, 
-  FaTrash, 
+import {
+  FaFlag,
+  FaEye,
+  FaCheck,
+  FaTimes,
+  FaBan,
+  FaTrash,
   FaExclamationTriangle,
   FaCalendar,
   FaUser,
@@ -30,11 +30,11 @@ const ReportsManagement: React.FC = () => {
   const [highlightedReportId, setHighlightedReportId] = useState<string | null>(null);
   const [messagingReport, setMessagingReport] = useState<Report | null>(null);
   const [showMessagingModal, setShowMessagingModal] = useState<boolean>(false);
-  
+
   const location = useLocation();
   const navigate = useNavigate();
   const { showSuccess, showError } = useNotification();
-  
+
   const { data: reportsData, isLoading } = useReports(selectedStatus);
   const updateReportMutation = useUpdateReport();
   const deleteReportMutation = useDeleteReport();
@@ -82,7 +82,7 @@ const ReportsManagement: React.FC = () => {
 
   const handleSaveNotes = async () => {
     if (!selectedReport) return;
-    
+
     try {
       await updateReportMutation.mutateAsync({
         reportId: selectedReport._id,
@@ -138,50 +138,55 @@ const ReportsManagement: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div className="flex items-center space-x-3">
-          <FaFlag className="text-red-500 text-2xl" />
-          <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">
-            Clip Reports
-          </h2>
-          {(reportsData?.pendingCount || 0) > 0 && (
-            <span className="bg-red-500 text-white px-2 py-1 rounded-full text-sm font-medium">
-              {reportsData?.pendingCount || 0} pending
-            </span>
-          )}
-        </div>
-        
-        {/* Filter */}
-        <div className="relative">
-          <select
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-            className="bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-600 rounded-lg px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="all">All Reports</option>
-            <option value="pending">Pending</option>
-            <option value="reviewed">Reviewed</option>
-            <option value="resolved">Resolved</option>
-            <option value="dismissed">Dismissed</option>
-          </select>
+      <div className="bg-white/80 dark:bg-neutral-800/50 backdrop-blur-sm p-4 rounded-xl shadow-sm border border-neutral-200/80 dark:border-neutral-700/50">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center space-x-3">
+            <div className="bg-gradient-to-br from-red-500 to-red-600 p-2.5 rounded-lg shadow-sm">
+              <FaFlag className="text-white text-lg" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">
+                Clip Reports
+              </h2>
+              {(reportsData?.pendingCount || 0) > 0 && (
+                <span className="text-sm text-red-500 dark:text-red-400 font-medium">
+                  {reportsData?.pendingCount || 0} pending
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Filter */}
+          <div className="relative">
+            <select
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className="bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-colors"
+            >
+              <option value="all">All Reports</option>
+              <option value="pending">Pending</option>
+              <option value="reviewed">Reviewed</option>
+              <option value="resolved">Resolved</option>
+              <option value="dismissed">Dismissed</option>
+            </select>
+          </div>
         </div>
       </div>
 
       {/* Reports List */}
       {reportsData?.reports && reportsData.reports.length > 0 ? (
-        <div className="grid gap-4">
+        <div className="grid gap-3">
           {reportsData.reports.map((report) => (
             <motion.div
               key={report._id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`bg-white dark:bg-neutral-800 rounded-lg border p-6 ${
-                highlightedReportId === report._id 
-                  ? 'border-blue-500 shadow-lg bg-blue-50 dark:bg-blue-900/20' 
-                  : 'border-neutral-200 dark:border-neutral-700'
-              }`}
+              className={`bg-white/80 dark:bg-neutral-800/50 backdrop-blur-sm rounded-xl border p-5 shadow-sm transition-all ${highlightedReportId === report._id
+                  ? 'border-blue-500 shadow-md bg-blue-50/80 dark:bg-blue-900/20'
+                  : 'border-neutral-200/80 dark:border-neutral-700/50 hover:shadow-md'
+                }`}
             >
               <div className="flex justify-between items-start mb-4">
                 <div className="flex-1">
@@ -200,7 +205,7 @@ const ReportsManagement: React.FC = () => {
                       {report.status.charAt(0).toUpperCase() + report.status.slice(1)}
                     </span>
                   </div>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-neutral-600 dark:text-neutral-400 mb-3">
                     <div className="flex items-center space-x-2">
                       <FaFilm className="text-blue-500" />
@@ -215,7 +220,7 @@ const ReportsManagement: React.FC = () => {
                       <span>{formatDate(report.createdAt)}</span>
                     </div>
                   </div>
-                  
+
                   <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 mb-3">
                     <div className="flex items-start space-x-2">
                       <FaExclamationTriangle className="text-red-500 mt-0.5 flex-shrink-0" />
@@ -269,7 +274,7 @@ const ReportsManagement: React.FC = () => {
                       </button>
                     </>
                   )}
-                  
+
                   {report.status !== 'pending' && (
                     <button
                       onClick={() => handleStatusChange(report._id, 'pending')}
@@ -313,13 +318,13 @@ const ReportsManagement: React.FC = () => {
           ))}
         </div>
       ) : (
-        <div className="text-center py-12 bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700">
-          <FaFlag className="mx-auto text-4xl text-neutral-400 mb-4" />
-          <h3 className="text-xl font-semibold text-neutral-900 dark:text-white mb-2">
+        <div className="text-center py-10 bg-white/80 dark:bg-neutral-800/50 backdrop-blur-sm rounded-xl border border-neutral-200/80 dark:border-neutral-700/50 shadow-sm">
+          <FaFlag className="mx-auto text-3xl text-neutral-400 mb-3" />
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-1">
             No reports found
           </h3>
-          <p className="text-neutral-600 dark:text-neutral-400">
-            {selectedStatus === 'all' 
+          <p className="text-neutral-500 dark:text-neutral-400 text-sm">
+            {selectedStatus === 'all'
               ? 'No reports have been submitted yet.'
               : `No ${selectedStatus} reports found.`
             }
@@ -347,7 +352,7 @@ const ReportsManagement: React.FC = () => {
                 <h3 className="text-lg font-semibold mb-4 text-neutral-900 dark:text-white">
                   Admin Notes for Report
                 </h3>
-                
+
                 <div className="mb-4">
                   <h4 className="font-medium text-neutral-700 dark:text-neutral-300">
                     {selectedReport.clipTitle}

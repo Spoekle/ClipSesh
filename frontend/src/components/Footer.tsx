@@ -1,87 +1,43 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { FaDiscord, FaGithub, FaYoutube, FaSun, FaMoon, FaSnowflake, FaHeart } from 'react-icons/fa';
+import { FaDiscord, FaGithub, FaYoutube, FaHeart } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import { SnowOverlay } from 'react-snow-overlay';
 
 function Footer() {
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    const savedTheme = localStorage.getItem('theme');
-    return savedTheme !== 'light';
+  const [isSnowMonth] = useState(() => {
+    const month = new Date().getMonth();
+    return month === 11 || month === 0;
   });
-  
-  const [seasonInfo, setSeasonInfo] = useState({ season: '' });
-  
+
   const [snow, setSnow] = useState(() => {
     const savedSnow = localStorage.getItem('snow');
     return savedSnow !== 'false';
   });
 
+  // Listen for storage changes (when navbar toggles snow)
+  const handleStorageChange = useCallback(() => {
+    const savedSnow = localStorage.getItem('snow');
+    setSnow(savedSnow !== 'false');
+  }, []);
+
   useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
+    // Listen for storage events from other components
+    window.addEventListener('storage', handleStorageChange);
 
-    getSeason();
+    // Also set up an interval to check more frequently (for same-tab changes)
+    const interval = setInterval(handleStorageChange, 500);
 
-    if (snow) {
-      localStorage.setItem('snow', 'true');
-    } else {
-      localStorage.setItem('snow', 'false');
-    }
-  }, [isDarkMode]);
-
-  const toggleDarkMode = () => {
-    setIsDarkMode(!isDarkMode);
-  };
-
-  const toggleSnow = () => {
-    setSnow(!snow);
-    localStorage.setItem('snow', snow ? 'true' : 'false');
-  }; 
-
-  const getSeason = () => {
-    const now = new Date();
-    const month = now.getMonth() + 1;
-    const day = now.getDate();
-    let season = '';
-  
-    if (
-      (month === 3 && day >= 20) ||
-      (month > 3 && month < 6) ||
-      (month === 6 && day <= 20)
-    ) {
-      season = 'Spring';
-    } else if (
-      (month === 6 && day >= 21) ||
-      (month > 6 && month < 9) ||
-      (month === 9 && day <= 20)
-    ) {
-      season = 'Summer';
-    } else if (
-      (month === 9 && day >= 21) ||
-      (month > 9 && month < 12) ||
-      (month === 12 && day <= 20)
-    ) {
-      season = 'Fall';
-    } else {
-      season = 'Winter';
-    }
-  
-    setSeasonInfo(prevSeasonInfo => ({
-      ...prevSeasonInfo,
-      season
-    }));
-  };
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, [handleStorageChange]);
 
   return (
     <footer className="bg-neutral-100 dark:bg-neutral-900 border-t border-neutral-200 dark:border-neutral-700 py-8 text-neutral-800 dark:text-white">
-      {seasonInfo.season === 'Winter' && snow && <SnowOverlay />}
-      
+      {isSnowMonth && snow && <SnowOverlay />}
+
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Logo and description */}
@@ -96,7 +52,7 @@ function Footer() {
               Version {import.meta.env.VITE_APP_VERSION || 'unknown'}
             </p>
           </div>
-          
+
           {/* Links */}
           <div className="flex flex-col items-center md:items-start">
             <h3 className="text-lg font-semibold mb-3">Links</h3>
@@ -112,9 +68,9 @@ function Footer() {
                 </Link>
               </li>
               <li>
-                <a 
-                  href="https://github.com/Spoekle/ClipSesh" 
-                  target="_blank" 
+                <a
+                  href="https://github.com/Spoekle/ClipSesh"
+                  target="_blank"
                   rel="noreferrer"
                   className="text-neutral-600 dark:text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 transition duration-200"
                 >
@@ -123,7 +79,7 @@ function Footer() {
               </li>
             </ul>
           </div>
-          
+
           {/* Social and theme toggles */}
           <div className="flex flex-col items-center md:items-end">
             <h3 className="text-lg font-semibold mb-3">Connect With Us</h3>
@@ -162,39 +118,14 @@ function Footer() {
                 <FaGithub size={24} />
               </motion.a>
             </div>
-            
-            <div className="flex space-x-3">
-              {seasonInfo.season === 'Winter' && (
-                <motion.button 
-                  whileHover={{ rotate: 45 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={toggleSnow} 
-                  className={`p-2 rounded-full ${snow ? "text-blue-400" : "text-neutral-400"} hover:bg-neutral-200 dark:hover:bg-neutral-800 transition duration-200`}
-                  title='Toggle Snow'
-                  aria-label="Toggle Snow Effect"
-                >
-                  <FaSnowflake size={20} />
-                </motion.button>
-              )}
-              <motion.button 
-                whileHover={{ rotate: 20 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={toggleDarkMode} 
-                className="p-2 rounded-full text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-800 transition duration-200"
-                title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-                aria-label={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-              >
-                {isDarkMode ? <FaSun size={20} /> : <FaMoon size={20} />}
-              </motion.button>
-            </div>
           </div>
         </div>
-        
+
         <div className="border-t border-neutral-200 dark:border-neutral-700 mt-6 pt-6 flex flex-col md:flex-row justify-between items-center">
           <p className="text-sm text-neutral-600 dark:text-neutral-400 text-center mb-4 md:mb-0">
             © {new Date().getFullYear()} Spoekle. All rights reserved.
           </p>
-          
+
           <p className="text-sm text-neutral-600 dark:text-neutral-400 flex items-center">
             Made with <FaHeart className="mx-1 text-red-500" /> for the Beat Saber community
           </p>

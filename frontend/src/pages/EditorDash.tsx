@@ -35,10 +35,12 @@ const EditorDash: React.FC = () => {
 
   const [progress, setProgress] = useState<number>(0);
   const [activeTab, setActiveTab] = useState<'latest' | 'all'>('latest');
-  const [downloadStates, setDownloadStates] = useState<{ [key: string]: { 
-    isDownloading: boolean; 
-    progress: number; 
-  } }>({});
+  const [downloadStates, setDownloadStates] = useState<{
+    [key: string]: {
+      isDownloading: boolean;
+      progress: number;
+    }
+  }>({});
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
 
   const seasonInfo = {
@@ -107,7 +109,7 @@ const EditorDash: React.FC = () => {
             ...prev,
             [zipId]: { isDownloading: false, progress: 100 }
           }));
-          
+
           // Clear the download state after a short delay
           setTimeout(() => {
             setDownloadStates(prev => {
@@ -125,7 +127,7 @@ const EditorDash: React.FC = () => {
             ...prev,
             [zipId]: { isDownloading: false, progress: 0 }
           }));
-          
+
           // Clear the download state after a short delay
           setTimeout(() => {
             setDownloadStates(prev => {
@@ -142,7 +144,7 @@ const EditorDash: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen text-white flex flex-col items-center bg-neutral-200 dark:bg-neutral-900 transition duration-200">
+    <div className="min-h-screen text-neutral-800 dark:text-white flex flex-col items-center bg-neutral-100 dark:bg-neutral-900 transition duration-200">
       <Helmet>
         <title>Editor Dashboard | ClipSesh</title>
         <meta
@@ -151,38 +153,38 @@ const EditorDash: React.FC = () => {
         />
       </Helmet>
       <div className='w-full'>
-        <LoadingBar 
-          color='#f11946' 
-          height={4} 
-          progress={downloadProgress > 0 ? downloadProgress : progress} 
+        <LoadingBar
+          color='#f11946'
+          height={4}
+          progress={downloadProgress > 0 ? downloadProgress : progress}
           onLoaderFinished={() => {
             setProgress(0);
             setDownloadProgress(0);
-          }} 
+          }}
         />
       </div>
-      <div className="w-full flex h-96 justify-center items-center animate-fade"
+      <div
+        className="w-full flex h-[500px] justify-center items-center rounded-b-4xl overflow-hidden relative animate-fade mx-6"
         style={{
           backgroundImage: `url(${background})`,
           backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          clipPath: 'polygon(0 0, 100% 0, 100% 80%, 0 100%)'
+          backgroundPosition: 'center'
         }}>
-        <div className="flex bg-gradient-to-b from-neutral-900 to-black/20 backdrop-blur-lg justify-center items-center w-full h-full">
-          <div className="flex flex-col justify-center items-center">
+        <div className="flex bg-gradient-to-b from-black/70 via-black/50 to-black/30 dark:from-neutral-900/80 dark:to-black/40 backdrop-blur-md justify-center items-center w-full h-full">
+          <div className="flex flex-col justify-center items-center px-4 md:px-0 w-full">
             <motion.h1
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              className="text-4xl font-bold mb-4 text-center"
+              className="text-7xl sm:text-8xl md:text-9xl font-black text-white leading-tight mb-4 text-center drop-shadow-lg"
             >
-              Editor Dashboard
+              EDITOR DASHBOARD
             </motion.h1>
             <motion.h2
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
-              className="text-3xl mb-4 text-center"
+              className="text-2xl sm:text-3xl md:text-4xl font-light text-neutral-300 max-w-3xl mx-auto leading-relaxed mb-4 text-center drop-shadow-md"
             >
               Process and download seasonal clips
             </motion.h2>
@@ -199,17 +201,17 @@ const EditorDash: React.FC = () => {
         >
 
           {/* Header Section */}
-          <div className="bg-neutral-300 dark:bg-neutral-800 p-6 md:p-8 rounded-xl shadow-lg border border-neutral-200 dark:border-neutral-700">
+          <div className="bg-white/80 dark:bg-neutral-800/50 backdrop-blur-sm p-5 rounded-xl shadow-sm border border-neutral-200/80 dark:border-neutral-700/50">
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="bg-blue-500 p-4 rounded-xl shadow-lg">
-                  <FaInfoCircle className="text-white text-2xl" />
+              <div className="flex items-center space-x-3">
+                <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-2.5 rounded-lg shadow-sm">
+                  <FaInfoCircle className="text-white text-lg" />
                 </div>
                 <div>
-                  <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white">
+                  <h2 className="text-xl font-semibold text-neutral-900 dark:text-white">
                     Current Season Overview
                   </h2>
-                  <p className="text-neutral-600 dark:text-neutral-300 mt-2">
+                  <p className="text-neutral-500 dark:text-neutral-400 text-sm">
                     Track current season statistics and clip status
                   </p>
                 </div>
@@ -217,10 +219,10 @@ const EditorDash: React.FC = () => {
 
               {/* Season Info */}
               {seasonInfo.season && (
-                <div className="hidden md:block bg-neutral-200 dark:bg-neutral-700 px-4 py-2 rounded-lg">
+                <div className="hidden md:block bg-neutral-100 dark:bg-neutral-700/50 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-600">
                   <div className="text-center">
-                    <div className="text-sm text-neutral-600 dark:text-neutral-400">Current Season</div>
-                    <div className="font-bold text-neutral-800 dark:text-neutral-100 capitalize">
+                    <div className="text-xs text-neutral-500 dark:text-neutral-400">Current Season</div>
+                    <div className="font-medium text-neutral-800 dark:text-neutral-100 capitalize text-sm">
                       {seasonInfo.season}
                     </div>
                   </div>
@@ -229,11 +231,10 @@ const EditorDash: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white rounded-2xl shadow-lg border border-neutral-200 dark:border-neutral-700 p-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <div className="bg-white/80 dark:bg-neutral-800/50 backdrop-blur-sm text-neutral-900 dark:text-white rounded-xl shadow-sm border border-neutral-200/80 dark:border-neutral-700/50 p-5">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <motion.div
-                whileHover={{ scale: 1.02 }}
-                className="bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-blue-900/20 dark:to-blue-800/40 p-5 rounded-lg shadow"
+                className="bg-neutral-50 dark:bg-neutral-700/50 p-5 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-600 hover:shadow-md transition-shadow duration-200"
               >
                 <div className="flex items-start justify-between">
                   <div>
@@ -247,8 +248,7 @@ const EditorDash: React.FC = () => {
               </motion.div>
 
               <motion.div
-                whileHover={{ scale: 1.02 }}
-                className="bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-green-900/20 dark:to-green-800/40 p-5 rounded-lg shadow"
+                className="bg-neutral-50 dark:bg-neutral-700/50 p-5 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-600 hover:shadow-md transition-shadow duration-200"
               >
                 <div className="flex items-start justify-between">
                   <div>
@@ -262,8 +262,7 @@ const EditorDash: React.FC = () => {
               </motion.div>
 
               <motion.div
-                whileHover={{ scale: 1.02 }}
-                className="bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-red-900/20 dark:to-red-800/40 p-5 rounded-lg shadow"
+                className="bg-neutral-50 dark:bg-neutral-700/50 p-5 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-600 hover:shadow-md transition-shadow duration-200"
               >
                 <div className="flex items-start justify-between">
                   <div>
@@ -277,8 +276,7 @@ const EditorDash: React.FC = () => {
               </motion.div>
 
               <motion.div
-                whileHover={{ scale: 1.02 }}
-                className="bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-orange-900/20 dark:to-orange-800/40 p-5 rounded-lg shadow"
+                className="bg-neutral-50 dark:bg-neutral-700/50 p-5 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-600 hover:shadow-md transition-shadow duration-200"
               >
                 <div className="flex items-start justify-between">
                   <div>
@@ -298,19 +296,19 @@ const EditorDash: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="bg-neutral-200 dark:bg-neutral-700 rounded-xl shadow-lg overflow-hidden border border-neutral-300 dark:border-neutral-600"
+            className="bg-white/80 dark:bg-neutral-800/50 backdrop-blur-sm rounded-xl shadow-sm overflow-hidden border border-neutral-200/80 dark:border-neutral-700/50"
           >
-            <div className="p-6 border-b border-neutral-300 dark:border-neutral-600">
+            <div className="p-5 border-b border-neutral-200 dark:border-neutral-700">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="bg-amber-500 p-3 rounded-xl shadow-lg">
-                    <FaFileArchive className="text-white text-xl" />
+                <div className="flex items-center space-x-3">
+                  <div className="bg-gradient-to-br from-amber-500 to-amber-600 p-2.5 rounded-lg shadow-sm">
+                    <FaFileArchive className="text-white text-lg" />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold text-neutral-800 dark:text-neutral-100">
+                    <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">
                       Archive Management
                     </h2>
-                    <p className="text-neutral-600 dark:text-neutral-300 mt-1">
+                    <p className="text-neutral-500 dark:text-neutral-400 text-sm">
                       Download and manage seasonal clip archives
                     </p>
                   </div>
@@ -390,7 +388,7 @@ const EditorDash: React.FC = () => {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         whileHover={{ scale: 1.01 }}
-                        className="flex justify-between items-center bg-gradient-to-r from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 p-6 rounded-lg border-2 border-amber-200 dark:border-amber-700 shadow-lg"
+                        className="flex justify-between items-center bg-amber-50 dark:bg-amber-900/20 p-6 rounded-xl border border-amber-200 dark:border-amber-700/50 shadow-sm"
                       >
                         <div className="flex items-center gap-6">
                           <div className="p-4 bg-amber-500 rounded-full shadow-lg">
@@ -419,11 +417,10 @@ const EditorDash: React.FC = () => {
                           whileHover={{ scale: downloadStates[displayZips[0]._id]?.isDownloading ? 1 : 1.1 }}
                           whileTap={{ scale: downloadStates[displayZips[0]._id]?.isDownloading ? 1 : 0.95 }}
                           disabled={downloadStates[displayZips[0]._id]?.isDownloading}
-                          className={`${
-                            downloadStates[displayZips[0]._id]?.isDownloading
-                              ? 'bg-gradient-to-r from-amber-600 to-amber-700 cursor-not-allowed'
-                              : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
-                          } text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center min-w-[64px] min-h-[64px]`}
+                          className={`${downloadStates[displayZips[0]._id]?.isDownloading
+                            ? 'bg-amber-600 cursor-not-allowed'
+                            : 'bg-blue-600 hover:bg-blue-700'
+                            } text-white p-4 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center min-w-[64px] min-h-[64px]`}
                           title={downloadStates[displayZips[0]._id]?.isDownloading ? 'Downloading...' : 'Download Latest Archive'}
                         >
                           {downloadStates[displayZips[0]._id]?.isDownloading ? (
@@ -475,11 +472,10 @@ const EditorDash: React.FC = () => {
                             whileHover={{ scale: downloadStates[zip._id]?.isDownloading ? 1 : 1.1 }}
                             whileTap={{ scale: downloadStates[zip._id]?.isDownloading ? 1 : 0.95 }}
                             disabled={downloadStates[zip._id]?.isDownloading}
-                            className={`${
-                              downloadStates[zip._id]?.isDownloading
-                                ? 'bg-amber-600 cursor-not-allowed'
-                                : 'bg-blue-600 hover:bg-blue-700'
-                            } text-white p-3 rounded-full shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center min-w-[48px] min-h-[48px]`}
+                            className={`${downloadStates[zip._id]?.isDownloading
+                              ? 'bg-amber-600 cursor-not-allowed'
+                              : 'bg-blue-600 hover:bg-blue-700'
+                              } text-white p-3 rounded-full shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center min-w-[48px] min-h-[48px]`}
                             title={downloadStates[zip._id]?.isDownloading ? 'Downloading...' : 'Download Archive'}
                           >
                             {downloadStates[zip._id]?.isDownloading ? (

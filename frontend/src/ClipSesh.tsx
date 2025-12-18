@@ -103,7 +103,7 @@ function ClipSesh() {
             {children}
           </div>
           <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4">
+            <div className="bg-neutral-100 dark:bg-neutral-900 border-neutral-200 dark:border-neutral-700 border rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4">
               <div className="flex flex-col items-center text-center">
                 <div className="mb-6">
                   <FaLock className="text-5xl text-blue-500" />
@@ -162,7 +162,7 @@ function ClipSesh() {
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4"
+              className="bg-neutral-100 dark:bg-neutral-900 border-neutral-200 dark:border-neutral-700 border rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4"
             >
               <div className="flex flex-col items-center text-center">
                 <motion.div
@@ -230,7 +230,7 @@ function ClipSesh() {
                 >
                   <div className="w-full h-1 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
                     <motion.div
-                      className="h-full bg-gradient-to-r from-blue-500 to-purple-500"
+                      className="h-full bg-green-500"
                       initial={{ width: 0 }}
                       animate={{ width: authCheckComplete ? '100%' : '85%' }}
                       transition={{

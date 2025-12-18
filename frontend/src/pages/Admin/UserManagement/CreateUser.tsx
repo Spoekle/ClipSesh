@@ -7,8 +7,8 @@ import { CreateUserFormData, FormErrors } from '../../../types/adminTypes';
 import { useCreateUser } from '../../../hooks/useAdmin';
 
 interface CreateUserProps {
-  fetchUsers: () => void;
-  AVAILABLE_ROLES: string[];
+    fetchUsers: () => void;
+    AVAILABLE_ROLES: string[];
 }
 
 const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
@@ -21,10 +21,10 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
     const [errors, setErrors] = useState<FormErrors>({});
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
     const [passwordStrength, setPasswordStrength] = useState<number>(0);
-    
+
     const { showSuccess, showError } = useNotification();
     const createUserMutation = useCreateUser();
-    
+
     const checkPasswordStrength = (password: string): number => {
         let strength = 0;
         if (password.length >= 8) strength += 1;
@@ -36,13 +36,13 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value, type, checked } = e.target;
-        
+
         if (type === 'checkbox') {
             setFormData(prev => {
                 const newRoles = checked
                     ? [...prev.roles, value]
                     : prev.roles.filter(role => role !== value);
-                
+
                 return {
                     ...prev,
                     roles: newRoles.length ? newRoles : prev.roles
@@ -53,14 +53,14 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
                 ...formData,
                 [name]: value
             });
-            
+
             if (errors[name as keyof FormErrors]) {
                 setErrors({
                     ...errors,
                     [name]: undefined
                 });
             }
-            
+
             if (name === 'password') {
                 setPasswordStrength(checkPasswordStrength(value));
             }
@@ -69,41 +69,41 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
 
     const validateForm = (): boolean => {
         const newErrors: FormErrors = {};
-        
+
         if (!formData.username.trim()) {
             newErrors.username = 'Username is required';
         } else if (formData.username.length < 3) {
             newErrors.username = 'Username must be at least 3 characters';
         }
-        
+
         if (!formData.password) {
             newErrors.password = 'Password is required';
         } else if (passwordStrength < 2) {
             newErrors.password = 'Password is too weak';
         }
-        
+
         if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
             newErrors.email = 'Email is invalid';
         }
-        
+
         if (formData.roles.length === 0) {
             newErrors.roles = 'At least one role is required';
         }
-        
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        
+
         if (!validateForm()) {
             return;
         }
-          setIsSubmitting(true);
+        setIsSubmitting(true);
         try {
             await createUserMutation.mutateAsync({ ...formData, status: 'active' });
-            
+
             showSuccess('User created successfully!');
             setFormData({ username: '', password: '', email: '', roles: ['user'] });
             setPasswordStrength(0);
@@ -111,7 +111,7 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
             console.error('Error creating user:', error);
             const errorMessage = error.response?.data?.message || 'Failed to create user';
             showError(errorMessage);
-            
+
             if (error.response?.data?.errors) {
                 setErrors(error.response.data.errors);
             }
@@ -119,7 +119,7 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
             setIsSubmitting(false);
         }
     };
-    
+
     const getStrengthClass = (): string => {
         switch (passwordStrength) {
             case 0: return 'bg-red-500';
@@ -130,7 +130,7 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
             default: return 'bg-gray-300';
         }
     };
-    
+
     const getStrengthText = (): string => {
         switch (passwordStrength) {
             case 0: return 'Very weak';
@@ -143,17 +143,19 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
     };
 
     return (
-        <motion.div 
+        <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="col-span-1 w-full bg-neutral-300 dark:bg-neutral-800 text-neutral-900 dark:text-white transition duration-200 p-6 md:p-8 rounded-xl shadow-lg hover:shadow-xl"
+            className="col-span-1 w-full bg-white/80 dark:bg-neutral-800/50 backdrop-blur-sm text-neutral-900 dark:text-white transition duration-200 p-6 rounded-xl shadow-sm border border-neutral-200/80 dark:border-neutral-700/50"
         >
-            <h2 className="text-2xl md:text-3xl font-bold mb-6 border-b pb-3 border-neutral-400 dark:border-neutral-700 flex items-center">
-                <FaUserPlus className="mr-3 text-blue-500" /> 
+            <h2 className="text-xl font-semibold mb-6 pb-3 border-b border-neutral-200 dark:border-neutral-700 flex items-center">
+                <div className="bg-gradient-to-br from-green-500 to-green-600 p-2 rounded-lg mr-3 shadow-sm">
+                    <FaUserPlus className="text-white text-sm" />
+                </div>
                 Create User
             </h2>
-            
+
             <form onSubmit={handleSubmit} className="space-y-5">
                 {/* Username field */}
                 <div className="flex flex-col">
@@ -167,7 +169,7 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
                             name="username"
                             value={formData.username}
                             onChange={handleChange}
-                            className={`p-3 pl-10 w-full rounded-lg ${errors.username ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-neutral-400 dark:border-neutral-600 bg-white dark:bg-neutral-700'} text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200`}
+                            className={`p-2.5 pl-10 w-full rounded-lg border ${errors.username ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900/50'} text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors`}
                             placeholder="Enter username"
                         />
                         <FaUser className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-500 dark:text-neutral-400" />
@@ -191,7 +193,7 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
                             name="email"
                             value={formData.email}
                             onChange={handleChange}
-                            className={`p-3 pl-10 w-full rounded-lg ${errors.email ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-neutral-400 dark:border-neutral-600 bg-white dark:bg-neutral-700'} text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200`}
+                            className={`p-2.5 pl-10 w-full rounded-lg border ${errors.email ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900/50'} text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors`}
                             placeholder="Enter email (optional)"
                         />
                         <FaEnvelope className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-500 dark:text-neutral-400" />
@@ -215,7 +217,7 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
                             name="password"
                             value={formData.password}
                             onChange={handleChange}
-                            className={`p-3 pl-10 w-full rounded-lg ${errors.password ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-neutral-400 dark:border-neutral-600 bg-white dark:bg-neutral-700'} text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200`}
+                            className={`p-2.5 pl-10 w-full rounded-lg border ${errors.password ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900/50'} text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors`}
                             placeholder="Enter a strong password"
                         />
                         <FaLock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-500 dark:text-neutral-400" />
@@ -225,23 +227,22 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
                             <FaExclamationTriangle className="mr-1" /> {errors.password}
                         </div>
                     )}
-                    
+
                     {/* Password strength indicator */}
                     {formData.password && (
                         <div className="mt-2">
                             <div className="flex justify-between mb-1 items-center">
                                 <div className="text-sm font-medium flex items-center text-neutral-700 dark:text-neutral-300">
-                                    <FaShieldAlt className={`mr-1 ${
-                                        passwordStrength <= 1 ? 'text-red-500' : 
-                                        passwordStrength === 2 ? 'text-yellow-500' : 
-                                        passwordStrength === 3 ? 'text-blue-500' : 
-                                        'text-green-500'
-                                    }`} /> 
+                                    <FaShieldAlt className={`mr-1 ${passwordStrength <= 1 ? 'text-red-500' :
+                                            passwordStrength === 2 ? 'text-yellow-500' :
+                                                passwordStrength === 3 ? 'text-blue-500' :
+                                                    'text-green-500'
+                                        }`} />
                                     Password strength: {getStrengthText()}
                                 </div>
                             </div>
                             <div className="h-1.5 w-full bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
-                                <motion.div 
+                                <motion.div
                                     initial={{ width: 0 }}
                                     animate={{ width: `${passwordStrength * 25}%` }}
                                     transition={{ duration: 0.3 }}
@@ -257,7 +258,7 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
                     <label className="mb-2 font-medium text-neutral-800 dark:text-gray-200 flex items-center">
                         <FaShieldAlt className="mr-2" /> Roles:
                     </label>
-                    <div className="bg-neutral-200 dark:bg-neutral-700 p-4 rounded-lg grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <div className="bg-neutral-100 dark:bg-neutral-700/50 p-4 rounded-lg grid grid-cols-2 md:grid-cols-3 gap-3 border border-neutral-200 dark:border-neutral-600">
                         {[...AVAILABLE_ROLES].sort().map(role => (
                             <label key={role} className="flex items-center space-x-2 cursor-pointer">
                                 <input
@@ -269,11 +270,10 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
                                     className="hidden"
                                     disabled={formData.roles.length === 1 && formData.roles.includes(role)}
                                 />
-                                <div className={`w-5 h-5 rounded flex items-center justify-center ${
-                                    formData.roles.includes(role) 
-                                        ? 'bg-blue-600 text-white' 
-                                        : 'bg-neutral-300 dark:bg-neutral-600'
-                                }`}>
+                                <div className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${formData.roles.includes(role)
+                                        ? 'bg-blue-600 text-white'
+                                        : 'bg-neutral-200 dark:bg-neutral-600 border border-neutral-300 dark:border-neutral-500'
+                                    }`}>
                                     {formData.roles.includes(role) && <FaCheck className="text-xs" />}
                                 </div>
                                 <span className="capitalize">{role}</span>
@@ -293,11 +293,10 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
                     disabled={isSubmitting}
                     whileHover={{ scale: isSubmitting ? 1 : 1.02 }}
                     whileTap={{ scale: isSubmitting ? 1 : 0.98 }}
-                    className={`w-full py-3 px-4 rounded-lg font-medium flex items-center justify-center ${
-                        isSubmitting 
-                            ? 'bg-neutral-500 cursor-not-allowed'
-                            : 'bg-blue-600 hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50'
-                    } text-white transition duration-200`}
+                    className={`w-full py-2.5 px-4 rounded-lg font-medium flex items-center justify-center shadow-sm ${isSubmitting
+                            ? 'bg-neutral-400 cursor-not-allowed'
+                            : 'bg-blue-600 hover:bg-blue-700 focus:ring-2 focus:ring-blue-500/50'
+                        } text-white transition duration-200`}
                 >
                     {isSubmitting ? (
                         <>

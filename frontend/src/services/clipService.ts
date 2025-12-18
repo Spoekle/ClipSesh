@@ -19,7 +19,7 @@ export const getClips = async (params: ClipQueryParams = {}): Promise<ClipRespon
       params,
       headers
     });
-    
+
     // Transform the response to ensure consistent field names
     const data = response.data;
     return {
@@ -50,10 +50,10 @@ export const getClipsWithRatings = async (): Promise<{ clips: Clip[], ratings: R
       },
       headers
     });
-    
+
     let clipsData: Clip[] = [];
     let ratingsData: Record<string, Rating> = {};
-    
+
     if (response.data) {
       // Handle different response structures
       if (Array.isArray(response.data)) {
@@ -63,28 +63,28 @@ export const getClipsWithRatings = async (): Promise<{ clips: Clip[], ratings: R
       } else if (response.data.data && Array.isArray(response.data.data)) {
         clipsData = response.data.data;
       }
-      
+
       if (response.data.ratings && typeof response.data.ratings === 'object') {
         ratingsData = response.data.ratings;
       }
     }
-    
+
     // If ratings weren't included in the response, fetch them separately
     if (Object.keys(ratingsData).length === 0 && clipsData.length > 0) {
       const ratingPromises = clipsData.map(clip =>
         axios.get<Rating>(`${backendUrl}/api/ratings/${clip._id}`, { headers })
       );
-      
+
       const ratingResponses = await Promise.all(ratingPromises);
       ratingsData = ratingResponses.reduce<Record<string, Rating>>((acc, res, index) => {
         acc[clipsData[index]._id] = res.data;
         return acc;
       }, {});
     }
-    
+
     // Transform ratings to ensure consistent structure
     const transformedRatings = transformRatings(ratingsData);
-    
+
     return { clips: clipsData, ratings: transformedRatings };
   } catch (error) {
     console.error('Error fetching clips with ratings:', error);
@@ -105,7 +105,7 @@ export const searchClips = async (query: string, params: Omit<ClipQueryParams, '
       },
       headers
     });
-    
+
     return response.data;
   } catch (error) {
     console.error('Error searching clips:', error);
@@ -131,7 +131,7 @@ export const getClipById = async (clipId: string): Promise<Clip> => {
  * Get adjacent clips for navigation (next/previous)
  */
 export const getAdjacentClips = async (
-  clipId: string, 
+  clipId: string,
   options?: {
     sort?: string;
     streamer?: string;
@@ -140,23 +140,23 @@ export const getAdjacentClips = async (
 ): Promise<{ previous?: Clip, next?: Clip }> => {
   try {
     const headers = getAuthHeaders();
-    const params: any = { 
+    const params: any = {
       currentClipId: clipId,
       getAdjacent: 'true'
     };
-    
+
     if (options?.sort) {
       params.sort = options.sort;
     }
-    
+
     if (options?.streamer) {
       params.streamer = options.streamer;
     }
-    
+
     if (options?.excludeRatedByUser) {
       params.excludeRatedByUser = options.excludeRatedByUser;
     }
-    
+
     const response = await axios.get(`${backendUrl}/api/clips/clip-navigation/adjacent`, {
       params,
       headers
@@ -215,7 +215,7 @@ export const updateClip = async (clipId: string, updateData: Partial<Clip>): Pro
 export const addCommentToClip = async (clipId: string, comment: string): Promise<Clip> => {
   try {
     const headers = getAuthHeaders();
-    const response = await axios.post(`${backendUrl}/api/clips/${clipId}/comments`, { comment }, { headers });
+    const response = await axios.post(`${backendUrl}/api/clips/${clipId}/comment`, { comment }, { headers });
     return response.data;
   } catch (error) {
     console.error('Error adding comment:', error);
@@ -243,38 +243,38 @@ export const voteOnClip = async (clipId: string, voteType: 'upvote' | 'downvote'
  */
 export const transformRatings = (ratings: Record<string, any>): Record<string, Rating> => {
   const transformed: Record<string, Rating> = {};
-  
+
   Object.entries(ratings).forEach(([clipId, ratingData]) => {
     if (ratingData && !ratingData.ratingCounts && ratingData.ratings) {
       // Transform from raw ratings format to structured format
       const ratingCounts: RatingCount[] = [
-        { 
-          rating: '1', 
+        {
+          rating: '1',
           count: Array.isArray(ratingData.ratings['1']) ? ratingData.ratings['1'].length : 0,
           users: Array.isArray(ratingData.ratings['1']) ? ratingData.ratings['1'] : []
         },
-        { 
-          rating: '2', 
+        {
+          rating: '2',
           count: Array.isArray(ratingData.ratings['2']) ? ratingData.ratings['2'].length : 0,
           users: Array.isArray(ratingData.ratings['2']) ? ratingData.ratings['2'] : []
         },
-        { 
-          rating: '3', 
+        {
+          rating: '3',
           count: Array.isArray(ratingData.ratings['3']) ? ratingData.ratings['3'].length : 0,
-          users: Array.isArray(ratingData.ratings['3']) ? ratingData.ratings['3'] : [] 
+          users: Array.isArray(ratingData.ratings['3']) ? ratingData.ratings['3'] : []
         },
-        { 
-          rating: '4', 
+        {
+          rating: '4',
           count: Array.isArray(ratingData.ratings['4']) ? ratingData.ratings['4'].length : 0,
           users: Array.isArray(ratingData.ratings['4']) ? ratingData.ratings['4'] : []
         },
-        { 
-          rating: 'deny', 
+        {
+          rating: 'deny',
           count: Array.isArray(ratingData.ratings['deny']) ? ratingData.ratings['deny'].length : 0,
           users: Array.isArray(ratingData.ratings['deny']) ? ratingData.ratings['deny'] : []
         }
       ];
-      
+
       transformed[clipId] = {
         ...ratingData,
         ratingCounts: ratingCounts
@@ -284,7 +284,7 @@ export const transformRatings = (ratings: Record<string, any>): Record<string, R
       transformed[clipId] = ratingData;
     }
   });
-  
+
   return transformed;
 };
 
@@ -296,7 +296,7 @@ export const getClipsByUser = async (discordId: string, page: number = 1, limit:
     const response = await axios.get(`${backendUrl}/api/clips/user/${discordId}`, {
       params: { page, limit }
     });
-    
+
     return {
       clips: response.data.clips,
       total: response.data.pagination.totalClips,
@@ -330,9 +330,9 @@ export const getVideoInfo = async (url: string): Promise<{ title: string; author
  * Upload clip via file
  */
 export const uploadClipFile = async (
-  file: File, 
-  title: string, 
-  streamer: string, 
+  file: File,
+  title: string,
+  streamer: string,
   submitter: string,
   onUploadProgress?: (percentCompleted: number) => void
 ): Promise<void> => {
@@ -342,12 +342,12 @@ export const uploadClipFile = async (
     formData.append('title', title);
     formData.append('streamer', streamer);
     formData.append('submitter', submitter);
-      const authHeaders = getAuthHeaders();
+    const authHeaders = getAuthHeaders();
     const headers = {
       ...authHeaders,
       'Content-Type': 'multipart/form-data'
     };
-    
+
     await axios.post(`${backendUrl}/api/clips`, formData, {
       headers,
       onUploadProgress: (progressEvent) => {
@@ -367,15 +367,15 @@ export const uploadClipFile = async (
  * Upload clip via link
  */
 export const uploadClipLink = async (
-  title: string, 
-  streamer: string, 
-  submitter: string, 
+  title: string,
+  streamer: string,
+  submitter: string,
   link: string
 ): Promise<void> => {
   try {
     const headers = getAuthHeaders();
     const clipData = { title, streamer, submitter, link };
-    
+
     await axios.post(`${backendUrl}/api/clips`, clipData, { headers });
   } catch (error) {
     console.error('Error uploading clip link:', error);
@@ -403,8 +403,8 @@ export const getClipVoteStatus = async (clipId: string): Promise<{ hasVoted: boo
 export const deleteCommentFromClip = async (clipId: string, commentId: string): Promise<Clip> => {
   try {
     const headers = getAuthHeaders();
-    await axios.delete(`${backendUrl}/api/clips/${clipId}/comments/${commentId}`, { headers });
-    
+    await axios.delete(`${backendUrl}/api/clips/${clipId}/comment/${commentId}`, { headers });
+
     // Fetch updated clip data
     const response = await axios.get(`${backendUrl}/api/clips/${clipId}`, { headers });
     return response.data;
@@ -418,15 +418,15 @@ export const deleteCommentFromClip = async (clipId: string, commentId: string): 
  * Add a reply to a comment
  */
 export const addReplyToComment = async (
-  clipId: string, 
-  commentId: string, 
+  clipId: string,
+  commentId: string,
   content: string
 ): Promise<Clip> => {
   try {
     const headers = getAuthHeaders();
     const response = await axios.post(
-      `${backendUrl}/api/clips/${clipId}/comments/${commentId}/replies`,
-      { content },
+      `${backendUrl}/api/clips/${clipId}/comment/${commentId}/reply`,
+      { replyText: content },
       { headers }
     );
     return response.data;
@@ -440,14 +440,14 @@ export const addReplyToComment = async (
  * Delete a reply from a comment
  */
 export const deleteReplyFromComment = async (
-  clipId: string, 
-  commentId: string, 
+  clipId: string,
+  commentId: string,
   replyId: string
 ): Promise<Clip> => {
   try {
     const headers = getAuthHeaders();
     const response = await axios.delete(
-      `${backendUrl}/api/clips/${clipId}/comments/${commentId}/replies/${replyId}`,
+      `${backendUrl}/api/clips/${clipId}/comment/${commentId}/reply/${replyId}`,
       { headers }
     );
     return response.data;

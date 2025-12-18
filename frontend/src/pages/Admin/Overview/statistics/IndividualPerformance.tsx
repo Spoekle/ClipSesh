@@ -45,72 +45,72 @@ const IndividualPerformance: React.FC<IndividualPerformanceProps> = ({ sortedUse
   };
 
   // Calculate performance metrics
-  const averageCompletion = sortedUsers.length > 0 
-    ? sortedUsers.reduce((sum, user) => sum + user.percentageRated, 0) / sortedUsers.length 
+  const averageCompletion = sortedUsers.length > 0
+    ? sortedUsers.reduce((sum, user) => sum + user.percentageRated, 0) / sortedUsers.length
     : 0;
   const compliantUsers = sortedUsers.filter(user => user.percentageRated > 20).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header Section */}
-      <div 
+      <div
         onClick={() => setIsPerformanceExpanded(!isPerformanceExpanded)}
         className="group cursor-pointer"
       >
-        <div className="bg-neutral-200 dark:bg-neutral-700 p-6 rounded-xl hover:shadow-lg transition-all duration-300">
+        <div className="bg-white/80 dark:bg-neutral-800/50 backdrop-blur-sm p-4 rounded-xl shadow-sm border border-neutral-200/80 dark:border-neutral-700/50 hover:shadow-md transition-all duration-200">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="bg-blue-500 p-3 rounded-xl shadow-lg">
-                <FaUserAlt className="text-white text-xl" />
+            <div className="flex items-center space-x-3">
+              <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-2.5 rounded-lg shadow-sm">
+                <FaUserAlt className="text-white text-lg" />
               </div>
               <div>
-                <h3 className="text-2xl font-bold text-neutral-800 dark:text-neutral-100">
-                  Individual Performance Details
+                <h3 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">
+                  Individual Performance
                 </h3>
-                <p className="text-neutral-600 dark:text-neutral-300 mt-1">
-                  Detailed breakdown of each team member's rating activity
+                <p className="text-neutral-500 dark:text-neutral-400 text-sm">
+                  Breakdown of each team member's activity
                 </p>
               </div>
             </div>
-            
+
             {/* Quick Stats */}
-            <div className="hidden md:flex items-center space-x-6">
+            <div className="hidden md:flex items-center space-x-4">
               <div className="text-center">
-                <div className="text-2xl font-bold text-neutral-800 dark:text-neutral-200">
+                <div className="text-lg font-bold text-neutral-800 dark:text-neutral-200">
                   {averageCompletion.toFixed(1)}%
                 </div>
-                <div className="text-sm text-neutral-600 dark:text-neutral-400">Avg Completion</div>
+                <div className="text-xs text-neutral-500 dark:text-neutral-400">Avg Completion</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-neutral-800 dark:text-neutral-200">
+                <div className="text-lg font-bold text-neutral-800 dark:text-neutral-200">
                   {compliantUsers}/{sortedUsers.length}
                 </div>
-                <div className="text-sm text-neutral-600 dark:text-neutral-400">Compliant</div>
+                <div className="text-xs text-neutral-500 dark:text-neutral-400">Compliant</div>
               </div>
-              <div className="bg-neutral-300 dark:bg-neutral-600 p-3 rounded-full shadow-md group-hover:bg-neutral-400 dark:group-hover:bg-neutral-500 transition-all duration-200">
+              <div className="bg-neutral-100 dark:bg-neutral-700/50 p-2 rounded-lg group-hover:bg-neutral-200 dark:group-hover:bg-neutral-700 transition-all duration-200">
                 {isPerformanceExpanded ? (
-                  <FaAngleUp className="text-neutral-700 dark:text-neutral-300 text-lg" />
+                  <FaAngleUp className="text-neutral-600 dark:text-neutral-300" />
                 ) : (
-                  <FaAngleDown className="text-neutral-700 dark:text-neutral-300 text-lg" />
+                  <FaAngleDown className="text-neutral-600 dark:text-neutral-300" />
                 )}
               </div>
             </div>
-            
+
             {/* Mobile toggle */}
-            <div className="md:hidden bg-neutral-300 dark:bg-neutral-600 p-3 rounded-full shadow-md group-hover:bg-neutral-400 dark:group-hover:bg-neutral-500 transition-all duration-200">
+            <div className="md:hidden bg-neutral-100 dark:bg-neutral-700/50 p-2 rounded-lg group-hover:bg-neutral-200 dark:group-hover:bg-neutral-700 transition-all duration-200">
               {isPerformanceExpanded ? (
-                <FaAngleUp className="text-neutral-700 dark:text-neutral-300" />
+                <FaAngleUp className="text-neutral-600 dark:text-neutral-300" />
               ) : (
-                <FaAngleDown className="text-neutral-700 dark:text-neutral-300" />
+                <FaAngleDown className="text-neutral-600 dark:text-neutral-300" />
               )}
             </div>
           </div>
         </div>
       </div>
-      
-      <motion.div 
+
+      <motion.div
         initial={false}
-        animate={{ 
+        animate={{
           height: isPerformanceExpanded ? "auto" : 0,
           opacity: isPerformanceExpanded ? 1 : 0
         }}
@@ -122,13 +122,13 @@ const IndividualPerformance: React.FC<IndividualPerformanceProps> = ({ sortedUse
             const isExpanded = expandedUsers[user.username] || false;
             const userRatingPercentage = user.percentageRated;
             let barColor;
-            
+
             if (userRatingPercentage >= 90) barColor = "bg-green-500";
             else if (userRatingPercentage >= 75) barColor = "bg-blue-500";
             else if (userRatingPercentage >= 50) barColor = "bg-yellow-500";
             else if (userRatingPercentage >= 25) barColor = "bg-orange-500";
             else barColor = "bg-red-500";
-            
+
             // Create data for user's mini pie chart
             const userPieData: PieData[] = [
               { name: 'Rated 1', value: user['1'] },
@@ -137,16 +137,16 @@ const IndividualPerformance: React.FC<IndividualPerformanceProps> = ({ sortedUse
               { name: 'Rated 4', value: user['4'] },
               { name: 'Denied', value: user['deny'] }
             ];
-            
+
             return (
               <motion.div
                 key={user.username}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-neutral-200 dark:bg-neutral-700 rounded-lg overflow-hidden"
+                className="bg-white/80 dark:bg-neutral-800/50 backdrop-blur-sm rounded-lg overflow-hidden border border-neutral-200/80 dark:border-neutral-700/50"
               >
-                <div 
-                  className="flex justify-between items-center p-4 cursor-pointer hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors"
+                <div
+                  className="flex justify-between items-center p-3 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-700/50 transition-colors"
                   onClick={() => toggleUserExpand(user.username)}
                 >
                   <div className="flex items-center">
@@ -160,19 +160,18 @@ const IndividualPerformance: React.FC<IndividualPerformanceProps> = ({ sortedUse
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-3">
-                    <span className={`flex items-center text-sm px-2 py-0.5 rounded ${
-                      userRatingPercentage > 20 ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200' 
-                                            : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'
-                    }`}>
+                    <span className={`flex items-center text-sm px-2 py-0.5 rounded ${userRatingPercentage > 20 ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'
+                        : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'
+                      }`}>
                       {userRatingPercentage > 20 ? <FaCheck className="mr-1" /> : <FaTimes className="mr-1" />}
                       {userRatingPercentage > 20 ? 'Compliant' : 'Non-compliant'}
                     </span>
                     {isExpanded ? <FaAngleUp /> : <FaAngleDown />}
                   </div>
                 </div>
-                
+
                 <AnimatePresence>
                   {isExpanded && (
                     <motion.div
@@ -181,8 +180,8 @@ const IndividualPerformance: React.FC<IndividualPerformanceProps> = ({ sortedUse
                       exit={{ opacity: 0, height: 0 }}
                       className="px-4 pb-4"
                     >
-                      <div className="p-4 rounded-lg bg-neutral-300 dark:bg-neutral-800">
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+                      <div className="p-3 rounded-lg bg-neutral-100 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700">
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
                           {[
                             { label: 'Rated 1', value: user['1'], color: COLORS[0] },
                             { label: 'Rated 2', value: user['2'], color: COLORS[1] },
@@ -196,11 +195,11 @@ const IndividualPerformance: React.FC<IndividualPerformanceProps> = ({ sortedUse
                                 <span className="font-bold" style={{ color: item.color }}>{item.value}</span>
                               </div>
                               <div className="mt-1 w-full bg-neutral-500 dark:bg-neutral-800 h-1.5 rounded-full overflow-hidden">
-                                <div 
-                                  className="h-full" 
-                                  style={{ 
+                                <div
+                                  className="h-full"
+                                  style={{
                                     width: `${(item.value / (user.total || 1)) * 100 || 0}%`,
-                                    backgroundColor: item.color 
+                                    backgroundColor: item.color
                                   }}
                                 />
                               </div>
@@ -226,8 +225,8 @@ const IndividualPerformance: React.FC<IndividualPerformanceProps> = ({ sortedUse
                                     paddingAngle={3}
                                   >
                                     {userPieData.map((_, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                      ))}
+                                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    ))}
                                   </Pie>
                                   <Tooltip content={<UserDistributionTooltip />} />
                                 </PieChart>
@@ -262,7 +261,7 @@ const IndividualPerformance: React.FC<IndividualPerformanceProps> = ({ sortedUse
                             </span>
                           </div>
                           <div className="w-full h-2 bg-neutral-400 dark:bg-neutral-600 rounded-full overflow-hidden">
-                            <motion.div 
+                            <motion.div
                               initial={{ width: 0 }}
                               animate={{ width: `${(user.total / seasonInfo.clipAmount) * 100 || 0}%` }}
                               transition={{ duration: 0.8, delay: 0.2 }}

@@ -9,7 +9,7 @@ interface ConfigPanelProps {
     denyThreshold: number;
     latestVideoLink: string;
     clipChannelIds?: string[];
-    blacklistedSubmitters?: Array<{username: string; userId: string}>;
+    blacklistedSubmitters?: Array<{ username: string; userId: string }>;
     blacklistedStreamers?: string[];
   };
 }
@@ -18,19 +18,19 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config }) => {
   const [channelIdsText, setChannelIdsText] = useState<string>(
     config?.clipChannelIds?.join('\n') || ''
   );
-  
+
   // Local state for editable config fields
   const [denyThreshold, setDenyThreshold] = useState<number>(config?.denyThreshold || 5);
   const [latestVideoLink, setLatestVideoLink] = useState<string>(config?.latestVideoLink || '');
-  
+
   // Blacklist form states
   const [discordUserInput, setDiscordUserInput] = useState<string>('');
   const [streamerInput, setStreamerInput] = useState<string>('');
   const [isAddingUser, setIsAddingUser] = useState<boolean>(false);
   const [isAddingStreamer, setIsAddingStreamer] = useState<boolean>(false);
-  const [previewUser, setPreviewUser] = useState<{id: string, username: string, global_name?: string, avatar?: string, discriminator?: string} | null>(null);
+  const [previewUser, setPreviewUser] = useState<{ id: string, username: string, global_name?: string, avatar?: string, discriminator?: string } | null>(null);
   const [userNotFound, setUserNotFound] = useState<boolean>(false);
-  
+
   // React Query mutations and queries
   const updateAdminConfigMutation = useUpdateAdminConfig();
   const updatePublicConfigMutation = useUpdatePublicConfig();
@@ -40,37 +40,39 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config }) => {
   useEffect(() => {
     setChannelIdsText(config?.clipChannelIds?.join('\n') || '');
   }, [config?.clipChannelIds]);
-  
+
   // Update local state when config changes
   useEffect(() => {
     setDenyThreshold(config?.denyThreshold || 5);
     setLatestVideoLink(config?.latestVideoLink || '');
   }, [config?.denyThreshold, config?.latestVideoLink]);
-  
+
   // Add a null check for the config object
   if (!config) {
     return (
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.2 }}
-        className="col-span-1 w-full bg-neutral-300 dark:bg-neutral-800 text-neutral-900 dark:text-white transition duration-200 p-6 md:p-8 rounded-xl shadow-lg hover:shadow-xl"
+        className="col-span-1 w-full bg-white/80 dark:bg-neutral-800/50 backdrop-blur-sm text-neutral-900 dark:text-white transition duration-200 p-6 rounded-xl shadow-sm border border-neutral-200/80 dark:border-neutral-700/50"
       >
-        <h2 className="text-2xl md:text-3xl font-bold mb-6 border-b pb-3 border-neutral-400 dark:border-neutral-700 flex items-center">
-          <svg className="mr-3 w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          Admin Config
+        <h2 className="text-xl font-semibold mb-6 pb-3 border-b border-neutral-200 dark:border-neutral-700 flex items-center">
+          <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-2 rounded-lg mr-3 shadow-sm">
+            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </div>
+          Configuration
         </h2>
         <div className="flex items-center justify-center p-6">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-          <span className="ml-2">Loading configuration...</span>
+          <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-500 border-t-transparent"></div>
+          <span className="ml-3 text-neutral-500">Loading configuration...</span>
         </div>
       </motion.div>
     );
   }
-  
+
   const handleChannelIdsChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setChannelIdsText(e.target.value);
   };
@@ -82,20 +84,20 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config }) => {
       setUserNotFound(false);
       return;
     }
-    
+
     setUserNotFound(false);
-    
+
     try {
       const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://api.spoekle.com';
       const token = localStorage.getItem('token');
-      
+
       const response = await fetch(`${backendUrl}/api/admin/discord-user/${userId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
-      
+
       if (response.ok) {
         const userData = await response.json();
         setPreviewUser(userData);
@@ -127,16 +129,16 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config }) => {
   // Function to add a Discord user to blacklist
   const handleAddDiscordUser = async () => {
     if (!discordUserInput.trim() || !previewUser) return;
-    
+
     setIsAddingUser(true);
     const currentSubmitters = config.blacklistedSubmitters || [];
-    
+
     if (currentSubmitters.some(submitter => submitter.userId === discordUserInput.trim())) {
       alert('User is already blacklisted');
       setIsAddingUser(false);
       return;
     }
-    
+
     try {
       const adminConfig = {
         denyThreshold: denyThreshold,
@@ -147,7 +149,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config }) => {
         }],
         blacklistedStreamers: config.blacklistedStreamers || []
       };
-      
+
       await updateAdminConfigMutation.mutateAsync(adminConfig);
       setDiscordUserInput('');
       setPreviewUser(null);
@@ -170,7 +172,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config }) => {
         blacklistedSubmitters: currentSubmitters.filter(submitter => submitter.userId !== userId),
         blacklistedStreamers: config.blacklistedStreamers || []
       };
-      
+
       await updateAdminConfigMutation.mutateAsync(adminConfig);
     } catch (error) {
       console.error('Error removing user from blacklist:', error);
@@ -181,17 +183,17 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config }) => {
   // Function to add a streamer to blacklist
   const handleAddStreamer = async () => {
     if (!streamerInput.trim()) return;
-    
+
     setIsAddingStreamer(true);
     const currentStreamers = config.blacklistedStreamers || [];
     const trimmedUsername = streamerInput.trim().toLowerCase();
-    
+
     if (currentStreamers.some(s => s.toLowerCase() === trimmedUsername)) {
       alert('Streamer is already blacklisted');
       setIsAddingStreamer(false);
       return;
     }
-    
+
     try {
       const adminConfig = {
         denyThreshold: denyThreshold,
@@ -199,7 +201,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config }) => {
         blacklistedSubmitters: config.blacklistedSubmitters || [],
         blacklistedStreamers: [...currentStreamers, streamerInput.trim()]
       };
-      
+
       await updateAdminConfigMutation.mutateAsync(adminConfig);
       setStreamerInput('');
     } catch (error) {
@@ -220,22 +222,22 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config }) => {
         blacklistedSubmitters: config.blacklistedSubmitters || [],
         blacklistedStreamers: currentStreamers.filter(s => s !== streamer)
       };
-      
+
       await updateAdminConfigMutation.mutateAsync(adminConfig);
     } catch (error) {
       console.error('Error removing streamer from blacklist:', error);
       alert('Failed to remove streamer from blacklist. Please try again.');
     }
   };
-    const submitConfig = async (e: React.FormEvent) => {
+  const submitConfig = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Parse channel IDs from textarea (one ID per line)
     const clipChannelIds = channelIdsText
       .split('\n')
       .map((id: string) => id.trim())
       .filter((id: string) => id !== '');
-    
+
     try {
       // Create separate objects for admin and public configs
       const adminConfig = {
@@ -244,37 +246,39 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config }) => {
         blacklistedSubmitters: config.blacklistedSubmitters || [],
         blacklistedStreamers: config.blacklistedStreamers || []
       };
-      
+
       const publicConfig = {
         latestVideoLink: latestVideoLink
       };
-      
+
       // Make two separate API calls to update both configs
       await updateAdminConfigMutation.mutateAsync(adminConfig);
       await updatePublicConfigMutation.mutateAsync(publicConfig);
-      
+
       alert('Configuration saved successfully');
     } catch (error) {
       console.error('Error updating configuration:', error);
       alert('Failed to update configuration. Please try again.');
     }
   };
-  
+
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.2 }}
-      className="col-span-1 w-full bg-neutral-300 dark:bg-neutral-800 text-neutral-900 dark:text-white transition duration-200 p-6 md:p-8 rounded-xl shadow-lg hover:shadow-xl"
+      className="col-span-1 w-full bg-white/80 dark:bg-neutral-800/50 backdrop-blur-sm text-neutral-900 dark:text-white transition duration-200 p-6 rounded-xl shadow-sm border border-neutral-200/80 dark:border-neutral-700/50"
     >
-      <h2 className="text-2xl md:text-3xl font-bold mb-6 border-b pb-3 border-neutral-400 dark:border-neutral-700 flex items-center">
-        <svg className="mr-3 w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-        Admin Config
+      <h2 className="text-xl font-semibold mb-6 pb-3 border-b border-neutral-200 dark:border-neutral-700 flex items-center">
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-2 rounded-lg mr-3 shadow-sm">
+          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </div>
+        Configuration
       </h2>
-      
+
       {/* Use the local submitConfig instead of the passed handleConfigSubmit */}
       <form onSubmit={submitConfig} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -288,7 +292,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config }) => {
               name="denyThreshold"
               value={denyThreshold}
               onChange={(e) => setDenyThreshold(parseInt(e.target.value) || 5)}
-              className="w-full px-4 py-2 bg-white dark:bg-neutral-700 border border-neutral-400 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
               required
               min="1"
             />
@@ -307,7 +311,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config }) => {
               name="latestVideoLink"
               value={latestVideoLink}
               onChange={(e) => setLatestVideoLink(e.target.value)}
-              className="w-full px-4 py-2 bg-white dark:bg-neutral-700 border border-neutral-400 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
               placeholder="https://www.youtube.com/watch?v=..."
             />
             <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
@@ -315,7 +319,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config }) => {
             </p>
           </div>
         </div>
-        
+
         <div>
           <label htmlFor="clipChannelIds" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
             Discord Clip Channel IDs:
@@ -324,14 +328,14 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config }) => {
             id="clipChannelIds"
             value={channelIdsText}
             onChange={handleChannelIdsChange}
-            className="w-full px-4 py-2 bg-white dark:bg-neutral-700 border border-neutral-400 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 h-32"
+            className="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors h-28 resize-none"
             placeholder="Enter each Discord channel ID on a new line"
           />
           <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
             List of Discord channel IDs that the bot should monitor for clips (one per line)
           </p>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Discord User Blacklist Section */}
           <div>
@@ -356,13 +360,13 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config }) => {
                 {isAddingUser ? 'Adding...' : 'Add'}
               </button>
             </div>
-            
+
             {/* Discord User Preview */}
             {discordUserInput && previewUser && (
               <div className="mb-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                 <div className="flex items-center space-x-2">
                   {previewUser.avatar && (
-                    <img 
+                    <img
                       src={`https://cdn.discordapp.com/avatars/${previewUser.id}/${previewUser.avatar}.png?size=32`}
                       alt={previewUser.username}
                       className="w-6 h-6 rounded-full"
@@ -374,7 +378,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config }) => {
                 </div>
               </div>
             )}
-            
+
             {discordUserInput && userNotFound && (
               <div className="mb-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
                 <p className="text-sm text-yellow-700 dark:text-yellow-300">
@@ -382,11 +386,11 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config }) => {
                 </p>
               </div>
             )}
-            
+
             <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
               Discord user IDs that are blocked from submitting clips
             </p>
-            
+
             {/* Display current blacklisted submitters */}
             {!blacklistLoading && blacklistData?.blacklistedSubmitters && blacklistData.blacklistedSubmitters.length > 0 && (
               <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
@@ -396,7 +400,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config }) => {
                     <div key={user.id} className="flex items-center justify-between bg-white dark:bg-neutral-800 p-2 rounded border">
                       <div className="flex items-center space-x-2">
                         {user.avatar && (
-                          <img 
+                          <img
                             src={`https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=24`}
                             alt={user.username}
                             className="w-5 h-5 rounded-full"
@@ -451,11 +455,11 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config }) => {
                 {isAddingStreamer ? 'Adding...' : 'Add'}
               </button>
             </div>
-            
+
             <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
               Streamer usernames whose clips will be automatically blocked
             </p>
-            
+
             {/* Display current blacklisted streamers */}
             {!blacklistLoading && blacklistData?.blacklistedStreamers && blacklistData.blacklistedStreamers.length > 0 && (
               <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
@@ -483,7 +487,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config }) => {
             )}
           </div>
         </div>
-        
+
         <button
           type="submit"
           className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg font-medium transition duration-200 flex items-center justify-center"

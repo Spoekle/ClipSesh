@@ -39,10 +39,12 @@ const ZipManager: React.FC<ZipManagerProps> = ({
   const [retryAttempt, setRetryAttempt] = useState(0);
   const [currentChunk, setCurrentChunk] = useState(0);
   const [totalChunks, setTotalChunks] = useState(0);
-  const [downloadStates, setDownloadStates] = useState<{ [key: string]: { 
-    isDownloading: boolean; 
-    progress: number; 
-  } }>({});
+  const [downloadStates, setDownloadStates] = useState<{
+    [key: string]: {
+      isDownloading: boolean;
+      progress: number;
+    }
+  }>({});
 
   // Confirmation dialog state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -151,7 +153,7 @@ const ZipManager: React.FC<ZipManagerProps> = ({
             ...prev,
             [zipId]: { isDownloading: false, progress: 100 }
           }));
-          
+
           // Clear the download state after a short delay
           setTimeout(() => {
             setDownloadStates(prev => {
@@ -167,7 +169,7 @@ const ZipManager: React.FC<ZipManagerProps> = ({
             ...prev,
             [zipId]: { isDownloading: false, progress: 0 }
           }));
-          
+
           // Clear the download state after a short delay
           setTimeout(() => {
             setDownloadStates(prev => {
@@ -202,21 +204,23 @@ const ZipManager: React.FC<ZipManagerProps> = ({
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.4 }}
-          className="w-full bg-neutral-300 dark:bg-neutral-800 text-neutral-900 dark:text-white transition duration-200 p-6 md:p-8 rounded-xl shadow-lg hover:shadow-xl"
+          className="w-full bg-white/80 dark:bg-neutral-800/50 backdrop-blur-sm text-neutral-900 dark:text-white transition duration-200 p-6 rounded-xl shadow-sm border border-neutral-200/80 dark:border-neutral-700/50"
         >
-          <h2 className="text-2xl md:text-3xl font-bold mb-6 border-b pb-3 border-neutral-400 dark:border-neutral-700 flex items-center">
-            <FaUpload className="mr-3 text-green-500" />
+          <h2 className="text-xl font-semibold mb-5 pb-3 border-b border-neutral-200 dark:border-neutral-700 flex items-center">
+            <div className="bg-gradient-to-br from-green-500 to-green-600 p-2 rounded-lg mr-3 shadow-sm">
+              <FaUpload className="text-white text-sm" />
+            </div>
             Upload Clips
           </h2>
-          <form onSubmit={submitWithProgress} className="space-y-5">
-            <div className="bg-neutral-200 dark:bg-neutral-700 p-5 rounded-lg">
-              <label htmlFor="zip" className="flex flex-col items-center justify-center w-full h-32 px-4 transition border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-neutral-100 dark:bg-neutral-600 hover:bg-neutral-200 dark:hover:bg-neutral-500">
-                <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                  <FaUpload className="w-8 h-8 mb-4 text-gray-500 dark:text-gray-400" />
-                  <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
-                    <span className="font-semibold">Click to upload</span> or drag and drop
+          <form onSubmit={submitWithProgress} className="space-y-4">
+            <div className="bg-neutral-100 dark:bg-neutral-800/50 p-4 rounded-lg border border-neutral-200 dark:border-neutral-700">
+              <label htmlFor="zip" className="flex flex-col items-center justify-center w-full h-28 px-4 transition border-2 border-neutral-300 dark:border-neutral-600 border-dashed rounded-lg cursor-pointer bg-neutral-50 dark:bg-neutral-900/50 hover:bg-neutral-100 dark:hover:bg-neutral-800">
+                <div className="flex flex-col items-center justify-center pt-4 pb-4">
+                  <FaUpload className="w-6 h-6 mb-3 text-neutral-400 dark:text-neutral-500" />
+                  <p className="mb-1 text-sm text-neutral-500 dark:text-neutral-400">
+                    <span className="font-medium">Click to upload</span> or drag and drop
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                  <p className="text-xs text-neutral-400 dark:text-neutral-500">
                     ZIP file containing clips (MAX 3GB)
                   </p>
                 </div>
@@ -344,8 +348,8 @@ const ZipManager: React.FC<ZipManagerProps> = ({
               type="submit"
               disabled={!zipFile || isUploading}
               className={`w-full py-3 px-4 rounded-lg font-medium flex items-center justify-center transition duration-200 ${!zipFile || isUploading
-                  ? 'bg-neutral-500 cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+                ? 'bg-neutral-500 cursor-not-allowed'
+                : 'bg-blue-600 hover:bg-blue-700 text-white'
                 }`}
             >
               {isUploading ? (
@@ -366,10 +370,12 @@ const ZipManager: React.FC<ZipManagerProps> = ({
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.5 }}
-          className="w-full bg-neutral-300 dark:bg-neutral-800 text-neutral-900 dark:text-white transition duration-200 p-6 md:p-8 rounded-xl shadow-lg hover:shadow-xl"
+          className="w-full bg-white/80 dark:bg-neutral-800/50 backdrop-blur-sm text-neutral-900 dark:text-white transition duration-200 p-6 rounded-xl shadow-sm border border-neutral-200/80 dark:border-neutral-700/50"
         >
-          <h2 className="text-2xl md:text-3xl font-bold mb-6 border-b pb-3 border-neutral-400 dark:border-neutral-700 flex items-center">
-            <FaDownload className="mr-3 text-blue-500" />
+          <h2 className="text-xl font-semibold mb-5 pb-3 border-b border-neutral-200 dark:border-neutral-700 flex items-center">
+            <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-2 rounded-lg mr-3 shadow-sm">
+              <FaDownload className="text-white text-sm" />
+            </div>
             Available Packages
           </h2>
 
@@ -420,11 +426,10 @@ const ZipManager: React.FC<ZipManagerProps> = ({
                           whileTap={{ scale: downloadStates[zip._id]?.isDownloading ? 1 : 0.9 }}
                           onClick={() => handleDownload(zip._id, zip.url, zip.name)}
                           disabled={downloadStates[zip._id]?.isDownloading}
-                          className={`${
-                            downloadStates[zip._id]?.isDownloading
+                          className={`${downloadStates[zip._id]?.isDownloading
                               ? 'bg-amber-500 cursor-not-allowed'
                               : 'bg-blue-500 hover:bg-blue-600'
-                          } text-white p-2 rounded-md transition duration-200 flex items-center justify-center min-w-[36px] min-h-[36px]`}
+                            } text-white p-2 rounded-md transition duration-200 flex items-center justify-center min-w-[36px] min-h-[36px]`}
                           title={downloadStates[zip._id]?.isDownloading ? 'Downloading...' : 'Download'}
                         >
                           {downloadStates[zip._id]?.isDownloading ? (

@@ -28,43 +28,56 @@ const ClipViewerHeader = ({ season, totalClips, isFiltered }: ClipViewerHeaderPr
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="flex h-96 w-full justify-center items-center drop-shadow-xl"
-      style={{
-        backgroundImage: `url(${getBackgroundImage()})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        clipPath: 'polygon(0 0, 100% 0, 100% 80%, 0 100%)',
-      }}
-    >
-      <div className="flex bg-gradient-to-b from-neutral-900 to-bg-black/20 backdrop-blur-lg justify-center items-center w-full h-full">
-        <div className="flex flex-col justify-center items-center">
-          <motion.h1 
-            initial={{ opacity: 0, y: -20 }} 
+    <div className="relative h-[500px] w-full rounded-b-4xl overflow-hidden mx-6">
+      {/* Background image layer */}
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundImage: `url(${getBackgroundImage()})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      />
+
+      {/* Gradient overlay */}
+      <div
+        className="absolute inset-0 backdrop-blur-md"
+        style={{
+          background: 'linear-gradient(to bottom, rgba(0,0,0,0.7), rgba(0,0,0,0.5), rgba(0,0,0,0.3))',
+        }}
+      />
+
+      {/* Content layer */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative z-10 flex h-full w-full justify-center items-center"
+      >
+        <div className="flex flex-col justify-center items-center px-4 md:px-0 w-full">
+          <motion.h1
+            initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="text-5xl font-bold mb-4 text-center text-white"
+            transition={{ delay: 0.2, duration: 0.5 }}
+            className="text-7xl sm:text-8xl md:text-9xl font-black text-white leading-tight mb-4 text-center drop-shadow-lg"
           >
-            Clip Viewer
+            CLIP VIEWER
           </motion.h1>
-          <motion.h2 
-            initial={{ opacity: 0, y: -20 }} 
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="text-3xl mb-4 text-center text-white opacity-90"
+            transition={{ delay: 0.3, duration: 0.5 }}
+            className="text-2xl sm:text-3xl md:text-4xl font-light text-neutral-300 max-w-3xl mx-auto leading-relaxed mb-4 text-center drop-shadow-md"
           >
             Discover and rate the best clips!
           </motion.h2>
-          
+
           {/* Clips count */}
           {totalClips !== undefined && (
-            <motion.div 
-              initial={{ opacity: 0, y: -20 }} 
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              className="text-lg text-center text-white opacity-80 bg-black/30 px-4 py-2 rounded-lg backdrop-blur-sm"
+              className="text-lg text-center text-white/80 bg-black/40 px-4 py-2 rounded-lg"
             >
               {isFiltered ? (
                 <>
@@ -78,8 +91,8 @@ const ClipViewerHeader = ({ season, totalClips, isFiltered }: ClipViewerHeaderPr
             </motion.div>
           )}
         </div>
-      </div>
-    </motion.div>
+      </motion.div>
+    </div>
   );
 };
 

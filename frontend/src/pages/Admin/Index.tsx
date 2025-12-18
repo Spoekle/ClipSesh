@@ -485,16 +485,18 @@ function AdminDash() {
                 AVAILABLE_ROLES={AVAILABLE_ROLES}
               />
 
-              <div className="w-full bg-neutral-300 dark:bg-neutral-800 text-neutral-900 dark:text-white transition duration-200 p-6 md:p-8 rounded-xl shadow-lg hover:shadow-xl">
-                <h2 className="text-2xl md:text-3xl font-bold mb-6 border-b pb-3 border-neutral-400 dark:border-neutral-700 flex items-center">
-                  <FaUserClock className="mr-3 text-yellow-500" />
+              <div className="w-full bg-white/80 dark:bg-neutral-800/50 backdrop-blur-sm text-neutral-900 dark:text-white transition duration-200 p-6 rounded-xl shadow-sm border border-neutral-200/80 dark:border-neutral-700/50">
+                <h2 className="text-xl font-semibold mb-6 pb-3 border-b border-neutral-200 dark:border-neutral-700 flex items-center">
+                  <div className="bg-gradient-to-br from-amber-500 to-amber-600 p-2 rounded-lg mr-3 shadow-sm">
+                    <FaUserClock className="text-white text-sm" />
+                  </div>
                   Disabled Users
                 </h2>
 
                 {loading ? (
                   <div className="space-y-3">
                     {[1, 2, 3].map((index) => (
-                      <div key={index} className="bg-neutral-200 dark:bg-neutral-700 p-4 rounded-lg flex justify-between items-center">
+                      <div key={index} className="bg-neutral-100 dark:bg-neutral-700/50 p-4 rounded-lg flex justify-between items-center border border-neutral-200 dark:border-neutral-600">
                         <div className="flex items-center gap-3">
                           <SkeletonBox className="w-10 h-10 rounded-full" />
                           <div>
@@ -507,8 +509,8 @@ function AdminDash() {
                     ))}
                   </div>
                 ) : !disabledUsers.length ? (
-                  <div className="flex flex-col items-center justify-center p-8 bg-neutral-200 dark:bg-neutral-700 rounded-lg">
-                    <p className="text-lg text-neutral-600 dark:text-neutral-300">
+                  <div className="flex flex-col items-center justify-center p-8 bg-neutral-100 dark:bg-neutral-700/50 rounded-lg border border-neutral-200 dark:border-neutral-600">
+                    <p className="text-neutral-500 dark:text-neutral-400">
                       No disabled users at this time
                     </p>
                   </div>
@@ -517,10 +519,10 @@ function AdminDash() {
                     {disabledUsers.map(user => (
                       <div
                         key={user._id}
-                        className="bg-neutral-200 dark:bg-neutral-700 p-4 rounded-lg flex justify-between items-center"
+                        className="bg-neutral-100 dark:bg-neutral-700/50 p-4 rounded-lg flex justify-between items-center border border-neutral-200 dark:border-neutral-600"
                       >
                         <div className="flex items-center">
-                          <div className="w-10 h-10 rounded-full overflow-hidden mr-3 bg-neutral-300 dark:bg-neutral-600">
+                          <div className="w-10 h-10 rounded-full overflow-hidden mr-3 bg-neutral-200 dark:bg-neutral-600">
                             {user.profilePicture ? (
                               <img
                                 src={user.profilePicture}
@@ -534,7 +536,7 @@ function AdminDash() {
                             )}
                           </div>
                           <div>
-                            <p className="font-semibold">{user.username}</p>
+                            <p className="font-medium">{user.username}</p>
                             <div className="flex items-center text-xs text-neutral-500 dark:text-neutral-400">
                               <FaDiscord
                                 className="mr-1"
@@ -547,13 +549,13 @@ function AdminDash() {
                         <div className="flex gap-2">
                           <button
                             onClick={() => handleApproveUser(user._id)}
-                            className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-md text-sm font-medium transition-colors"
+                            className="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors shadow-sm"
                           >
                             Enable
                           </button>
                           <button
                             onClick={() => handleDelete(user._id)}
-                            className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm font-medium transition-colors"
+                            className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors shadow-sm"
                           >
                             Delete
                           </button>
@@ -621,7 +623,7 @@ function AdminDash() {
   };
 
   return (
-    <div className="min-h-screen text-white flex flex-col items-center bg-neutral-200 dark:bg-neutral-900 transition duration-200">
+    <div className="min-h-screen text-neutral-800 dark:text-white flex flex-col items-center bg-neutral-100 dark:bg-neutral-900 transition duration-200">
       <Helmet>
         <title>Admin Dashboard | ClipSesh</title>
         <meta
@@ -636,77 +638,81 @@ function AdminDash() {
       </div>
 
       {/* Header banner */}
-      <div className="w-full flex h-96 justify-center items-center animate-fade"
+      <div
+        className="w-full flex h-[500px] justify-center items-center rounded-b-4xl overflow-hidden relative animate-fade mx-6"
         style={{
           backgroundImage: `url(${background})`,
           backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          clipPath: 'polygon(0 0, 100% 0, 100% 80%, 0 100%)'
+          backgroundPosition: 'center'
         }}>
-        <div className="flex bg-gradient-to-b from-neutral-900 to-black/20 backdrop-blur-lg justify-center items-center w-full h-full">
-          <div className="flex flex-col justify-center items-center">
-            <h1 className="text-4xl font-bold mb-4 text-center">Admin Dashboard</h1>
-            <h2 className="text-3xl mb-4 text-center">Manage the unmanaged...</h2>
+        <div className="flex bg-gradient-to-b from-black/70 via-black/50 to-black/30 dark:from-neutral-900/80 dark:to-black/40 backdrop-blur-md justify-center items-center w-full h-full">
+          <div className="flex flex-col justify-center items-center px-4 md:px-0 w-full">
+            <h1 className="text-7xl sm:text-8xl md:text-9xl font-black text-white leading-tight mb-4 text-center drop-shadow-lg">
+              ADMIN DASHBOARD
+            </h1>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-light text-neutral-300 max-w-3xl mx-auto leading-relaxed mb-4 text-center drop-shadow-md">
+              Manage the unmanaged...
+            </h2>
           </div>
         </div>
       </div>
 
       {/* Main content with skeleton states */}
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-20 text-neutral-900 dark:text-white bg-neutral-200 dark:bg-neutral-900 transition duration-200 animate-fade">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-20 text-neutral-900 dark:text-white bg-neutral-100 dark:bg-neutral-900 transition duration-200 animate-fade">
 
-        {/* Tabs Navigation */}
-        <div className="mt-8 mb-6">
-          <div className="flex flex-wrap gap-2 border-b border-neutral-400 dark:border-neutral-700 pb-2">
+        {/* Tabs Navigation - Pill Style */}
+        <div className="mt-8 mb-8">
+          <div className="flex flex-wrap gap-2 p-1.5 bg-neutral-200/80 dark:bg-neutral-800/80 backdrop-blur-sm rounded-xl">
             <button
               onClick={() => setActiveTab('overview')}
-              className={`px-4 py-2 rounded-t-lg flex items-center gap-2 transition-all ${activeTab === 'overview'
-                ? 'bg-blue-600 text-white font-medium'
-                : 'bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-400 dark:hover:bg-neutral-600 text-neutral-800 dark:text-white'
+              className={`px-4 py-2.5 rounded-lg flex items-center gap-2 transition-all duration-200 font-medium ${activeTab === 'overview'
+                ? 'bg-white dark:bg-neutral-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-neutral-700/50'
                 }`}
             >
               <FaChartBar /> Overview
             </button>
             <button
               onClick={() => setActiveTab('users')}
-              className={`px-4 py-2 rounded-t-lg flex items-center gap-2 transition-all ${activeTab === 'users'
-                ? 'bg-blue-600 text-white font-medium'
-                : 'bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-400 dark:hover:bg-neutral-600 text-neutral-800 dark:text-white'
+              className={`px-4 py-2.5 rounded-lg flex items-center gap-2 transition-all duration-200 font-medium ${activeTab === 'users'
+                ? 'bg-white dark:bg-neutral-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-neutral-700/50'
                 }`}
             >
-              <FaUsers /> User Management
+              <FaUsers /> Users
             </button>
             <button
               onClick={() => setActiveTab('content')}
-              className={`px-4 py-2 rounded-t-lg flex items-center gap-2 transition-all ${activeTab === 'content'
-                ? 'bg-blue-600 text-white font-medium'
-                : 'bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-400 dark:hover:bg-neutral-600 text-neutral-800 dark:text-white'
+              className={`px-4 py-2.5 rounded-lg flex items-center gap-2 transition-all duration-200 font-medium ${activeTab === 'content'
+                ? 'bg-white dark:bg-neutral-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-neutral-700/50'
                 }`}
             >
-              <FaThumbsDown /> Content Management
+              <FaThumbsDown /> Content
             </button>
             <button
               onClick={() => setActiveTab('config')}
-              className={`px-4 py-2 rounded-t-lg flex items-center gap-2 transition-all ${activeTab === 'config'
-                ? 'bg-blue-600 text-white font-medium'
-                : 'bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-400 dark:hover:bg-neutral-600 text-neutral-800 dark:text-white'
+              className={`px-4 py-2.5 rounded-lg flex items-center gap-2 transition-all duration-200 font-medium ${activeTab === 'config'
+                ? 'bg-white dark:bg-neutral-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-neutral-700/50'
                 }`}
             >
-              <FaCog /> Configuration
+              <FaCog /> Config
             </button>
             <button
               onClick={() => setActiveTab('trophies')}
-              className={`px-4 py-2 rounded-t-lg flex items-center gap-2 transition-all ${activeTab === 'trophies'
-                ? 'bg-blue-600 text-white font-medium'
-                : 'bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-400 dark:hover:bg-neutral-600 text-neutral-800 dark:text-white'
+              className={`px-4 py-2.5 rounded-lg flex items-center gap-2 transition-all duration-200 font-medium ${activeTab === 'trophies'
+                ? 'bg-white dark:bg-neutral-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-neutral-700/50'
                 }`}
             >
               <FaTrophy /> Trophies
             </button>
             <button
               onClick={() => setActiveTab('reports')}
-              className={`px-4 py-2 rounded-t-lg flex items-center gap-2 transition-all ${activeTab === 'reports'
-                ? 'bg-blue-600 text-white font-medium'
-                : 'bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-400 dark:hover:bg-neutral-600 text-neutral-800 dark:text-white'
+              className={`px-4 py-2.5 rounded-lg flex items-center gap-2 transition-all duration-200 font-medium ${activeTab === 'reports'
+                ? 'bg-white dark:bg-neutral-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-neutral-700/50'
                 }`}
             >
               <FaFlag /> Reports
@@ -714,7 +720,7 @@ function AdminDash() {
           </div>
         </div>
         {/* Tab Content */}
-        <div className="mt-8 space-y-10">
+        <div className="mt-8 space-y-8">
           {renderTabContent()}
         </div>
       </div>      <ProcessClipsModal
