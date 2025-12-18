@@ -12,3 +12,26 @@
 button {
   @apply hover:cursor-pointer;
 }
+
+/* Highlight animation for messages navigated from notifications */
+@keyframes highlight-pulse {
+  0% {
+    background-color: rgba(59, 130, 246, 0.3);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+  }
+
+  50% {
+    background-color: rgba(59, 130, 246, 0.5);
+    box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.1);
+  }
+
+  100% {
+    background-color: transparent;
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+.highlight-animation {
+  animation: highlight-pulse 2s ease-out;
+  border-radius: 0.75rem;
+}
