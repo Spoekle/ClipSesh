@@ -17,7 +17,7 @@ const secretKey = process.env.SECRET_KEY;
 // For users to link Discord account
 router.get('/auth', (req, res) => {
   const state = encodeURIComponent(req.query.siteUserId);
-  const discordAuthUrl = `https://discord.com/oauth2/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(`${backendUrl}/api/discord/callback`)}&scope=identify+guilds.members.read+email&state=${state}`;
+  const discordAuthUrl = `https://discord.com/oauth2/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(`${backendUrl}/api/discord/callback`)}&scope=identify+guilds.members.read+email&state=${state}&prompt=none`;
   res.redirect(discordAuthUrl);
 });
 
