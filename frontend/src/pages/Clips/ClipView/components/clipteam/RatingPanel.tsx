@@ -4,6 +4,7 @@ import { useNotification } from '../../../../../context/AlertContext';
 import { IoMdInformationCircleOutline } from 'react-icons/io';
 import { User, Clip, Rating, RatingUser } from '../../../../../types/adminTypes';
 import { getRatingById, submitRating } from '../../../../../services/ratingService';
+import { FaTimes } from 'react-icons/fa';
 
 interface RatingPanelProps {
     clip: Clip;
@@ -236,14 +237,13 @@ const RatingPanel: React.FC<RatingPanelProps> = ({
                 <div className="space-y-4">
                     {/* Rating description */}
                     <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                        Select a rating (1 = Best, 4 = Worst) or deny if inappropriate
+                        1 = Top Tier, 4 = Filler Material
                     </p>
 
                     {/* Rating buttons - larger and more prominent */}
                     <div className="grid grid-cols-5 gap-3">
                         {[1, 2, 3, 4].map((rate) => {
                             const isSelected = userCurrentRating === rate.toString();
-                            const ratingLabels = ['Best', 'Good', 'Okay', 'Poor'];
 
                             return (
                                 <button
@@ -251,11 +251,9 @@ const RatingPanel: React.FC<RatingPanelProps> = ({
                                     className={`flex flex-col items-center justify-center py-4 px-2 rounded-xl font-bold transition-all duration-200 ${getButtonColors(rate, isSelected)} ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
                                     onClick={() => !isDisabled && rateOrDenyClip(clip._id, rate)}
                                     disabled={isDisabled}
-                                    title={cannotRateOwnClip ? "You cannot rate your own clips" : `Rate ${rate} - ${ratingLabels[rate - 1]}`}
+                                    title={cannotRateOwnClip ? "You cannot rate your own clips" : `Rate ${rate}`}
                                 >
                                     <span className="text-2xl">{rate}</span>
-                                    <span className="text-xs mt-1 opacity-80">{ratingLabels[rate - 1]}</span>
-                                    {isSelected && <span className="text-xs mt-1">★ Selected</span>}
                                 </button>
                             );
                         })}
@@ -272,23 +270,9 @@ const RatingPanel: React.FC<RatingPanelProps> = ({
                             disabled={isDisabled}
                             title={cannotRateOwnClip ? "You cannot deny your own clips" : "Deny this clip"}
                         >
-                            <span className="text-2xl">✕</span>
-                            <span className="text-xs mt-1 opacity-80">Deny</span>
-                            {isDenied && <span className="text-xs mt-1">✓ Denied</span>}
+                            <span className="text-2xl"><FaTimes /></span>
                         </button>
                     </div>
-
-                    {/* Current rating indicator */}
-                    {userCurrentRating && (
-                        <div className="text-center pt-2 border-t border-neutral-200 dark:border-neutral-600">
-                            <span className="text-sm text-neutral-500 dark:text-neutral-400">
-                                Your current rating: <span className="font-bold text-neutral-700 dark:text-neutral-200">
-                                    {userCurrentRating === 'deny' ? 'Denied' : `${userCurrentRating} star${userCurrentRating !== '1' ? 's' : ''}`}
-                                </span>
-                                <span className="text-xs ml-2">(click again to remove)</span>
-                            </span>
-                        </div>
-                    )}
                 </div>
             )}
         </motion.div>
