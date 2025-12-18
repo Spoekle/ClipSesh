@@ -1,0 +1,3071 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "ClipSesh API",
+    "version": "1.0.0",
+    "description": "API for ClipSesh"
+  },
+  "servers": [
+    {
+      "url": "https://api.spoekle.com/api"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "Comment": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "description": "The username of the commenter"
+          },
+          "comment": {
+            "type": "string",
+            "description": "The comment text"
+          }
+        },
+        "required": [
+          "username",
+          "comment"
+        ]
+      },
+      "Clip": {
+        "type": "object",
+        "properties": {
+          "link": {
+            "type": "string",
+            "description": "The link to the clip"
+          },
+          "url": {
+            "type": "string",
+            "description": "The URL of the clip",
+            "required": true
+          },
+          "thumbnail": {
+            "type": "string",
+            "description": "The thumbnail of the clip"
+          },
+          "streamer": {
+            "type": "string",
+            "description": "The name of the streamer",
+            "required": true
+          },
+          "submitter": {
+            "type": "string",
+            "description": "The name of the submitter",
+            "required": true
+          },
+          "discordSubmitterId": {
+            "type": "string",
+            "description": "Discord user ID of the submitter (if uploaded via Discord bot)"
+          },
+          "title": {
+            "type": "string",
+            "description": "The title of the clip",
+            "required": true
+          },
+          "upvotes": {
+            "type": "number",
+            "description": "The number of upvotes",
+            "default": 0
+          },
+          "downvotes": {
+            "type": "number",
+            "description": "The number of downvotes",
+            "default": 0
+          },
+          "comments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Comment"
+            },
+            "description": "The comments on the clip",
+            "default": []
+          },
+          "season": {
+            "type": "string",
+            "description": "The season when the clip was created",
+            "enum": [
+              "Winter",
+              "Spring",
+              "Summer",
+              "Fall"
+            ]
+          },
+          "year": {
+            "type": "integer",
+            "description": "The year when the clip was created"
+          },
+          "archived": {
+            "type": "boolean",
+            "description": "Indicates if the clip is archived",
+            "default": false
+          },
+          "archivedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date when the clip was archived"
+          }
+        },
+        "required": [
+          "url",
+          "streamer",
+          "submitter",
+          "title"
+        ]
+      },
+      "PublicConfig": {
+        "type": "object",
+        "properties": {
+          "latestVideoLink": {
+            "type": "string",
+            "description": "Link to the latest highlights video"
+          },
+          "clipAmount": {
+            "type": "number",
+            "description": "Total number of clips in the system"
+          }
+        }
+      },
+      "AdminConfig": {
+        "type": "object",
+        "properties": {
+          "denyThreshold": {
+            "type": "number",
+            "description": "Number of deny votes needed to reject a clip"
+          },
+          "clipChannelIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of Discord channel IDs to listen to"
+          },
+          "blacklistedSubmitters": {
+            "type": "object",
+            "properties": {
+              "username": {
+                "type": "string"
+              },
+              "userId": {
+                "type": "string"
+              }
+            }
+          },
+          "blacklistedStreamers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of streamer usernames that are blacklisted"
+          },
+          "backendUrl": {
+            "type": "string",
+            "description": "Backend URL for the Discord bot"
+          },
+          "discordBotToken": {
+            "type": "string",
+            "description": "Discord bot token (private)"
+          }
+        }
+      },
+      "IpVote": {
+        "type": "object",
+        "properties": {
+          "clipId": {
+            "type": "string",
+            "description": "The ID of the clip being voted on",
+            "required": true
+          },
+          "ip": {
+            "type": "string",
+            "description": "The IP address of the voter",
+            "required": true
+          },
+          "vote": {
+            "type": "string",
+            "enum": [
+              "upvote",
+              "downvote"
+            ],
+            "description": "The type of vote",
+            "required": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date and time when the vote was created"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date and time when the vote was last updated"
+          }
+        },
+        "required": [
+          "clipId",
+          "ip",
+          "vote"
+        ]
+      },
+      "Message": {
+        "type": "object",
+        "properties": {
+          "clipId": {
+            "type": "string",
+            "description": "The ID of the clip associated with the message",
+            "required": true
+          },
+          "userId": {
+            "type": "string",
+            "description": "The ID of the user who sent the message",
+            "required": true
+          },
+          "user": {
+            "type": "string",
+            "description": "The username of the user who sent the message",
+            "required": true
+          },
+          "message": {
+            "type": "string",
+            "description": "The content of the message",
+            "required": true
+          },
+          "profilePicture": {
+            "type": "string",
+            "description": "The URL of the user's profile picture",
+            "required": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date and time when the message was sent"
+          }
+        },
+        "required": [
+          "clipId",
+          "userId",
+          "user",
+          "message",
+          "profilePicture"
+        ]
+      },
+      "Notification": {
+        "type": "object",
+        "properties": {
+          "recipientId": {
+            "type": "string",
+            "description": "The ID of the user receiving the notification",
+            "required": true
+          },
+          "senderId": {
+            "type": "string",
+            "description": "The ID of the user who triggered the notification",
+            "required": true
+          },
+          "senderUsername": {
+            "type": "string",
+            "description": "The username of the user who triggered the notification",
+            "required": true
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "comment_reply",
+              "mention",
+              "rating",
+              "system",
+              "team_message",
+              "report"
+            ],
+            "description": "The type of notification",
+            "required": true
+          },
+          "entityId": {
+            "type": "string",
+            "description": "ID of the related entity (e.g., comment ID)"
+          },
+          "clipId": {
+            "type": "string",
+            "description": "ID of the clip related to this notification",
+            "required": true
+          },
+          "read": {
+            "type": "boolean",
+            "description": "Whether the notification has been read",
+            "default": false
+          },
+          "message": {
+            "type": "string",
+            "description": "The notification message content",
+            "required": true
+          },
+          "createdAt": {
+            "type": "date",
+            "description": "When the notification was created",
+            "default": "Date.now"
+          }
+        },
+        "required": [
+          "recipientId",
+          "senderId",
+          "senderUsername",
+          "type",
+          "clipId",
+          "message"
+        ]
+      },
+      "ReportMessage": {
+        "type": "object",
+        "required": [
+          "reportId",
+          "senderId",
+          "message"
+        ],
+        "properties": {
+          "_id": {
+            "type": "string",
+            "description": "Unique identifier for the message"
+          },
+          "reportId": {
+            "type": "string",
+            "description": "ID of the report this message belongs to"
+          },
+          "senderId": {
+            "type": "string",
+            "description": "ID of the user who sent the message"
+          },
+          "senderUsername": {
+            "type": "string",
+            "description": "Username of the user who sent the message"
+          },
+          "senderRole": {
+            "type": "string",
+            "enum": [
+              "reporter",
+              "admin"
+            ],
+            "description": "Role of the message sender"
+          },
+          "message": {
+            "type": "string",
+            "description": "Message content"
+          },
+          "isInternal": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether this message is only visible to admins"
+          },
+          "readBy": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "userId": {
+                  "type": "string"
+                },
+                "username": {
+                  "type": "string"
+                },
+                "readAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            },
+            "description": "Users who have read this message"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the message was created"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the message was last updated"
+          }
+        }
+      },
+      "Report": {
+        "type": "object",
+        "required": [
+          "clipId",
+          "reporterId",
+          "reason"
+        ],
+        "properties": {
+          "_id": {
+            "type": "string",
+            "description": "Unique identifier for the report"
+          },
+          "clipId": {
+            "type": "string",
+            "description": "ID of the reported clip"
+          },
+          "clipTitle": {
+            "type": "string",
+            "description": "Title of the reported clip"
+          },
+          "clipStreamer": {
+            "type": "string",
+            "description": "Streamer of the reported clip"
+          },
+          "clipSubmitter": {
+            "type": "string",
+            "description": "Submitter of the reported clip"
+          },
+          "reporterId": {
+            "type": "string",
+            "description": "ID of the user who reported the clip"
+          },
+          "reporterUsername": {
+            "type": "string",
+            "description": "Username of the user who reported the clip"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Reason for the report"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "reviewed",
+              "resolved",
+              "dismissed"
+            ],
+            "default": "pending",
+            "description": "Status of the report"
+          },
+          "reviewedBy": {
+            "type": "string",
+            "description": "Admin who reviewed the report"
+          },
+          "reviewedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the report was reviewed"
+          },
+          "adminNotes": {
+            "type": "string",
+            "description": "Admin notes on the report"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the report was created"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the report was last updated"
+          }
+        }
+      },
+      "TrophyCriteria": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the trophy",
+            "required": true
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of what this trophy is for",
+            "required": true
+          },
+          "criteriaType": {
+            "type": "string",
+            "enum": [
+              "most_ratings",
+              "most_denies",
+              "most_ratings_one_day",
+              "most_one_ratings",
+              "most_recent_ratings",
+              "custom"
+            ],
+            "description": "Type of criteria for awarding this trophy",
+            "required": true
+          },
+          "customCriteria": {
+            "type": "object",
+            "description": "Custom criteria configuration for complex trophy rules"
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "Whether this trophy criteria is active",
+            "default": true
+          },
+          "season": {
+            "type": "string",
+            "description": "Season this trophy applies to (if season-specific)"
+          },
+          "year": {
+            "type": "number",
+            "description": "Year this trophy applies to (if year-specific)"
+          },
+          "awardLimit": {
+            "type": "number",
+            "description": "Maximum number of users who can receive this trophy",
+            "default": 1
+          },
+          "minValue": {
+            "type": "number",
+            "description": "Minimum value required to be eligible for this trophy",
+            "default": 1
+          }
+        }
+      },
+      "SocialLinks": {
+        "type": "object",
+        "properties": {
+          "website": {
+            "type": "string",
+            "default": ""
+          },
+          "youtube": {
+            "type": "string",
+            "default": ""
+          },
+          "twitch": {
+            "type": "string",
+            "default": ""
+          },
+          "twitter": {
+            "type": "string",
+            "default": ""
+          },
+          "instagram": {
+            "type": "string",
+            "default": ""
+          },
+          "github": {
+            "type": "string",
+            "default": ""
+          }
+        }
+      },
+      "Trophy": {
+        "type": "object",
+        "properties": {
+          "trophyName": {
+            "type": "string",
+            "required": true
+          },
+          "dateEarned": {
+            "type": "string",
+            "required": true
+          },
+          "description": {
+            "type": "string",
+            "required": true
+          }
+        }
+      },
+      "Profile": {
+        "type": "object",
+        "properties": {
+          "bio": {
+            "type": "string",
+            "default": "",
+            "maxLength": 500
+          },
+          "website": {
+            "type": "string",
+            "default": ""
+          },
+          "socialLinks": {
+            "$ref": "#/components/schemas/SocialLinks"
+          },
+          "isPublic": {
+            "type": "boolean",
+            "default": true
+          },
+          "lastActive": {
+            "type": "string",
+            "format": "date-time",
+            "default": "Date.now"
+          },
+          "trophies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Trophy"
+            },
+            "default": []
+          },
+          "vrheadset": {
+            "type": "string",
+            "default": "Other"
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "description": "The username of the user",
+            "required": true
+          },
+          "email": {
+            "type": "string",
+            "description": "The email of the user",
+            "required": false
+          },
+          "password": {
+            "type": "string",
+            "description": "The password of the user",
+            "required": true
+          },
+          "profilePicture": {
+            "type": "string",
+            "description": "The URL of the user's profile picture",
+            "default": "https://api.spoekle.com/profilePictures/profile_placeholder.png"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "admin",
+                "user",
+                "clipteam",
+                "editor",
+                "uploader"
+              ]
+            },
+            "description": "The roles assigned to the user",
+            "default": [
+              "user"
+            ],
+            "required": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "disabled",
+              "active"
+            ],
+            "description": "The status of the user",
+            "default": "active"
+          },
+          "discordId": {
+            "type": "string",
+            "description": "The Discord ID of the user",
+            "unique": true,
+            "sparse": true
+          },
+          "discordUsername": {
+            "type": "string",
+            "description": "The Discord username of the user"
+          },
+          "joinDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the user joined",
+            "default": "Date.now"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the user was created (auto-generated)"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the user was last updated (auto-generated)"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/Profile"
+          }
+        },
+        "required": [
+          "username",
+          "password",
+          "roles"
+        ]
+      }
+    }
+  },
+  "paths": {
+    "/api/admin/create-user": {
+      "post": {
+        "summary": "Create a new user",
+        "description": "Creates a new user with specified roles (Admin only)",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "username",
+                  "password"
+                ],
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "description": "Username for the new account",
+                    "example": "newuser123"
+                  },
+                  "password": {
+                    "type": "string",
+                    "description": "Password for the new account",
+                    "format": "password",
+                    "example": "securePassword123!"
+                  },
+                  "roles": {
+                    "type": "array",
+                    "description": "User roles (defaults to ['user'] if not specified)",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "user",
+                        "admin",
+                        "clipteam",
+                        "editor",
+                        "uploader"
+                      ]
+                    },
+                    "example": [
+                      "user",
+                      "clipteam"
+                    ]
+                  },
+                  "email": {
+                    "type": "string",
+                    "description": "User email (optional)",
+                    "format": "email",
+                    "example": "user@example.com"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "User created successfully"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Authentication required or insufficient permissions"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/admin/users/{id}": {
+      "put": {
+        "summary": "Update a user",
+        "description": "Update user details including username, password, roles, etc. (Admin only)",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "description": "MongoDB ID of the user to update",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "description": "New username",
+                    "example": "updatedUsername"
+                  },
+                  "password": {
+                    "type": "string",
+                    "description": "New password (will be hashed)",
+                    "format": "password",
+                    "example": "newSecurePassword123!"
+                  },
+                  "roles": {
+                    "type": "array",
+                    "description": "Updated user roles",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "user",
+                        "admin",
+                        "clipteam",
+                        "editor",
+                        "uploader"
+                      ]
+                    },
+                    "example": [
+                      "user",
+                      "editor"
+                    ]
+                  },
+                  "email": {
+                    "type": "string",
+                    "description": "User email",
+                    "format": "email",
+                    "example": "updated@example.com"
+                  },
+                  "status": {
+                    "type": "string",
+                    "description": "User account status",
+                    "enum": [
+                      "active",
+                      "disabled"
+                    ],
+                    "example": "active"
+                  },
+                  "profilePicture": {
+                    "type": "string",
+                    "description": "URL to user profile picture",
+                    "example": "https://example.com/images/profile.jpg"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "User updated successfully"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Authentication required or insufficient permissions"
+          },
+          "404": {
+            "description": "User not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      },
+      "get": {
+        "summary": "Get user details by ID",
+        "description": "Retrieve detailed information about a specific user (Admin only)",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "description": "MongoDB ID of the user",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User details retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "_id": {
+                      "type": "string",
+                      "example": "612c1d9f5e123a001234abcd"
+                    },
+                    "username": {
+                      "type": "string",
+                      "example": "johndoe"
+                    },
+                    "email": {
+                      "type": "string",
+                      "example": "john@example.com"
+                    },
+                    "roles": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "example": [
+                        "user",
+                        "clipteam"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "example": "active"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "example": "2023-01-15T12:00:00Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Authentication required or insufficient permissions"
+          },
+          "404": {
+            "description": "User not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/admin/users": {
+      "get": {
+        "summary": "Get all users with optional filtering",
+        "description": "Retrieve a list of all users with optional role filtering (Admin only)",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "role",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter users by role (e.g. \"admin\", \"clipteam\")"
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "disabled"
+              ]
+            },
+            "description": "Filter users by status"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of users",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "_id": {
+                        "type": "string"
+                      },
+                      "username": {
+                        "type": "string"
+                      },
+                      "email": {
+                        "type": "string"
+                      },
+                      "roles": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "status": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Authentication required or insufficient permissions"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/admin/config": {
+      "get": {
+        "summary": "Get admin configuration",
+        "description": "Retrieve system configuration parameters",
+        "tags": [
+          "Admin"
+        ],
+        "responses": {
+          "200": {
+            "description": "Configuration retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "admin": {
+                      "type": "object",
+                      "properties": {
+                        "denyThreshold": {
+                          "type": "number",
+                          "description": "Number of deny votes needed to reject a clip"
+                        },
+                        "clipChannelIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Discord channel IDs for clip collection"
+                        }
+                      }
+                    },
+                    "public": {
+                      "type": "object",
+                      "properties": {
+                        "latestVideoLink": {
+                          "type": "string",
+                          "description": "Link to the latest video to show on homepage"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update admin configuration",
+        "description": "Update system configuration including private and public settings (Admin only)",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "denyThreshold": {
+                    "type": "number"
+                  },
+                  "latestVideoLink": {
+                    "type": "string"
+                  },
+                  "admin": {
+                    "type": "object",
+                    "properties": {
+                      "denyThreshold": {
+                        "type": "number"
+                      },
+                      "clipChannelIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "backendUrl": {
+                        "type": "string"
+                      },
+                      "discordBotToken": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "public": {
+                    "type": "object",
+                    "properties": {
+                      "latestVideoLink": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Configuration updated successfully"
+          },
+          "401": {
+            "description": "Unauthorized - Authentication required or insufficient permissions"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/admin/stats": {
+      "get": {
+        "summary": "Get admin statistics",
+        "description": "Retrieve system-wide statistics (Admin only)",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Statistics retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "userCount": {
+                      "type": "number",
+                      "description": "Total number of users",
+                      "example": 150
+                    },
+                    "activeUserCount": {
+                      "type": "number",
+                      "description": "Number of active users",
+                      "example": 130
+                    },
+                    "clipCount": {
+                      "type": "number",
+                      "description": "Total number of clips",
+                      "example": 500
+                    },
+                    "ratedClipsCount": {
+                      "type": "number",
+                      "description": "Number of clips that have been rated",
+                      "example": 350
+                    },
+                    "deniedClipsCount": {
+                      "type": "number",
+                      "description": "Number of clips that have been denied",
+                      "example": 25
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Authentication required or insufficient permissions"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/admin/users/{userId}/trophies": {
+      "post": {
+        "summary": "Award a trophy to a user",
+        "description": "Add a trophy to a user's profile (Admin only)",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The user ID to award the trophy to"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "trophyName",
+                  "description",
+                  "season",
+                  "year"
+                ],
+                "properties": {
+                  "trophyName": {
+                    "type": "string",
+                    "description": "Name of the trophy",
+                    "example": "Best Clips of the Month"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Description of the trophy achievement",
+                    "example": "Outstanding performance in January 2024"
+                  },
+                  "season": {
+                    "type": "string",
+                    "description": "Season when the trophy was earned",
+                    "example": "Winter"
+                  },
+                  "year": {
+                    "type": "number",
+                    "description": "Year when the trophy was earned",
+                    "example": 2024
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Trophy awarded successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Trophy awarded successfully"
+                    },
+                    "user": {
+                      "$ref": "#/components/schemas/User"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request or user not found"
+          },
+          "401": {
+            "description": "Unauthorized - Admin role required"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/admin/users/{userId}/trophies/{trophyId}": {
+      "delete": {
+        "summary": "Remove a trophy from a user",
+        "description": "Remove a specific trophy from a user's profile (Admin only)",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The user ID"
+          },
+          {
+            "in": "path",
+            "name": "trophyId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The trophy ID to remove"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Trophy removed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Trophy removed successfully"
+                    },
+                    "user": {
+                      "$ref": "#/components/schemas/User"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request, user or trophy not found"
+          },
+          "401": {
+            "description": "Unauthorized - Admin role required"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update a user's trophy",
+        "description": "Update an existing trophy for a user (Admin only)",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The user ID"
+          },
+          {
+            "in": "path",
+            "name": "trophyId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The trophy ID to update"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "trophyName": {
+                    "type": "string",
+                    "description": "Name of the trophy"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Description of the trophy achievement"
+                  },
+                  "season": {
+                    "type": "string",
+                    "description": "Season when the trophy was earned"
+                  },
+                  "year": {
+                    "type": "number",
+                    "description": "Year when the trophy was earned"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Trophy updated successfully"
+          },
+          "400": {
+            "description": "Bad request, user or trophy not found"
+          },
+          "401": {
+            "description": "Unauthorized - Admin role required"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/admin/blacklisted-users": {
+      "get": {
+        "summary": "Get blacklisted Discord users with their info",
+        "description": "Retrieve Discord user information for blacklisted submitter IDs (Admin only)",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Blacklisted users information retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "blacklistedSubmitters": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "Discord user ID"
+                          },
+                          "username": {
+                            "type": "string",
+                            "description": "Discord username"
+                          },
+                          "discriminator": {
+                            "type": "string",
+                            "description": "Discord discriminator (legacy format)"
+                          },
+                          "global_name": {
+                            "type": "string",
+                            "description": "Discord global display name"
+                          },
+                          "avatar": {
+                            "type": "string",
+                            "description": "Discord avatar hash"
+                          }
+                        }
+                      }
+                    },
+                    "blacklistedStreamers": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "List of blacklisted streamer usernames"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Admin role required"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/admin/discord-user/{userId}": {
+      "get": {
+        "summary": "Get Discord user information by ID",
+        "description": "Retrieve Discord user information for a specific user ID (Admin only)",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "description": "Discord user ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Discord user information retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "description": "Discord user ID"
+                    },
+                    "username": {
+                      "type": "string",
+                      "description": "Discord username"
+                    },
+                    "global_name": {
+                      "type": "string",
+                      "description": "Discord global display name"
+                    },
+                    "avatar": {
+                      "type": "string",
+                      "description": "Discord avatar hash"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Admin role required"
+          },
+          "404": {
+            "description": "User not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/admin/reports": {
+      "get": {
+        "summary": "Get all reports",
+        "description": "Retrieve all clip reports for admin review",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "reviewed",
+                "resolved",
+                "dismissed"
+              ]
+            },
+            "description": "Filter by report status"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Page number for pagination"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "description": "Number of reports per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reports retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "reports": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Report"
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "page": {
+                      "type": "integer"
+                    },
+                    "pages": {
+                      "type": "integer"
+                    },
+                    "pendingCount": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized access"
+          },
+          "403": {
+            "description": "Insufficient permissions"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/admin/reports/{reportId}": {
+      "patch": {
+        "summary": "Update report status",
+        "description": "Update the status and admin notes of a report",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reportId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Report ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "pending",
+                      "reviewed",
+                      "resolved",
+                      "dismissed"
+                    ],
+                    "description": "New status for the report"
+                  },
+                  "adminNotes": {
+                    "type": "string",
+                    "description": "Admin notes about the report"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Report updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Report"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized access"
+          },
+          "403": {
+            "description": "Insufficient permissions"
+          },
+          "404": {
+            "description": "Report not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a report",
+        "description": "Permanently delete a report",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reportId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Report ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Report deleted successfully"
+          },
+          "401": {
+            "description": "Unauthorized access"
+          },
+          "403": {
+            "description": "Insufficient permissions"
+          },
+          "404": {
+            "description": "Report not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/admin/reports/{reportId}/messages": {
+      "get": {
+        "summary": "Get messages for a specific report",
+        "description": "Retrieve all messages for a report (Admin and reporter can see their conversation)",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reportId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Report ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Messages retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReportMessage"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized access"
+          },
+          "403": {
+            "description": "Insufficient permissions"
+          },
+          "404": {
+            "description": "Report not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      },
+      "post": {
+        "summary": "Send a message in a report",
+        "description": "Add a new message to a report conversation",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reportId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Report ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "message"
+                ],
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "description": "Message content"
+                  },
+                  "isInternal": {
+                    "type": "boolean",
+                    "description": "Whether this is an internal admin message (admin only)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Message sent successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportMessage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized access"
+          },
+          "403": {
+            "description": "Insufficient permissions"
+          },
+          "404": {
+            "description": "Report not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/admin/reports/{reportId}/messages/{messageId}": {
+      "delete": {
+        "summary": "Delete a report message",
+        "description": "Delete a message from a report (Admin only)",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reportId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Report ID"
+          },
+          {
+            "in": "path",
+            "name": "messageId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Message ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Message deleted successfully"
+          },
+          "401": {
+            "description": "Unauthorized access"
+          },
+          "403": {
+            "description": "Insufficient permissions"
+          },
+          "404": {
+            "description": "Message not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/clips": {
+      "get": {
+        "tags": [
+          "clips"
+        ],
+        "summary": "Get clips with pagination, filtering, and sorting",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Page number (starting from 1)"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Number of clips per page"
+          },
+          {
+            "in": "query",
+            "name": "sortBy",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Field to sort by (createdAt, upvotes, downvotes, ratio, averageRating, ratingCount)"
+          },
+          {
+            "in": "query",
+            "name": "sortOrder",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Sort direction (asc, desc)"
+          },
+          {
+            "in": "query",
+            "name": "streamer",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by streamer name"
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Search clips by title or streamer"
+          },
+          {
+            "in": "query",
+            "name": "excludeRatedByUser",
+            "schema": {
+              "type": "string"
+            },
+            "description": "User ID to exclude clips rated by this user"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/clips/filter-options": {
+      "get": {
+        "tags": [
+          "clips"
+        ],
+        "summary": "Get unique streamers and submitters for filtering",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/clips/search": {
+      "get": {
+        "tags": [
+          "clips"
+        ],
+        "summary": "Search clips",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Sorting option (newest, oldest, upvotes, downvotes)"
+          },
+          {
+            "in": "query",
+            "name": "streamer",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "submitter",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Missing parameter"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/clips/info": {
+      "get": {
+        "tags": [
+          "clips"
+        ],
+        "summary": "Get information about a video from its URL without downloading",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "url",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "URL of the video to get information about"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Invalid URL"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/clips/{id}": {
+      "get": {
+        "tags": [
+          "clips"
+        ],
+        "summary": "Get a clip by ID",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Clip not found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/clips/clip-navigation/adjacent": {
+      "get": {
+        "tags": [
+          "clips"
+        ],
+        "summary": "Get adjacent clips (previous and next) for navigation",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "currentClipId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID of the current clip"
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Sorting option to determine clip order"
+          },
+          {
+            "in": "query",
+            "name": "streamer",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Optional streamer filter"
+          },
+          {
+            "in": "query",
+            "name": "getAdjacent",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Must be true to get adjacent clips"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Clip not found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/clips/user/{discordId}": {
+      "get": {
+        "tags": [
+          "clips"
+        ],
+        "summary": "Get clips submitted by a specific user",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "discordId",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "Discord ID of the user"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Number of clips per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of clips submitted by the user"
+          },
+          "404": {
+            "description": "No clips found for this user"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/config/public": {
+      "get": {
+        "summary": "Get public configuration",
+        "description": "Retrieve public configuration parameters (latest video link)",
+        "tags": [
+          "Config"
+        ],
+        "responses": {
+          "200": {
+            "description": "Configuration retrieved successfully"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update public configuration",
+        "description": "Update public configuration parameters (Admin only)",
+        "tags": [
+          "Config"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicConfig"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Configuration updated successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/config/admin": {
+      "get": {
+        "summary": "Get admin configuration",
+        "description": "Retrieve admin configuration parameters (Admin only)",
+        "tags": [
+          "Config"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Configuration retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update admin configuration",
+        "description": "Update admin configuration parameters (Admin only)",
+        "tags": [
+          "Config"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminConfig"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Configuration updated successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/config": {
+      "get": {
+        "summary": "Get combined configuration",
+        "description": "Retrieve both public and admin configuration (admin only)",
+        "tags": [
+          "Config"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Configuration retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/profiles/public/{userId}": {
+      "get": {
+        "summary": "Get public profile by user ID",
+        "tags": [
+          "Profiles"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "User ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Public profile data"
+          },
+          "404": {
+            "description": "Profile not found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/profiles/me": {
+      "get": {
+        "summary": "Get current user's profile",
+        "tags": [
+          "Profiles"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User's profile data"
+          },
+          "404": {
+            "description": "Profile not found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update current user's profile",
+        "tags": [
+          "Profiles"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "bio": {
+                    "type": "string"
+                  },
+                  "website": {
+                    "type": "string"
+                  },
+                  "socialLinks": {
+                    "type": "object"
+                  },
+                  "vrheadset": {
+                    "type": "string"
+                  },
+                  "isPublic": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile updated successfully"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/search": {
+      "get": {
+        "summary": "Unified search for clips and profiles with seasonal filtering",
+        "description": "Search across clips and public profiles, prioritizing current season",
+        "tags": [
+          "Search"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Search query"
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "clips",
+                "profiles"
+              ],
+              "default": "all"
+            },
+            "description": "Type of content to search"
+          },
+          {
+            "in": "query",
+            "name": "season",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "spring",
+                "summer",
+                "fall",
+                "winter"
+              ]
+            },
+            "description": "Filter by specific season (optional)"
+          },
+          {
+            "in": "query",
+            "name": "year",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Filter by specific year (optional)"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 12
+            },
+            "description": "Results per page"
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "newest",
+                "oldest",
+                "upvotes",
+                "downvotes",
+                "ratio"
+              ],
+              "default": "newest"
+            },
+            "description": "Sort order for clips"
+          },
+          {
+            "in": "query",
+            "name": "streamer",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter clips by streamer name"
+          },
+          {
+            "in": "query",
+            "name": "submitter",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter clips by submitter name"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results with seasonal organization"
+          },
+          "400": {
+            "description": "Missing or invalid parameters"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/trophies/criteria": {
+      "get": {
+        "tags": [
+          "trophies"
+        ],
+        "summary": "Get all trophy criteria",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of trophy criteria"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "trophies"
+        ],
+        "summary": "Create new trophy criteria",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrophyCriteria"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Trophy criteria created successfully"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/trophies/criteria/{id}": {
+      "put": {
+        "tags": [
+          "trophies"
+        ],
+        "summary": "Update trophy criteria",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Trophy criteria ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrophyCriteria"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Trophy criteria updated successfully"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Trophy criteria not found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "trophies"
+        ],
+        "summary": "Delete trophy criteria",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Trophy criteria ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Trophy criteria deleted successfully"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Trophy criteria not found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/trophies/assign/{season}/{year}": {
+      "post": {
+        "tags": [
+          "trophies"
+        ],
+        "summary": "Manually trigger trophy assignment for a season",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "season",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Season name"
+          },
+          {
+            "in": "path",
+            "name": "year",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Year"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Trophies assigned successfully"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/trophies/assign": {
+      "post": {
+        "tags": [
+          "trophies"
+        ],
+        "summary": "Manually assign trophies for a season/year",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "season": {
+                    "type": "string"
+                  },
+                  "year": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Trophies assigned successfully"
+          },
+          "400": {
+            "description": "Invalid request"
+          }
+        }
+      }
+    },
+    "/api/trophies/criteria/types": {
+      "get": {
+        "tags": [
+          "trophies"
+        ],
+        "summary": "Get available trophy criteria types",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of available criteria types"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/api/trophies/custom-templates": {
+      "get": {
+        "tags": [
+          "trophies"
+        ],
+        "summary": "Get available custom criteria templates",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of custom criteria templates"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/api/trophies/validate-criteria": {
+      "post": {
+        "tags": [
+          "trophies"
+        ],
+        "summary": "Validate custom criteria configuration",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "customCriteria": {
+                    "type": "object"
+                  },
+                  "season": {
+                    "type": "string"
+                  },
+                  "year": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Validation result with preview data"
+          },
+          "400": {
+            "description": "Invalid criteria configuration"
+          }
+        }
+      }
+    },
+    "/api/trophies/preview-winners": {
+      "post": {
+        "tags": [
+          "trophies"
+        ],
+        "summary": "Preview winners for specific trophy criteria",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "criteriaId": {
+                    "type": "string"
+                  },
+                  "season": {
+                    "type": "string"
+                  },
+                  "year": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Preview results"
+          },
+          "404": {
+            "description": "Criteria not found"
+          }
+        }
+      }
+    },
+    "/api/trophies/preview-all": {
+      "post": {
+        "tags": [
+          "trophies"
+        ],
+        "summary": "Preview winners for all active trophy criteria",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "season": {
+                    "type": "string"
+                  },
+                  "year": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Preview results for all criteria"
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Admin",
+      "description": "Admin API endpoints for user and system management"
+    },
+    {
+      "name": "clips",
+      "description": "API for managing clips"
+    },
+    {
+      "name": "Profiles",
+      "description": "User profile management API"
+    },
+    {
+      "name": "Search",
+      "description": "Unified search API for clips and profiles with seasonal filtering"
+    },
+    {
+      "name": "trophies",
+      "description": "API for managing trophy criteria and assignments"
+    }
+  ]
+}
