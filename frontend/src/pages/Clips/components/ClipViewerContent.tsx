@@ -1,8 +1,9 @@
 import { useMemo, useEffect, useState, useRef } from 'react';
-import ClipSearch from '../../ClipSearch';
+import ClipSearch from '../../Search/ClipSearch';
 import ClipContent from '../ClipView/Index';
 import ClipFilterBar from '../ClipGrid/components/ClipFilterBar';
 import ClipGrid from '../ClipGrid/Index';
+import Breadcrumbs from '../../../components/common/Breadcrumbs';
 import { Clip, User, Rating } from '../../../types/adminTypes';
 import { getClipFilterOptions } from '../../../services/clipService';
 
@@ -177,12 +178,13 @@ const ClipViewerContent: React.FC<ClipViewerContentProps> = ({
         <div className="text-9xl mb-4 text-neutral-400">🤔</div>
         <h2 className="text-2xl font-semibold text-neutral-700 dark:text-neutral-300 mb-2">Clip Not Found</h2>
         <p className="text-neutral-600 dark:text-neutral-400 mb-6">The clip you're looking for may have been deleted or doesn't exist.</p>
-        <button
-          className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors shadow-sm"
-          onClick={() => setExpandedClip(null)}
-        >
-          Back to All Clips
-        </button>
+        <Breadcrumbs
+          items={[
+            { label: 'Home', path: '/' },
+            { label: 'Clips', path: '/clips' },
+            { label: 'Not Found' }
+          ]}
+        />
       </div>
     );
   }

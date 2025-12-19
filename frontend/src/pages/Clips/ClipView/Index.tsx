@@ -12,7 +12,8 @@ import {
     FaChevronLeft,
     FaChevronRight,
     FaEdit,
-    FaFlag
+    FaFlag,
+    FaHome
 } from 'react-icons/fa';
 import { AiOutlineDelete, AiOutlineEdit } from 'react-icons/ai';
 import MessageComponent from './components/clipteam/MessagesPopup';
@@ -26,6 +27,7 @@ import { Clip, User, Rating } from '../../../types/adminTypes';
 import RatingPanel from './components/clipteam/RatingPanel';
 import CommentSection from './components/CommentSection';
 import TeamSidebar from './components/TeamSidebar';
+import Breadcrumbs from '../../../components/common/Breadcrumbs';
 
 // React Query hooks
 import {
@@ -76,18 +78,74 @@ const ClipContent: React.FC<ClipContentProps> = ({
     const { data: currentClip, isLoading: isClipLoading } = useClip(currentClipId);
 
     // Build params for adjacent clips based on current URL parameters
+    // This must match the format used by the main clips page to find clips in cache
     const adjacentClipParams = useMemo(() => {
         const urlParams = new URLSearchParams(window.location.search);
+        const sortOption = urlParams.get('sort') || 'newest';
+
+        // Build params matching the main page's buildClipParams format
         const params: any = {
-            sort: urlParams.get('sort') || 'newest',
+            sortOption: sortOption,
         };
 
-        // Add optional parameters only if they exist
+        // Parse sortOption into sortBy and sortOrder (matching main page logic)
+        if (sortOption.includes('_')) {
+            const [field, direction] = sortOption.split('_');
+            params.sortBy = field;
+            params.sortOrder = direction;
+        } else {
+            switch (sortOption) {
+                case 'newest':
+                    params.sortBy = 'createdAt';
+                    params.sortOrder = 'desc';
+                    break;
+                case 'oldest':
+                    params.sortBy = 'createdAt';
+                    params.sortOrder = 'asc';
+                    break;
+                case 'highestUpvotes':
+                    params.sortBy = 'upvotes';
+                    params.sortOrder = 'desc';
+                    break;
+                case 'highestDownvotes':
+                    params.sortBy = 'downvotes';
+                    params.sortOrder = 'desc';
+                    break;
+                case 'lowestRatio':
+                    params.sortBy = 'ratio';
+                    params.sortOrder = 'asc';
+                    break;
+                case 'highestRatio':
+                    params.sortBy = 'ratio';
+                    params.sortOrder = 'desc';
+                    break;
+                case 'highestAverageRating':
+                    params.sortBy = 'averageRating';
+                    params.sortOrder = 'desc';
+                    break;
+                case 'mostRated':
+                    params.sortBy = 'ratingCount';
+                    params.sortOrder = 'desc';
+                    break;
+                case 'mostDenied':
+                    params.sortBy = 'denyCount';
+                    params.sortOrder = 'desc';
+                    break;
+                default:
+                    params.sortBy = 'createdAt';
+                    params.sortOrder = 'desc';
+            }
+        }
+
+        // Add optional parameters matching the main page format
         if (urlParams.get('streamer')) {
             params.streamer = urlParams.get('streamer');
         }
         if (urlParams.get('excludeRatedByUser')) {
             params.excludeRatedByUser = urlParams.get('excludeRatedByUser');
+        }
+        if (urlParams.get('excludeDeniedClips') === 'true') {
+            params.excludeDeniedClips = true;
         }
         if (urlParams.get('q')) {
             params.search = urlParams.get('q');
@@ -419,22 +477,17 @@ const ClipContent: React.FC<ClipContentProps> = ({
 
             {/* Header */}
             <div className="sticky top-12 z-10 flex justify-between items-center bg-white/80 dark:bg-neutral-800/80 backdrop-blur-sm p-4 shadow-sm border-b border-neutral-200/80 dark:border-neutral-700/50 rounded-xl">
-                <Link
-                    className="bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 text-neutral-800 dark:text-white px-4 py-2 rounded-lg transition flex items-center gap-2 font-medium"
-                    to={{
-                        pathname: from.pathname,
-                        search: from.search || ''
-                    }}
-                    onClick={(e) => {
-                        e.preventDefault();
-                        closeExpandedClip();
-                    }}
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
-                    </svg>
-                    Back
-                </Link>
+                <Breadcrumbs
+                    items={[
+                        { label: 'Home', path: '/', icon: <FaHome className="w-3.5 h-3.5" /> },
+                        {
+                            label: from.pathname.includes('admin') ? 'Admin' : 'Clips',
+                            path: from.pathname + (from.search ? from.search : '')
+                        },
+                        { label: clipData?.title || 'Loading...' }
+                    ]}
+                />
+
 
                 <div className="flex items-center space-x-2">
                     <button
@@ -533,58 +586,86 @@ const ClipContent: React.FC<ClipContentProps> = ({
                             </button>
                         )}
 
-                        {/* For mobile - bottom navigation bar */}
-                        <div className="sm:hidden fixed bottom-0 left-0 right-0 z-20 flex justify-between items-center px-4 py-3 bg-neutral-100/90 dark:bg-neutral-800/90 backdrop-blur-sm">
+                        {/* For mobile - bottom navigation bar with integrated clipteam actions */}
+                        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-20 flex justify-between items-center px-3 py-2.5 bg-neutral-100/95 dark:bg-neutral-800/95 backdrop-blur-md border-t border-neutral-200/50 dark:border-neutral-700/50">
+                            {/* Previous button */}
                             <button
                                 onClick={() => {
                                     console.log('🎬 Mobile previous button clicked:', prevClip?._id);
                                     prevClip && navigateToClip(prevClip._id);
                                 }}
                                 disabled={!prevClip || loadingAdjacentClips || isClipLoading}
-                                className={`flex items-center justify-center rounded-full w-12 h-12 shadow-md ${!prevClip || loadingAdjacentClips || isClipLoading ?
-                                    'bg-neutral-300 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-500' :
-                                    'bg-white dark:bg-neutral-700 text-neutral-800 dark:text-white hover:bg-neutral-200 dark:hover:bg-neutral-600'}`}
+                                className={`flex items-center justify-center rounded-full w-11 h-11 shadow-sm transition-all ${!prevClip || loadingAdjacentClips || isClipLoading ?
+                                    'bg-neutral-200 dark:bg-neutral-700 text-neutral-400 dark:text-neutral-500' :
+                                    'bg-white dark:bg-neutral-700 text-neutral-700 dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-600 active:scale-95'}`}
                                 aria-label="Previous clip"
                             >
                                 {isClipLoading ? (
                                     <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
                                 ) : (
-                                    <FaChevronLeft size={20} />
+                                    <FaChevronLeft size={18} />
                                 )}
                             </button>
 
-                            <Link
-                                to={{
-                                    pathname: from.pathname,
-                                    search: from.search || ''
-                                }}
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    closeExpandedClip();
-                                }}
-                                className="bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 text-neutral-800 dark:text-white px-4 py-2 rounded-lg transition flex items-center gap-2 font-medium"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                    <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
-                                </svg>
-                                <span>Home</span>
-                            </Link>
+                            {/* Center section - different for team vs regular users */}
+                            {isTeamMember ? (
+                                /* Team member: show Chat and Ratings buttons */
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setPopout('chat')}
+                                        className="flex items-center gap-1.5 bg-indigo-500 hover:bg-indigo-600 active:scale-95 text-white px-3 py-2 rounded-lg shadow-sm transition-all text-sm font-medium"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
+                                        </svg>
+                                        <span>Chat</span>
+                                    </button>
+                                    <button
+                                        onClick={() => setPopout('ratings')}
+                                        className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white px-3 py-2 rounded-lg shadow-sm transition-all text-sm font-medium"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                        </svg>
+                                        <span>Ratings</span>
+                                    </button>
+                                </div>
+                            ) : (
+                                /* Regular user: show Home button */
+                                <Link
+                                    to={{
+                                        pathname: from.pathname,
+                                        search: from.search || ''
+                                    }}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        closeExpandedClip();
+                                    }}
+                                    className="bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 active:scale-95 text-neutral-800 dark:text-white px-4 py-2 rounded-lg transition-all flex items-center gap-2 font-medium shadow-sm"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+                                    </svg>
+                                    <span>Home</span>
+                                </Link>
+                            )}
 
+                            {/* Next button */}
                             <button
                                 onClick={() => {
                                     console.log('🎬 Mobile next button clicked:', nextClip?._id);
                                     nextClip && navigateToClip(nextClip._id);
                                 }}
                                 disabled={!nextClip || loadingAdjacentClips || isClipLoading}
-                                className={`flex items-center justify-center rounded-full w-12 h-12 shadow-md ${!nextClip || loadingAdjacentClips || isClipLoading ?
-                                    'bg-neutral-300 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-500' :
-                                    'bg-white dark:bg-neutral-700 text-neutral-800 dark:text-white hover:bg-neutral-200 dark:hover:bg-neutral-600'}`}
+                                className={`flex items-center justify-center rounded-full w-11 h-11 shadow-sm transition-all ${!nextClip || loadingAdjacentClips || isClipLoading ?
+                                    'bg-neutral-200 dark:bg-neutral-700 text-neutral-400 dark:text-neutral-500' :
+                                    'bg-white dark:bg-neutral-700 text-neutral-700 dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-600 active:scale-95'}`}
                                 aria-label="Next clip"
                             >
                                 {isClipLoading ? (
                                     <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
                                 ) : (
-                                    <FaChevronRight size={20} />
+                                    <FaChevronRight size={18} />
                                 )}
                             </button>
                         </div>
@@ -756,33 +837,7 @@ const ClipContent: React.FC<ClipContentProps> = ({
                 )}
             </div>
 
-            {/* Mobile: Floating buttons for team members (only on mobile where sidebar is hidden) */}
-            {isTeamMember && popout === '' && (
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="lg:hidden fixed flex space-x-3 bottom-20 right-4 z-20"
-                >
-                    <button
-                        className="flex items-center gap-2 bg-indigo-600/90 hover:bg-indigo-700/90 backdrop-blur text-white px-4 py-3 rounded-full shadow-lg transition transform hover:scale-105"
-                        onClick={() => setPopout('chat')}
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
-                        </svg>
-                        Team Chat
-                    </button>
-                    <button
-                        className="flex items-center gap-2 bg-amber-600/90 hover:bg-amber-700/90 backdrop-blur text-white px-4 py-3 rounded-full shadow-lg transition transform hover:scale-105"
-                        onClick={() => setPopout('ratings')}
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                        </svg>
-                        View Ratings
-                    </button>
-                </motion.div>
-            )}
+            {/* Mobile floating buttons removed - now integrated into bottom bar */}
 
             {/* Popouts */}
             {popout === 'chat' ? (

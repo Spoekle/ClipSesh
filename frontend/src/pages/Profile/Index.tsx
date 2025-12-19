@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet';
-import { FaExclamationTriangle, FaArrowLeft, FaUser, FaChartBar } from 'react-icons/fa';
+import { FaExclamationTriangle, FaUser, FaChartBar, FaHome } from 'react-icons/fa';
 import LoadingBar from 'react-top-loading-bar';
 import { User } from '../../types/adminTypes';
 import EditProfileModal from './EditModal';
@@ -11,6 +11,8 @@ import ClipsSection from './components/ClipsSection';
 import TrophiesSection from './components/TrophiesSection';
 import SocialLinks from './components/SocialLinks';
 import StatsSection from './components/StatsSection';
+import ProfileViewerHeader from './components/ProfileViewerHeader';
+import Breadcrumbs from '../../components/common/Breadcrumbs';
 
 import { usePublicProfile, useMyProfile } from '../../hooks/useProfile';
 import { useCurrentUser } from '../../hooks/useUser';
@@ -21,20 +23,20 @@ const ProfilePage: React.FC<{ currentUser?: User }> = ({ currentUser }) => {
 
   const { data: currentUserData } = useCurrentUser();
   const user = currentUser || currentUserData;
-  
+
   const token = localStorage.getItem('token');
   const currentUserId = user?._id || '';
-  
+
   const isOwnProfile = !userId || userId === 'me' || userId === currentUserId;
-  
-  const { 
-    data: profile, 
-    isLoading, 
+
+  const {
+    data: profile,
+    isLoading,
     error,
-    refetch 
-  } = isOwnProfile 
-    ? useMyProfile() 
-    : usePublicProfile(userId || '');
+    refetch
+  } = isOwnProfile
+      ? useMyProfile()
+      : usePublicProfile(userId || '');
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -44,7 +46,7 @@ const ProfilePage: React.FC<{ currentUser?: User }> = ({ currentUser }) => {
   });
 
   const [viewSwitchTimestamp, setViewSwitchTimestamp] = useState<number>(Date.now());
-  
+
   const handleViewChange = (view: 'profile' | 'stats') => {
     console.log('Switching view from', currentView, 'to', view);
     setCurrentView(view);
@@ -135,15 +137,13 @@ const ProfilePage: React.FC<{ currentUser?: User }> = ({ currentUser }) => {
             <p className="text-neutral-600 dark:text-neutral-400 mb-8 leading-relaxed">
               {error?.message || 'The profile you are looking for does not exist or is private.'}
             </p>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => navigate(-1)}
-              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-3 rounded-xl transition-all duration-200 flex items-center mx-auto shadow-lg hover:shadow-xl"
-            >
-              <FaArrowLeft className="mr-2" />
-              Go Back
-            </motion.button>
+            <Breadcrumbs
+              items={[
+                { label: 'Home', path: '/', icon: <FaHome className="w-3.5 h-3.5" /> },
+                { label: 'Profile' }
+              ]}
+              className="justify-center"
+            />
           </motion.div>
         </div>
       </div>
@@ -173,7 +173,10 @@ const ProfilePage: React.FC<{ currentUser?: User }> = ({ currentUser }) => {
         height={4}
       />
 
-      {/* Hero Background */}
+      {/* Hero Header */}
+      <ProfileViewerHeader username={profile.username} profilePicture={profile.profilePicture} />
+
+      {/* Main Content */}
       <div className="relative overflow-hidden">
         <div className="relative container mx-auto px-4 pt-8 pb-20">
           <motion.div
@@ -190,7 +193,7 @@ const ProfilePage: React.FC<{ currentUser?: User }> = ({ currentUser }) => {
                 onEditClick={() => setShowEditModal(true)}
               />
             </motion.div>
-            
+
             {/* Content Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-4 xl:grid-cols-4 gap-6 lg:gap-8">
               {/* Left Sidebar - Social & Trophies */}
@@ -212,7 +215,7 @@ const ProfilePage: React.FC<{ currentUser?: User }> = ({ currentUser }) => {
                   </motion.div>
                 )}
               </div>
-              
+
               {/* Main Content - Clips & Stats */}
               <div className="lg:col-span-3 space-y-6 lg:space-y-8">
                 {/* Tab Navigation - Only show if user has access to stats */}
@@ -226,12 +229,12 @@ const ProfilePage: React.FC<{ currentUser?: User }> = ({ currentUser }) => {
                             width: '50%',
                             left: currentView === 'profile' ? '0%' : '50%'
                           }}
-                        />                        
+                        />
                         <button
                           onClick={() => handleViewChange('profile')}
                           className={`relative z-10 flex-1 px-6 py-4 text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 ${currentView === 'profile'
-                              ? 'text-white'
-                              : 'text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-neutral-100'
+                            ? 'text-white'
+                            : 'text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-neutral-100'
                             }`}
                         >
                           <FaUser className="w-4 h-4" />
@@ -240,8 +243,8 @@ const ProfilePage: React.FC<{ currentUser?: User }> = ({ currentUser }) => {
                         <button
                           onClick={() => handleViewChange('stats')}
                           className={`relative z-10 flex-1 px-6 py-4 text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 ${currentView === 'stats'
-                              ? 'text-white'
-                              : 'text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-neutral-100'
+                            ? 'text-white'
+                            : 'text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-neutral-100'
                             }`}
                         >
                           <FaChartBar className="w-4 h-4" />

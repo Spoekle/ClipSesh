@@ -4,7 +4,7 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import EditorDash from './pages/EditorDash';
 import ClipViewer from './pages/Clips/Index'
-import ClipSearch from './pages/ClipSearch';
+import ClipSearch from './pages/Search/ClipSearch';
 import Home from './pages/Home';
 import AdminDash from './pages/Admin/Index';
 import ResetPassword from './pages/ResetPassword';

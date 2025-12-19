@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaStar, FaComments, FaChartBar, FaAngleDown, FaTimes } from 'react-icons/fa';
+import { FaStar, FaComments, FaAngleDown, FaTimes } from 'react-icons/fa';
 import { AiOutlineSend, AiOutlineDelete } from 'react-icons/ai';
 import { BiSmile } from 'react-icons/bi';
 import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
@@ -26,7 +26,7 @@ interface TeamSidebarProps {
     highlightedMessageId?: string | null;
 }
 
-type TabType = 'rate' | 'chat' | 'stats';
+type TabType = 'rate' | 'chat';
 
 const TeamSidebar: React.FC<TeamSidebarProps> = ({
     clip,
@@ -259,8 +259,7 @@ const TeamSidebar: React.FC<TeamSidebarProps> = ({
 
     const tabs = [
         { id: 'rate' as TabType, label: 'Rate', icon: FaStar },
-        { id: 'chat' as TabType, label: 'Chat', icon: FaComments },
-        { id: 'stats' as TabType, label: 'Stats', icon: FaChartBar },
+        { id: 'chat' as TabType, label: 'Chat', icon: FaComments }
     ];
 
     const isDisabled = isRatingLoading || isSubmitting || isUserStreamerOrSubmitter;
@@ -285,7 +284,7 @@ const TeamSidebar: React.FC<TeamSidebarProps> = ({
             </div>
 
             {/* Tab Content */}
-            <div className="h-[500px] overflow-y-auto">
+            <div className="overflow-y-auto">
                 <AnimatePresence mode="wait">
                     {/* Rate Tab */}
                     {activeTab === 'rate' && (
@@ -343,11 +342,85 @@ const TeamSidebar: React.FC<TeamSidebarProps> = ({
                                 </button>
                             </div>
 
-                            {isSubmitting && (
-                                <div className="flex items-center justify-center mt-3">
-                                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-600 border-t-transparent"></div>
-                                    <span className="ml-2 text-sm text-blue-600">Submitting...</span>
+                            {statsLoading ? (
+                                <div className="flex justify-center items-center py-12">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-4 border-neutral-300 border-t-blue-600"></div>
                                 </div>
+                            ) : (
+                                <>
+                                    <div className="grid grid-cols-2 gap-3 mb-4">
+                                        <div className="bg-neutral-100/80 dark:bg-neutral-700/50 p-3 rounded-lg text-center border border-neutral-200/50 dark:border-neutral-600/30">
+                                            <p className="text-xs text-neutral-500">Average</p>
+                                            <div className={`text-2xl font-bold ${averageRating === 'N/A' ? 'text-neutral-400' :
+                                                Number(averageRating) >= 4 ? 'text-red-500' :
+                                                    Number(averageRating) >= 3 ? 'text-orange-500' :
+                                                        Number(averageRating) >= 2 ? 'text-yellow-600' : 'text-green-600'
+                                                }`}>
+                                                {averageRating}
+                                            </div>
+                                        </div>
+                                        <div className="bg-neutral-100/80 dark:bg-neutral-700/50 p-3 rounded-lg text-center border border-neutral-200/50 dark:border-neutral-600/30">
+                                            <p className="text-xs text-neutral-500">Total</p>
+                                            <div className="text-2xl font-bold text-blue-600">{totalRatings}</div>
+                                        </div>
+                                    </div>
+
+                                    <div className="mb-4 space-y-2">
+                                        {[1, 2, 3, 4].map(ratingValue => {
+                                            const rateData = ratingCounts.find(r => Number(r.rating) === ratingValue) || { count: 0, users: [] };
+                                            const percentage = totalRatings > 0 ? (rateData.count / totalRatings) * 100 : 0;
+                                            const colors: Record<number, string> = { 4: 'bg-red-500', 3: 'bg-orange-500', 2: 'bg-yellow-600', 1: 'bg-green-600' };
+                                            const textColors: Record<number, string> = { 4: 'text-red-500', 3: 'text-orange-500', 2: 'text-yellow-600', 1: 'text-green-600' };
+
+                                            return (
+                                                <div key={ratingValue} className="bg-neutral-100/80 dark:bg-neutral-700/50 rounded-lg p-2.5 border border-neutral-200/50 dark:border-neutral-600/30">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className={`font-bold ${textColors[ratingValue]}`}>{ratingValue}</span>
+                                                            <div className="h-2 w-48 bg-neutral-300 dark:bg-neutral-600 rounded-full overflow-hidden">
+                                                                <div className={`h-2 ${colors[ratingValue]}`} style={{ width: `${percentage}%` }} />
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xs text-neutral-500">{rateData.count}</span>
+                                                            {rateData.count > 0 && (
+                                                                <button onClick={() => setSelectedCategory(selectedCategory === ratingValue ? null : ratingValue)}>
+                                                                    {selectedCategory === ratingValue ? <FaTimes className="text-neutral-400 text-xs" /> : <FaAngleDown className="text-neutral-400 text-xs" />}
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    {selectedCategory === ratingValue && rateData.users?.length > 0 && (
+                                                        <div className="mt-2 pt-2 border-t border-neutral-200 dark:border-neutral-600">
+                                                            {rateData.users.map(u => (
+                                                                <div key={u.userId} className="text-sm py-0.5 text-neutral-600 dark:text-neutral-300">{u.username}</div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    {denyCount > 0 && (
+                                        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 rounded-lg">
+                                            <div className="flex justify-between items-center">
+                                                <span className="font-bold text-red-600 dark:text-red-400">
+                                                    {denyCount} Denial{denyCount !== 1 ? 's' : ''}
+                                                </span>
+                                                <button onClick={() => setSelectedCategory(selectedCategory === 'deny' ? null : 'deny')}>
+                                                    {selectedCategory === 'deny' ? <FaTimes className="text-neutral-400" /> : <FaAngleDown className="text-neutral-400" />}
+                                                </button>
+                                            </div>
+                                            {selectedCategory === 'deny' && denyData?.users && (
+                                                <div className="mt-2 pt-2 border-t border-red-200 dark:border-red-800">
+                                                    {denyData.users.map(u => (
+                                                        <div key={u.userId} className="text-sm py-0.5">{u.username}</div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </motion.div>
                     )}
@@ -453,99 +526,6 @@ const TeamSidebar: React.FC<TeamSidebarProps> = ({
                                     )}
                                 </div>
                             </div>
-                        </motion.div>
-                    )}
-
-                    {/* Stats Tab */}
-                    {activeTab === 'stats' && (
-                        <motion.div
-                            key="stats"
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                            className="p-4"
-                        >
-                            {statsLoading ? (
-                                <div className="flex justify-center items-center py-12">
-                                    <div className="animate-spin rounded-full h-8 w-8 border-4 border-neutral-300 border-t-blue-600"></div>
-                                </div>
-                            ) : (
-                                <>
-                                    <div className="grid grid-cols-2 gap-3 mb-4">
-                                        <div className="bg-neutral-100/80 dark:bg-neutral-700/50 p-3 rounded-lg text-center border border-neutral-200/50 dark:border-neutral-600/30">
-                                            <p className="text-xs text-neutral-500">Average</p>
-                                            <div className={`text-2xl font-bold ${averageRating === 'N/A' ? 'text-neutral-400' :
-                                                Number(averageRating) >= 4 ? 'text-red-500' :
-                                                    Number(averageRating) >= 3 ? 'text-orange-500' :
-                                                        Number(averageRating) >= 2 ? 'text-yellow-600' : 'text-green-600'
-                                                }`}>
-                                                {averageRating}
-                                            </div>
-                                        </div>
-                                        <div className="bg-neutral-100/80 dark:bg-neutral-700/50 p-3 rounded-lg text-center border border-neutral-200/50 dark:border-neutral-600/30">
-                                            <p className="text-xs text-neutral-500">Total</p>
-                                            <div className="text-2xl font-bold text-blue-600">{totalRatings}</div>
-                                        </div>
-                                    </div>
-
-                                    {denyCount > 0 && (
-                                        <div className="mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 rounded-lg">
-                                            <div className="flex justify-between items-center">
-                                                <span className="font-bold text-red-600 dark:text-red-400">
-                                                    {denyCount} Denial{denyCount !== 1 ? 's' : ''}
-                                                </span>
-                                                <button onClick={() => setSelectedCategory(selectedCategory === 'deny' ? null : 'deny')}>
-                                                    {selectedCategory === 'deny' ? <FaTimes className="text-neutral-400" /> : <FaAngleDown className="text-neutral-400" />}
-                                                </button>
-                                            </div>
-                                            {selectedCategory === 'deny' && denyData?.users && (
-                                                <div className="mt-2 pt-2 border-t border-red-200 dark:border-red-800">
-                                                    {denyData.users.map(u => (
-                                                        <div key={u.userId} className="text-sm py-0.5">{u.username}</div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    <div className="space-y-2">
-                                        {[4, 3, 2, 1].map(ratingValue => {
-                                            const rateData = ratingCounts.find(r => Number(r.rating) === ratingValue) || { count: 0, users: [] };
-                                            const percentage = totalRatings > 0 ? (rateData.count / totalRatings) * 100 : 0;
-                                            const colors: Record<number, string> = { 4: 'bg-red-500', 3: 'bg-orange-500', 2: 'bg-yellow-600', 1: 'bg-green-600' };
-                                            const textColors: Record<number, string> = { 4: 'text-red-500', 3: 'text-orange-500', 2: 'text-yellow-600', 1: 'text-green-600' };
-
-                                            return (
-                                                <div key={ratingValue} className="bg-neutral-100/80 dark:bg-neutral-700/50 rounded-lg p-2.5 border border-neutral-200/50 dark:border-neutral-600/30">
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className={`font-bold ${textColors[ratingValue]}`}>{ratingValue}</span>
-                                                            <div className="h-2 w-24 bg-neutral-300 dark:bg-neutral-600 rounded-full overflow-hidden">
-                                                                <div className={`h-2 ${colors[ratingValue]}`} style={{ width: `${percentage}%` }} />
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-xs text-neutral-500">{rateData.count}</span>
-                                                            {rateData.count > 0 && (
-                                                                <button onClick={() => setSelectedCategory(selectedCategory === ratingValue ? null : ratingValue)}>
-                                                                    {selectedCategory === ratingValue ? <FaTimes className="text-neutral-400 text-xs" /> : <FaAngleDown className="text-neutral-400 text-xs" />}
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    {selectedCategory === ratingValue && rateData.users?.length > 0 && (
-                                                        <div className="mt-2 pt-2 border-t border-neutral-200 dark:border-neutral-600">
-                                                            {rateData.users.map(u => (
-                                                                <div key={u.userId} className="text-sm py-0.5 text-neutral-600 dark:text-neutral-300">{u.username}</div>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </>
-                            )}
                         </motion.div>
                     )}
                 </AnimatePresence>

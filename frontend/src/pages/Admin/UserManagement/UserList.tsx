@@ -422,7 +422,7 @@ const UserList: React.FC<UserListProps> = ({ AVAILABLE_ROLES }) => {
                                 key={role}
                                 className={`px-2 py-0.5 rounded-md text-xs font-medium text-white ${getRoleColor(role)}`}
                               >
-                                {role}
+                                {role.slice(0, 1).toUpperCase() + role.slice(1)}
                               </span>
                             ))}
                           </div>
