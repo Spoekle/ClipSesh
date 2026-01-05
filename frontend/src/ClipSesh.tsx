@@ -2,6 +2,7 @@ import { useState, useEffect, ReactNode, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import PoweredByGrabs from './components/PoweredByGrabs';
 import EditorDash from './pages/EditorDash';
 import ClipViewer from './pages/Clips/Index'
 import ClipSearch from './pages/Search/ClipSearch';
@@ -287,6 +288,7 @@ function ClipSesh() {
             </Routes>
           </main>
           <Footer />
+          <PoweredByGrabs />
           <NotificationContainer />
         </div>
       </NotificationProvider>
