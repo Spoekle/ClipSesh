@@ -1,84 +1,47 @@
-version: '3.8'
-
 services:
   mongo:
-    image: mongo:latest
+    image: mongo:7
     container_name: clipsesh-mongo
-    ports:
-      - "27017:27017"
-    volumes:
-        - mongo-data:/data/db
-        - type: bind
-          source: ./mongo
-          target: /dump
-
-  api:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-      args:
-        - NODE_ENV=production
-      cache_from:
-        - clipsesh-api:latest
-    image: clipsesh-api
-    container_name: clipsesh-api
-    ports:
-      - "86:80"
-    volumes:
-      - type: bind
-        source: ./backend/src/uploads
-        target: /var/www/backend/src/uploads
-      - type: bind
-        source: ./backend/src/profilePictures
-        target: /var/www/backend/src/profilePictures
-      - type: bind
-        source: ./backend/src/download
-        target: /var/www/backend/src/download
-      - type: bind
-        source: ./backend/src/scripts
-        target: /var/www/backend/src/scripts
-      - type: bind
-        source: ./backend/src/download/tmp
-        target: /var/www/backend/src/download/tmp
-      - type: bind
-        source: ./backend/.env
-        target: /var/www/backend/.env
-    environment:
-      - VIRTUAL_HOST=api.spoekle.com
-      - NODE_ENV=production
-    env_file:
-      - ./backend/.env
     restart: unless-stopped
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        - NODE_ENV=production
-    container_name: clipsesh-frontend
     ports:
-      - "8080:80"
-    environment:
-      - NODE_ENV=production
-      - VIRTUAL_HOST=clipsesh.spoekle.com
-    restart: unless-stopped
-
-  discord-bot:
-    image: clipsesh-discord-bot
-    build:
-      context: ./discord-bot
-      dockerfile: Dockerfile
-      cache_from:
-        - clipsesh-discord-bot:latest
-    container_name: clipsesh-discord-bot
+      - "${MONGO_PORT:-27017}:27017"
     volumes:
-      - ./discord-bot/logs:/app/logs
-      - ./discord-bot/downloads:/app/downloads
+      - mongo-data:/data/db
+      - ./mongo:/dump
+    networks:
+      - clipsesh-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: clipsesh-app:latest
+    container_name: clipsesh-app
     restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
     depends_on:
-      api:
-        condition: service_started
+      - mongo
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+      - MONGODB_URI=mongodb://mongo:27017/clipsesh
+      - VIRTUAL_HOST=${VIRTUAL_HOST:-clipsesh.spoekle.com,api.spoekle.com}
+      - LETSENCRYPT_HOST=${VIRTUAL_HOST:-clipsesh.spoekle.com,api.spoekle.com}
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - ./uploads:/app/uploads
+      - ./profilePictures:/app/profilePictures
+      - ./download:/app/download
+    networks:
+      - clipsesh-network
 
 volumes:
   mongo-data:
+
+networks:
+  clipsesh-network:
+    driver: bridge

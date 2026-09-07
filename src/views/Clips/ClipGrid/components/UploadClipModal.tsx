@@ -1,0 +1,430 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FaTimes, FaUpload, FaCheck, FaSpinner, FaLink, FaFileVideo, FaInfoCircle } from 'react-icons/fa';
+import { useNotification } from '../../../../context/AlertContext';
+import { getVideoInfo, uploadClipFile, uploadClipLink } from '../../../../services/clipService';
+
+interface UploadClipModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+interface VideoInfo {
+  title: string;
+  author: string;
+  platform: string;
+}
+
+const UploadClipModal: React.FC<UploadClipModalProps> = ({ isOpen, onClose, onSuccess }) => {
+  const [title, setTitle] = useState('');
+  const [streamer, setStreamer] = useState('');
+  const [link, setLink] = useState('');
+  const [submitter, setSubmitter] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [fetchingInfo, setFetchingInfo] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { showSuccess, showError } = useNotification();
+  const [file, setFile] = useState<File | null>(null);
+  const [fileUploadProgress, setFileUploadProgress] = useState(0);
+  const [uploadMethod, setUploadMethod] = useState<'file' | 'link'>('file');
+  const [videoInfo, setVideoInfo] = useState<VideoInfo | null>(null);
+
+  // Debounce timer for URL fetching
+  const [urlDebounceTimer, setUrlDebounceTimer] = useState<NodeJS.Timeout | null>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const selectedFile = e.target.files[0];
+
+      // Check file type
+      const fileType = selectedFile.type;
+      if (!fileType.includes('video/')) {
+        showError('Please select a valid video file.');
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+        return;
+      }
+
+      // Check file size (limit to 100MB)
+      const maxSize = 100 * 1024 * 1024; // 100MB in bytes
+      if (selectedFile.size > maxSize) {
+        showError('File size exceeds 100MB limit. Please select a smaller file.');
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+        return;
+      }
+
+      setFile(selectedFile);
+
+      // Switch to file upload method if a file is selected
+      setUploadMethod('file');
+    }
+  };
+
+  const handleLinkChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newLink = e.target.value;
+    setLink(newLink);
+
+    // Switch to link upload method if user enters a URL
+    if (newLink) {
+      setUploadMethod('link');
+
+      // Clear any existing debounce timer
+      if (urlDebounceTimer) {
+        clearTimeout(urlDebounceTimer);
+      }
+
+      // Fetch info for supported video URLs
+      if (newLink.includes('youtube.com') || newLink.includes('youtu.be') ||
+        newLink.includes('twitch.tv') || newLink.includes('medal.tv') ||
+        newLink.includes('kick.com') || newLink.includes('tiktok.com') ||
+        /\.(mp4|webm|mov)$/i.test(newLink)) {
+
+        // Set a new debounce timer to fetch video info after 800ms of no typing
+        const timer = setTimeout(() => {
+          fetchVideoInfo(newLink);
+        }, 800);
+
+        setUrlDebounceTimer(timer);
+      } else {
+        setVideoInfo(null);
+      }
+    } else {
+      setVideoInfo(null);
+    }
+  };
+  const fetchVideoInfo = async (url: string) => {
+    try {
+      setFetchingInfo(true);
+      const info = await getVideoInfo(url);
+
+      setVideoInfo(info);
+
+      // Auto-fill title and streamer if they're empty
+      if (!title && info.title) {
+        setTitle(info.title);
+      }
+
+      if (!streamer && info.author) {
+        setStreamer(info.author);
+      }
+
+    } catch (error) {
+      console.error('Error fetching video info:', error);
+      setVideoInfo(null);
+    } finally {
+      setFetchingInfo(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!title || !streamer || !submitter) {
+      showError('Please fill in all required fields: Title, Streamer, and Submitter.');
+      return;
+    }
+
+    if (uploadMethod === 'file' && !file) {
+      showError('Please select a video file to upload.');
+      return;
+    }
+
+    if (uploadMethod === 'link' && !link) {
+      showError('Please enter a video link from YouTube, Twitch, or another platform.');
+      return;
+    }
+
+    try {
+      setUploading(true);
+
+      if (uploadMethod === 'file' && file) {
+        // File upload
+        await uploadClipFile(
+          file,
+          title,
+          streamer,
+          submitter,
+          (percentCompleted) => setFileUploadProgress(percentCompleted)
+        );
+      } else {
+        // Link-based upload
+        await uploadClipLink(title, streamer, submitter, link);
+      }
+
+      showSuccess('Clip uploaded successfully!');
+      resetForm();
+      onSuccess();
+      onClose();
+    } catch (error) {
+      console.error('Error uploading clip:', error);
+      showError('Failed to upload clip. Please try again.');
+    } finally {
+      setUploading(false);
+      setFileUploadProgress(0);
+    }
+  };
+
+  const resetForm = () => {
+    setTitle('');
+    setStreamer('');
+    setLink('');
+    setSubmitter('');
+    setFile(null);
+    setFileUploadProgress(0);
+    setUploadMethod('file');
+    setVideoInfo(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    if (urlDebounceTimer) {
+      clearTimeout(urlDebounceTimer);
+    }
+  };
+
+  // Cleanup effect to clear the debounce timer when component unmounts
+  useEffect(() => {
+    return () => {
+      if (urlDebounceTimer) {
+        clearTimeout(urlDebounceTimer);
+      }
+    };
+  }, [urlDebounceTimer]);
+
+  const renderUploadMethodButtons = () => {
+    return (
+      <div className="flex justify-center mb-5">
+        <div className="inline-flex p-1 bg-[#141414] rounded-full border border-[#262626]" role="group">
+          <button
+            type="button"
+            onClick={() => setUploadMethod('file')}
+            className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-all ${uploadMethod === 'file'
+              ? 'bg-[#f23030] text-white shadow-sm'
+              : 'text-[#aaaaaa] hover:text-white'
+              } flex items-center`}
+            disabled={uploading}
+          >
+            <FaFileVideo className="mr-1.5" size={12} /> Upload File
+          </button>
+          <button
+            type="button"
+            onClick={() => setUploadMethod('link')}
+            className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-all ${uploadMethod === 'link'
+              ? 'bg-[#f23030] text-white shadow-sm'
+              : 'text-[#aaaaaa] hover:text-white'
+              } flex items-center`}
+            disabled={uploading}
+          >
+            <FaLink className="mr-1.5" size={12} /> Use Link
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  // Render video info preview when available
+  const renderVideoInfoPreview = () => {
+    if (!videoInfo) return null;
+
+    return (
+      <div className="mt-2.5 p-3 bg-[#141414] border border-[#262626] rounded-xl text-xs text-[#f1f1f1]">
+        <div className="flex items-start mb-2">
+          <FaInfoCircle className="text-[#f23030] mr-2 mt-0.5 shrink-0" size={13} />
+          <div>
+            <p className="font-semibold text-white">Video Information Retrieved:</p>
+            <p className="mt-1"><span className="text-[#aaaaaa]">Title:</span> {videoInfo.title}</p>
+            <p><span className="text-[#aaaaaa]">Creator:</span> {videoInfo.author}</p>
+            <p><span className="text-[#aaaaaa]">Platform:</span> {videoInfo.platform}</p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return createPortal(
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto p-4">
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-black/75 backdrop-blur-xs"
+            onClick={!uploading ? onClose : undefined}
+          />
+
+          {/* Modal */}
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="relative bg-[#181818] rounded-2xl shadow-2xl w-full max-w-lg z-10 border border-[#262626]"
+          >
+            {/* Header */}
+            <div className="flex justify-between items-center p-5 border-b border-[#262626]">
+              <h2 className="text-lg font-bold text-white flex items-center">
+                <div className="p-2 bg-[#f23030]/15 text-[#f23030] rounded-xl mr-3 border border-[#f23030]/30">
+                  <FaUpload size={14} />
+                </div>
+                Upload Clip
+              </h2>
+              {!uploading && (
+                <button
+                  onClick={onClose}
+                  className="p-1.5 text-[#aaaaaa] hover:text-white hover:bg-[#202020] rounded-lg transition-colors"
+                >
+                  <FaTimes size={16} />
+                </button>
+              )}
+            </div>
+
+            {/* Body */}
+            <div className="p-6 text-[#e6e6e6] max-h-[70vh] overflow-y-auto">
+              {renderUploadMethodButtons()}
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {uploadMethod === 'link' && (
+                  <div>
+                    <label className="block mb-2 text-sm font-medium text-[#b3b3b3]">
+                      Video Link *
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="url"
+                        value={link}
+                        onChange={handleLinkChange}
+                        className="input w-full rounded-[10px]"
+                        placeholder="YouTube, Twitch, or other video platform URL"
+                        disabled={uploading}
+                        required={uploadMethod === 'link'}
+                      />
+                      {fetchingInfo && (
+                        <div className="absolute right-3.5 top-3">
+                          <FaSpinner className="animate-spin text-[#f23030]" />
+                        </div>
+                      )}
+                    </div>
+                    <p className="mt-1.5 text-xs text-[#626262]">
+                      Supported: YouTube videos, basic info for Twitch/Medal.tv/Kick/TikTok, and direct video links (.mp4, .webm, .mov). Note: Only YouTube and direct video files can be downloaded automatically.
+                    </p>
+                    {renderVideoInfoPreview()}
+                  </div>
+                )}
+
+                {uploadMethod === 'file' && (
+                  <div>
+                    <label className="block mb-2 text-sm font-medium text-[#b3b3b3]">Video File *</label>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileChange}
+                      className="input w-full text-sm text-[#b3b3b3] file:mr-3 file:py-2 file:px-3.5
+                      file:rounded-[8px] file:border-0 file:text-sm file:font-semibold
+                      file:bg-[#f23030]/15 file:text-[#f23030]
+                      hover:file:bg-[#f23030]/25 file:transition-colors cursor-pointer"
+                      accept="video/*"
+                      disabled={uploading}
+                      required={uploadMethod === 'file'}
+                    />
+                    <p className="mt-1.5 text-xs text-[#626262]">
+                      Max size: 100MB. Supported formats: MP4, WebM, MOV
+                    </p>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-[#b3b3b3]">Title *</label>
+                  <input
+                    type="text"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className="input w-full rounded-[10px]"
+                    placeholder="Enter clip title"
+                    required
+                    disabled={uploading}
+                  />
+                </div>
+
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-[#b3b3b3]">Streamer *</label>
+                  <input
+                    type="text"
+                    value={streamer}
+                    onChange={(e) => setStreamer(e.target.value)}
+                    className="input w-full rounded-[10px]"
+                    placeholder="Enter streamer name"
+                    required
+                    disabled={uploading}
+                  />
+                </div>
+
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-[#b3b3b3]">Submitter *</label>
+                  <input
+                    type="text"
+                    value={submitter}
+                    onChange={(e) => setSubmitter(e.target.value)}
+                    className="input w-full rounded-[10px]"
+                    placeholder="Enter submitter name"
+                    required
+                    disabled={uploading}
+                  />
+                </div>
+
+                {uploading && fileUploadProgress > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Uploading...</span>
+                      <span>{fileUploadProgress}%</span>
+                    </div>
+                    <div className="w-full bg-[#141414] border border-[#262626] rounded-full h-1.5">
+                      <div className="bg-[#f23030] h-1.5 rounded-full transition-all" style={{ width: `${fileUploadProgress}%` }}></div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-end space-x-2.5 pt-4 border-t border-[#262626] mt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetForm();
+                      onClose();
+                    }}
+                    className="px-4 py-2 text-xs font-semibold rounded-full bg-[#202020] hover:bg-[#262626] text-[#aaaaaa] hover:text-[#f1f1f1] transition-colors"
+                    disabled={uploading}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-xs font-semibold rounded-full bg-[#f23030] hover:bg-[#d92626] text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
+                    disabled={uploading}
+                  >
+                    {uploading ? (
+                      <>
+                        <FaSpinner className="animate-spin text-xs" /> <span>Uploading...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FaCheck className="text-xs" /> <span>Upload Clip</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>,
+    document.body
+  );
+};
+
+export default UploadClipModal;

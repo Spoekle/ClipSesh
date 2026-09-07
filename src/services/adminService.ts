@@ -1,0 +1,538 @@
+import { safeLocalStorage } from '@/utils/storage';
+import axios from 'axios';
+import { 
+  User, 
+  Clip, 
+  Rating, 
+  Zip, 
+  CreateUserFormData,
+  AdminConfig,
+  AdminStats,
+  ConfigResponse,
+  ProcessClipsRequest,
+  ProcessJobStatus,
+  Report,
+  ReportResponse,
+  ReportUpdateRequest,
+  ReportMessage,
+  SendMessageRequest,
+} from '../types/adminTypes';
+
+const backendUrl = (process.env.NEXT_PUBLIC_BACKEND_URL || '') || 'https://api.spoekle.com';
+
+// Utility function to get auth headers
+const getAuthHeaders = () => {
+  const token = safeLocalStorage.getItem('token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
+/**
+ * User Management
+ */
+
+// Fetch all users
+export const getAllUsers = async (): Promise<User[]> => {
+  try {
+    const response = await axios.get<User[]>(`${backendUrl}/api/users`, {
+      headers: getAuthHeaders()
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error('Error fetching users:', error);
+    throw new Error(error.response?.data?.message || 'Failed to fetch users');
+  }
+};
+
+// Create a new user
+export const createUser = async (userData: CreateUserFormData & { status: string }): Promise<void> => {
+  try {
+    await axios.post(`${backendUrl}/api/admin/create-user`, userData, {
+      headers: getAuthHeaders()
+    });
+  } catch (error: any) {
+    console.error('Error creating user:', error);
+    throw new Error(error.response?.data?.message || 'Failed to create user');
+  }
+};
+
+// Update user information
+export const updateUser = async (userId: string, updateData: Partial<User>): Promise<void> => {
+  try {
+    await axios.put(`${backendUrl}/api/admin/users/${userId}`, updateData, {
+      headers: getAuthHeaders()
+    });
+  } catch (error: any) {
+    console.error('Error updating user:', error);
+    throw new Error(error.response?.data?.message || 'Failed to update user');
+  }
+};
+
+// Delete a user
+export const deleteUser = async (userId: string): Promise<void> => {
+  try {
+    await axios.delete(`${backendUrl}/api/users/${userId}`, {
+      headers: getAuthHeaders()
+    });
+  } catch (error: any) {
+    console.error('Error deleting user:', error);
+    throw new Error(error.response?.data?.message || 'Failed to delete user');
+  }
+};
+
+// Approve a user
+export const approveUser = async (userId: string): Promise<void> => {
+  try {
+    await axios.post(`${backendUrl}/api/users/approve`, { userId }, {
+      headers: getAuthHeaders()
+    });
+  } catch (error: any) {
+    console.error('Error approving user:', error);
+    throw new Error(error.response?.data?.message || 'Failed to approve user');
+  }
+};
+
+// Disable a user
+export const disableUser = async (userId: string): Promise<void> => {
+  try {
+    await axios.post(`${backendUrl}/api/users/disable`, { userId }, {
+      headers: getAuthHeaders()
+    });
+  } catch (error: any) {
+    console.error('Error disabling user:', error);
+    throw new Error(error.response?.data?.message || 'Failed to disable user');
+  }
+};
+
+// Change user password
+export const changeUserPassword = async (userId: string, newPassword: string): Promise<void> => {
+  try {
+    await axios.put(`${backendUrl}/api/users/${userId}/password`, { password: newPassword }, {
+      headers: getAuthHeaders()
+    });
+  } catch (error: any) {
+    console.error('Error changing user password:', error);
+    throw new Error(error.response?.data?.message || 'Failed to change password');
+  }
+};
+
+/**
+ * Configuration Management
+ */
+
+// Fetch configuration
+export const getConfig = async (): Promise<ConfigResponse> => {
+  try {
+    const response = await axios.get<ConfigResponse>(`${backendUrl}/api/config`, {
+      headers: getAuthHeaders()
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error('Error fetching config:', error);
+    throw new Error(error.response?.data?.message || 'Failed to fetch configuration');
+  }
+};
+
+// Update configuration
+export const updateConfig = async (config: AdminConfig): Promise<void> => {
+  try {
+    await axios.put(`${backendUrl}/api/admin/config`, config, {
+      headers: getAuthHeaders()
+    });
+  } catch (error: any) {
+    console.error('Error updating config:', error);
+    throw new Error(error.response?.data?.message || 'Failed to update configuration');
+  }
+};
+
+// Update admin configuration specifically
+export const updateAdminConfig = async (adminConfig: { 
+  denyThreshold: number; 
+  clipChannelIds: string[];
+  blacklistedSubmitters?: Array<{username: string; userId: string}>;
+  blacklistedStreamers?: string[];
+}): Promise<void> => {
+  try {
+    await axios.put(`${backendUrl}/api/config/admin`, adminConfig, {
+      headers: getAuthHeaders()
+    });
+  } catch (error: any) {
+    console.error('Error updating admin config:', error);
+    throw new Error(error.response?.data?.message || 'Failed to update admin configuration');
+  }
+};
+
+// Update public configuration specifically
+export const updatePublicConfig = async (publicConfig: { latestVideoLink: string }): Promise<void> => {
+  try {
+    await axios.put(`${backendUrl}/api/config/public`, publicConfig, {
+      headers: getAuthHeaders()
+    });
+  } catch (error: any) {
+    console.error('Error updating public config:', error);
+    throw new Error(error.response?.data?.message || 'Failed to update public configuration');
+  }
+};
+
+/**
+ * Blacklist Management
+ */
+
+// Fetch blacklisted users with Discord info
+export const getBlacklistedUsers = async (): Promise<{
+  blacklistedSubmitters: Array<{
+    id: string;
+    username: string;
+    discriminator?: string;
+    global_name?: string;
+    avatar?: string;
+  }>;
+  blacklistedStreamers: string[];
+}> => {
+  try {
+    const response = await axios.get(`${backendUrl}/api/admin/blacklisted-users`, {
+      headers: getAuthHeaders()
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error('Error fetching blacklisted users:', error);
+    throw new Error(error.response?.data?.message || 'Failed to fetch blacklisted users');
+  }
+};
+
+/**
+ * Statistics
+ */
+
+// Fetch admin statistics
+export const getAdminStats = async (): Promise<AdminStats> => {
+  try {
+    const response = await axios.get<AdminStats>(`${backendUrl}/api/admin/stats`, {
+      headers: getAuthHeaders()
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error('Error fetching admin stats:', error);
+    throw new Error(error.response?.data?.message || 'Failed to fetch statistics');
+  }
+};
+
+/**
+ * Clips Management
+ */
+
+// Fetch clips with ratings
+export const getClipsWithRatings = async (params?: {
+  limit?: number;
+  sortBy?: string;
+  sortOrder?: string;
+  includeRatings?: boolean;
+}): Promise<{ clips: Clip[]; ratings: Record<string, Rating> }> => {
+  try {
+    const response = await axios.get(`${backendUrl}/api/clips`, {
+      params: {
+        limit: 1000,
+        sortBy: 'createdAt',
+        sortOrder: 'desc',
+        includeRatings: true,
+        ...params
+      },
+      headers: getAuthHeaders()
+    });
+
+    // Process the response data
+    let clipsData: Clip[] = [];
+    let ratingsData: Record<string, Rating> = {};
+    
+    if (response.data) {
+      // Check for clips in various response formats
+      if (Array.isArray(response.data)) {
+        clipsData = response.data;
+      } else if (response.data.clips && Array.isArray(response.data.clips)) {
+        clipsData = response.data.clips;
+      } else if (response.data.data && Array.isArray(response.data.data)) {
+        clipsData = response.data.data;
+      }
+      
+      // Check for included ratings in the response
+      if (response.data.ratings && typeof response.data.ratings === 'object') {
+        ratingsData = response.data.ratings;
+      }
+    }
+
+    // If ratings weren't included, fetch them separately
+    if (Object.keys(ratingsData).length === 0 && clipsData.length > 0) {
+      const ratingPromises = clipsData.map(clip =>
+        axios.get<Rating>(`${backendUrl}/api/ratings/${clip._id}`, { 
+          headers: getAuthHeaders() 
+        })
+      );
+      
+      const ratingResponses = await Promise.all(ratingPromises);
+      
+      ratingsData = ratingResponses.reduce<Record<string, Rating>>((acc, res, index) => {
+        acc[clipsData[index]._id] = res.data;
+        return acc;
+      }, {});
+    }
+
+    return {
+      clips: clipsData,
+      ratings: ratingsData
+    };
+  } catch (error: any) {
+    console.error('Error fetching clips and ratings:', error);
+    throw new Error(error.response?.data?.message || 'Failed to fetch clips and ratings');
+  }
+};
+
+// Delete all clips
+export const deleteAllClips = async (): Promise<void> => {
+  try {
+    await axios.delete(`${backendUrl}/api/clips`, {
+      headers: getAuthHeaders()
+    });
+  } catch (error: any) {
+    console.error('Error deleting all clips:', error);
+    throw new Error(error.response?.data?.message || 'Failed to delete all clips');
+  }
+};
+
+/**
+ * Zip Management
+ */
+
+// Fetch all zips
+export const getZips = async (): Promise<Zip[]> => {
+  try {
+    const response = await axios.get<Zip[]>(`${backendUrl}/api/zips`, {
+      headers: getAuthHeaders()
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error('Error fetching zips:', error);
+    throw new Error(error.response?.data?.message || 'Failed to fetch zips');
+  }
+};
+
+// Upload zip file
+export const uploadZip = async (
+  zipFile: File, 
+  clipAmount: number, 
+  season: string
+): Promise<void> => {
+  try {
+    const formData = new FormData();
+    formData.append('clipsZip', zipFile);
+    formData.append('clipAmount', clipAmount.toString());
+    formData.append('season', season);
+
+    await axios.post(`${backendUrl}/api/zips/upload`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        ...getAuthHeaders(),
+        'Cross-Origin-Opener-Policy': 'same-origin',
+      },
+    });
+  } catch (error: any) {
+    console.error('Error uploading zip:', error);
+    throw new Error(error.response?.data?.message || 'Failed to upload zip file');
+  }
+};
+
+// Delete a zip
+export const deleteZip = async (zipId: string): Promise<void> => {
+  try {
+    await axios.delete(`${backendUrl}/api/zips/${zipId}`, {
+      headers: getAuthHeaders()
+    });
+  } catch (error: any) {
+    console.error('Error deleting zip:', error);
+    throw new Error(error.response?.data?.message || 'Failed to delete zip');
+  }
+};
+
+// Process clips
+export const processClips = async (processData: ProcessClipsRequest): Promise<{ jobId: string }> => {
+  try {
+    const response = await axios.post(
+      `${backendUrl}/api/zips/process`,
+      processData,
+      { headers: getAuthHeaders() }
+    );
+    return response.data;
+  } catch (error: any) {
+    console.error('Error processing clips:', error);
+    throw new Error(error.response?.data?.message || 'Failed to process clips');
+  }
+};
+
+// Get process job status
+export const getProcessStatus = async (jobId: string): Promise<ProcessJobStatus> => {
+  try {
+    const response = await axios.get<ProcessJobStatus>(
+      `${backendUrl}/api/zips/process-status/${jobId}`,
+      { headers: getAuthHeaders() }
+    );
+    return response.data;
+  } catch (error: any) {
+    console.error('Error getting process status:', error);
+    throw new Error(error.response?.data?.message || 'Failed to get process status');
+  }
+};
+
+// Force complete a stuck processing job
+export const forceCompleteProcessJob = async (jobId: string): Promise<void> => {
+  try {
+    await axios.post(
+      `${backendUrl}/api/zips/force-complete/${jobId}`,
+      {},
+      { headers: getAuthHeaders() }
+    );
+  } catch (error: any) {
+    console.error('Error force completing job:', error);
+    throw new Error(error.response?.data?.message || 'Failed to force complete job');
+  }
+};
+
+/**
+ * Utility Functions
+ */
+
+// Transform ratings data to ensure consistent format
+export const transformRatings = (ratings: Record<string, any>): Record<string, any> => {
+  const transformed: Record<string, any> = {};
+  
+  Object.entries(ratings).forEach(([clipId, ratingData]) => {
+    if (ratingData && !ratingData.ratingCounts && ratingData.ratings) {
+      // Transform from raw ratings format to structured format
+      const ratingCounts = [
+        { 
+          rating: '1', 
+          count: Array.isArray(ratingData.ratings['1']) ? ratingData.ratings['1'].length : 0,
+          users: Array.isArray(ratingData.ratings['1']) ? ratingData.ratings['1'] : []
+        },
+        { 
+          rating: '2', 
+          count: Array.isArray(ratingData.ratings['2']) ? ratingData.ratings['2'].length : 0,
+          users: Array.isArray(ratingData.ratings['2']) ? ratingData.ratings['2'] : []
+        },
+        { 
+          rating: '3', 
+          count: Array.isArray(ratingData.ratings['3']) ? ratingData.ratings['3'].length : 0,
+          users: Array.isArray(ratingData.ratings['3']) ? ratingData.ratings['3'] : [] 
+        },
+        { 
+          rating: '4', 
+          count: Array.isArray(ratingData.ratings['4']) ? ratingData.ratings['4'].length : 0,
+          users: Array.isArray(ratingData.ratings['4']) ? ratingData.ratings['4'] : []
+        },
+        { 
+          rating: 'deny', 
+          count: Array.isArray(ratingData.ratings['deny']) ? ratingData.ratings['deny'].length : 0,
+          users: Array.isArray(ratingData.ratings['deny']) ? ratingData.ratings['deny'] : []
+        }
+      ];
+      
+      transformed[clipId] = {
+        ...ratingData,
+        ratingCounts: ratingCounts
+      };
+    } else {
+      // Already in the correct format
+      transformed[clipId] = ratingData;
+    }
+  });
+  
+  return transformed;
+};
+
+/**
+ * Report Management
+ */
+
+// Get all reports
+export const getReports = async (status?: string, page: number = 1, limit: number = 20): Promise<ReportResponse> => {
+  try {
+    const params = new URLSearchParams();
+    if (status && status !== 'all') {
+      params.append('status', status);
+    }
+    params.append('page', page.toString());
+    params.append('limit', limit.toString());
+
+    const response = await axios.get<ReportResponse>(`${backendUrl}/api/admin/reports?${params}`, {
+      headers: getAuthHeaders()
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error('Error fetching reports:', error);
+    throw new Error(error.response?.data?.message || 'Failed to fetch reports');
+  }
+};
+
+// Update report status
+export const updateReport = async (reportId: string, updateData: ReportUpdateRequest): Promise<Report> => {
+  try {
+    const response = await axios.patch<Report>(`${backendUrl}/api/admin/reports/${reportId}`, updateData, {
+      headers: getAuthHeaders()
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error('Error updating report:', error);
+    throw new Error(error.response?.data?.message || 'Failed to update report');
+  }
+};
+
+// Delete report
+export const deleteReport = async (reportId: string): Promise<void> => {
+  try {
+    await axios.delete(`${backendUrl}/api/admin/reports/${reportId}`, {
+      headers: getAuthHeaders()
+    });
+  } catch (error: any) {
+    console.error('Error deleting report:', error);
+    throw new Error(error.response?.data?.message || 'Failed to delete report');
+  }
+};
+
+/**
+ * Report Messaging
+ */
+
+// Get messages for a report
+export const getReportMessages = async (reportId: string): Promise<ReportMessage[]> => {
+  try {
+    const response = await axios.get<ReportMessage[]>(`${backendUrl}/api/admin/reports/${reportId}/messages`, {
+      headers: getAuthHeaders()
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error('Error fetching report messages:', error);
+    throw new Error(error.response?.data?.message || 'Failed to fetch report messages');
+  }
+};
+
+// Send message to a report
+export const sendReportMessage = async (reportId: string, messageData: SendMessageRequest): Promise<ReportMessage> => {
+  try {
+    const response = await axios.post<ReportMessage>(`${backendUrl}/api/admin/reports/${reportId}/messages`, messageData, {
+      headers: getAuthHeaders()
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error('Error sending report message:', error);
+    throw new Error(error.response?.data?.message || 'Failed to send message');
+  }
+};
+
+// Delete a report message (admin only)
+export const deleteReportMessage = async (reportId: string, messageId: string): Promise<void> => {
+  try {
+    await axios.delete(`${backendUrl}/api/admin/reports/${reportId}/messages/${messageId}`, {
+      headers: getAuthHeaders()
+    });
+  } catch (error: any) {
+    console.error('Error deleting report message:', error);
+    throw new Error(error.response?.data?.message || 'Failed to delete message');
+  }
+};

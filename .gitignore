@@ -1,0 +1,41 @@
+# Next.js
+.next/
+out/
+
+# Dependencies
+node_modules/
+/.pnp
+.pnp.js
+
+# Production
+build/
+dist/
+
+# Environment
+.env
+.env*.local
+!.env.example
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Media / Uploads
+/uploads/*
+!/uploads/.gitkeep
+/profilePictures/*
+!/profilePictures/.gitkeep
+/download/*
+!/download/.gitkeep
+
+# OS
+.DS_Store
+*.pem
+
+# Other
+/legacy
