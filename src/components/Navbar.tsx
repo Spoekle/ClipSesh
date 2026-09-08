@@ -6,49 +6,38 @@ import {
   FaBars,
   FaUserCircle,
   FaFlag,
-  FaSun,
-  FaMoon,
   FaSnowflake,
   FaDiscord,
   FaYoutube,
   FaTwitter,
   FaGithub,
-  FaBell,
   FaChevronDown,
   FaTools,
 } from 'react-icons/fa';
-import { MdLogout, MdLogin, MdAdminPanelSettings, MdDashboard } from 'react-icons/md';
+import { MdLogout, MdLogin, MdAdminPanelSettings, MdDashboard, MdClose, MdHome, MdMovie, MdSearch, MdArchive } from 'react-icons/md';
 import { useNotification } from '../context/AlertContext';
-import logo from '../media/CC_Logo_250px.png';
 import LoginModal from './LoginModal';
 import { User } from '../types/adminTypes';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
-import { useUnreadCount } from '../hooks/useNotifications';
 import NotificationBadge from './Notification/NotificationBadge';
 import OfflineBanner from './common/OfflineBanner';
+import { getUserAvatarUrl, handleAvatarError } from '@/utils/generateAvatar';
 
 interface NavbarProps {
   user: User | null;
   setUser: React.Dispatch<React.SetStateAction<User | null>>;
-  onToggleSidebar: () => void;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ user, setUser, onToggleSidebar }) => {
+const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
   const isOnline = useOnlineStatus();
   const { showSuccess } = useNotification();
   const navigate = useNavigate();
   const location = useLocation();
-  const { data: unreadCount = 0 } = useUnreadCount();
 
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
   const [isToolsOpen, setIsToolsOpen] = useState<boolean>(false);
-
-  // Dark mode state
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    const savedTheme = safeLocalStorage.getItem('theme');
-    return savedTheme !== 'light';
-  });
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
 
   // Snow state (December / January)
   const [isSnowMonth] = useState(() => {
@@ -61,18 +50,6 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser, onToggleSidebar }) => {
     return savedSnow !== 'false';
   });
 
-  const toggleDarkMode = () => {
-    const newMode = !isDarkMode;
-    setIsDarkMode(newMode);
-    if (newMode) {
-      document.documentElement.classList.add('dark');
-      safeLocalStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      safeLocalStorage.setItem('theme', 'light');
-    }
-  };
-
   const toggleSnow = () => {
     const newSnow = !snow;
     setSnow(newSnow);
@@ -82,6 +59,7 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser, onToggleSidebar }) => {
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const toolsRef = useRef<HTMLDivElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
 
   const toggleLoginModal = (): void => {
     setIsLoginModalOpen(!isLoginModalOpen);
@@ -91,6 +69,7 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser, onToggleSidebar }) => {
     safeLocalStorage.removeItem('token');
     setUser(null);
     setIsDropdownOpen(false);
+    setIsMobileMenuOpen(false);
     showSuccess('Logged out successfully');
     navigate('/');
   };
@@ -104,6 +83,13 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser, onToggleSidebar }) => {
       if (toolsRef.current && !toolsRef.current.contains(e.target as Node)) {
         setIsToolsOpen(false);
       }
+      if (
+        mobileMenuRef.current &&
+        !mobileMenuRef.current.contains(e.target as Node) &&
+        !(e.target as HTMLElement).closest('.mobile-menu-toggle')
+      ) {
+        setIsMobileMenuOpen(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -112,22 +98,23 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser, onToggleSidebar }) => {
     };
   }, []);
 
-  // Close dropdowns on route change
+  // Close all menus on route change
   useEffect(() => {
     setIsDropdownOpen(false);
     setIsToolsOpen(false);
+    setIsMobileMenuOpen(false);
   }, [location.pathname]);
 
   const hasEditor = user && (user.roles.includes('admin') || user.roles.includes('editor'));
   const hasAdmin = user && user.roles.includes('admin');
-  const hasTools = hasEditor || hasAdmin || !!user;
+  const hasTools = hasEditor || hasAdmin;
 
   return (
     <>
       <OfflineBanner isVisible={!isOnline} />
 
       <header className="sticky top-0 z-40 w-full bg-[#0f0f0f]/95 backdrop-blur-md border-b border-[#262626] transition-colors">
-        <div className="max-w-[1200px] mx-auto px-4 sm:px-8 h-20 flex items-center justify-between gap-6">
+        <div className="max-w-300 mx-auto px-4 sm:px-8 h-20 flex items-center justify-between gap-6">
           {/* Left: Brand Logo & Title */}
           <div className="flex items-center gap-3">
             <NavLink
@@ -135,17 +122,17 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser, onToggleSidebar }) => {
               className="flex items-center gap-3 group transition-opacity hover:opacity-95"
             >
               <img
-                src={(logo as any)?.src || logo}
+                src="/CC_logo_250px.png"
                 alt="Cube Community Logo"
                 className="h-10 w-auto object-contain transition-transform group-hover:scale-105"
               />
               <div className="flex items-center gap-2">
-                <span className="font-bold text-xl tracking-tight text-[#f1f1f1] group-hover:text-[#f23030] transition-colors">
+                <span className="font-bold text-xl tracking-tight text-[#f1f1f1] group-hover:text-cc-red transition-colors">
                   ClipSesh
                 </span>
               </div>
               {process.env.NODE_ENV === 'development' && (
-                <span className="hidden sm:inline-block text-[10px] font-bold text-white bg-[#f23030] shadow-sm shadow-[#f23030]/30 rounded-[6px] px-1.5 py-0.5 ml-1">
+                <span className="hidden sm:inline-block text-[10px] font-bold text-white bg-cc-red shadow-sm shadow-cc-red/30 rounded-md px-1.5 py-0.5 ml-1">
                   DEV
                 </span>
               )}
@@ -182,46 +169,24 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser, onToggleSidebar }) => {
             </NavLink>
 
             <NavLink
-              to="/search"
+              to="/archive"
               className={({ isActive }) =>
                 `px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                  isActive
+                  isActive || location.pathname.startsWith('/archive') || location.pathname.startsWith('/search')
                     ? 'text-white font-semibold bg-[#222222]'
                     : 'text-[#aaaaaa] hover:text-white hover:bg-[#1a1a1a]'
                 }`
               }
             >
-              Search
+              Archive
             </NavLink>
 
-            {/* Notifications Link (if user logged in) */}
-            {user && (
-              <NavLink
-                to="/notifications"
-                className={({ isActive }) =>
-                  `relative px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                    isActive
-                      ? 'text-white font-semibold bg-[#222222]'
-                      : 'text-[#aaaaaa] hover:text-white hover:bg-[#1a1a1a]'
-                  }`
-                }
-              >
-                <FaBell size={13} />
-                <span>Notifications</span>
-                {unreadCount > 0 && (
-                  <span className="bg-[#f23030] text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full shadow-sm">
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </span>
-                )}
-              </NavLink>
-            )}
-
-            {/* Management / Tools Dropdown */}
+            {/* Management / Tools Dropdown (Only for Editor / Admin) */}
             {hasTools && (
               <div className="relative" ref={toolsRef}>
                 <button
                   onClick={() => setIsToolsOpen(!isToolsOpen)}
-                  className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                  className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 cursor-pointer ${
                     isToolsOpen
                       ? 'text-white font-semibold bg-[#222222]'
                       : 'text-[#aaaaaa] hover:text-white hover:bg-[#1a1a1a]'
@@ -261,16 +226,6 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser, onToggleSidebar }) => {
                           <span>Admin Portal</span>
                         </NavLink>
                       )}
-                      {user && (
-                        <NavLink
-                          to="/my-reports"
-                          onClick={() => setIsToolsOpen(false)}
-                          className="flex items-center gap-2.5 px-3.5 py-2 text-sm text-[#f1f1f1] hover:bg-[#222222] transition-colors"
-                        >
-                          <FaFlag size={14} className="text-[#aaaaaa]" />
-                          <span>My Reports</span>
-                        </NavLink>
-                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -278,7 +233,7 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser, onToggleSidebar }) => {
             )}
           </nav>
 
-          {/* Right Section: Socials + User Avatar / Sign In + Mobile Hamburger */}
+          {/* Right Section: Socials + Notification Bell + User Avatar / Sign In + Mobile Hamburger */}
           <div className="flex items-center gap-3 sm:gap-4">
             {/* Social Links */}
             <div className="hidden sm:flex items-center gap-1 border-r border-[#262626] pr-3 mr-1">
@@ -296,7 +251,7 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser, onToggleSidebar }) => {
                 target="_blank"
                 rel="noopener noreferrer"
                 title="YouTube"
-                className="p-2 text-[#aaaaaa] hover:text-[#f23030] hover:bg-[#1a1a1a] rounded-full transition-colors"
+                className="p-2 text-[#aaaaaa] hover:text-cc-red hover:bg-[#1a1a1a] rounded-full transition-colors"
               >
                 <FaYoutube size={18} />
               </a>
@@ -320,7 +275,7 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser, onToggleSidebar }) => {
               </a>
             </div>
 
-            {/* Notification Bell Dropdown */}
+            {/* Notification Bell Dropdown (Only next to profile) */}
             {user && (
               <NotificationBadge />
             )}
@@ -333,15 +288,13 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser, onToggleSidebar }) => {
                   aria-expanded={isDropdownOpen}
                   aria-haspopup="true"
                   aria-label="Open profile menu"
-                  className="flex items-center gap-2 p-1.5 rounded-full hover:bg-[#1a1a1a] transition-all focus:outline-none"
+                  className="flex items-center gap-2 p-1.5 rounded-full hover:bg-[#1a1a1a] transition-all focus:outline-none cursor-pointer"
                 >
                   <img
-                    src={
-                      user.profilePicture ||
-                      `https://ui-avatars.com/api/?name=${encodeURIComponent(user.username)}&background=random`
-                    }
+                    src={getUserAvatarUrl(user.username, user.profilePicture, 64)}
                     alt={user.username}
                     className="h-8 w-8 rounded-full object-cover ring-2 ring-[#262626]"
+                    onError={(e) => handleAvatarError(e, user.username, 64)}
                   />
                   <span className="hidden md:block font-medium text-sm text-[#f1f1f1] max-w-30 truncate">
                     {user.username}
@@ -362,12 +315,10 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser, onToggleSidebar }) => {
                       <div className="px-4 py-3 border-b border-[#262626]">
                         <div className="flex items-center gap-3">
                           <img
-                            src={
-                              user.profilePicture ||
-                              `https://ui-avatars.com/api/?name=${encodeURIComponent(user.username)}&background=random`
-                            }
+                            src={getUserAvatarUrl(user.username, user.profilePicture, 96)}
                             alt={user.username}
-                            className="h-10 w-10 rounded-full object-cover ring-2 ring-[#f23030]/40"
+                            className="h-10 w-10 rounded-full object-cover ring-2 ring-cc-red/40"
+                            onError={(e) => handleAvatarError(e, user.username, 96)}
                           />
                           <div className="min-w-0 flex-1">
                             <div className="font-semibold text-sm text-white truncate">
@@ -396,39 +347,22 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser, onToggleSidebar }) => {
                           onClick={() => setIsDropdownOpen(false)}
                           className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#f1f1f1] hover:bg-[#222222] transition-colors"
                         >
-                          <FaFlag size={17} className="text-[#aaaaaa]" />
+                          <FaFlag size={15} className="text-[#aaaaaa]" />
                           <span>My Reports</span>
                         </NavLink>
                       </div>
 
-                      {/* Appearance Options */}
-                      <div className="border-t border-[#262626] py-1">
-                        <button
-                          onClick={toggleDarkMode}
-                          className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-[#f1f1f1] hover:bg-[#222222] transition-colors"
-                        >
-                          <div className="flex items-center gap-3">
-                            {isDarkMode ? (
-                              <FaSun size={17} className="text-amber-400" />
-                            ) : (
-                              <FaMoon size={17} className="text-[#aaaaaa]" />
-                            )}
-                            <span>Appearance</span>
-                          </div>
-                          <span className="text-xs text-[#aaaaaa] capitalize">
-                            {isDarkMode ? 'Dark' : 'Light'}
-                          </span>
-                        </button>
-
-                        {isSnowMonth && (
+                      {/* Snow Effect (December / January) */}
+                      {isSnowMonth && (
+                        <div className="border-t border-[#262626] py-1">
                           <button
                             onClick={toggleSnow}
-                            className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-[#f1f1f1] hover:bg-[#222222] transition-colors"
+                            className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-[#f1f1f1] hover:bg-[#222222] transition-colors cursor-pointer"
                           >
                             <div className="flex items-center gap-3">
                               <FaSnowflake
                                 size={17}
-                                className={snow ? 'text-[#f23030]' : 'text-[#aaaaaa]'}
+                                className={snow ? 'text-cc-red' : 'text-[#aaaaaa]'}
                               />
                               <span>Snow Effect</span>
                             </div>
@@ -436,14 +370,14 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser, onToggleSidebar }) => {
                               {snow ? 'On' : 'Off'}
                             </span>
                           </button>
-                        )}
-                      </div>
+                        </div>
+                      )}
 
                       {/* Sign Out */}
                       <div className="border-t border-[#262626] pt-1">
                         <button
                           onClick={handleLogout}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rose-400 hover:bg-rose-500/10 transition-colors"
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
                         >
                           <MdLogout size={18} />
                           <span>Sign out</span>
@@ -456,23 +390,129 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser, onToggleSidebar }) => {
             ) : (
               <button
                 onClick={toggleLoginModal}
-                className="bg-[#f23030] hover:bg-[#d92222] text-white font-medium text-sm rounded-full px-4 py-2 flex items-center gap-2 shadow-sm transition-all active:scale-98"
+                className="bg-cc-red hover:bg-cc-red-hover text-white font-semibold text-xs rounded-xl px-4 py-2 flex items-center gap-2 shadow-sm transition-all cursor-pointer"
               >
-                <MdLogin size={17} />
+                <MdLogin size={16} />
                 <span>Sign In</span>
               </button>
             )}
 
             {/* Mobile Hamburger Menu Toggle */}
             <button
-              onClick={onToggleSidebar}
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               aria-label="Toggle navigation menu"
-              className="lg:hidden p-2 rounded-full hover:bg-[#1a1a1a] text-[#aaaaaa] hover:text-white transition-all focus:outline-none"
+              className="mobile-menu-toggle lg:hidden p-2 rounded-xl hover:bg-[#1a1a1a] text-[#aaaaaa] hover:text-white transition-all focus:outline-none cursor-pointer"
             >
-              <FaBars size={20} />
+              {isMobileMenuOpen ? <MdClose size={22} /> : <FaBars size={20} />}
             </button>
           </div>
         </div>
+
+        {/* Mobile Navigation Dropdown */}
+        <AnimatePresence>
+          {isMobileMenuOpen && (
+            <motion.div
+              ref={mobileMenuRef}
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="lg:hidden border-t border-[#262626] bg-[#121212] overflow-hidden"
+            >
+              <div className="px-4 py-3 space-y-1">
+                <NavLink
+                  to="/"
+                  end
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                      isActive
+                        ? 'bg-[#181818] text-cc-red font-semibold border-l-2 border-cc-red'
+                        : 'text-[#aaaaaa] hover:text-white hover:bg-[#181818]'
+                    }`
+                  }
+                >
+                  <MdHome size={18} />
+                  <span>Home</span>
+                </NavLink>
+
+                <NavLink
+                  to="/clips"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                      isActive
+                        ? 'bg-[#181818] text-cc-red font-semibold border-l-2 border-cc-red'
+                        : 'text-[#aaaaaa] hover:text-white hover:bg-[#181818]'
+                    }`
+                  }
+                >
+                  <MdMovie size={18} />
+                  <span>Clips</span>
+                </NavLink>
+
+                <NavLink
+                  to="/archive"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                      isActive || location.pathname.startsWith('/archive') || location.pathname.startsWith('/search')
+                        ? 'bg-[#181818] text-cc-red font-semibold border-l-2 border-cc-red'
+                        : 'text-[#aaaaaa] hover:text-white hover:bg-[#181818]'
+                    }`
+                  }
+                >
+                  <MdArchive size={18} />
+                  <span>Archive</span>
+                </NavLink>
+
+                {hasTools && (
+                  <>
+                    <div className="border-t border-[#262626] my-2 pt-2">
+                      <span className="text-[10px] font-bold text-[#717171] uppercase tracking-wider px-3.5">
+                        Tools
+                      </span>
+                    </div>
+
+                    {hasEditor && (
+                      <NavLink
+                        to="/editor"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className={({ isActive }) =>
+                          `flex items-center gap-3 px-3.5 py-2 rounded-xl text-sm font-medium transition-colors ${
+                            isActive
+                              ? 'bg-[#181818] text-cc-red font-semibold'
+                              : 'text-[#aaaaaa] hover:text-white hover:bg-[#181818]'
+                          }`
+                        }
+                      >
+                        <MdDashboard size={17} />
+                        <span>Editor Dashboard</span>
+                      </NavLink>
+                    )}
+
+                    {hasAdmin && (
+                      <NavLink
+                        to="/admin"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className={({ isActive }) =>
+                          `flex items-center gap-3 px-3.5 py-2 rounded-xl text-sm font-medium transition-colors ${
+                            isActive
+                              ? 'bg-[#181818] text-cc-red font-semibold'
+                              : 'text-[#aaaaaa] hover:text-white hover:bg-[#181818]'
+                          }`
+                        }
+                      >
+                        <MdAdminPanelSettings size={17} />
+                        <span>Admin Portal</span>
+                      </NavLink>
+                    )}
+                  </>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </header>
 
       {/* LoginModal */}
