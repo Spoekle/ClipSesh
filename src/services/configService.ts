@@ -1,7 +1,7 @@
 import { safeLocalStorage } from '@/utils/storage';
 import axios from 'axios';
 
-const backendUrl = (process.env.NEXT_PUBLIC_BACKEND_URL || '') || 'https://api.spoekle.com';
+const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 
 // Utility function to get auth headers
 const getAuthHeaders = () => {

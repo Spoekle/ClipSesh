@@ -1,7 +1,7 @@
 import { safeLocalStorage } from '@/utils/storage';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import io, { Socket } from 'socket.io-client';
-const backendUrl = (process.env.NEXT_PUBLIC_BACKEND_URL || '') || 'https://api.spoekle.com';
+const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 
 const useSocket = () => {
   const [isConnected, setIsConnected] = useState(false);

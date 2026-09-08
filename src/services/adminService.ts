@@ -18,7 +18,7 @@ import {
   SendMessageRequest,
 } from '../types/adminTypes';
 
-const backendUrl = (process.env.NEXT_PUBLIC_BACKEND_URL || '') || 'https://api.spoekle.com';
+const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 
 // Utility function to get auth headers
 const getAuthHeaders = () => {

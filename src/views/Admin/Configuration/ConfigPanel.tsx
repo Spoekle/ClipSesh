@@ -81,7 +81,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config }) => {
     setUserNotFound(false);
 
     try {
-      const backendUrl = (process.env.NEXT_PUBLIC_BACKEND_URL || '') || 'https://api.spoekle.com';
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
       const token = safeLocalStorage.getItem('token');
 
       const response = await fetch(`${backendUrl}/api/admin/discord-user/${userId}`, {

@@ -1,8 +1,8 @@
 import { safeLocalStorage } from '@/utils/storage';
 import axios from 'axios';
 import { Clip, Rating, RatingCount } from '../types/adminTypes';
-import { ClipQueryParams, ClipResponse } from '../types/clipTypes';
-const backendUrl = (process.env.NEXT_PUBLIC_BACKEND_URL || '') || 'https://api.spoekle.com';
+import { ClipQueryParams, ClipResponse, ArchiveSeasonSection } from '../types/clipTypes';
+const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 
 // Utility function to get auth headers
 const getAuthHeaders = () => {
@@ -455,5 +455,52 @@ export const deleteReplyFromComment = async (
   } catch (error) {
     console.error('Error deleting reply:', error);
     throw new Error('Failed to delete reply');
+  }
+};
+
+/**
+ * Record a view for a clip (debounced on server per IP)
+ */
+export const recordClipView = async (
+  clipId: string
+): Promise<{ success: boolean; views: number; counted: boolean }> => {
+  try {
+    const headers = getAuthHeaders();
+    const response = await axios.post(
+      `${backendUrl}/api/clips/${clipId}/view`,
+      {},
+      { headers }
+    );
+    return response.data;
+  } catch (error) {
+    console.warn('Failed to record clip view:', error);
+    return { success: false, views: 0, counted: false };
+  }
+};
+
+/**
+ * Fetch all available seasons and years with clip counts, zips, and thumbnails
+ */
+export const getArchiveSeasons = async (): Promise<{
+  currentSeason: { season: string; year: number };
+  sections: ArchiveSeasonSection[];
+  totalClips: number;
+}> => {
+  try {
+    const headers = getAuthHeaders();
+    const response = await axios.get(`${backendUrl}/api/archive/seasons`, { headers });
+    const sections = response.data.sections || [];
+    const calculatedTotal = sections.reduce(
+      (acc: number, s: ArchiveSeasonSection) => acc + (s.clipCount || 0),
+      0
+    );
+    return {
+      currentSeason: response.data.currentSeason || { season: 'Summer', year: 2026 },
+      sections,
+      totalClips: typeof response.data.totalClips === 'number' ? response.data.totalClips : calculatedTotal,
+    };
+  } catch (error) {
+    console.error('Error fetching archive seasons:', error);
+    throw new Error('Failed to fetch archive seasons');
   }
 };

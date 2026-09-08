@@ -62,7 +62,7 @@ const ZipManager: React.FC<ZipManagerProps> = ({
     setTotalChunks(0);
     try {
       const token = safeLocalStorage.getItem('token') || '';
-      const backendUrl = (process.env.NEXT_PUBLIC_BACKEND_URL || '') || 'https://api.spoekle.com';
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 
       const success = await uploadFileInChunks({
         file: zipFile,

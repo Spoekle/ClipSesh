@@ -1,6 +1,6 @@
 import mongoose, { Document, Model, Schema } from 'mongoose';
 
-const backendUrl = process.env.BACKEND_URL || '';
+const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || '';
 
 export const headsets = [
   'Oculus Quest',

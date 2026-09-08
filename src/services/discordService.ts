@@ -1,5 +1,5 @@
 import { safeLocalStorage } from '@/utils/storage';
-const backendUrl = (process.env.NEXT_PUBLIC_BACKEND_URL || '') || 'https://api.spoekle.com';
+const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 
 /**
  * Start Discord OAuth linking process

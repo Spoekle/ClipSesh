@@ -2,7 +2,7 @@ import { safeLocalStorage } from '@/utils/storage';
 import axios from 'axios';
 import { ProfileUpdateData, BasicUserInfo } from '../types/profileTypes';
 import { User } from '../types/adminTypes';
-const backendUrl = (process.env.NEXT_PUBLIC_BACKEND_URL || '') || 'https://api.spoekle.com';
+const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 
 // Interface for update user data
 interface UpdateUserData {

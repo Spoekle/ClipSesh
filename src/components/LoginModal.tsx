@@ -1,7 +1,7 @@
 import { safeLocalStorage } from '@/utils/storage';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-const apiUrl = (process.env.NEXT_PUBLIC_BACKEND_URL || '') || 'https://api.spoekle.com';
+const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TbLoader2 } from "react-icons/tb";
 import { FaDiscord, FaTimes, FaEnvelope, FaLock, FaUser } from "react-icons/fa";

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Helmet } from '@/lib/helmetCompat';
 import LoadingBar from 'react-top-loading-bar';
-import background from '../../media/admin.jpg';
 import {
   FaUsers,
   FaCog,
@@ -580,7 +579,7 @@ function AdminDash() {
         <div
           className="w-full h-full bg-cover bg-center filter blur-[8px] opacity-20 transform scale-105"
           style={{
-            backgroundImage: `url(${background})`,
+            backgroundImage: `url(/media/admin.jpg)`,
             maskImage: 'linear-gradient(180deg, rgba(0,0,0,1) 0%, rgba(15,15,15,0) 100%)',
             WebkitMaskImage: 'linear-gradient(180deg, rgba(0,0,0,1) 0%, rgba(15,15,15,0) 100%)',
           }}

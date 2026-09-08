@@ -4,7 +4,7 @@ import { UserNotification, UserNotificationResponse, UnreadCountResponse } from 
 import { getCurrentUser } from './userService';
 import { User } from '../types/adminTypes';
 
-const backendUrl = (process.env.NEXT_PUBLIC_BACKEND_URL || '') || 'https://api.spoekle.com';
+const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 
 // Helper function to get auth headers
 const getAuthHeaders = () => {
