@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { Link } from '@/lib/routerCompat';
 import { FaHome } from 'react-icons/fa';
+import { getUserAvatarUrl } from '@/utils/generateAvatar';
 
 interface ProfileViewerHeaderProps {
   username?: string;
@@ -8,51 +9,50 @@ interface ProfileViewerHeaderProps {
 }
 
 const ProfileViewerHeader = ({ username, profilePicture }: ProfileViewerHeaderProps) => {
+  const ambientAvatar = getUserAvatarUrl(username, profilePicture, 128);
+
   return (
-    <div className="relative py-8 md:py-10 border-b border-[#263238] bg-radial from-[#161d21]/60 via-[#0b0b0b] to-[#0b0b0b] overflow-hidden">
-      {/* Ambient profile glow in background if profile pic is present */}
-      {profilePicture && (
+    <div className="relative py-7 md:py-8 border-b border-[#262626] bg-[#121212]/90 overflow-hidden">
+      {/* Ambient profile glow in background */}
+      {ambientAvatar && (
         <div 
-          className="absolute inset-0 opacity-15 blur-3xl scale-125 pointer-events-none"
+          className="absolute inset-0 opacity-10 blur-3xl scale-125 pointer-events-none"
           style={{
-            backgroundImage: `url(${profilePicture})`,
+            backgroundImage: `url(${ambientAvatar})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}
         />
       )}
       
-      <div className="relative max-w-[1200px] mx-auto px-4 sm:px-8">
-        {/* CC Breadcrumbs */}
-        <div className="flex items-center gap-2 text-xs text-[#8b98a5] mb-4">
-          <Link to="/" className="hover:text-white transition-colors flex items-center gap-1.5">
-            <FaHome size={12} className="text-[#8b98a5]" />
-            Home
+      <div className="relative max-w-300 mx-auto px-4 sm:px-8">
+        {/* Breadcrumbs */}
+        <nav className="flex items-center gap-2 text-xs text-[#717171] mb-3">
+          <Link to="/" className="hover:text-[#f1f1f1] transition-colors flex items-center gap-1.5">
+            <FaHome size={11} className="text-[#717171]" />
+            <span>Home</span>
           </Link>
-          <span className="text-[#626262]">/</span>
-          <span className="text-[#8b98a5]">Profile</span>
+          <span className="text-[#333333] select-none">/</span>
+          <span className="text-[#aaaaaa]">Profile</span>
           {username && (
             <>
-              <span className="text-[#626262]">/</span>
-              <span className="text-white font-medium truncate max-w-[200px]">{username}</span>
+              <span className="text-[#333333] select-none">/</span>
+              <span className="text-[#f1f1f1] font-medium truncate max-w-50">{username}</span>
             </>
           )}
-        </div>
+        </nav>
 
-        {/* CC Page Header with signature red underline */}
+        {/* Page Header */}
         <motion.div
-          initial={{ opacity: 0, y: 15 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
           className="inline-block"
         >
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-white">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-[#f1f1f1]">
             {username ? `${username}'s Profile` : 'User Profile'}
           </h1>
-          <div 
-            className="mt-2 h-[2.3px] bg-[#f23030] rounded-full" 
-            style={{ width: '60%' }} 
-          />
+          <div className="mt-2 w-12 h-0.5 bg-cc-red rounded-full" />
         </motion.div>
       </div>
     </div>
@@ -60,5 +60,3 @@ const ProfileViewerHeader = ({ username, profilePicture }: ProfileViewerHeaderPr
 };
 
 export default ProfileViewerHeader;
-
-

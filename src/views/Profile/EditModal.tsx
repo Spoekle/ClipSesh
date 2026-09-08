@@ -27,6 +27,7 @@ import { useUpdateMyBasicInfo, useUpdateMyBasicInfoWithPassword, useUploadProfil
 import { useLinkDiscordAccount, useUnlinkDiscordAccount } from '../../hooks/useDiscord';
 import { PublicProfile, ProfileFormData, BasicUserInfo, VR_HEADSETS } from '../../types/profileTypes';
 import { useNotification } from '../../context/AlertContext';
+import { getUserAvatarUrl, handleAvatarError } from '../../utils/generateAvatar';
 
 type TabType = 'user-info' | 'profile' | 'social-links' | 'privacy';
 
@@ -589,9 +590,10 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSuccess 
                           <div className="flex items-center space-x-8">
                             <div className="relative group">
                               <img
-                                src={profilePicturePreview || profile?.profilePicture}
+                                src={profilePicturePreview || getUserAvatarUrl(profile?.username, profile?.profilePicture, 128)}
                                 alt="Profile"
-                                className="w-24 h-24 rounded-2xl object-cover border-2 border-[#262626] group-hover:border-[#f23030] transition-all duration-300 shadow-lg group-hover:shadow-xl"
+                                className="w-24 h-24 rounded-2xl object-cover border-2 border-[#262626] group-hover:border-cc-red transition-all duration-300 shadow-lg group-hover:shadow-xl"
+                                onError={(e) => handleAvatarError(e, profile?.username, 128)}
                               />
                               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-2">
                                 <span className="text-white text-xs font-medium">Change</span>

@@ -48,11 +48,9 @@ const ProfilePage: React.FC<{ currentUser?: User }> = ({ currentUser }) => {
   const [viewSwitchTimestamp, setViewSwitchTimestamp] = useState<number>(Date.now());
 
   const handleViewChange = (view: 'profile' | 'stats') => {
-    console.log('Switching view from', currentView, 'to', view);
     setCurrentView(view);
     safeLocalStorage.setItem('profileViewPreference', view);
     setViewSwitchTimestamp(Date.now());
-    console.log('View switched to', view, 'timestamp:', Date.now());
   };
 
   useEffect(() => {
@@ -79,11 +77,11 @@ const ProfilePage: React.FC<{ currentUser?: User }> = ({ currentUser }) => {
   const hasClipteamRole = user?.roles?.includes('clipteam') || false;
 
   const fadeIn = {
-    hidden: { opacity: 0, y: 20 },
+    hidden: { opacity: 0, y: 15 },
     visible: {
       opacity: 1,
       y: 0,
-      transition: { duration: 0.6 }
+      transition: { duration: 0.4 }
     }
   };
 
@@ -92,49 +90,44 @@ const ProfilePage: React.FC<{ currentUser?: User }> = ({ currentUser }) => {
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.1
+        staggerChildren: 0.08
       }
     }
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#0e1315] transition-colors duration-200">
+      <div className="min-h-screen bg-[#0f0f0f] transition-colors duration-200 flex flex-col justify-center items-center">
         <LoadingBar
           color="#f23030"
           progress={progress}
           onLoaderFinished={() => setProgress(0)}
           shadow={true}
-          height={4}
+          height={3}
         />
-        <div className="flex items-center justify-center min-h-screen">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-            className="w-16 h-16 border-4 border-[#263238] border-t-[#f23030] rounded-full"
-          />
-        </div>
+        <div className="animate-spin rounded-full h-10 w-10 border-2 border-[#262626] border-t-cc-red"></div>
+        <span className="mt-3 text-xs text-[#aaaaaa]">Loading profile...</span>
       </div>
     );
   }
 
   if (error || !profile) {
     return (
-      <div className="min-h-screen bg-[#0b0b0b] transition-colors duration-200">
-        <div className="max-w-[1200px] mx-auto px-4 sm:px-8 py-12">
+      <div className="min-h-screen bg-[#0f0f0f] text-[#f1f1f1] py-16">
+        <div className="max-w-300 mx-auto px-4 sm:px-8">
           <motion.div
             initial="hidden"
             animate="visible"
             variants={fadeIn}
-            className="text-center max-w-md mx-auto"
+            className="text-center max-w-md mx-auto bg-[#181818] border border-[#262626] rounded-2xl p-8 shadow-sm"
           >
-            <div className="w-24 h-24 bg-[#161d21] rounded-[10px] flex items-center justify-center mx-auto mb-6 border border-[#263238]">
-              <FaExclamationTriangle className="text-4xl text-amber-500" />
+            <div className="w-16 h-16 bg-[#141414] rounded-2xl flex items-center justify-center mx-auto mb-5 border border-[#262626] text-[#eab308]">
+              <FaExclamationTriangle size={24} />
             </div>
-            <h1 className="text-3xl font-bold text-[#e6e6e6] mb-4">
+            <h1 className="text-xl font-bold text-[#f1f1f1] mb-2">
               Profile Not Found
             </h1>
-            <p className="text-[#b3b3b3] mb-8 leading-relaxed">
+            <p className="text-xs text-[#aaaaaa] mb-6 leading-relaxed">
               {error?.message || 'The profile you are looking for does not exist or is private.'}
             </p>
             <Breadcrumbs
@@ -154,8 +147,8 @@ const ProfilePage: React.FC<{ currentUser?: User }> = ({ currentUser }) => {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-      className="min-h-screen bg-[#0b0b0b] transition-all duration-300"
+      transition={{ duration: 0.4 }}
+      className="min-h-screen bg-[#0f0f0f] text-[#f1f1f1]"
     >
       <Helmet>
         <title>{profile.username} - Profile | ClipSesh</title>
@@ -170,7 +163,7 @@ const ProfilePage: React.FC<{ currentUser?: User }> = ({ currentUser }) => {
         progress={progress}
         onLoaderFinished={() => setProgress(0)}
         shadow={true}
-        height={4}
+        height={3}
       />
 
       {/* Hero Header */}
@@ -178,14 +171,14 @@ const ProfilePage: React.FC<{ currentUser?: User }> = ({ currentUser }) => {
 
       {/* Main Content */}
       <div className="relative overflow-hidden">
-        <div className="relative max-w-[1200px] mx-auto px-4 sm:px-8 pt-8 pb-20">
+        <div className="relative max-w-300 mx-auto px-4 sm:px-8 pt-6 pb-20">
           <motion.div
             initial="hidden"
             animate="visible"
             variants={stagger}
-            className="space-y-10"
+            className="space-y-6"
           >
-            {/* Profile Header */}
+            {/* Profile Header Card */}
             <motion.div variants={fadeIn}>
               <ProfileHeader
                 profile={profile}
@@ -195,10 +188,9 @@ const ProfilePage: React.FC<{ currentUser?: User }> = ({ currentUser }) => {
             </motion.div>
 
             {/* Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 xl:grid-cols-4 gap-6 lg:gap-8">
-              {/* Left Sidebar - Social */}
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              {/* Left Sidebar - Social Links */}
               <div className="lg:col-span-1 space-y-6">
-                {/* Social Links */}
                 {(profile.profile?.website || Object.values(profile.profile?.socialLinks || {}).some(link => link)) && (
                   <motion.div variants={fadeIn}>
                     <SocialLinks
@@ -209,31 +201,33 @@ const ProfilePage: React.FC<{ currentUser?: User }> = ({ currentUser }) => {
                 )}
               </div>
 
-              {/* Main Content - Clips & Stats */}
-              <div className="lg:col-span-3 space-y-6 lg:space-y-8">
-                {/* Tab Navigation - Only show if user has access to stats */}
+              {/* Main Content Area - Clips & Stats */}
+              <div className={`${(profile.profile?.website || Object.values(profile.profile?.socialLinks || {}).some(link => link)) ? 'lg:col-span-3' : 'lg:col-span-4'} space-y-6`}>
+                {/* Tab Navigation for Reviewers */}
                 {isOwnProfile && user && hasClipteamRole && (
                   <motion.div variants={fadeIn}>
-                    <div className="inline-flex p-1 bg-[#161d21] rounded-[10px] border border-[#263238] w-full">
+                    <div className="inline-flex p-1 bg-[#141414] rounded-xl border border-[#262626] w-full sm:w-auto">
                       <button
                         onClick={() => handleViewChange('profile')}
-                        className={`flex-1 py-2.5 px-4 text-xs font-semibold rounded-[8px] transition-all duration-150 flex items-center justify-center gap-2 ${currentView === 'profile'
-                          ? 'bg-[#f23030] text-white'
-                          : 'text-[#b3b3b3] hover:text-[#e6e6e6]'
-                          }`}
+                        className={`flex-1 sm:flex-initial py-2 px-5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                          currentView === 'profile'
+                            ? 'bg-cc-red text-white shadow-sm'
+                            : 'text-[#aaaaaa] hover:text-[#f1f1f1]'
+                        }`}
                       >
-                        <FaUser className="w-3.5 h-3.5" />
-                        Profile View
+                        <FaUser size={12} />
+                        <span>Profile View</span>
                       </button>
                       <button
                         onClick={() => handleViewChange('stats')}
-                        className={`flex-1 py-2.5 px-4 text-xs font-semibold rounded-[8px] transition-all duration-150 flex items-center justify-center gap-2 ${currentView === 'stats'
-                          ? 'bg-[#f23030] text-white'
-                          : 'text-[#b3b3b3] hover:text-[#e6e6e6]'
-                          }`}
+                        className={`flex-1 sm:flex-initial py-2 px-5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                          currentView === 'stats'
+                            ? 'bg-cc-red text-white shadow-sm'
+                            : 'text-[#aaaaaa] hover:text-[#f1f1f1]'
+                        }`}
                       >
-                        <FaChartBar className="w-3.5 h-3.5" />
-                        Stats View
+                        <FaChartBar size={12} />
+                        <span>Stats View</span>
                       </button>
                     </div>
                   </motion.div>
@@ -254,7 +248,7 @@ const ProfilePage: React.FC<{ currentUser?: User }> = ({ currentUser }) => {
 
                 {currentView === 'stats' && (
                   <>
-                    {/* Stats Section - Only for logged-in users with clipteam role */}
+                    {/* Stats Section */}
                     {isOwnProfile && user && hasClipteamRole && (
                       <StatsSection
                         user={user}

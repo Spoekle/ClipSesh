@@ -12,8 +12,9 @@ import {
   FaVrCardboard
 } from 'react-icons/fa';
 import { PublicProfile } from '../../../types/profileTypes';
-const backendUrl = (process.env.NEXT_PUBLIC_BACKEND_URL || '') || 'https://api.spoekle.com';
+import { getUserAvatarUrl, handleAvatarError } from '../../../utils/generateAvatar';
 
+const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 
 interface ProfileHeaderProps {
   profile: PublicProfile;
@@ -28,20 +29,20 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
 }) => {
   const getRoleIcon = (roles: string[]) => {
     const role = roles[0];
-    if (role === 'admin') return <FaCrown className="text-red-500" />;
-    if (role === 'editor') return <FaShieldAlt className="text-green-500" />;
-    if (role === 'clipteam') return <FaStar className="text-[#f23030]" />;
-    if (role === 'uploader') return <FaUser className="text-yellow-500" />;
-    return <FaUser className="text-neutral-500" />;
+    if (role === 'admin') return <FaCrown className="text-cc-red" />;
+    if (role === 'editor') return <FaShieldAlt className="text-[#22c55e]" />;
+    if (role === 'clipteam') return <FaStar className="text-[#eab308]" />;
+    if (role === 'uploader') return <FaUser className="text-[#38bdf8]" />;
+    return <FaUser className="text-[#aaaaaa]" />;
   };
 
   const getRoleColor = (roles: string[]) => {
     const role = roles[0];
-    if (role === 'admin') return 'text-red-500';
-    if (role === 'editor') return 'text-green-500';
-    if (role === 'clipteam') return 'text-[#f23030]';
-    if (role === 'uploader') return 'text-yellow-500';
-    return 'text-neutral-500';
+    if (role === 'admin') return 'text-cc-red';
+    if (role === 'editor') return 'text-[#22c55e]';
+    if (role === 'clipteam') return 'text-[#eab308]';
+    if (role === 'uploader') return 'text-[#38bdf8]';
+    return 'text-[#aaaaaa]';
   };
 
   const getRoleName = (roles: string[]) => {
@@ -57,166 +58,119 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
-      month: 'long',
+      month: 'short',
       day: 'numeric'
     });
   };
 
-  const fadeIn = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.6 }
-    }
-  };
   return (
-    <motion.div
-      variants={fadeIn}
-      className="bg-[#161d21] border border-[#263238] rounded-[10px] p-6 lg:p-8 relative overflow-hidden"
-    >
+    <div className="bg-[#181818] border border-[#262626] rounded-2xl p-6 lg:p-8 relative overflow-hidden shadow-sm">
       <div className="flex flex-col lg:flex-row lg:items-center lg:space-x-8">
         {/* Profile Picture */}
         <div className="relative mb-6 lg:mb-0 flex justify-center lg:justify-start">
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="relative"
-          >
-            <div className="w-36 h-36 rounded-full bg-gradient-to-br from-[#f23030] to-[#c51f1f] p-1 shadow-lg">
-              <div className="w-full h-full rounded-full ring-4 ring-[#0e1315] overflow-hidden bg-[#263238]">
+          <div className="relative">
+            <div className="w-32 h-32 sm:w-36 sm:h-36 rounded-full bg-linear-to-br from-cc-red to-cc-red-active p-1 shadow-lg">
+              <div className="w-full h-full rounded-full ring-4 ring-[#141414] overflow-hidden bg-[#222222]">
                 <img
-                  src={profile.profilePicture}
+                  src={getUserAvatarUrl(profile.username, profile.profilePicture, 256)}
                   alt={`${profile.username}'s profile`}
                   className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = `${backendUrl || 'https://api.spoekle.com'}/profilePictures/profile_placeholder.png`;
-                  }}
+                  onError={(e) => handleAvatarError(e, profile.username, 256)}
                 />
               </div>
             </div>
 
-            {/* Status indicators */}
+            {/* Private Profile Status Indicator */}
             {!profile.profile?.isPublic && (
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="absolute -top-1 -right-1 bg-[#f23030] rounded-full p-2 shadow-md border-2 border-[#0e1315]"
+              <div
+                className="absolute -top-1 -right-1 bg-cc-red rounded-full p-2 shadow-md border-2 border-[#181818]"
+                title="Private profile"
               >
                 <FaEyeSlash className="text-white text-xs" />
-              </motion.div>
+              </div>
             )}
-          </motion.div>
+          </div>
         </div>
 
         {/* Profile Info */}
         <div className="flex-1 text-center lg:text-left">
           {/* Name and Actions */}
-          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between mb-4">
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3 mb-3">
             <div>
-              <motion.h1
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15 }}
-                className="text-3xl lg:text-4xl font-bold text-[#e6e6e6] mb-2 tracking-tight"
-              >
+              <h1 className="text-2xl sm:text-3xl font-bold text-[#f1f1f1] mb-2 tracking-tight">
                 {profile.username}
-              </motion.h1>
+              </h1>
 
               {/* Roles */}
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.25 }}
-                className="flex flex-wrap justify-center lg:justify-start items-center gap-2 mb-3"
-              >
+              <div className="flex flex-wrap justify-center lg:justify-start items-center gap-2 mb-3">
                 {profile.roles.map((role, index) => (
-                  <motion.div
+                  <div
                     key={index}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.3 + index * 0.05 }}
-                    className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0e1315] border border-[#263238] text-xs font-medium"
+                    className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#141414] border border-[#262626] text-[11px] font-semibold uppercase tracking-wider"
                   >
                     {getRoleIcon([role])}
                     <span className={getRoleColor([role])}>
                       {getRoleName([role])}
                     </span>
-                  </motion.div>
+                  </div>
                 ))}
-              </motion.div>
+              </div>
             </div>
 
             {/* Edit Button */}
             {isOwnProfile && (
-              <motion.button
-                initial={{ opacity: 0, x: 15 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3 }}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+              <button
                 onClick={onEditClick}
-                className="btn btn-primary btn-sm rounded-xl flex items-center gap-2 self-center lg:self-start shadow-sm"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-cc-red hover:bg-cc-red-hover text-white text-xs font-semibold transition cursor-pointer self-center lg:self-start shadow-sm"
               >
-                <FaEdit size={13} />
+                <FaEdit size={12} />
                 <span>Edit Profile</span>
-              </motion.button>
+              </button>
             )}
           </div>
 
           {/* Bio */}
           {profile.profile?.bio && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3 }}
-              className="mb-5"
-            >
-              <p className="text-sm text-[#b3b3b3] leading-relaxed max-w-2xl mx-auto lg:mx-0">
+            <div className="mb-4">
+              <p className="text-xs sm:text-sm text-[#aaaaaa] leading-relaxed max-w-2xl mx-auto lg:mx-0">
                 {profile.profile.bio}
               </p>
-            </motion.div>
+            </div>
           )}
 
-          {/* Stats Grid */}
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35 }}
-            className="grid grid-cols-2 lg:grid-cols-3 gap-3"
-          >
+          {/* Stats Metadata Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             {profile.discordId && profile.discordUsername && (
-              <div className="bg-[#0e1315] rounded-[10px] p-3 border border-[#263238] flex flex-col items-center justify-center">
-                <FaDiscord className="text-indigo-500 mb-1" size={16} />
-                <p className="text-[11px] font-medium text-[#626262]">Discord</p>
-                <p className="text-xs text-[#e6e6e6] font-semibold truncate max-w-full">
+              <div className="bg-[#141414] rounded-xl p-3 border border-[#262626] flex flex-col items-center justify-center">
+                <FaDiscord className="text-[#5865F2] mb-1" size={15} />
+                <p className="text-[10px] font-semibold text-[#717171] uppercase tracking-wider">Discord</p>
+                <p className="text-xs text-[#f1f1f1] font-medium truncate max-w-full">
                   {profile.discordUsername}
                 </p>
               </div>
             )}
 
             {profile.profile?.vrheadset && profile.profile.vrheadset !== 'Other' && (
-              <div className="bg-[#0e1315] rounded-[10px] p-3 border border-[#263238] flex flex-col items-center justify-center">
-                <FaVrCardboard className="text-purple-500 mb-1" size={16} />
-                <p className="text-[11px] font-medium text-[#626262]">VR Headset</p>
-                <p className="text-xs text-[#e6e6e6] font-semibold">
+              <div className="bg-[#141414] rounded-xl p-3 border border-[#262626] flex flex-col items-center justify-center">
+                <FaVrCardboard className="text-[#a855f7] mb-1" size={15} />
+                <p className="text-[10px] font-semibold text-[#717171] uppercase tracking-wider">VR Headset</p>
+                <p className="text-xs text-[#f1f1f1] font-medium truncate max-w-full">
                   {profile.profile.vrheadset}
                 </p>
               </div>
             )}
 
-            <div className="bg-[#0e1315] rounded-[10px] p-3 border border-[#263238] flex flex-col items-center justify-center">
-              <FaCalendarAlt className="text-emerald-500 mb-1" size={15} />
-              <p className="text-[11px] font-medium text-[#626262]">Joined</p>
-              <p className="text-xs text-[#e6e6e6] font-semibold">
+            <div className="bg-[#141414] rounded-xl p-3 border border-[#262626] flex flex-col items-center justify-center col-span-2 sm:col-span-1">
+              <FaCalendarAlt className="text-[#22c55e] mb-1" size={14} />
+              <p className="text-[10px] font-semibold text-[#717171] uppercase tracking-wider">Joined</p>
+              <p className="text-xs text-[#f1f1f1] font-medium">
                 {formatDate(profile.joinDate)}
               </p>
             </div>
-          </motion.div>
+          </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };
 
