@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   title: 'ClipSesh',
   description: 'Discover, rate, and discuss the best Beat Saber clips from across the community.',
   icons: {
-    icon: '/favicon-16x16.png',
+    icon: '/media/favicon-16x16.png',
   },
 };
 
