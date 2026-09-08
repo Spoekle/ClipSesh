@@ -14,11 +14,12 @@ import {
     FaHome,
     FaArrowLeft,
     FaPlay,
-    FaCommentAlt
+    FaCommentAlt,
+    FaEye,
+    FaTv
 } from 'react-icons/fa';
 import { AiOutlineDelete, AiOutlineEdit } from 'react-icons/ai';
 import { format } from 'timeago.js';
-import generateAvatar from '../../../utils/generateAvatar';
 import MessageComponent from './components/clipteam/MessagesPopup';
 import RatingsComponent from './components/clipteam/RatingsPopup';
 import EditModal from './components/EditClipModal';
@@ -30,7 +31,7 @@ import { Clip, User, Rating } from '../../../types/adminTypes';
 import RatingPanel from './components/clipteam/RatingPanel';
 import CommentSection from './components/CommentSection';
 import TeamSidebar from './components/TeamSidebar';
-import Breadcrumbs from '../../../components/common/Breadcrumbs';
+import Breadcrumbs, { BreadcrumbItem } from '../../../components/common/Breadcrumbs';
 
 // React Query hooks
 import {
@@ -38,7 +39,8 @@ import {
     useAdjacentClipsFromCache,
     useClipVoteStatus,
     useVoteOnClip,
-    useDeleteClip
+    useDeleteClip,
+    useRecordClipView
 } from '../../../hooks/useClips';
 
 
@@ -48,6 +50,12 @@ interface ClipContentProps {
     user?: User | null;
     fetchClipsAndRatings?: (user: User | null) => Promise<void>;
     ratings?: Record<string, Rating>;
+    fromContext?: {
+        label: string;
+        path: string;
+        season?: string;
+        year?: number;
+    };
 }
 
 // Updated interface to handle different formats of the 'from' state
@@ -67,7 +75,8 @@ const ClipContent: React.FC<ClipContentProps> = ({
     setExpandedClip,
     user = null,
     fetchClipsAndRatings = async () => {},
-    ratings = {}
+    ratings = {},
+    fromContext,
 }) => {
     // Get clip ID from URL params to ensure we always have the current clip ID
     const { clipId } = useParams<{ clipId: string }>();
@@ -175,6 +184,14 @@ const ClipContent: React.FC<ClipContentProps> = ({
     // Mutations
     const voteOnClipMutation = useVoteOnClip();
     const deleteClipMutation = useDeleteClip();
+    const recordClipViewMutation = useRecordClipView();
+
+    // Record view once when clip is loaded
+    useEffect(() => {
+        if (currentClipId && currentClipId !== 'new') {
+            recordClipViewMutation.mutate(currentClipId);
+        }
+    }, [currentClipId]);
 
     // Local state
     const [popout, setPopout] = useState<string>('');
@@ -203,11 +220,47 @@ const ClipContent: React.FC<ClipContentProps> = ({
 
     // Ensure we have a clean, safe 'from' state object that won't break navigation
     const from = useMemo(() => {
+        if (fromContext) {
+            return {
+                pathname: fromContext.path.split('?')[0] || '/archive',
+                search: fromContext.path.includes('?') ? `?${fromContext.path.split('?')[1]}` : '',
+                label: fromContext.label,
+                season: fromContext.season,
+                year: fromContext.year,
+            };
+        }
+
         // Get the from state if it exists
         const locationState = location.state as LocationState;
 
-        // Default return value if no from state
-        const defaultPath = { pathname: '/clips', search: '' };
+        // Determine sensible fallback based on window.location
+        const curPath = typeof window !== 'undefined' ? window.location.pathname : (location.pathname || '/clips');
+        const curSearch = typeof window !== 'undefined' ? window.location.search : (location.search || '');
+
+        let defaultPathname = '/clips';
+        let defaultLabel = 'Clips';
+        if (curPath.includes('archive') || curPath.includes('search')) {
+            defaultPathname = '/archive';
+            defaultLabel = 'Archive';
+        } else if (curPath.includes('admin')) {
+            defaultPathname = '/admin';
+            defaultLabel = 'Admin';
+        } else if (curPath.includes('profile')) {
+            defaultPathname = '/profile';
+            defaultLabel = 'Profile';
+        }
+
+        const curSp = new URLSearchParams(curSearch);
+        const curSeason = curSp.get('season') || undefined;
+        const curYear = curSp.get('year') ? parseInt(curSp.get('year')!, 10) : undefined;
+
+        const defaultPath = {
+            pathname: defaultPathname,
+            search: curSearch,
+            label: defaultLabel,
+            season: curSeason,
+            year: curYear,
+        };
 
         if (!locationState || !locationState.from) {
             return defaultPath;
@@ -216,18 +269,31 @@ const ClipContent: React.FC<ClipContentProps> = ({
         // Check if locationFrom is a string (handles older format or corrupted state)
         if (typeof locationState.from === 'string') {
             try {
-                // Extract pathname and search from the string
                 const fromString = String(locationState.from);
                 const parts = fromString.split('?');
-                const pathPart = parts[0] || '/clips';
+                const pathPart = parts[0] || defaultPathname;
                 const searchPart = parts.length > 1 ? `?${parts[1]}` : '';
 
-                const pathSegments = pathPart.split('/').filter(Boolean);
-                const cleanPathname = pathSegments.length > 0
-                    ? `/${pathSegments[0]}`
-                    : '/clips';
+                const searchParams = new URLSearchParams(searchPart);
+                const season = searchParams.get('season') || undefined;
+                const year = searchParams.get('year') ? parseInt(searchParams.get('year')!, 10) : undefined;
 
-                return { pathname: cleanPathname, search: searchPart };
+                let label = 'Clips';
+                if (pathPart.includes('archive') || pathPart.includes('search')) {
+                    label = 'Archive';
+                } else if (pathPart.includes('admin')) {
+                    label = 'Admin';
+                } else if (pathPart.includes('profile')) {
+                    label = 'Profile';
+                }
+
+                return {
+                    pathname: pathPart,
+                    search: searchPart,
+                    label,
+                    season,
+                    year,
+                };
             } catch (err) {
                 console.error('Error parsing from state (string):', err);
                 return defaultPath;
@@ -237,14 +303,28 @@ const ClipContent: React.FC<ClipContentProps> = ({
         // Handle object case
         try {
             if (locationState.from.pathname) {
-                const pathSegments = String(locationState.from.pathname).split('/').filter(Boolean);
-                const cleanPathname = pathSegments.length > 0
-                    ? `/${pathSegments[0]}`
-                    : '/clips';
+                const pathPart = String(locationState.from.pathname);
+                const searchPart = locationState.from.search || '';
+
+                const searchParams = new URLSearchParams(searchPart);
+                const season = searchParams.get('season') || undefined;
+                const year = searchParams.get('year') ? parseInt(searchParams.get('year')!, 10) : undefined;
+
+                let label = 'Clips';
+                if (pathPart.includes('archive') || pathPart.includes('search')) {
+                    label = 'Archive';
+                } else if (pathPart.includes('admin')) {
+                    label = 'Admin';
+                } else if (pathPart.includes('profile')) {
+                    label = 'Profile';
+                }
 
                 return {
-                    pathname: cleanPathname,
-                    search: locationState.from.search || ''
+                    pathname: pathPart,
+                    search: searchPart,
+                    label,
+                    season,
+                    year,
                 };
             }
         } catch (err) {
@@ -252,7 +332,7 @@ const ClipContent: React.FC<ClipContentProps> = ({
         }
 
         return defaultPath;
-    }, [location.state]);
+    }, [fromContext, location.state, location.pathname, location.search]);
 
     const openTeamChat = location.state?.openTeamChat;
 
@@ -272,35 +352,36 @@ const ClipContent: React.FC<ClipContentProps> = ({
     }, [openTeamChat, user]);
 
     // Navigate to adjacent clip with improved reliability
-    const navigateToClip = useCallback((clipId: string) => {
+    const navigateToClip = useCallback((targetClipId: string) => {
         // Prevent navigation if already loading
         if (isClipLoading) {
             return;
         }
 
         // Validate clip ID
-        if (!clipId || typeof clipId !== 'string') {
+        if (!targetClipId || typeof targetClipId !== 'string') {
             return;
         }
 
-        const fromPathname = from.pathname.split('/').filter(Boolean);
-        const basePath = fromPathname.length > 0 ? fromPathname[0] : 'clips';
+        if (setExpandedClip) {
+            setExpandedClip(targetClipId);
+            return;
+        }
 
-        // Preserve current search parameters to maintain filters when navigating
         const currentSearchParams = new URLSearchParams(window.location.search);
         const searchString = currentSearchParams.toString();
 
         const cleanFromState = {
-            pathname: `/${basePath}`,
-            search: searchString ? `?${searchString}` : ''
+            pathname: from.pathname,
+            search: from.search || (searchString ? `?${searchString}` : '')
         };
 
         // Update URL and let React Query handle the data fetching
-        navigate(`/clips/${clipId}${searchString ? `?${searchString}` : ''}`, {
+        navigate(`/clips/${targetClipId}${searchString ? `?${searchString}` : ''}`, {
             state: { from: cleanFromState },
             replace: true
         });
-    }, [isClipLoading, from.pathname, navigate]);
+    }, [isClipLoading, setExpandedClip, from, navigate]);
 
     // Keyboard arrow navigation between clips
     useEffect(() => {
@@ -330,17 +411,15 @@ const ClipContent: React.FC<ClipContentProps> = ({
     const closeExpandedClip = (): void => {
         if (setExpandedClip) {
             setExpandedClip(null);
+            return;
         }
 
-        const pathSegments = from.pathname.split('/').filter(Boolean);
-        const basePath = pathSegments.length > 0 ? pathSegments[0] : 'clips';
-
-        const currentSearchParams = new URLSearchParams(window.location.search);
-        const searchString = currentSearchParams.toString();
+        const targetPath = from.pathname || '/clips';
+        const searchString = from.search ? (from.search.startsWith('?') ? from.search : `?${from.search}`) : '';
 
         navigate({
-            pathname: `/${basePath}`,
-            search: searchString ? `?${searchString}` : ''
+            pathname: targetPath,
+            search: searchString
         });
     };
 
@@ -431,7 +510,79 @@ const ClipContent: React.FC<ClipContentProps> = ({
         ));
     }, [user]);
 
-    const streamerAvatar = clipData ? (generateAvatar(clipData.streamer) || undefined) : undefined;
+    // Build rich, context-aware breadcrumb navigation items
+    const breadcrumbItems = useMemo((): BreadcrumbItem[] => {
+        const items: BreadcrumbItem[] = [
+            { label: 'Home', path: '/', icon: <FaHome className="w-3.5 h-3.5" /> }
+        ];
+
+        const isArchive = from.label === 'Archive' || from.pathname.includes('archive') || from.pathname.includes('search');
+
+        if (isArchive) {
+            // Archive overview root
+            items.push({
+                label: 'Archive',
+                path: '/archive',
+                onClick: () => {
+                    if (setExpandedClip) {
+                        setExpandedClip(null);
+                    }
+                }
+            });
+
+            // If coming from a specific season view, add the season level breadcrumb
+            if (from.season && from.year) {
+                const seasonSearch = `?season=${encodeURIComponent(from.season)}&year=${from.year}`;
+                items.push({
+                    label: `${from.season} ${from.year}`,
+                    path: `/archive${seasonSearch}`,
+                    onClick: () => {
+                        if (setExpandedClip) {
+                            setExpandedClip(null);
+                        }
+                    }
+                });
+            }
+        } else if (from.pathname.includes('admin')) {
+            items.push({
+                label: 'Admin',
+                path: from.pathname + (from.search ? from.search : ''),
+                onClick: () => {
+                    if (setExpandedClip) {
+                        setExpandedClip(null);
+                    }
+                }
+            });
+        } else if (from.pathname.includes('profile')) {
+            items.push({
+                label: 'Profile',
+                path: from.pathname + (from.search ? from.search : ''),
+                onClick: () => {
+                    if (setExpandedClip) {
+                        setExpandedClip(null);
+                    }
+                }
+            });
+        } else {
+            // Default: Clips
+            items.push({
+                label: 'Clips',
+                path: from.pathname + (from.search ? from.search : ''),
+                onClick: () => {
+                    if (setExpandedClip) {
+                        setExpandedClip(null);
+                    }
+                }
+            });
+        }
+
+        // Current clip title
+        items.push({
+            label: clipData?.title || 'Clip'
+        });
+
+        return items;
+    }, [from, clipData?.title, setExpandedClip]);
 
     return (
         <motion.div
@@ -469,22 +620,13 @@ const ClipContent: React.FC<ClipContentProps> = ({
                         <button
                             onClick={closeExpandedClip}
                             className="px-3 py-1.5 rounded-full bg-[#202020] hover:bg-[#262626] border border-[#2a2a2a] text-[#aaaaaa] hover:text-white transition-colors flex items-center gap-1.5 text-xs font-semibold shrink-0"
-                            title="Back to clips"
+                            title={from.label === 'Archive' || from.pathname.includes('archive') ? 'Back to archive' : 'Back to clips'}
                         >
                             <FaArrowLeft size={10} />
                             <span>Back</span>
                         </button>
 
-                        <Breadcrumbs
-                            items={[
-                                { label: 'Home', path: '/', icon: <FaHome className="w-3.5 h-3.5" /> },
-                                {
-                                    label: from.pathname.includes('admin') ? 'Admin' : 'Clips',
-                                    path: from.pathname + (from.search ? from.search : '')
-                                },
-                                { label: clipData?.title || 'Clip' }
-                            ]}
-                        />
+                        <Breadcrumbs items={breadcrumbItems} />
                     </div>
 
                     {/* Right: Actions */}
@@ -599,13 +741,10 @@ const ClipContent: React.FC<ClipContentProps> = ({
                             <div className="flex items-center gap-3">
                                 <Link
                                     to={`/clips?streamer=${encodeURIComponent(clipData.streamer)}`}
-                                    className="shrink-0 hover:opacity-90 transition-opacity"
+                                    className="w-10 h-10 rounded-xl bg-[#202020] border border-[#2a2a2a] flex items-center justify-center text-cc-red hover:border-[#3a3a3a] transition-all shrink-0"
+                                    title={clipData.streamer}
                                 >
-                                    <img
-                                        src={streamerAvatar}
-                                        alt={clipData.streamer}
-                                        className="w-10 h-10 rounded-full object-cover border border-white/10 bg-[#202020]"
-                                    />
+                                    <FaTv size={16} />
                                 </Link>
                                 <div>
                                     <Link
@@ -686,6 +825,11 @@ const ClipContent: React.FC<ClipContentProps> = ({
                             className="mt-4 bg-[#1a1a1a] hover:bg-[#202020] transition-colors rounded-xl p-4 border border-[#262626] cursor-pointer"
                         >
                             <div className="flex flex-wrap items-center gap-2 font-semibold text-xs text-[#f1f1f1] mb-1">
+                                <span className="flex items-center gap-1.5 text-[#f1f1f1]">
+                                    <FaEye size={12} className="text-[#aaaaaa]" />
+                                    <span>{clipData.views || 0} views</span>
+                                </span>
+                                <span>•</span>
                                 <span>{clipData.upvotes + clipData.downvotes} total votes</span>
                                 <span>•</span>
                                 <span className="flex items-center gap-1 text-[#aaaaaa]">
@@ -924,7 +1068,7 @@ const ClipContent: React.FC<ClipContentProps> = ({
                         className="px-3.5 py-1.5 rounded-full bg-[#202020] border border-[#2a2a2a] text-[#f1f1f1] text-xs font-semibold flex items-center gap-1.5"
                     >
                         <FaHome size={12} />
-                        <span>Clips</span>
+                        <span>{from.label || 'Clips'}</span>
                     </button>
                 )}
 

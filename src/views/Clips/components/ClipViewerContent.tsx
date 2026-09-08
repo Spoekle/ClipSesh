@@ -1,5 +1,4 @@
 import { useMemo, useEffect, useState, useRef } from 'react';
-import ClipSearch from '../../Search/ClipSearch';
 import ClipContent from '../ClipView/Index';
 import ClipFilterBar from '../ClipGrid/components/ClipFilterBar';
 import ClipGrid from '../ClipGrid/Index';
@@ -9,7 +8,7 @@ import { Clip, User, Rating } from '../../../types/adminTypes';
 import { getClipFilterOptions } from '../../../services/clipService';
 
 interface ClipViewerContentProps {
-  expandedClip: string | 'new' | null;
+  expandedClip: string | null;
   setExpandedClip: React.Dispatch<React.SetStateAction<string | null>>;
   isClipLoading: boolean;
   currentClip: Clip | null;
@@ -151,9 +150,6 @@ const ClipViewerContent: React.FC<ClipViewerContentProps> = ({
 
     document.querySelector('.clip-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
-  if (expandedClip === 'new') {
-    return <ClipSearch />;
-  }
 
   if (expandedClip) {
     if (isClipLoading) {

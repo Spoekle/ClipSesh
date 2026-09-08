@@ -1,14 +1,19 @@
+import React from 'react';
+
 /**
  * Generates a placeholder avatar based on the user's initials and username
- * @param {string} username - User's username to generate avatar from
- * @param {string} size - Size of the avatar (default: 256px)
- * @returns {string} URL to the generated avatar image
+ * @param username - User's username to generate avatar from
+ * @param size - Size of the avatar (default: 256px)
+ * @returns URL to the generated avatar image
  */
-const generateAvatar = (username, size = 256) => {
-  if (!username) return null;
+export const generateAvatar = (username?: string | null, size = 256): string => {
+  const cleanName = (username || 'User').trim();
+  if (!cleanName) {
+    return `https://ui-avatars.com/api/?name=U&background=f23030&color=FFFFFF&size=${size}&bold=true`;
+  }
   
   // Use the username to create a consistent but random-looking color
-  const getColor = (str) => {
+  const getColor = (str: string) => {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       hash = str.charCodeAt(i) + ((hash << 5) - hash);
@@ -23,8 +28,8 @@ const generateAvatar = (username, size = 256) => {
   };
   
   // Get initials from username
-  const getInitials = (name) => {
-    const parts = name.split(/[^a-zA-Z0-9]/); // Split by non-alphanumeric chars
+  const getInitials = (name: string) => {
+    const parts = name.split(/[^a-zA-Z0-9]/).filter(Boolean);
     let initials = '';
     
     for (let i = 0; i < Math.min(parts.length, 2); i++) {
@@ -39,15 +44,45 @@ const generateAvatar = (username, size = 256) => {
       initials += name[1].toUpperCase();
     }
     
-    return initials;
+    return initials || 'U';
   };
   
-  const backgroundColor = getColor(username);
-  const initials = getInitials(username);
+  const backgroundColor = getColor(cleanName);
+  const initials = getInitials(cleanName);
   const textColor = '#FFFFFF'; // White text
   
   // API that generates avatars with initials (UI Avatars)
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=${encodeURIComponent(backgroundColor.replace('#', ''))}&color=${encodeURIComponent(textColor.replace('#', ''))}&size=${size}&bold=true`;
+};
+
+/**
+ * Returns the user's custom profile picture if valid, or falls back to the generated avatar
+ */
+export const getUserAvatarUrl = (username?: string, profilePicture?: string | null, size = 256): string => {
+  if (
+    profilePicture &&
+    typeof profilePicture === 'string' &&
+    profilePicture.trim() !== '' &&
+    !profilePicture.includes('profile_placeholder.png')
+  ) {
+    return profilePicture;
+  }
+  return generateAvatar(username, size);
+};
+
+/**
+ * Event handler for img onError to fall back to the generated avatar when image returns 404 or fails
+ */
+export const handleAvatarError = (
+  e: React.SyntheticEvent<HTMLImageElement>,
+  username?: string,
+  size = 256
+): void => {
+  const fallback = generateAvatar(username, size);
+  if (fallback && e.currentTarget.src !== fallback) {
+    e.currentTarget.onerror = null; // Prevent infinite error loops
+    e.currentTarget.src = fallback;
+  }
 };
 
 export default generateAvatar;

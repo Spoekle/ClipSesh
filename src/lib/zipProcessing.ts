@@ -167,7 +167,7 @@ async function processClipsAsync(
     fs.mkdirSync(downloadDir, { recursive: true });
   }
 
-  const backendUrl = process.env.BACKEND_URL || '';
+  const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || '';
   const zipFilename = `${year}-${season}-processed-${Date.now()}.zip`;
   const zipPath = path.join(downloadDir, zipFilename);
 

@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { NavLink } from '@/lib/routerCompat';
 import { Helmet } from '@/lib/helmetCompat';
 import LoadingBar from 'react-top-loading-bar';
-import background from '../media/editor.webp';
 import { motion } from 'framer-motion';
 import {
   FaDownload,
@@ -161,7 +160,7 @@ const EditorDash: React.FC = () => {
         <div
           className="w-full h-full bg-cover bg-center filter blur-[8px] opacity-20 transform scale-105"
           style={{
-            backgroundImage: `url(${background})`,
+            backgroundImage: "url('/media/editor.webp')",
             maskImage: 'linear-gradient(180deg, rgba(0,0,0,1) 0%, rgba(15,15,15,0) 100%)',
             WebkitMaskImage: 'linear-gradient(180deg, rgba(0,0,0,1) 0%, rgba(15,15,15,0) 100%)',
           }}

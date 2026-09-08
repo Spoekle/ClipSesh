@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from '@/lib/routerCompat';
 import { Helmet } from '@/lib/helmetCompat';
 import {
@@ -10,18 +10,17 @@ import {
   FaDiscord,
   FaFilm,
   FaThumbsUp,
-  FaCheck,
   FaGamepad,
   FaFire,
+  FaEye,
 } from 'react-icons/fa';
 import { IoChatbubbleEllipsesOutline } from 'react-icons/io5';
 import { motion } from 'framer-motion';
 import { format } from 'timeago.js';
-import banner1 from '../media/banner1.png';
 import { getPublicConfig } from '../services/configService';
 import { getClips } from '../services/clipService';
-import { getCurrentSeason } from '../utils/seasonHelpers';
-import generateAvatar from '../utils/generateAvatar';
+import { useArchiveSeasons } from '../hooks/useClips';
+import { getCurrentSeason, getSeasonRemainingDays } from '../utils/seasonHelpers';
 import { Clip } from '../types/adminTypes';
 
 interface Config {
@@ -31,14 +30,27 @@ interface Config {
 }
 
 function HomePage() {
+  const { data: archiveData, isLoading: loadingArchive } = useArchiveSeasons();
+
   const [config, setConfig] = useState<Config>({
     latestVideoLink: 'https://www.youtube.com/watch?v=WQy7hb_jlCs',
   });
   const [showVideo, setShowVideo] = useState(false);
-  const [trendingClips, setTrendingClips] = useState<Clip[]>([]);
+  const [latestClips, setLatestClips] = useState<Clip[]>([]);
   const [loadingClips, setLoadingClips] = useState<boolean>(true);
 
   const currentSeason = getCurrentSeason();
+  const seasonRemaining = getSeasonRemainingDays();
+
+  const totalClips = useMemo(() => {
+    if (typeof archiveData?.totalClips === 'number') {
+      return archiveData.totalClips;
+    }
+    if (archiveData?.sections) {
+      return archiveData.sections.reduce((acc, s) => acc + (s.clipCount || 0), 0);
+    }
+    return null;
+  }, [archiveData]);
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -62,12 +74,12 @@ function HomePage() {
     const fetchTrending = async () => {
       try {
         setLoadingClips(true);
-        const data = await getClips({ limit: 4, sortBy: 'upvotes', sortOrder: 'desc' });
+        const data = await getClips({ limit: 4, sortBy: 'createdAt', sortOrder: 'desc' });
         if (data && data.clips) {
-          setTrendingClips(data.clips.slice(0, 4));
+          setLatestClips(data.clips.slice(0, 4));
         }
       } catch (error) {
-        console.error('Error fetching trending clips:', error);
+        console.error('Error fetching latest clips:', error);
       } finally {
         setLoadingClips(false);
       }
@@ -89,12 +101,17 @@ function HomePage() {
     : null;
   const thumbnailUrl = videoId
     ? `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
-    : (banner1 as any)?.src || banner1;
+    : '/media/banner1.png';
 
-  const clipCountDisplay =
-    config.clipAmount && config.clipAmount > 0
-      ? `${config.clipAmount}+`
-      : '1,000+';
+  const clipCountDisplay = useMemo(() => {
+    if (totalClips !== null && totalClips > 0) {
+      return totalClips.toLocaleString();
+    }
+    if (config.clipAmount && config.clipAmount > 0) {
+      return config.clipAmount.toLocaleString();
+    }
+    return '1,000+';
+  }, [totalClips, config.clipAmount]);
 
   return (
     <div className="min-h-screen bg-[#0f0f0f] text-[#f1f1f1] transition-colors duration-200">
@@ -117,23 +134,27 @@ function HomePage() {
             className="lg:col-span-7 text-center lg:text-left"
           >
             {/* Season Status Badge */}
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#181818] border border-[#2a2a2a] text-xs text-[#aaaaaa] mb-5">
-              <span className="w-2 h-2 rounded-full bg-[#f23030] animate-pulse" />
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#181818] border border-[#2a2a2a] text-xs text-[#aaaaaa] mb-5">
+              <span className="w-2 h-2 rounded-full bg-[#f23030] animate-pulse shrink-0" />
               <span className="font-semibold text-[#f1f1f1] capitalize">
                 {currentSeason.season} {currentSeason.year}
               </span>
               <span className="text-[#626262]">•</span>
               <span>Submissions Open</span>
+              <span className="text-[#626262]">•</span>
+              <span className="text-amber-400 font-semibold font-mono">
+                {seasonRemaining.daysRemaining} {seasonRemaining.daysRemaining === 1 ? 'day' : 'days'} left
+              </span>
             </div>
 
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-[#f1f1f1] leading-[1.12] mb-4">
-              The community hub for{' '}
-              <span className="text-[#f23030]">Beat Saber highlights.</span>
+              The hub for{' '}
+              <span className="text-[#f23030]">Beat Saber clips.</span>
             </h1>
 
             <p className="text-sm sm:text-base text-[#aaaaaa] leading-relaxed mb-7 max-w-xl mx-auto lg:mx-0">
-              Watch memorable Beat Saber moments submitted by players worldwide. Rate standout plays,
-              discuss techniques, and shape what gets featured in the official Cube Community seasonal showcase.
+              Watch Beat Saber clips submitted by players worldwide. Rate clips,
+              comment on them and help decide what goes into the official Cube Community seasonal highlights.
             </p>
 
             {/* Main Action Buttons */}
@@ -171,22 +192,36 @@ function HomePage() {
 
             {/* Quick Metrics Strip */}
             <div className="pt-6 border-t border-[#262626] grid grid-cols-3 gap-4 max-w-md mx-auto lg:mx-0 text-left">
-              <div>
-                <div className="text-xl sm:text-2xl font-bold text-[#f1f1f1]">{clipCountDisplay}</div>
-                <div className="text-xs text-[#717171] mt-0.5">Clips Submitted</div>
-              </div>
-              <div>
-                <div className="text-xl sm:text-2xl font-bold text-[#f1f1f1] capitalize">{currentSeason.season}</div>
-                <div className="text-xs text-[#717171] mt-0.5">Active Season</div>
-              </div>
+              <Link to="/archive" className="group block" title="Explore clip archives">
+                <div className="text-xl sm:text-2xl font-bold text-[#f1f1f1] font-mono group-hover:text-cc-red transition-colors">
+                  {loadingArchive && !totalClips ? (
+                    <span className="inline-block w-16 h-7 bg-[#222222] rounded animate-pulse align-middle" />
+                  ) : (
+                    clipCountDisplay
+                  )}
+                </div>
+                <div className="text-xs text-[#717171] mt-0.5 group-hover:text-[#aaaaaa] transition-colors">Total Clips</div>
+              </Link>
+              <Link
+                to={`/archive?season=${currentSeason.season}&year=${currentSeason.year}`}
+                className="group block"
+                title={`Explore ${currentSeason.season} ${currentSeason.year} clips`}
+              >
+                <div className="text-xl sm:text-2xl font-bold text-[#f1f1f1] capitalize group-hover:text-cc-red transition-colors">
+                  {currentSeason.season}
+                </div>
+                <div className="text-xs text-[#717171] mt-0.5 group-hover:text-[#aaaaaa] transition-colors">
+                  <span className="text-amber-400 font-mono font-semibold">{seasonRemaining.daysRemaining}d</span> remaining
+                </div>
+              </Link>
               <div>
                 <div className="text-xl sm:text-2xl font-bold text-[#f1f1f1]">Cube Community</div>
-                <div className="text-xs text-[#717171] mt-0.5">Official Showcase</div>
+                <div className="text-xs text-[#717171] mt-0.5">Official Highlight Videos</div>
               </div>
             </div>
           </motion.div>
 
-          {/* Right Column: Featured Seasonal Reel / Video Player Card */}
+          {/* Right Column: Featured Seasonal Video / Video Player Card */}
           <motion.div
             initial={{ opacity: 0, scale: 0.97 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -201,7 +236,7 @@ function HomePage() {
                     src={embedUrl}
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
-                    title="Latest Compilation Video"
+                    title="Latest Highlight Video"
                   />
                 ) : (
                   <div
@@ -216,7 +251,7 @@ function HomePage() {
                     </div>
                     <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between text-xs text-[#f1f1f1] bg-black/80 backdrop-blur-xs px-3 py-1.5 rounded-md border border-white/10">
                       <span className="font-semibold flex items-center gap-1.5">
-                        <FaFilm size={12} className="text-[#f23030]" /> Latest Highlights Reel
+                        <FaFilm size={12} className="text-[#f23030]" /> Latest Highlights Video
                       </span>
                       <span className="text-neutral-300 text-[11px]">Click to play</span>
                     </div>
@@ -227,7 +262,7 @@ function HomePage() {
               <div className="p-3.5 flex items-center justify-between gap-3">
                 <div>
                   <h3 className="text-sm font-semibold text-[#f1f1f1]">
-                    Official Seasonal Reel
+                    Official Season Highlights Video
                   </h3>
                   <p className="text-xs text-[#717171] mt-0.5">
                     Curated from the highest-rated community clips
@@ -258,11 +293,11 @@ function HomePage() {
                   <FaFire size={13} />
                 </div>
                 <h2 className="text-lg sm:text-xl font-bold text-[#f1f1f1]">
-                  Trending Highlights
+                  Latest Highlights
                 </h2>
               </div>
               <p className="text-xs text-[#717171] mt-1">
-                Top rated Beat Saber clips submitted by the community
+                The latest Beat Saber clips submitted by the community
               </p>
             </div>
 
@@ -287,10 +322,9 @@ function HomePage() {
                 </div>
               ))}
             </div>
-          ) : trendingClips.length > 0 ? (
+          ) : latestClips.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {trendingClips.map((clip) => {
-                const streamerAvatar = generateAvatar(clip.streamer) || undefined;
+              {latestClips.map((clip) => {
                 return (
                   <Link
                     key={clip._id}
@@ -321,34 +355,28 @@ function HomePage() {
                       )}
                     </div>
 
-                    <div className="p-3 flex gap-2.5 flex-1">
-                      <div className="w-8 h-8 rounded-full bg-[#121212] border border-[#2a2a2a] overflow-hidden shrink-0 mt-0.5 flex items-center justify-center">
-                        <img
-                          src={streamerAvatar}
-                          alt={clip.streamer}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                        />
+                    <div className="p-3 flex flex-col justify-between flex-1">
+                      <div>
+                        <h3 className="text-xs font-semibold text-[#f1f1f1] group-hover:text-white line-clamp-2 leading-tight transition-colors">
+                          {clip.title}
+                        </h3>
+                        <div className="text-[11px] text-[#aaaaaa] mt-1 truncate">
+                          {clip.streamer}
+                        </div>
                       </div>
 
-                      <div className="flex-1 min-w-0 flex flex-col justify-between">
-                        <div>
-                          <h3 className="text-xs font-semibold text-[#f1f1f1] group-hover:text-white line-clamp-2 leading-tight transition-colors">
-                            {clip.title}
-                          </h3>
-                          <div className="text-[11px] text-[#aaaaaa] mt-1 truncate">
-                            {clip.streamer}
-                          </div>
-                        </div>
-
-                        <div className="text-[11px] text-[#717171] mt-1.5 flex items-center gap-1.5">
-                          <span className="flex items-center gap-1 text-neutral-300 font-medium">
-                            <FaThumbsUp size={9} className="text-neutral-500" />
-                            <span>{clip.upvotes}</span>
-                          </span>
-                          <span className="text-neutral-600">•</span>
-                          <span>{format(new Date(clip.createdAt))}</span>
-                        </div>
+                      <div className="text-[11px] text-[#717171] mt-1.5 flex items-center gap-1.5 flex-wrap">
+                        <span className="flex items-center gap-1 text-neutral-300 font-medium">
+                          <FaEye size={10} className="text-neutral-500" />
+                          <span>{clip.views || 0}</span>
+                        </span>
+                        <span className="text-neutral-600">•</span>
+                        <span className="flex items-center gap-1 text-neutral-300 font-medium">
+                          <FaThumbsUp size={9} className="text-neutral-500" />
+                          <span>{clip.upvotes}</span>
+                        </span>
+                        <span className="text-neutral-600">•</span>
+                        <span>{format(new Date(clip.createdAt))}</span>
                       </div>
                     </div>
                   </Link>
@@ -368,10 +396,10 @@ function HomePage() {
         <div className="max-w-[1200px] mx-auto px-4 sm:px-8">
           <div className="max-w-2xl mb-10">
             <h2 className="text-xl sm:text-2xl font-bold text-[#f1f1f1] tracking-tight mb-2">
-              From Submission to Showcase
+              From Submissions to Highlights
             </h2>
             <p className="text-xs sm:text-sm text-[#aaaaaa] leading-relaxed">
-              How clips submitted on ClipSesh are reviewed, voted on, and edited into official Cube Community compilations.
+              How clips submitted on ClipSesh are reviewed, voted on, and edited into official Cube Community highlight videos.
             </p>
           </div>
 
@@ -404,7 +432,7 @@ function HomePage() {
                 Voting & Review Queue
               </h3>
               <p className="text-xs text-[#aaaaaa] leading-relaxed">
-                Community members upvote standout moments, while the editorial team reviews accuracy, synchronization, and play quality.
+                Community members can upvote clips, while Clip Team reviews the quality and makes the final selection.
               </p>
             </div>
 
@@ -417,10 +445,10 @@ function HomePage() {
                 <FaYoutube className="text-[#f23030]" size={16} />
               </div>
               <h3 className="text-sm font-semibold text-[#f1f1f1] mb-1.5">
-                Official YouTube Showcase
+                Official YouTube Higlight Video
               </h3>
               <p className="text-xs text-[#aaaaaa] leading-relaxed">
-                At the end of each season, the highest rated plays are edited into full compilation reels with player credits on YouTube.
+                At the end of each season, the highest rated plays are edited into full compilation videos with player credits on YouTube.
               </p>
             </div>
           </div>
@@ -433,10 +461,10 @@ function HomePage() {
           <div className="bg-[#181818] rounded-xl border border-[#262626] p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6">
             <div className="text-center sm:text-left">
               <h3 className="text-lg font-bold text-[#f1f1f1] mb-1">
-                Have a clip worth showcasing?
+                Have a clip worth showing?
               </h3>
               <p className="text-xs text-[#aaaaaa] max-w-lg">
-                Submit your highlights, browse current seasonal entries, or join discussion with other Beat Saber players.
+                Submit your clips, browse current seasonal entries, or join discussion with other Beat Saber players.
               </p>
             </div>
 

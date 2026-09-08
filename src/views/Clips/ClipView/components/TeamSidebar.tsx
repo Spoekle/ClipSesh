@@ -13,6 +13,7 @@ import {
     Message as MessageType,
     SendMessageData
 } from '../../../../services/messageService';
+import { getUserAvatarUrl, handleAvatarError } from '../../../../utils/generateAvatar';
 
 interface TeamSidebarProps {
     clip: Clip;
@@ -426,7 +427,7 @@ const TeamSidebar: React.FC<TeamSidebarProps> = ({
                                 ) : messages.length > 0 ? (
                                     messages.map((msg) => {
                                         const isOwnMessage = user && msg.userId === user._id;
-                                        const avatarUrl = msg.profilePicture || `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.user)}&background=202020&color=fff`;
+                                        const avatarUrl = getUserAvatarUrl(msg.user, msg.profilePicture, 64);
 
                                         return (
                                             <div
@@ -439,6 +440,7 @@ const TeamSidebar: React.FC<TeamSidebarProps> = ({
                                                     <img
                                                         src={avatarUrl}
                                                         alt={msg.user}
+                                                        onError={(e) => handleAvatarError(e, msg.user, 64)}
                                                         className="w-full h-full object-cover"
                                                     />
                                                 </div>

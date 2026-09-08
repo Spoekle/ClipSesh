@@ -19,12 +19,6 @@ export * from './useConfig';
 // Notification hooks
 export * from './useNotifications';
 
-// Search hooks - explicit exports to avoid conflicts
-export {
-  useUnifiedSearch,
-  useSearchProfiles,
-} from './useSearch';
-
 // Message hooks
 export * from './useMessages';
 

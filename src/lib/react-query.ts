@@ -118,12 +118,6 @@ export const queryKeys = {
     authUrl: (userId: string) => ['discord', 'authUrl', userId] as const,
   },
   
-  // Search queries
-  search: {
-    all: ['search'] as const,
-    clips: (query: string, params: Record<string, any>) => ['search', 'clips', query, params] as const,
-  },
-  
   // Message queries
   messages: {
     all: ['messages'] as const,

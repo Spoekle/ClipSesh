@@ -545,3 +545,50 @@ export const useDeleteReply = () => {
     },
   });
 };
+
+// Mutation for recording a clip view
+export const useRecordClipView = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (clipId: string) => clipService.recordClipView(clipId),
+    onSuccess: (data, clipId) => {
+      if (data && data.counted) {
+        queryClient.setQueryData(queryKeys.clips.detail(clipId), (oldClip: Clip | undefined) => {
+          if (!oldClip) return oldClip;
+          return { ...oldClip, views: data.views };
+        });
+        // Update view count in cached clip lists
+        queryClient.setQueriesData({ queryKey: queryKeys.clips.all }, (oldData: any) => {
+          if (!oldData) return oldData;
+          if (oldData.pages) {
+            return {
+              ...oldData,
+              pages: oldData.pages.map((page: any) => ({
+                ...page,
+                clips: page.clips?.map((c: Clip) => c._id === clipId ? { ...c, views: data.views } : c)
+              }))
+            };
+          }
+          if (Array.isArray(oldData.clips)) {
+            return {
+              ...oldData,
+              clips: oldData.clips.map((c: Clip) => c._id === clipId ? { ...c, views: data.views } : c)
+            };
+          }
+          return oldData;
+        });
+      }
+    },
+  });
+};
+
+// Hook for fetching archive season/year sections
+export const useArchiveSeasons = () => {
+  return useQuery({
+    queryKey: ['archive', 'seasons'],
+    queryFn: () => clipService.getArchiveSeasons(),
+    staleTime: 5 * 60 * 1000,
+  });
+};
+

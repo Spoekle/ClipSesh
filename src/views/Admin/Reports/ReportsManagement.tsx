@@ -52,6 +52,17 @@ const ReportsManagement: React.FC = () => {
     }
   }, [location.state, navigate, location.pathname]);
 
+  // Escape key listener for notes modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedReport) {
+        setSelectedReport(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedReport]);
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
@@ -130,7 +141,7 @@ const ReportsManagement: React.FC = () => {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-12 bg-[#181818] border border-[#262626] rounded-2xl">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-[#f23030] border-t-transparent"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-cc-red border-t-transparent"></div>
         <span className="ml-3 text-xs text-[#aaaaaa]">Loading reports...</span>
       </div>
     );
@@ -144,7 +155,7 @@ const ReportsManagement: React.FC = () => {
       {/* Header */}
       <div className="bg-[#181818] border border-[#262626] p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-[#f23030]/15 text-[#f23030] flex items-center justify-center">
+          <div className="w-9 h-9 rounded-xl bg-cc-red/15 text-cc-red flex items-center justify-center">
             <FaFlag size={14} />
           </div>
           <div>
@@ -216,15 +227,15 @@ const ReportsManagement: React.FC = () => {
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 text-xs text-[#aaaaaa] mb-3">
                     <div className="flex items-center space-x-2 truncate">
-                      <FaFilm className="text-[#717171] flex-shrink-0" />
+                      <FaFilm className="text-[#717171] shrink-0" />
                       <span className="truncate">by {report.clipStreamer}</span>
                     </div>
                     <div className="flex items-center space-x-2 truncate">
-                      <FaUser className="text-[#717171] flex-shrink-0" />
+                      <FaUser className="text-[#717171] shrink-0" />
                       <span className="truncate">submitted by {report.clipSubmitter}</span>
                     </div>
                     <div className="flex items-center space-x-2 truncate">
-                      <FaCalendar className="text-[#717171] flex-shrink-0" />
+                      <FaCalendar className="text-[#717171] shrink-0" />
                       <span className="truncate">{formatDate(report.createdAt)}</span>
                     </div>
                   </div>
@@ -232,7 +243,7 @@ const ReportsManagement: React.FC = () => {
                   {/* Report Reason Box */}
                   <div className="bg-[#141414] border border-[#262626] rounded-xl p-3 mb-3">
                     <div className="flex items-start space-x-2.5">
-                      <FaExclamationTriangle className="text-[#eab308] mt-0.5 flex-shrink-0" size={13} />
+                      <FaExclamationTriangle className="text-[#eab308] mt-0.5 shrink-0" size={13} />
                       <div className="min-w-0">
                         <span className="text-xs font-semibold text-[#eab308]">
                           Reported by {report.reporterUsername}:
@@ -323,7 +334,7 @@ const ReportsManagement: React.FC = () => {
                       setReportToDelete(report._id);
                       setShowDeleteConfirm(true);
                     }}
-                    className="flex items-center space-x-1.5 bg-[#f23030]/15 hover:bg-[#f23030]/25 text-[#f23030] border border-[#f23030]/30 px-3 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer"
+                    className="flex items-center space-x-1.5 bg-cc-red/15 hover:bg-cc-red/25 text-cc-red border border-cc-red/30 px-3 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer"
                   >
                     <FaTrash size={11} />
                     <span>Delete</span>
@@ -381,7 +392,7 @@ const ReportsManagement: React.FC = () => {
                 value={adminNotes}
                 onChange={(e) => setAdminNotes(e.target.value)}
                 placeholder="Add admin notes about this report..."
-                className="w-full px-3.5 py-2.5 border border-[#262626] rounded-xl focus:outline-none focus:border-[#444] bg-[#121212] text-xs text-[#f1f1f1] min-h-[120px] resize-vertical"
+                className="w-full px-3.5 py-2.5 border border-[#262626] rounded-xl focus:outline-none focus:border-[#444] bg-[#121212] text-xs text-[#f1f1f1] min-h-30 resize-vertical"
                 rows={5}
               />
 
@@ -395,7 +406,7 @@ const ReportsManagement: React.FC = () => {
                 <button
                   onClick={handleSaveNotes}
                   disabled={updateReportMutation.isPending}
-                  className="px-4 py-2 bg-[#f23030] hover:bg-[#d92222] text-white text-xs font-semibold rounded-xl transition disabled:opacity-50 flex items-center space-x-1.5 cursor-pointer shadow-sm"
+                  className="px-4 py-2 bg-cc-red hover:bg-cc-red-hover text-white text-xs font-semibold rounded-xl transition disabled:opacity-50 flex items-center space-x-1.5 cursor-pointer shadow-sm"
                 >
                   {updateReportMutation.isPending ? (
                     <>

@@ -13,6 +13,9 @@ export interface ClipQueryParams {
   submitter?: string;
   status?: string;
   search?: string;
+  season?: string;
+  year?: number;
+  archived?: string;
   excludeRatedByUser?: string;
   excludeDeniedClips?: boolean;
 }
@@ -25,4 +28,23 @@ export interface ClipResponse {
   total?: number;
   page?: number;
   pages?: number;
+}
+
+export interface ArchiveSeasonZip {
+  name: string;
+  url: string;
+  size: number;
+  clipAmount: number;
+}
+
+export interface ArchiveSeasonSection {
+  season: 'Winter' | 'Spring' | 'Summer' | 'Fall';
+  year: number;
+  clipCount: number;
+  totalViews: number;
+  totalUpvotes: number;
+  previewThumbnails: string[];
+  topStreamers: string[];
+  zip?: ArchiveSeasonZip | null;
+  isCurrent: boolean;
 }

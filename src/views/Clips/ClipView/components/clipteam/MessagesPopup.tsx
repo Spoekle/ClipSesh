@@ -12,6 +12,7 @@ import {
   Message as MessageType, 
   SendMessageData 
 } from '../../../../../services/messageService';
+import { getUserAvatarUrl, handleAvatarError } from '../../../../../utils/generateAvatar';
 
 interface MessagesPopupProps {
   clipId: string;
@@ -162,7 +163,7 @@ const MessagesPopup: React.FC<MessagesPopupProps> = ({
             {messages.map((msg) => {
               const isOwnMessage = user && msg.userId === user._id;
               const isHighlighted = msg._id === highlightedMessage;
-              const avatarUrl = msg.profilePicture || `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.user)}&background=202020&color=fff`;
+              const avatarUrl = getUserAvatarUrl(msg.user, msg.profilePicture, 64);
               
               return (
                 <motion.div
@@ -179,6 +180,7 @@ const MessagesPopup: React.FC<MessagesPopupProps> = ({
                     <img
                       src={avatarUrl}
                       alt={msg.user}
+                      onError={(e) => handleAvatarError(e, msg.user, 64)}
                       className="h-full w-full object-cover"
                     />
                   </div>

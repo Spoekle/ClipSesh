@@ -21,7 +21,7 @@ import {
   FaLock
 } from 'react-icons/fa';
 import { useNotification } from '../../../context/AlertContext';
-import generateAvatar from '../../../utils/generateAvatar';
+import { getUserAvatarUrl, handleAvatarError } from '../../../utils/generateAvatar';
 import { User, CreateUserFormData, FormErrors } from '../../../types/adminTypes';
 import ConfirmationDialog from '../../../components/common/ConfirmationDialog';
 import {
@@ -589,7 +589,7 @@ const UserList: React.FC<UserListProps> = ({ AVAILABLE_ROLES }) => {
               currentUsers.map(user => {
                 const isSelected = selectedUserId === user._id && !isCreateMode;
                 const isDisabled = user.status === 'disabled';
-                const avatarUrl = user.profilePicture || generateAvatar(user.username) || undefined;
+                const avatarUrl = getUserAvatarUrl(user.username, user.profilePicture, 80);
 
                 return (
                   <motion.div
@@ -612,6 +612,7 @@ const UserList: React.FC<UserListProps> = ({ AVAILABLE_ROLES }) => {
                               src={avatarUrl}
                               alt={user.username}
                               className="w-full h-full object-cover"
+                              onError={(e) => handleAvatarError(e, user.username, 80)}
                             />
                           </div>
                           {/* Online / Status Dot */}
@@ -761,9 +762,10 @@ const UserList: React.FC<UserListProps> = ({ AVAILABLE_ROLES }) => {
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-full overflow-hidden border border-[#262626] bg-[#121212] flex-shrink-0">
                       <img
-                        src={selectedUser.profilePicture || generateAvatar(selectedUser.username) || undefined}
+                        src={getUserAvatarUrl(selectedUser.username, selectedUser.profilePicture, 96)}
                         alt={selectedUser.username}
                         className="w-full h-full object-cover"
+                        onError={(e) => handleAvatarError(e, selectedUser.username, 96)}
                       />
                     </div>
                     <div>

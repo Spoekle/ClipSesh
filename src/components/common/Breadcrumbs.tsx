@@ -5,6 +5,7 @@ export interface BreadcrumbItem {
     label: string;
     path?: string;
     icon?: React.ReactNode;
+    onClick?: (e?: React.MouseEvent) => void;
 }
 
 interface BreadcrumbsProps {
@@ -65,6 +66,7 @@ const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ items, className = '' }) => {
                                 // Clickable link
                                 <Link
                                     to={item.path}
+                                    onClick={item.onClick}
                                     className="flex items-center gap-1.5 text-[#8b98a5] hover:text-white transition-colors duration-150"
                                 >
                                     {item.icon && (

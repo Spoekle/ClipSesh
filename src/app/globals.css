@@ -53,7 +53,7 @@
   --surface-primary: 197 20% 7%; /* #0e1315 */
   --surface-secondary: 202 20% 11%; /* #161d21 */
   --surface-elevated: 202 20% 11%; /* #161d21 */
-  --surface-overlay: 0 0% 0% / 0.4;
+  --surface-overlay: 0 0% 0% / 0.5;
 
   /* Text colors */
   --text-primary: 0 0% 90%; /* #e6e6e6 */
@@ -65,10 +65,10 @@
   --border-medium: 200 19% 25%;
 
   /* Glass effect */
-  --glass-bg: 202 20% 11% / 0.85;
+  --glass-bg: 202 20% 11% / 0.9;
   --glass-border: 200 19% 25% / 0.6;
   --glass-blur: 16px;
-  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.35);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
 
   /* Gradient accents */
   --gradient-primary: linear-gradient(135deg, #f23030 0%, #d92626 100%);
@@ -105,24 +105,6 @@ html, body {
   background-color: #0e1315;
 }
 
-/* Dark mode overrides */
-.dark {
-  --surface-primary: 197 20% 7%;
-  --surface-secondary: 202 20% 11%;
-  --surface-elevated: 202 20% 11%;
-  --surface-overlay: 0 0% 0% / 0.5;
-
-  --text-primary: 0 0% 90%;
-  --text-secondary: 0 0% 70%;
-  --text-muted: 0 0% 42%;
-
-  --border-light: 200 19% 18%;
-  --border-medium: 200 19% 25%;
-
-  --glass-bg: 202 20% 11% / 0.9;
-  --glass-border: 200 19% 25% / 0.6;
-  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
-}
 
 /* ===== GLASS EFFECTS ===== */
 
@@ -385,7 +367,7 @@ button {
 /* Custom Scrollbars */
 .custom-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: rgba(128, 128, 128, 0.4) transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -394,34 +376,19 @@ button {
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(255, 255, 255, 0.05);
   border-radius: 8px;
   margin: 4px 0;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.25);
+  background: rgba(255, 255, 255, 0.25);
   border-radius: 8px;
   border: 2px solid transparent;
   background-clip: content-box;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.4);
-  background-clip: content-box;
-}
-
-.dark .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.dark .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.25);
-  border: 2px solid transparent;
-  background-clip: content-box;
-}
-
-.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.4);
   background-clip: content-box;
 }

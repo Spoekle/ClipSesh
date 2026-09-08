@@ -155,41 +155,6 @@ export const useInfiniteClips = (params: Record<string, any> = {}) => {
   });
 };
 
-// Hook for infinite search results
-export const useInfiniteSearch = (query: string, params: Record<string, any> = {}) => {
-  const queryFn = async ({ pageParam = 1 }: { pageParam: number }) => {
-    if (!query.trim()) {
-      return {
-        data: [],
-        hasMore: false,
-        nextPage: undefined,
-      };
-    }
-
-    const response = await fetch(`/api/search?q=${encodeURIComponent(query)}&page=${pageParam}&limit=20&${new URLSearchParams(params).toString()}`);
-    if (!response.ok) {
-      throw new Error('Failed to search clips');
-    }
-    const data = await response.json();
-    return {
-      data: data.results || [],
-      hasMore: data.hasMore || false,
-      nextPage: data.hasMore ? pageParam + 1 : undefined,
-      totalCount: data.totalCount || 0,
-    };
-  };
-
-  return useInfiniteScroll({
-    queryKey: queryKeys.search.clips(query, params),
-    queryFn,
-    enabled: query.trim().length > 0,
-    options: {
-      threshold: 0.1,
-      rootMargin: '200px',
-    },
-  });
-};
-
 // Hook for infinite notifications
 export const useInfiniteNotifications = (params: Record<string, any> = {}) => {
   const queryFn = async ({ pageParam = 1 }: { pageParam: number }) => {

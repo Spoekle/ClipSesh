@@ -58,6 +58,10 @@ function ClipViewer() {
           params.sortBy = 'createdAt';
           params.sortOrder = 'desc';
           break;
+        case 'mostViewed':
+          params.sortBy = 'views';
+          params.sortOrder = 'desc';
+          break;
         case 'oldest':
           params.sortBy = 'createdAt';
           params.sortOrder = 'asc';
@@ -177,7 +181,7 @@ function ClipViewer() {
       const nextId = typeof idOrFn === 'function' ? idOrFn(prev) : idOrFn;
       if (nextId) {
         const currentQuery = searchParams.toString();
-        const target = nextId === 'new' ? '/clips/new' : `/clips/${nextId}`;
+        const target = `/clips/${nextId}`;
         navigate(target + (currentQuery ? `?${currentQuery}` : ''));
       }
       return nextId;

@@ -34,6 +34,17 @@ const ReportMessagingModal: React.FC<ReportMessagingModalProps> = ({ report, isO
 
   const isAdmin = true;
 
+  // Escape key listener to close modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   useEffect(() => {
     if (isOpen && messages.length > 0) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -80,13 +91,6 @@ const ReportMessagingModal: React.FC<ReportMessagingModalProps> = ({ report, isO
     return new Date(dateString).toLocaleString();
   };
 
-  const getMessageIcon = (message: ReportMessage) => {
-    if (message.senderRole === 'admin') {
-      return <FaUserShield className="text-[#f23030]" />;
-    }
-    return <FaUser className="text-[#38bdf8]" />;
-  };
-
   if (!isOpen || !report) return null;
 
   return (
@@ -107,7 +111,7 @@ const ReportMessagingModal: React.FC<ReportMessagingModalProps> = ({ report, isO
           {/* Header */}
           <div className="p-5 sm:p-6 border-b border-[#262626] flex justify-between items-center bg-[#141414]">
             <div className="flex items-center space-x-3">
-              <div className="p-2.5 rounded-xl bg-[#f23030]/15 text-[#f23030]">
+              <div className="p-2.5 rounded-xl bg-cc-red/15 text-cc-red border border-cc-red/25">
                 <FaComments size={18} />
               </div>
               <div>
@@ -130,8 +134,8 @@ const ReportMessagingModal: React.FC<ReportMessagingModalProps> = ({ report, isO
           {/* Messages Area */}
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
             {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-2 border-[#f23030] border-t-transparent"></div>
+              <div className="flex items-center justify-center py-16">
+                <div className="animate-spin rounded-full h-8 w-8 border-2 border-[#262626] border-t-cc-red"></div>
                 <span className="ml-3 text-xs text-[#aaaaaa]">Loading messages...</span>
               </div>
             ) : messages.length === 0 ? (
@@ -146,78 +150,79 @@ const ReportMessagingModal: React.FC<ReportMessagingModalProps> = ({ report, isO
               </div>
             ) : (
               <div className="space-y-4">
-                {messages.map((message) => (
-                  <motion.div
-                    key={message._id}
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`flex items-start gap-3 ${
-                      message.senderRole === 'admin' ? 'justify-end' : 'justify-start'
-                    }`}
-                  >
-                    {message.senderRole === 'reporter' && (
-                      <div className="shrink-0 p-2 rounded-xl bg-[#38bdf8]/15 text-[#38bdf8]">
-                        {getMessageIcon(message)}
-                      </div>
-                    )}
-                    
-                    <div className={`max-w-[75%] ${
-                      message.senderRole === 'admin' ? 'order-2' : ''
-                    }`}>
-                      <div className={`rounded-2xl p-4 text-xs ${
-                        message.senderRole === 'admin'
-                          ? 'bg-[#f23030] text-white shadow-sm'
-                          : 'bg-[#141414] border border-[#262626] text-[#f1f1f1]'
-                      } ${
-                        message.isInternal ? 'ring-2 ring-[#eab308]/60 ring-dashed' : ''
-                      }`}>
-                        {message.isInternal && (
-                          <div className="flex items-center justify-center mb-2 text-[11px] font-medium text-[#eab308] bg-black/40 px-2 py-1 rounded-lg">
-                            <FaEyeSlash className="mr-1.5" size={12} />
-                            Internal Message (Staff Only)
-                          </div>
-                        )}
-                        
-                        <div className="flex items-center justify-between gap-4 mb-1 text-[11px]">
-                          <span className={`font-semibold ${message.senderRole === 'admin' ? 'text-white/90' : 'text-[#717171]'}`}>
-                            {message.senderUsername} {message.senderRole === 'admin' && '(Admin)'}
-                          </span>
-                          {isAdmin && (
-                            <button
-                              onClick={() => handleDeleteMessage(message._id)}
-                              className={`${message.senderRole === 'admin' ? 'text-white/70 hover:text-white' : 'text-[#717171] hover:text-[#f23030]'} p-1 transition-colors cursor-pointer`}
-                              title="Delete message"
-                            >
-                              <FaTrash size={10} />
-                            </button>
-                          )}
+                {messages.map((message) => {
+                  const isStaff = message.senderRole === 'admin';
+                  return (
+                    <motion.div
+                      key={message._id}
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={`flex items-start gap-3 ${
+                        isStaff ? 'justify-end' : 'justify-start'
+                      }`}
+                    >
+                      {/* Avatar icon for user (left side) */}
+                      {!isStaff && (
+                        <div className="shrink-0 p-2 rounded-xl bg-[#38bdf8]/15 text-[#38bdf8] border border-[#38bdf8]/20">
+                          <FaUser size={14} />
                         </div>
-                        
-                        <p className="whitespace-pre-wrap leading-relaxed">
-                          {message.message}
-                        </p>
-                        
-                        <div className={`flex items-center justify-between mt-2 text-[10px] ${
-                          message.senderRole === 'admin' ? 'text-white/70' : 'text-[#717171]'
+                      )}
+                      
+                      <div className={`max-w-[75%] ${isStaff ? 'order-2' : ''}`}>
+                        <div className={`rounded-2xl p-4 text-xs ${
+                          message.isInternal
+                            ? 'bg-[#1a1710] border border-[#eab308]/40 text-[#f1f1f1]'
+                            : isStaff
+                            ? 'bg-[#202020] border border-[#2e2e2e] text-[#f1f1f1] shadow-sm'
+                            : 'bg-[#141414] border border-[#262626] text-[#f1f1f1]'
                         }`}>
-                          <span>{formatDate(message.createdAt)}</span>
-                          {message.readBy.length > 1 && (
-                            <span className="flex items-center ml-2">
-                              <FaEye className="mr-1" size={10} />
-                              Read by {message.readBy.length - 1}
-                            </span>
+                          {message.isInternal && (
+                            <div className="flex items-center justify-center mb-2.5 text-[11px] font-semibold text-[#eab308] bg-[#eab308]/10 border border-[#eab308]/20 px-2 py-1 rounded-lg">
+                              <FaEyeSlash className="mr-1.5" size={12} />
+                              Internal Staff Note
+                            </div>
                           )}
+                          
+                          <div className="flex items-center justify-between gap-4 mb-1 text-[11px]">
+                            <span className={`font-semibold ${isStaff ? 'text-cc-red' : 'text-[#38bdf8]'}`}>
+                              {message.senderUsername} {isStaff && '(Staff)'}
+                            </span>
+                            {isAdmin && (
+                              <button
+                                onClick={() => handleDeleteMessage(message._id)}
+                                className="text-[#717171] hover:text-cc-red p-1 transition-colors cursor-pointer"
+                                title="Delete message"
+                              >
+                                <FaTrash size={10} />
+                              </button>
+                            )}
+                          </div>
+                          
+                          <p className="whitespace-pre-wrap leading-relaxed">
+                            {message.message}
+                          </p>
+                          
+                          <div className="flex items-center justify-between mt-2 text-[10px] text-[#717171]">
+                            <span>{formatDate(message.createdAt)}</span>
+                            {message.readBy && message.readBy.length > 1 && (
+                              <span className="flex items-center ml-2 text-[#aaaaaa]">
+                                <FaEye className="mr-1" size={10} />
+                                Read by {message.readBy.length - 1}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    
-                    {message.senderRole === 'admin' && (
-                      <div className="shrink-0 order-1 p-2 rounded-xl bg-[#f23030]/15 text-[#f23030]">
-                        {getMessageIcon(message)}
-                      </div>
-                    )}
-                  </motion.div>
-                ))}
+                      
+                      {/* Avatar icon for staff (right side) */}
+                      {isStaff && (
+                        <div className="shrink-0 order-1 p-2 rounded-xl bg-cc-red/15 text-cc-red border border-cc-red/20">
+                          <FaUserShield size={14} />
+                        </div>
+                      )}
+                    </motion.div>
+                  );
+                })}
                 <div ref={messagesEndRef} />
               </div>
             )}
@@ -231,13 +236,13 @@ const ReportMessagingModal: React.FC<ReportMessagingModalProps> = ({ report, isO
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder="Type moderation message..."
-                  className="bg-[#121212] border border-[#262626] text-[#f1f1f1] placeholder-[#717171] rounded-xl flex-1 px-3.5 py-2.5 text-xs min-h-[60px] resize-none focus:outline-none focus:border-[#444]"
+                  className="bg-[#121212] border border-[#262626] text-[#f1f1f1] placeholder-[#717171] rounded-xl flex-1 px-3.5 py-2.5 text-xs min-h-15 resize-none focus:outline-none focus:border-[#444]"
                   rows={2}
                 />
                 <button
                   type="submit"
                   disabled={!newMessage.trim() || sendMessageMutation.isPending}
-                  className="bg-[#f23030] hover:bg-[#d92222] text-white rounded-xl px-5 py-2.5 text-xs font-semibold flex items-center gap-2 shrink-0 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed self-end shadow-sm"
+                  className="bg-cc-red hover:bg-cc-red-hover text-white rounded-xl px-5 py-2.5 text-xs font-semibold flex items-center gap-2 shrink-0 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed self-end shadow-sm"
                 >
                   {sendMessageMutation.isPending ? (
                     <>
@@ -264,18 +269,18 @@ const ReportMessagingModal: React.FC<ReportMessagingModalProps> = ({ report, isO
                   </button>
                   
                   {showInternalToggle && (
-                    <div className="flex items-center space-x-2">
+                    <label className="flex items-center space-x-2 cursor-pointer select-none">
                       <input
                         type="checkbox"
                         id="isInternal"
                         checked={isInternal}
                         onChange={(e) => setIsInternal(e.target.checked)}
-                        className="rounded border-[#262626] bg-[#121212] text-[#f23030] focus:ring-0"
+                        className="rounded border-[#262626] bg-[#121212] text-cc-red focus:ring-0 cursor-pointer"
                       />
-                      <label htmlFor="isInternal" className="text-xs text-[#aaaaaa] cursor-pointer">
+                      <span className="text-xs text-[#aaaaaa]">
                         Internal message (admin-only)
-                      </label>
-                    </div>
+                      </span>
+                    </label>
                   )}
                 </div>
               )}

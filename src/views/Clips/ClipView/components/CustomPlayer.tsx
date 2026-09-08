@@ -1,5 +1,5 @@
 import { safeLocalStorage } from '@/utils/storage';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { FaPlay, FaPause, FaExpand, FaVolumeUp, FaVolumeMute, FaRedo, FaCompress, FaExclamationTriangle } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clip } from '../../../../types/adminTypes';
@@ -22,6 +22,12 @@ const CustomPlayer = ({ currentClip }: { currentClip: Clip }) => {
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [isDraggingVolume, setIsDraggingVolume] = useState(false);
     const [isDraggingProgress, setIsDraggingProgress] = useState(false);
+    const isDraggingProgressRef = useRef(false);
+    const wasPlayingBeforeDragRef = useRef(false);
+    const [scrubTime, setScrubTime] = useState<number | null>(null);
+    const [hoverTime, setHoverTime] = useState<number | null>(null);
+    const [hoverPercentage, setHoverPercentage] = useState<number>(0);
+    const [bufferedEnd, setBufferedEnd] = useState<number>(0);
     const [showVolumeControl, setShowVolumeControl] = useState(false);
     const [playbackRate, setPlaybackRate] = useState(1);
     const [showPlaybackRateMenu, setShowPlaybackRateMenu] = useState(false);
@@ -40,9 +46,17 @@ const CustomPlayer = ({ currentClip }: { currentClip: Clip }) => {
 
         const onPlay = () => setIsPlaying(true);
         const onPause = () => setIsPlaying(false);
-        const onTimeUpdate = () => !isDraggingProgress && setCurrentTime(video.currentTime);
+        const onTimeUpdate = () => !isDraggingProgressRef.current && setCurrentTime(video.currentTime);
+        const onProgress = () => {
+            if (video.buffered.length > 0) {
+                setBufferedEnd(video.buffered.end(video.buffered.length - 1));
+            }
+        };
         const onLoadedMetadata = () => {
             setDuration(video.duration);
+            if (video.buffered.length > 0) {
+                setBufferedEnd(video.buffered.end(video.buffered.length - 1));
+            }
             // Try to load thumbnail as poster if available
             if (currentClip?.thumbnail && !video.poster) {
                 video.poster = currentClip.thumbnail;
@@ -86,6 +100,7 @@ const CustomPlayer = ({ currentClip }: { currentClip: Clip }) => {
         video.addEventListener('play', onPlay);
         video.addEventListener('pause', onPause);
         video.addEventListener('timeupdate', onTimeUpdate);
+        video.addEventListener('progress', onProgress);
         video.addEventListener('loadedmetadata', onLoadedMetadata);
         video.addEventListener('volumechange', onVolumeChange);
         video.addEventListener('error', onError);
@@ -98,6 +113,7 @@ const CustomPlayer = ({ currentClip }: { currentClip: Clip }) => {
             video.removeEventListener('play', onPlay);
             video.removeEventListener('pause', onPause);
             video.removeEventListener('timeupdate', onTimeUpdate);
+            video.removeEventListener('progress', onProgress);
             video.removeEventListener('loadedmetadata', onLoadedMetadata);
             video.removeEventListener('volumechange', onVolumeChange);
             video.removeEventListener('error', onError);
@@ -105,7 +121,7 @@ const CustomPlayer = ({ currentClip }: { currentClip: Clip }) => {
             video.removeEventListener('canplay', onCanPlay);
             video.removeEventListener('ended', onEnded);
         };
-    }, [currentClip?.thumbnail, isDraggingProgress]);
+    }, [currentClip?.thumbnail]);
 
     // Track fullscreen changes
     useEffect(() => {
@@ -312,43 +328,116 @@ const CustomPlayer = ({ currentClip }: { currentClip: Clip }) => {
         }
     };
 
-    const handleSeek = (e) => {
+    const getPercentageFromClientX = useCallback((clientX: number) => {
+        if (!progressRef.current) return 0;
+        const rect = progressRef.current.getBoundingClientRect();
+        if (rect.width === 0) return 0;
+        const pos = (clientX - rect.left) / rect.width;
+        return Math.max(0, Math.min(1, pos));
+    }, []);
+
+    const handleProgressPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+        e.stopPropagation();
+        e.preventDefault();
         setHasInteracted(true);
-        
+
         const video = videoRef.current;
-        if (!video || !progressRef.current) return;
-        
-        const seekRect = progressRef.current.getBoundingClientRect();
-        const seekPos = (e.clientX - seekRect.left) / seekRect.width;
-        const seekTime = seekPos * duration;
-        
-        // Clamp to valid range
-        const clampedTime = Math.max(0, Math.min(seekTime, duration));
-        
-        video.currentTime = clampedTime;
-        setCurrentTime(clampedTime);
-    };
+        if (!video || !duration) return;
 
-    const handleProgressMouseDown = (e) => {
-        e.stopPropagation(); // Prevent click on video
+        try {
+            e.currentTarget.setPointerCapture(e.pointerId);
+        } catch {
+            // Fallback if not supported
+        }
+
+        isDraggingProgressRef.current = true;
         setIsDraggingProgress(true);
-        
-        handleSeek(e);
-        
-        document.addEventListener('mousemove', handleProgressMouseMove);
-        document.addEventListener('mouseup', handleProgressMouseUp);
+        wasPlayingBeforeDragRef.current = !video.paused;
+
+        const pct = getPercentageFromClientX(e.clientX);
+        const targetTime = pct * duration;
+        setScrubTime(targetTime);
+        setCurrentTime(targetTime);
+        video.currentTime = targetTime;
     };
 
-    const handleProgressMouseMove = (e) => {
-        if (!isDraggingProgress) return;
-        handleSeek(e);
+    const handleProgressPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+        if (!duration) return;
+        const pct = getPercentageFromClientX(e.clientX);
+        const time = pct * duration;
+
+        setHoverPercentage(pct * 100);
+        setHoverTime(time);
+
+        if (isDraggingProgressRef.current) {
+            setScrubTime(time);
+            setCurrentTime(time);
+            if (videoRef.current) {
+                videoRef.current.currentTime = time;
+            }
+        }
     };
 
-    const handleProgressMouseUp = () => {
+    const handleProgressPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+        if (!isDraggingProgressRef.current) return;
+
+        try {
+            if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+                e.currentTarget.releasePointerCapture(e.pointerId);
+            }
+        } catch {
+            // Ignore
+        }
+
+        isDraggingProgressRef.current = false;
         setIsDraggingProgress(false);
-        document.removeEventListener('mousemove', handleProgressMouseMove);
-        document.removeEventListener('mouseup', handleProgressMouseUp);
+
+        const video = videoRef.current;
+        if (video && duration) {
+            const pct = getPercentageFromClientX(e.clientX);
+            const targetTime = pct * duration;
+            video.currentTime = targetTime;
+            setCurrentTime(targetTime);
+
+            if (wasPlayingBeforeDragRef.current) {
+                video.play().catch(() => {});
+            }
+        }
+        setScrubTime(null);
     };
+
+    const handleProgressPointerCancel = (e: React.PointerEvent<HTMLDivElement>) => {
+        handleProgressPointerUp(e);
+    };
+
+    const handleProgressMouseLeave = () => {
+        if (!isDraggingProgressRef.current) {
+            setHoverTime(null);
+        }
+    };
+
+    // Global listener ensures drag state resets cleanly if pointer is released outside
+    useEffect(() => {
+        const handleGlobalPointerUp = () => {
+            if (isDraggingProgressRef.current) {
+                isDraggingProgressRef.current = false;
+                setIsDraggingProgress(false);
+                setScrubTime(null);
+                if (wasPlayingBeforeDragRef.current && videoRef.current) {
+                    videoRef.current.play().catch(() => {});
+                }
+            }
+        };
+
+        window.addEventListener('pointerup', handleGlobalPointerUp);
+        window.addEventListener('mouseup', handleGlobalPointerUp);
+        window.addEventListener('touchend', handleGlobalPointerUp);
+        return () => {
+            window.removeEventListener('pointerup', handleGlobalPointerUp);
+            window.removeEventListener('mouseup', handleGlobalPointerUp);
+            window.removeEventListener('touchend', handleGlobalPointerUp);
+        };
+    }, []);
 
     const handleVolumeClick = (e) => {
         e.stopPropagation();
@@ -480,7 +569,9 @@ const CustomPlayer = ({ currentClip }: { currentClip: Clip }) => {
     };
 
     // Calculate progress percentage
-    const progressPercentage = ((currentTime / duration) * 100) || 0;
+    const activeCurrentTime = isDraggingProgress && scrubTime !== null ? scrubTime : currentTime;
+    const progressPercentage = duration > 0 ? (activeCurrentTime / duration) * 100 : 0;
+    const bufferPercentage = duration > 0 ? (bufferedEnd / duration) * 100 : 0;
 
     // Determine if video is finished playing
     const isVideoEnded = currentTime >= duration && duration > 0;
@@ -603,21 +694,62 @@ const CustomPlayer = ({ currentClip }: { currentClip: Clip }) => {
                         transition={{ duration: 0.2 }}
                         className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent pt-16 pb-4 px-4 pointer-events-none"
                     >
-                        {/* Progress Bar */}
+                        {/* Progress Bar (Generous 28px hit target, smooth YouTube-style scrubber) */}
                         <div 
+                            className="relative h-7 flex items-center cursor-pointer pointer-events-auto touch-none select-none group/scrubber -my-1" 
                             ref={progressRef}
-                            className="mb-3 relative h-2 bg-neutral-600/60 rounded-full cursor-pointer pointer-events-auto" 
-                            onClick={handleSeek}
-                            onMouseDown={handleProgressMouseDown}
+                            onPointerDown={handleProgressPointerDown}
+                            onPointerMove={handleProgressPointerMove}
+                            onPointerUp={handleProgressPointerUp}
+                            onPointerCancel={handleProgressPointerCancel}
+                            onMouseLeave={handleProgressMouseLeave}
                         >
-                            <div 
-                                className="absolute left-0 top-0 h-full bg-[#f23030] rounded-full"
-                                style={{ width: `${progressPercentage}%` }}
-                            />
-                            <div 
-                                className={`absolute top-1/2 transform -translate-y-1/2 -translate-x-1/2 w-3 h-3 bg-white rounded-full shadow-md ${isDraggingProgress ? 'scale-125' : ''}`}
-                                style={{ left: `${progressPercentage}%` }}
-                            />
+                            {/* Hover / Scrub Time Tooltip Preview */}
+                            {(hoverTime !== null || isDraggingProgress) && duration > 0 && (
+                                <div
+                                    className="absolute -top-7 -translate-x-1/2 px-2 py-0.5 rounded bg-[#181818]/95 text-white text-[11px] font-mono font-medium pointer-events-none border border-white/15 shadow-xl whitespace-nowrap z-30 backdrop-blur-xs"
+                                    style={{
+                                        left: `${Math.max(2, Math.min(98, isDraggingProgress ? progressPercentage : hoverPercentage))}%`
+                                    }}
+                                >
+                                    {formatTime(isDraggingProgress && scrubTime !== null ? scrubTime : (hoverTime || 0))}
+                                </div>
+                            )}
+
+                            {/* Track Container */}
+                            <div className={`relative w-full rounded-full transition-all duration-150 bg-white/20 overflow-visible ${isDraggingProgress ? 'h-2' : 'h-1 group-hover/scrubber:h-1.5'}`}>
+                                {/* Buffer Progress Bar */}
+                                {bufferPercentage > 0 && (
+                                    <div 
+                                        className="absolute left-0 top-0 h-full bg-white/25 rounded-full pointer-events-none"
+                                        style={{ width: `${Math.min(100, bufferPercentage)}%` }}
+                                    />
+                                )}
+
+                                {/* Hover Ghost Bar */}
+                                {hoverTime !== null && !isDraggingProgress && (
+                                    <div 
+                                        className="absolute left-0 top-0 h-full bg-white/35 rounded-full pointer-events-none"
+                                        style={{ width: `${Math.min(100, hoverPercentage)}%` }}
+                                    />
+                                )}
+
+                                {/* Played Progress Bar */}
+                                <div 
+                                    className="absolute left-0 top-0 h-full bg-[#f23030] rounded-full"
+                                    style={{ width: `${Math.min(100, progressPercentage)}%` }}
+                                />
+
+                                {/* Scrubber Playhead Handle */}
+                                <div 
+                                    className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-[#f23030] rounded-full border-2 border-white shadow-[0_0_8px_rgba(242,48,48,0.8)] pointer-events-none transition-transform duration-150 ${
+                                        isDraggingProgress 
+                                            ? 'scale-125' 
+                                            : 'scale-0 group-hover/scrubber:scale-100'
+                                    }`}
+                                    style={{ left: `${Math.max(0, Math.min(100, progressPercentage))}%` }}
+                                />
+                            </div>
                         </div>
                         
                         {/* Time display and controls row */}
@@ -641,7 +773,7 @@ const CustomPlayer = ({ currentClip }: { currentClip: Clip }) => {
 
                                 {/* Time display */}
                                 <div className="text-white text-sm">
-                                    <span>{formatTime(currentTime)}</span>
+                                    <span>{formatTime(activeCurrentTime)}</span>
                                     <span className="mx-1">/</span>
                                     <span>{formatTime(duration || 0)}</span>
                                 </div>

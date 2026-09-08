@@ -36,8 +36,19 @@ export async function GET(req: NextRequest) {
     const season = req.nextUrl.searchParams.get('season');
     const year = req.nextUrl.searchParams.get('year');
     const includeRatings = req.nextUrl.searchParams.get('includeRatings') === 'true';
+    const archived = req.nextUrl.searchParams.get('archived');
 
-    const filter: Record<string, any> = { archived: { $ne: true } };
+    const filter: Record<string, any> = {};
+
+    if (archived === 'true') {
+      filter.archived = true;
+    } else if (archived === 'false') {
+      filter.archived = { $ne: true };
+    } else if (archived === 'all' || season || year) {
+      // When viewing an archive season/year or requesting 'all', do not restrict by archived
+    } else {
+      filter.archived = { $ne: true };
+    }
 
     if (streamer) {
       filter.streamer = { $regex: streamer, $options: 'i' };
@@ -59,7 +70,7 @@ export async function GET(req: NextRequest) {
     const sortDir = sortOrder === 'asc' ? 1 : -1;
     const sortObj: Record<string, any> = {};
 
-    if (sortBy === 'upvotes' || sortBy === 'downvotes' || sortBy === 'createdAt') {
+    if (sortBy === 'upvotes' || sortBy === 'downvotes' || sortBy === 'createdAt' || sortBy === 'views') {
       sortObj[sortBy] = sortDir;
     } else {
       sortObj['createdAt'] = -1;

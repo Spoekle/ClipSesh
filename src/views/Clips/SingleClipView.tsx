@@ -7,7 +7,6 @@ import { useBulkRatings } from '@/hooks/useRatings';
 import { useCurrentUser } from '@/hooks/useUser';
 import { useQueryClient } from '@tanstack/react-query';
 import ClipContent from '@/views/Clips/ClipView/Index';
-import ClipSearch from '@/views/Search/ClipSearch';
 import { Helmet } from '@/lib/helmetCompat';
 import { FaArrowLeft, FaTimes } from 'react-icons/fa';
 
@@ -20,17 +19,12 @@ export default function SingleClipView() {
   const queryClient = useQueryClient();
 
   const { data: user } = useCurrentUser();
-  const { data: clip, isLoading, error } = useClip(clipId && clipId !== 'new' ? clipId : '');
-  const { data: ratings } = useBulkRatings(clipId && clipId !== 'new' ? [clipId] : []);
+  const { data: clip, isLoading, error } = useClip(clipId || '');
+  const { data: ratings } = useBulkRatings(clipId ? [clipId] : []);
 
   const fetchClipsAndRatings = React.useCallback(async () => {
     await queryClient.invalidateQueries();
   }, [queryClient]);
-
-  // Special case: /clips/new renders clip submission / search
-  if (clipId === 'new') {
-    return <ClipSearch />;
-  }
 
   if (isLoading) {
     return (
@@ -74,7 +68,6 @@ export default function SingleClipView() {
   return (
     <ClipContent
       clip={clip}
-      setExpandedClip={() => navigate('/clips')}
       user={user || null}
       fetchClipsAndRatings={fetchClipsAndRatings}
       ratings={ratings || {}}

@@ -61,6 +61,7 @@ export interface Clip {
   status?: string;
   upvotes: number;
   downvotes: number;
+  views?: number;
   comments: Comment[];
   season?: string;
   year?: number;

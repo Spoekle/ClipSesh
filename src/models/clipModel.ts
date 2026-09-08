@@ -26,6 +26,7 @@ export interface IClip extends Document {
   title: string;
   upvotes: number;
   downvotes: number;
+  views: number;
   comments: IComment[];
   discordSubmitterId?: string;
   season?: 'Winter' | 'Spring' | 'Summer' | 'Fall';
@@ -86,6 +87,7 @@ const clipSchema = new Schema<IClip>({
   title: { type: String, required: true },
   upvotes: { type: Number, default: 0 },
   downvotes: { type: Number, default: 0 },
+  views: { type: Number, default: 0, min: 0 },
   comments: { type: [commentSchema], default: [] },
   discordSubmitterId: { type: String },
   season: { type: String, enum: ['Winter', 'Spring', 'Summer', 'Fall'] },
@@ -99,6 +101,7 @@ clipSchema.index({ season: 1, year: -1, archived: 1 });
 clipSchema.index({ discordSubmitterId: 1 });
 clipSchema.index({ submitter: 1 });
 clipSchema.index({ title: 'text', streamer: 'text', submitter: 'text' });
+clipSchema.index({ views: -1 });
 
 export const Clip: Model<IClip> =
   (mongoose.models && mongoose.models.Clip) ||

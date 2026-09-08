@@ -169,6 +169,7 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
   // Quick YouTube-style Category chips
   const quickSortOptions = [
     { label: 'All', value: 'newest' },
+    { label: 'Most Viewed', value: 'mostViewed' },
     { label: 'Most Upvoted', value: 'highestUpvotes' },
     { label: 'Newest', value: 'newest' },
     { label: 'Oldest', value: 'oldest' },
@@ -366,6 +367,7 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
                     className="w-full px-3 py-2 bg-[#181818] border border-[#2a2a2a] rounded-xl text-white focus:outline-none focus:border-neutral-400"
                   >
                     <option value="createdAt">Upload Date</option>
+                    <option value="views">Views</option>
                     <option value="upvotes">Upvotes</option>
                     <option value="downvotes">Downvotes</option>
                     <option value="ratio">Vote Ratio</option>

@@ -1,18 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { FaStar, FaThumbsUp, FaThumbsDown, FaBan } from 'react-icons/fa';
+import { FaStar, FaThumbsUp, FaThumbsDown, FaBan, FaEye } from 'react-icons/fa';
 import { IoChatbubbleEllipsesOutline } from 'react-icons/io5';
 import { format } from 'timeago.js';
 import { User, Clip, Rating, RatingUser } from '../../../../types/adminTypes';
 import { getClipVoteStatus } from '../../../../services/clipService';
-import generateAvatar from '../../../../utils/generateAvatar';
 
 interface ClipItemProps {
   clip: Clip;
   user: User | null;
-  ratings: Record<string, Rating>;
-  config: any;
-  filterRatedClips: boolean;
+  ratings?: Record<string, Rating>;
+  config?: any;
+  filterRatedClips?: boolean;
   setExpandedClip: (clipId: string) => void;
 }
 
@@ -156,7 +155,6 @@ const ClipItem: React.FC<ClipItemProps> = ({
   }, [clip._id, ratings]);
 
   const formattedDate = format(new Date(clip.createdAt));
-  const streamerAvatar = generateAvatar(clip.streamer) || undefined;
 
   return (
     <motion.div
@@ -167,7 +165,7 @@ const ClipItem: React.FC<ClipItemProps> = ({
     >
       {/* 16:9 Thumbnail Container */}
       <div
-        className="relative overflow-hidden aspect-video bg-[#0e1315]"
+        className="relative overflow-hidden aspect-video bg-[#181818]"
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
       >
@@ -196,7 +194,7 @@ const ClipItem: React.FC<ClipItemProps> = ({
         )}
 
         {/* Subtle dark overlay for contrast */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 pointer-events-none" />
+        <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-black/20 pointer-events-none" />
 
         {/* Comments Badge (Bottom-Right) */}
         <div className="absolute bottom-2 right-2 flex items-center gap-1 px-2 py-0.5 rounded-md bg-black/80 backdrop-blur-xs text-[11px] font-medium text-[#f1f1f1] border border-white/10">
@@ -227,37 +225,31 @@ const ClipItem: React.FC<ClipItemProps> = ({
         </div>
       </div>
 
-      {/* Details Row: Streamer Avatar + Title + Metadata */}
-      <div className="p-3.5 flex gap-3 flex-1">
-        {/* Streamer Avatar */}
-        <div className="w-9 h-9 rounded-full bg-[#0e1315] border border-[#2c2c2c] overflow-hidden shrink-0 mt-0.5 flex items-center justify-center">
-          <img
-            src={streamerAvatar}
-            alt={clip.streamer}
-            className="w-full h-full object-cover"
-          />
-        </div>
+      {/* Details: Title + Metadata */}
+      <div className="p-3.5 flex flex-col justify-between flex-1">
+        <div>
+          <h3 className="text-sm font-semibold text-[#f1f1f1] group-hover:text-white line-clamp-2 leading-snug tracking-tight transition-colors">
+            {clip.title}
+          </h3>
 
-        {/* Text details */}
-        <div className="flex-1 min-w-0 flex flex-col justify-between">
-          <div>
-            <h3 className="text-sm font-semibold text-[#f1f1f1] group-hover:text-white line-clamp-2 leading-snug tracking-tight transition-colors">
-              {clip.title}
-            </h3>
-
-            <div className="text-xs text-[#aaaaaa] hover:text-white font-medium mt-1 truncate transition-colors flex items-center gap-1">
-              <span>{clip.streamer}</span>
-            </div>
-
-            <div className="text-xs text-[#717171] mt-1 flex items-center gap-1.5 flex-wrap">
-              <span className="flex items-center gap-1 text-neutral-400 font-medium">
-                <FaThumbsUp size={10} className="text-neutral-500" />
-                <span>{clip.upvotes}</span>
-              </span>
-              <span className="text-neutral-600">•</span>
-              <span>{formattedDate}</span>
-            </div>
+          <div className="text-xs text-[#aaaaaa] hover:text-white font-medium mt-1 truncate transition-colors flex items-center gap-1">
+            <span>{clip.streamer}</span>
           </div>
+
+          <div className="text-xs text-[#717171] mt-1.5 flex items-center gap-1.5 flex-wrap">
+            <span className="flex items-center gap-1 text-neutral-400 font-medium">
+              <FaEye size={11} className="text-neutral-500" />
+              <span>{clip.views || 0}</span>
+            </span>
+            <span className="text-neutral-600">•</span>
+            <span className="flex items-center gap-1 text-neutral-400 font-medium">
+              <FaThumbsUp size={10} className="text-neutral-500" />
+              <span>{clip.upvotes}</span>
+            </span>
+            <span className="text-neutral-600">•</span>
+            <span>{formattedDate}</span>
+          </div>
+        </div>
 
           {/* Team rating row (admin/clipteam only) */}
           {user && (user.roles.includes('admin') || user.roles.includes('clipteam')) && (
@@ -282,7 +274,6 @@ const ClipItem: React.FC<ClipItemProps> = ({
             </div>
           )}
         </div>
-      </div>
     </motion.div>
   );
 };

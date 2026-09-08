@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
+import { FaChartLine } from 'react-icons/fa';
 import DateRangePicker from '../../../../components/DateRangePicker';
 import { useMyRatings } from '../../../../hooks/useRatings';
 
@@ -80,7 +81,6 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = ({ viewSwitchTimestamp }
       const chartData = allKeys.map(date => ({ date, count: counts[date] || 0 }));
       setData(chartData);
     } else {
-      console.log('No data found, setting empty array');
       setData([]);
     }
   }, [rawRatings]);
@@ -108,7 +108,8 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = ({ viewSwitchTimestamp }
   };
 
   const formatXAxisLabel = (value: string) => {
-    return value.split('-')[2];
+    const parts = value.split('-');
+    return parts.length >= 3 ? `${parts[1]}/${parts[2]}` : value;
   };
 
   const formatTooltipDate = (dateKey: string) => {
@@ -119,153 +120,120 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = ({ viewSwitchTimestamp }
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-neutral-800 p-3 rounded-lg border border-neutral-700 shadow-lg">
-          <p className="font-medium text-white">{formatTooltipDate(label)}</p>
-          {payload.map((entry: any, index: number) => (
-            <div key={index} className="flex justify-between text-sm my-1">
-              <span style={{ color: entry.color }}>
-                {entry.dataKey === 'count' ? 'Ratings:' : entry.name}
-              </span>
-              <span className="font-semibold text-white ml-4">{entry.value}</span>
-            </div>
-          ))}
+        <div className="bg-[#181818] p-3 rounded-xl border border-[#262626] shadow-xl text-xs">
+          <p className="font-semibold text-[#f1f1f1] mb-1">{formatTooltipDate(label)}</p>
+          <div className="flex items-center justify-between gap-3 text-xs">
+            <span className="text-[#aaaaaa] flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-cc-red" />
+              Ratings
+            </span>
+            <span className="font-bold text-[#f1f1f1]">{payload[0].value}</span>
+          </div>
         </div>
       );
     }
     return null;
   };
+
   return (
-    <div className='w-full'>
-      <div className="bg-[#161d21] rounded-[10px] border border-[#263238] p-6 mb-8">
-        <div className="flex flex-col sm:flex-row sm:justify-between mb-6 gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-[#f23030] rounded-[8px] flex items-center justify-center">
-              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-bold text-[#e6e6e6]">Activity Tracker</h3>
+    <div className="w-full">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 bg-cc-red/15 text-cc-red rounded-lg flex items-center justify-center">
+            <FaChartLine size={13} />
           </div>
-          <div className="flex justify-center sm:justify-end w-full sm:w-auto">
-            <DateRangePicker
-              startDate={dateRange.start}
-              endDate={dateRange.end}
-              onDateRangeChange={handleDateRangeChange}
-            />
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-[#aaaaaa]">
+            Activity Velocity
+          </h3>
+        </div>
+        <DateRangePicker
+          startDate={dateRange.start}
+          endDate={dateRange.end}
+          onDateRangeChange={handleDateRangeChange}
+        />
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center items-center h-64 bg-[#141414] rounded-xl border border-[#262626]">
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-[#262626] border-t-cc-red"></div>
+        </div>
+      ) : error ? (
+        <div className="flex flex-col justify-center items-center h-64 bg-[#141414] rounded-xl border border-[#262626] text-center p-4">
+          <p className="text-xs text-cc-red font-medium">{error}</p>
+        </div>
+      ) : data.length === 0 ? (
+        <div className="flex flex-col justify-center items-center h-64 bg-[#141414] rounded-xl border border-[#262626] text-center p-4">
+          <p className="text-xs text-[#aaaaaa] font-medium">No activity data in this range</p>
+          <p className="text-[11px] text-[#717171] mt-1">Try expanding your date selection</p>
+        </div>
+      ) : (
+        <div className="w-full h-64 bg-[#141414] rounded-xl p-3 border border-[#262626]">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="profileAreaGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#f23030" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#f23030" stopOpacity={0.0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
+              <XAxis
+                dataKey="date"
+                tickFormatter={formatXAxisLabel}
+                tick={{ fill: '#717171', fontSize: 10 }}
+                axisLine={{ stroke: '#262626' }}
+                tickLine={false}
+              />
+              <YAxis
+                allowDecimals={false}
+                tick={{ fill: '#717171', fontSize: 10 }}
+                axisLine={{ stroke: '#262626' }}
+                tickLine={false}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Area
+                type="monotone"
+                dataKey="count"
+                name="Ratings"
+                stroke="#f23030"
+                strokeWidth={2}
+                fillOpacity={1}
+                fill="url(#profileAreaGradient)"
+                activeDot={{ r: 5, fill: '#f23030', stroke: '#181818', strokeWidth: 2 }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {!loading && data.length > 0 && (
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          <div className="bg-[#141414] p-3 rounded-xl border border-[#262626] flex flex-col items-center justify-center text-center">
+            <span className="text-[10px] font-semibold text-[#717171] uppercase tracking-wider mb-0.5">Total Ratings</span>
+            <span className="text-lg font-bold text-[#f1f1f1]">
+              {data.reduce((sum, item) => sum + item.count, 0)}
+            </span>
+          </div>
+
+          <div className="bg-[#141414] p-3 rounded-xl border border-[#262626] flex flex-col items-center justify-center text-center">
+            <span className="text-[10px] font-semibold text-[#717171] uppercase tracking-wider mb-0.5">Peak Day</span>
+            <span className="text-xs font-bold text-[#f1f1f1]">
+              {data.length > 0
+                ? formatTooltipDate(data.reduce((max, item) => max.count > item.count ? max : item).date)
+                : 'N/A'}
+            </span>
+          </div>
+
+          <div className="bg-[#141414] p-3 rounded-xl border border-[#262626] flex flex-col items-center justify-center text-center">
+            <span className="text-[10px] font-semibold text-[#717171] uppercase tracking-wider mb-0.5">Avg / Active Day</span>
+            <span className="text-lg font-bold text-[#f1f1f1]">
+              {data.length > 0
+                ? (data.reduce((sum, item) => sum + item.count, 0) / Math.max(1, data.filter(d => d.count > 0).length)).toFixed(1)
+                : '0'}
+            </span>
           </div>
         </div>
-
-        {loading ? (
-          <div className="flex justify-center items-center h-64 bg-[#0e1315] rounded-[10px] border border-[#263238]">
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-              className="w-10 h-10 border-3 border-[#263238] border-t-[#f23030] rounded-full"
-            />
-          </div>
-        ) : error ? (
-          <div className="flex flex-col justify-center items-center h-64 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-700/50">
-            <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-3">
-              <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.232 16.5c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
-            </div>
-            <p className="text-red-600 dark:text-red-400 font-medium">{error}</p>
-          </div>
-        ) : data.length === 0 ? (
-          <div className="flex flex-col justify-center items-center h-64 bg-[#0e1315] rounded-[10px] border border-[#263238]">
-            <div className="w-12 h-12 bg-[#263238] rounded-full flex items-center justify-center mb-3">
-              <svg className="w-6 h-6 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            </div>
-            <p className="text-[#b3b3b3] font-medium">No activity data available</p>
-            <p className="text-[#626262] text-sm mt-1">Try adjusting your date range</p>
-          </div>
-        ) : (
-          <div className="w-full h-64 sm:h-80 bg-[#0e1315] rounded-[10px] p-4 border border-[#263238]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={data} margin={{ top: 5, right: 15, left: 5, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#666" strokeOpacity={0.2} />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={formatXAxisLabel}
-                  tick={{ fill: '#888', fontSize: 12 }}
-                  interval="preserveStartEnd"
-                />
-                <YAxis
-                  allowDecimals={false}
-                  tick={{ fill: '#888', fontSize: 12 }}
-                  width={30}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Line
-                  type="monotone"
-                  dataKey="count"
-                  name="Ratings"
-                  stroke="url(#gradient)"
-                  strokeWidth={3}
-                  activeDot={{ r: 6, fill: '#f23030' }}
-                  animationDuration={1000}
-                />
-                <defs>
-                  <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#f23030" />
-                    <stop offset="100%" stopColor="#c51f1f" />
-                  </linearGradient>
-                </defs>
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-
-        {!loading && data.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-          >
-            <div className="bg-[#f23030]/10 p-4 rounded-[10px] border border-[#f23030]/20 flex flex-col items-center justify-center hover:border-[#f23030]/40 transition-all duration-200">
-              <div className="w-8 h-8 bg-[#f23030] rounded-[8px] flex items-center justify-center mb-2">
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4" />
-                </svg>
-              </div>
-              <p className="text-xs text-[#f23030] mb-1 font-medium">Total Ratings</p>
-              <p className="text-2xl font-bold text-[#e6e6e6]">
-                {data.reduce((sum, item) => sum + item.count, 0)}
-              </p>
-            </div>
-            <div className="bg-emerald-500/10 p-4 rounded-[10px] border border-emerald-500/20 flex flex-col items-center justify-center hover:border-emerald-500/40 transition-all duration-200">
-              <div className="w-8 h-8 bg-emerald-500 rounded-[8px] flex items-center justify-center mb-2">
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                </svg>
-              </div>
-              <p className="text-xs text-emerald-400 mb-1 font-medium">Most Active Day</p>
-              <p className="text-lg font-bold text-[#e6e6e6] text-center">
-                {data.length > 0
-                  ? formatTooltipDate(data.reduce((max, item) => max.count > item.count ? max : item).date)
-                  : 'N/A'}
-              </p>
-            </div>
-            <div className="bg-purple-500/10 p-4 rounded-[10px] border border-purple-500/20 flex flex-col items-center justify-center hover:border-purple-500/40 transition-all duration-200 sm:col-span-2 lg:col-span-1">
-              <div className="w-8 h-8 bg-purple-500 rounded-[8px] flex items-center justify-center mb-2">
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <p className="text-xs text-purple-400 mb-1 font-medium">Avg Ratings/Day</p>
-              <p className="text-2xl font-bold text-[#e6e6e6]">
-                {data.length > 0
-                  ? (data.reduce((sum, item) => sum + item.count, 0) / data.filter(d => d.count > 0).length).toFixed(1)
-                  : '0'}
-              </p>
-            </div>
-          </motion.div>
-        )}
-      </div>
+      )}
     </div>
   );
 };
