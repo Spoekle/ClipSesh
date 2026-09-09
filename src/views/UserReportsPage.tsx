@@ -60,38 +60,48 @@ function UserReportsPage() {
   }
 
   return (
-    <div className="relative min-h-[calc(100vh-80px)] bg-[#0f0f0f] text-[#f1f1f1] py-8">
-      <div className="max-w-300 mx-auto px-4 sm:px-8">
-        {/* Navigation Breadcrumbs */}
-        <nav className="flex items-center gap-1.5 text-xs text-[#717171] mb-4">
-          <NavLink to="/" className="hover:text-[#f1f1f1] transition-colors">
-            Home
-          </NavLink>
-          <span className="text-[#333333] select-none">/</span>
-          <span className="text-[#aaaaaa] font-medium">My Reports</span>
-        </nav>
+    <div className="relative min-h-[calc(100vh-80px)] bg-[#0f0f0f] text-[#f1f1f1]">
+      {/* CC Page Header Container (1200px centered) */}
+      <div className="relative w-full overflow-hidden select-none">
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-8 pt-6 pb-4">
+          {/* Breadcrumbs */}
+          <nav className="flex items-center gap-1.5 text-sm text-[#b3b3b3] mb-2">
+            <NavLink to="/" className="hover:text-white transition-colors">
+              Home
+            </NavLink>
+            <span className="text-[#626262] select-none">/</span>
+            <span className="text-white font-medium">My Reports</span>
+          </nav>
 
-        {/* Page Header */}
-        <div className="bg-[#181818] border border-[#262626] p-5 sm:p-6 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 shadow-sm">
-          <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-cc-red/15 text-cc-red border border-cc-red/25 flex items-center justify-center shrink-0">
-              <FaFlag size={16} />
-            </div>
+          {/* Title row with signature CC Red Underline */}
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
             <div>
-              <h1 className="text-lg sm:text-xl font-bold text-[#f1f1f1] flex items-center gap-2.5">
-                <span>My Reports</span>
-                {reports.length > 0 && (
-                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#121212] text-[#aaaaaa] border border-[#262626]">
-                    {reports.length}
-                  </span>
-                )}
-              </h1>
-              <p className="text-xs text-[#717171] mt-0.5">
-                View status updates, admin notes, and discuss your submitted clip reports
+              <div className="relative pb-3 w-fit">
+                <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white tracking-tight leading-tight uppercase">
+                  MY REPORTS
+                </h1>
+                {/* CC Red Bar: width 60%, height 2.5px */}
+                <div className="absolute bottom-0 left-0 w-3/5 h-[2.5px] bg-[#f23030] rounded-full" />
+              </div>
+              <p className="mt-3 text-sm sm:text-base text-[#b3b3b3] leading-relaxed max-w-xl">
+                View status updates, admin notes, and discuss your submitted clip reports.
               </p>
+            </div>
+
+            {/* Badges */}
+            <div className="flex items-center gap-2.5 pb-1">
+              <span className="text-xs font-semibold px-2.5 py-1 rounded-[6px] bg-[#181818] border border-[#2a2a2a] text-[#e6e6e6]">
+                Reports Console
+              </span>
+              <span className="text-xs font-medium px-3 py-1 rounded-sm bg-[#f23030]/10 border border-[#f23030]/25 text-[#f23030]">
+                {reports.length} {reports.length === 1 ? 'report' : 'reports'} submitted
+              </span>
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-8 py-6">
 
         {/* Reports List */}
         {reports.length === 0 ? (
@@ -109,11 +119,9 @@ function UserReportsPage() {
         ) : (
           <div className="space-y-4">
             {reports.map((report) => (
-              <motion.div
+              <div
                 key={report._id}
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-[#181818] rounded-2xl border border-[#262626] p-5 sm:p-6 hover:border-[#383838] transition-all shadow-sm"
+                className="bg-[#181818] rounded-2xl border border-[#262626] p-5 sm:p-6 hover:border-[#383838] transition-colors shadow-sm"
               >
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex-1 min-w-0">
@@ -220,7 +228,7 @@ function UserReportsPage() {
                     </button>
                   )}
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
         )}

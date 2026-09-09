@@ -47,7 +47,6 @@ export const queryKeys = {
   user: {
     all: ['user'] as const,
     current: ['user', 'current'] as const,
-    profile: (userId: string) => ['user', 'profile', userId] as const,
   },
   
   // Clip queries with optimized parameter handling
@@ -75,7 +74,6 @@ export const queryKeys = {
     },
     adjacent: (clipId: string, options: Record<string, any>) => ['clips', 'adjacent', clipId, options] as const,
     filterOptions: ['clips', 'filterOptions'] as const,
-    userClips: (discordId: string, page: number, limit: number) => ['clips', 'user', discordId, page, limit] as const,
     videoInfo: (url: string) => ['clips', 'videoInfo', url] as const,
     voteStatus: (clipId: string) => ['clips', 'voteStatus', clipId] as const,
   },

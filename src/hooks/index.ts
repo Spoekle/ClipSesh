@@ -4,9 +4,6 @@
 // User hooks
 export * from './useUser';
 
-// Profile hooks
-export * from './useProfile';
-
 // Clip hooks
 export * from './useClips';
 

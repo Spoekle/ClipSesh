@@ -290,27 +290,6 @@ export const transformRatings = (ratings: Record<string, any>): Record<string, R
 };
 
 /**
- * Get clips submitted by a specific user (by Discord ID)
- */
-export const getClipsByUser = async (discordId: string, page: number = 1, limit: number = 10): Promise<ClipResponse> => {
-  try {
-    const response = await axios.get(`${backendUrl}/api/clips/user/${discordId}`, {
-      params: { page, limit }
-    });
-
-    return {
-      clips: response.data.clips,
-      total: response.data.pagination.totalClips,
-      page: response.data.pagination.currentPage,
-      pages: response.data.pagination.totalPages
-    };
-  } catch (error) {
-    console.error('Error fetching user clips:', error);
-    throw new Error('Failed to fetch user clips');
-  }
-};
-
-/**
  * Get video info from URL for clip upload
  */
 export const getVideoInfo = async (url: string): Promise<{ title: string; author: string; platform: string }> => {

@@ -23,28 +23,6 @@ export const useCurrentUser = () => {
   });
 };
 
-// Hook for fetching user profile by ID
-export const useUserProfile = (userId: string) => {
-  return useQuery({
-    queryKey: queryKeys.user.profile(userId),
-    queryFn: () => userService.getCurrentUser(), // Adjust this if you have a getUserById function
-    enabled: Boolean(userId),
-  });
-};
-
-// Mutation for updating user profile
-export const useUpdateUserProfile = () => {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: ({ userId, updateData }: { userId: string; updateData: any }) =>
-      userService.updateUserProfile(userId, updateData),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.user.all });
-    },
-  });
-};
-
 // Mutation for updating current user info
 export const useUpdateMyUserInfo = () => {
   const queryClient = useQueryClient();

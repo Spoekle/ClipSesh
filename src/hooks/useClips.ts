@@ -256,15 +256,6 @@ export const useClipFilterOptions = () => {
   });
 };
 
-// Hook for fetching clips by user
-export const useClipsByUser = (discordId: string, page: number = 1, limit: number = 10) => {
-  return useQuery({
-    queryKey: queryKeys.clips.userClips(discordId, page, limit),
-    queryFn: () => clipService.getClipsByUser(discordId, page, limit),
-    enabled: Boolean(discordId),
-  });
-};
-
 // Hook for fetching video info
 export const useVideoInfo = (url: string) => {
   return useQuery({

@@ -245,33 +245,6 @@ export const useOptimisticClipDelete = () => {
   });
 };
 
-// Optimistic user profile update
-export const useOptimisticProfileUpdate = () => {
-  return useOptimisticUpdate({
-    queryKey: queryKeys.user.current,
-    mutationFn: async (userData: any) => {
-      const response = await fetch('/api/user/profile', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userData),
-      });
-      if (!response.ok) throw new Error('Failed to update profile');
-      return response.json();
-    },
-    onOptimisticUpdate: (oldData: any, variables) => {
-      return { ...oldData, ...variables, optimistic: true };
-    },
-    onSuccessUpdate: (data, _variables, _oldData) => {
-      return { ...data, optimistic: false };
-    },
-    successMessage: 'Profile updated successfully!',
-    errorMessage: 'Failed to update profile',
-    invalidateQueries: [
-      queryKeys.user.all,
-    ],
-  });
-};
-
 // Bulk optimistic updates utility
 export const useBulkOptimisticUpdate = <TData, TVariables>(
   operations: Array<OptimisticUpdateConfig<TData, TVariables>>
