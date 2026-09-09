@@ -42,7 +42,10 @@ export const getAdminConfig = async (): Promise<Partial<AdminConfig>> => {
   try {
     const headers = getAuthHeaders();
     const response = await axios.get(`${backendUrl}/api/admin/config`, { headers });
-    return response.data && response.data[0] ? response.data[0] : {};
+    const data = response.data;
+    if (Array.isArray(data)) return data[0] || {};
+    if (data?.admin) return { ...data, ...data.admin };
+    return data || {};
   } catch (error) {
     console.error('Error fetching admin config:', error);
     throw new Error('Failed to fetch admin configuration');
@@ -62,7 +65,13 @@ export const getCombinedConfig = async (user?: any): Promise<PublicConfig & Part
     
     // Fetch admin config if user has appropriate roles
     const token = safeLocalStorage.getItem('token');
-    if (token && user && (user.roles?.includes('admin') || user.roles?.includes('clipteam'))) {
+    if (
+      token &&
+      user &&
+      (user.roles?.includes('admin') ||
+        user.roles?.includes('clipteam') ||
+        user.roles?.includes('editor'))
+    ) {
       try {
         const adminConfig = await getAdminConfig();
         configData = {

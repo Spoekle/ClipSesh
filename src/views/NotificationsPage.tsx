@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Helmet } from '@/lib/helmetCompat';
-import { useNavigate } from '@/lib/routerCompat';
+import { useNavigate, NavLink } from '@/lib/routerCompat';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FaBell,
@@ -24,7 +24,6 @@ import { useNotification } from '../context/AlertContext';
 import LoadingBar from 'react-top-loading-bar';
 import { format } from 'timeago.js';
 import * as notificationService from '../services/notificationService';
-import Breadcrumbs from '../components/common/Breadcrumbs';
 
 import {
   useNotifications,
@@ -224,37 +223,47 @@ const NotificationsPage: React.FC = () => {
         />
       </div>
 
-      {/* Main Container */}
-      <div className="w-full max-w-[1200px] mx-auto px-4 sm:px-8 py-6 md:py-8 grow flex flex-col">
-        {/* Header */}
-        <div className="mb-6">
-          <div className="mb-3">
-            <Breadcrumbs
-              items={[
-                { label: 'Home', path: '/', icon: <FaHome className="w-3.5 h-3.5" /> },
-                { label: 'Notifications' },
-              ]}
-            />
-          </div>
+      {/* CC Page Header Container (1200px centered) */}
+      <div className="relative w-full overflow-hidden select-none">
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-8 pt-6 pb-4">
+          {/* Breadcrumbs */}
+          <nav className="flex items-center gap-1.5 text-sm text-[#b3b3b3] mb-2">
+            <NavLink to="/" className="hover:text-white transition-colors">
+              Home
+            </NavLink>
+            <span className="text-[#626262] select-none">/</span>
+            <span className="text-white font-medium">Notifications</span>
+          </nav>
 
+          {/* Title row with signature CC Red Underline */}
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-[#f1f1f1] tracking-tight">
-                Notifications
-              </h1>
-              <p className="mt-1 text-xs sm:text-sm text-[#aaaaaa] leading-relaxed max-w-xl">
+              <div className="relative pb-3 w-fit">
+                <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white tracking-tight leading-tight uppercase">
+                  NOTIFICATIONS
+                </h1>
+                {/* CC Red Bar: width 60%, height 2.5px */}
+                <div className="absolute bottom-0 left-0 w-3/5 h-[2.5px] bg-[#f23030] rounded-full" />
+              </div>
+              <p className="mt-3 text-sm sm:text-base text-[#b3b3b3] leading-relaxed max-w-xl">
                 Stay updated on clip discussions, ratings, team chats, and mentions.
               </p>
             </div>
 
             {/* Top Toolbar Actions */}
-            <div className="flex items-center gap-2 self-start sm:self-end flex-wrap">
+            <div className="flex items-center gap-2.5 pb-1 flex-wrap">
+              {counts.unread > 0 && (
+                <span className="text-xs font-medium px-3 py-1 rounded-sm bg-[#f23030]/10 border border-[#f23030]/25 text-[#f23030]">
+                  {counts.unread} unread
+                </span>
+              )}
+
               {counts.unread > 0 && (
                 <button
                   type="button"
                   onClick={handleMarkAllAsRead}
                   disabled={markAllAsReadMutation.isPending}
-                  className="bg-[#1e1e1e] hover:bg-[#282828] border border-[#2e2e2e] text-[#f1f1f1] text-xs rounded-full flex items-center gap-1.5 px-3.5 py-1.5 font-medium transition-colors"
+                  className="bg-[#181818] hover:bg-[#222222] border border-[#2a2a2a] text-[#f1f1f1] text-xs rounded-[6px] flex items-center gap-1.5 px-3 py-1.5 font-medium transition-colors cursor-pointer"
                   title="Mark all as read"
                 >
                   <FaCheckDouble size={11} className="text-[#f23030]" />
@@ -267,7 +276,7 @@ const NotificationsPage: React.FC = () => {
                   type="button"
                   onClick={handleClearRead}
                   disabled={clearNotificationsMutation.isPending}
-                  className="bg-[#1e1e1e] hover:bg-[#282828] border border-[#2e2e2e] text-[#aaaaaa] hover:text-white text-xs rounded-full flex items-center gap-1.5 px-3.5 py-1.5 font-medium transition-colors"
+                  className="bg-[#181818] hover:bg-[#222222] border border-[#2a2a2a] text-[#aaaaaa] hover:text-white text-xs rounded-[6px] flex items-center gap-1.5 px-3.5 py-1.5 font-medium transition-colors cursor-pointer"
                   title="Clear all read notifications"
                 >
                   <FaBroom size={12} />
@@ -277,6 +286,10 @@ const NotificationsPage: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Main Container */}
+      <div className="w-full max-w-[1200px] mx-auto px-4 sm:px-8 py-6 grow flex flex-col">
 
         {/* Notifications Container Card */}
         <div className="bg-[#181818] rounded-xl shadow-sm border border-[#262626] overflow-hidden flex flex-col">

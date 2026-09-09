@@ -79,12 +79,12 @@ function Footer() {
               </li>
               <li>
                 <Link to="/clips" className="text-[#aaaaaa] hover:text-[#f23030] transition-colors">
-                  Browse Clips
+                  Clips
                 </Link>
               </li>
               <li>
-                <Link to="/search" className="text-[#aaaaaa] hover:text-[#f23030] transition-colors">
-                  Search
+                <Link to="/archive" className="text-[#aaaaaa] hover:text-[#f23030] transition-colors">
+                  The ClipVault
                 </Link>
               </li>
             </ul>

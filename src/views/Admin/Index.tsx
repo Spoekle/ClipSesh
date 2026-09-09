@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Helmet } from '@/lib/helmetCompat';
 import LoadingBar from 'react-top-loading-bar';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   FaUsers,
   FaCog,
@@ -10,7 +11,13 @@ import {
   FaBan,
   FaArchive,
   FaCheckCircle,
-  FaLayerGroup
+  FaLayerGroup,
+  FaDiscord,
+  FaChevronDown,
+  FaChevronUp,
+  FaSyncAlt,
+  FaTimes,
+  FaStop,
 } from "react-icons/fa";
 import { useLocation, NavLink } from '@/lib/routerCompat';
 import DeniedClips from './ContentManagement/DeniedClips';
@@ -19,14 +26,15 @@ import Statistics from './Overview/Statistics';
 import ConfigPanel from './Configuration/ConfigPanel';
 import AdminActions from './ContentManagement/AdminActions';
 import ZipManager from './ContentManagement/ZipManager';
+import DiscordScraper from './ContentManagement/DiscordScraper';
 import ReportsManagement from './Reports/ReportsManagement';
 import { getCurrentSeason } from '../../utils/seasonHelpers';
-import { Clip } from '../../types/adminTypes';
+import { Clip, ProcessJobStatus } from '../../types/adminTypes';
 import ProcessClipsModal from '../../components/admin/ProcessClipsModal';
 import useSocket from '../../hooks/useSocket';
 import ConfirmationDialog from '../../components/common/ConfirmationDialog';
 
-import { getProcessStatus } from '../../services/adminService';
+import { getProcessStatus, getAllProcessingJobs, forceCompleteProcessJob, cancelProcessingJob } from '../../services/adminService';
 
 import {
   useAllUsers,
@@ -45,11 +53,12 @@ import {
 import { useNotification } from '../../context/AlertContext';
 
 type TabName = 'overview' | 'users' | 'content' | 'config' | 'reports';
-type ContentSubTab = 'pipeline' | 'denied';
+type ContentSubTab = 'pipeline' | 'denied' | 'scraper';
 
 function AdminDash() {
   const [activeTab, setActiveTab] = useState<TabName>('overview');
   const [activeContentSubTab, setActiveContentSubTab] = useState<ContentSubTab>('pipeline');
+  const [selectedScraperChannel, setSelectedScraperChannel] = useState<string>('');
 
   const { data: allUsers = [], isLoading: usersLoading } = useAllUsers();
   const { data: configData, isLoading: configLoading } = useAdminConfig();
@@ -57,7 +66,7 @@ function AdminDash() {
   const { data: clipsData, isLoading: clipsLoading } = useClipsWithRatings();
   const { data: zips = [], isLoading: zipsLoading } = useZips();
   const { data: pendingReportsData } = useReports('pending');
-  const { showSuccess, showError, showAlertModal } = useNotification();
+  const { showSuccess, showError, showWarning, showAlertModal } = useNotification();
 
   const deleteZipMutation = useDeleteZip();
   const approveUserMutation = useApproveUser();
@@ -195,6 +204,16 @@ function AdminDash() {
   const [processingClips, setProcessingClips] = useState<boolean>(false);
   const [processProgress, setProcessProgress] = useState<number>(0);
   const [processJobId, setProcessJobId] = useState<string | null>(null);
+
+  // Compilation background tasks state (persists across page reloads/transitions)
+  const [processJobs, setProcessJobs] = useState<ProcessJobStatus[]>([]);
+  const [selectedProcessJobId, setSelectedProcessJobId] = useState<string | null>(null);
+  const [isProcessWidgetExpanded, setIsProcessWidgetExpanded] = useState<boolean>(false);
+  const [dismissedProcessJobIds, setDismissedProcessJobIds] = useState<Set<string>>(new Set());
+
+  const prevProcessJobStatusRef = useRef<Record<string, string>>({});
+  const processLogsContainerRef = useRef<HTMLDivElement | null>(null);
+
   const [showDeleteUserConfirmation, setShowDeleteUserConfirmation] = useState<boolean>(false);
   const [showDeleteAllClipsConfirmation, setShowDeleteAllClipsConfirmation] = useState<boolean>(false);
   const [currentYear, setCurrentYear] = useState<number>(seasonInfo.year || new Date().getFullYear());
@@ -295,6 +314,135 @@ function AdminDash() {
     }
   };
 
+  // Fetch all process jobs on mount
+  const fetchAllProcessJobs = async (selectNewest = false) => {
+    try {
+      const res = await getAllProcessingJobs();
+      if (res.success && Array.isArray(res.jobs)) {
+        setProcessJobs(res.jobs);
+        res.jobs.forEach((job) => {
+          if (job.jobId) {
+            prevProcessJobStatusRef.current[job.jobId] = job.status;
+          }
+        });
+
+        if (selectNewest && res.jobs.length > 0 && res.jobs[0].jobId) {
+          setSelectedProcessJobId(res.jobs[0].jobId);
+        } else {
+          setSelectedProcessJobId((curr) => {
+            if (curr && res.jobs.some((j) => j.jobId === curr)) return curr;
+            const active = res.jobs.find((j) => j.status === 'processing');
+            return active?.jobId || res.jobs[0]?.jobId || null;
+          });
+        }
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch existing process jobs:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchAllProcessJobs();
+  }, []);
+
+  // Poll when any job is actively processing
+  const hasActiveProcessing = useMemo(() => {
+    return processJobs.some((job) => job.status === 'processing');
+  }, [processJobs]);
+
+  useEffect(() => {
+    if (!hasActiveProcessing) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await getAllProcessingJobs();
+        if (res.success && Array.isArray(res.jobs)) {
+          setProcessJobs(res.jobs);
+
+          res.jobs.forEach((job) => {
+            if (!job.jobId) return;
+            const prevStatus = prevProcessJobStatusRef.current[job.jobId];
+            if (prevStatus === 'processing') {
+              if (job.status === 'completed') {
+                showSuccess(`Compilation complete! Created ZIP for ${job.season} ${job.year}.`);
+                fetchZips();
+              } else if (job.status === 'error') {
+                showError(job.error || `Compilation job for ${job.season} ${job.year} failed.`);
+              }
+            }
+            prevProcessJobStatusRef.current[job.jobId] = job.status;
+          });
+        }
+      } catch (err: any) {
+        console.error('Error polling processing tasks:', err);
+      }
+    }, 1200);
+
+    return () => clearInterval(interval);
+  }, [hasActiveProcessing, showSuccess, showError, fetchZips]);
+
+  // Visible jobs (filter out dismissed, unless processing)
+  const visibleProcessJobs = useMemo(() => {
+    return processJobs.filter(
+      (j) => (j.jobId && !dismissedProcessJobIds.has(j.jobId)) || j.status === 'processing'
+    );
+  }, [processJobs, dismissedProcessJobIds]);
+
+  const currentProcessJob = useMemo(() => {
+    if (visibleProcessJobs.length === 0) return null;
+    const found = visibleProcessJobs.find((j) => j.jobId === selectedProcessJobId);
+    return found || visibleProcessJobs[0];
+  }, [visibleProcessJobs, selectedProcessJobId]);
+
+  // Auto-scroll logs
+  useEffect(() => {
+    if (isProcessWidgetExpanded && processLogsContainerRef.current) {
+      processLogsContainerRef.current.scrollTop = processLogsContainerRef.current.scrollHeight;
+    }
+  }, [currentProcessJob?.logs, isProcessWidgetExpanded]);
+
+  const handleDismissProcessJob = (jobId: string) => {
+    setDismissedProcessJobIds((prev) => {
+      const next = new Set(prev);
+      next.add(jobId);
+      return next;
+    });
+  };
+
+  const handleDismissAllProcessJobs = () => {
+    const finishedIds = processJobs
+      .filter((j) => j.status !== 'processing' && j.jobId)
+      .map((j) => j.jobId as string);
+    setDismissedProcessJobIds((prev) => {
+      const next = new Set(prev);
+      finishedIds.forEach((id) => next.add(id));
+      return next;
+    });
+    setIsProcessWidgetExpanded(false);
+  };
+
+  const handleForceCompleteProcess = async (jobId: string) => {
+    try {
+      await forceCompleteProcessJob(jobId);
+      showWarning('Job manually completed.');
+      await fetchAllProcessJobs();
+      fetchZips();
+    } catch (err: any) {
+      showError(err?.message || 'Failed to force complete job');
+    }
+  };
+
+  const handleCancelProcessJob = async (jobId: string) => {
+    try {
+      showWarning('Cancelling ZIP compilation...');
+      await cancelProcessingJob(jobId);
+      showSuccess('Compilation cancelled');
+      await fetchAllProcessJobs();
+    } catch (err: any) {
+      showError(err?.message || 'Failed to cancel compilation');
+    }
+  };
+
   const processClips = async (season: string, year: number): Promise<void> => {
     setProcessingClips(true);
     setProcessProgress(0);
@@ -372,48 +520,23 @@ function AdminDash() {
         year: year
       };
 
+      // Close modal right away so user sees the task in bottom right corner
+      setProcessModalOpen(false);
+      showSuccess(`Starting ZIP compilation for ${season} ${year}...`);
+
       const response = await processClipsMutation.mutateAsync(processData);
 
       const { jobId } = response;
       setProcessJobId(jobId);
 
-      if (!isConnected) {
-        let pollFrequency = 3000;
-        let timeoutId: NodeJS.Timeout;
-        const checkProgress = async () => {
-          try {
-            const statusData = await getProcessStatus(jobId);
-
-            const { progress, status } = statusData;
-            setProcessProgress(progress);
-
-            if (status === 'completed') {
-              clearTimeout(timeoutId);
-              setProcessingClips(false);
-              setProcessModalOpen(false);
-              fetchZips();
-              return;
-            } else if (status === 'error') {
-              clearTimeout(timeoutId);
-              setProcessingClips(false);
-              showError(`Error: ${statusData.message || 'Unknown error'}`);
-              return;
-            }
-
-            timeoutId = setTimeout(checkProgress, pollFrequency);
-          } catch (error) {
-            console.error('Error checking process status:', error);
-            timeoutId = setTimeout(checkProgress, 5000);
-          }
-        };
-
-        timeoutId = setTimeout(checkProgress, pollFrequency);
-      }
-
-    } catch (error) {
+      // Re-fetch all compilation jobs and select the new one
+      await fetchAllProcessJobs(true);
+      if (jobId) setSelectedProcessJobId(jobId);
+      setIsProcessWidgetExpanded(false);
+    } catch (error: any) {
       console.error('Error processing clips:', error);
       setProcessingClips(false);
-      showError('Failed to start processing clips. Please try again.');
+      showError(error?.message || 'Failed to start processing clips. Please try again.');
     }
   };
 
@@ -485,7 +608,7 @@ function AdminDash() {
         return (
           <div className="space-y-6">
             {/* Content Sub-Tab Switcher */}
-            <div className="flex items-center gap-2 p-1.5 bg-[#181818] border border-[#262626] rounded-xl w-fit">
+            <div className="flex flex-wrap items-center gap-2 p-1.5 bg-[#181818] border border-[#262626] rounded-xl w-fit">
               <button
                 onClick={() => setActiveContentSubTab('pipeline')}
                 className={`px-4 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
@@ -516,10 +639,22 @@ function AdminDash() {
                   </span>
                 )}
               </button>
+
+              <button
+                onClick={() => setActiveContentSubTab('scraper')}
+                className={`px-4 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+                  activeContentSubTab === 'scraper'
+                    ? 'bg-[#f23030] text-white shadow-xs'
+                    : 'text-[#aaaaaa] hover:text-[#f1f1f1] hover:bg-[#222222]'
+                }`}
+              >
+                <FaDiscord size={13} className={activeContentSubTab === 'scraper' ? 'text-white' : 'text-[#5865F2]'} />
+                <span>Discord Scraper</span>
+              </button>
             </div>
 
             {/* Sub-tab content */}
-            {activeContentSubTab === 'pipeline' ? (
+            {activeContentSubTab === 'pipeline' && (
               <div className="space-y-6">
                 <AdminActions
                   openProcessModal={openProcessModal}
@@ -541,12 +676,21 @@ function AdminDash() {
                   seasonInfo={seasonInfo}
                 />
               </div>
-            ) : (
+            )}
+
+            {activeContentSubTab === 'denied' && (
               <DeniedClips
                 clips={clips}
                 ratings={ratings}
                 config={config}
                 location={location}
+              />
+            )}
+
+            {activeContentSubTab === 'scraper' && (
+              <DiscordScraper
+                configuredChannels={config.clipChannelIds}
+                initialChannelId={selectedScraperChannel}
               />
             )}
           </div>
@@ -555,6 +699,11 @@ function AdminDash() {
         return (
           <ConfigPanel
             config={config}
+            onOpenScraper={(chId) => {
+              if (chId) setSelectedScraperChannel(chId);
+              setActiveTab('content');
+              setActiveContentSubTab('scraper');
+            }}
           />
         );
       case 'reports':
@@ -592,40 +741,40 @@ function AdminDash() {
         <LoadingBar color="#f23030" height={3} progress={progress} onLoaderFinished={() => setProgress(0)} />
       </div>
 
-      {/* Main Container */}
-      <div className="w-full max-w-[1240px] mx-auto px-4 sm:px-8 py-6 grow flex flex-col">
-        {/* Page Header */}
-        <div className="mb-6">
+      {/* CC Page Header Container (1200px centered) */}
+      <div className="relative w-full overflow-hidden select-none">
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-8 pt-6 pb-4">
           {/* Breadcrumbs */}
-          <nav className="flex items-center gap-1.5 text-xs text-[#717171] mb-2">
-            <NavLink to="/" className="hover:text-[#f1f1f1] transition-colors">
+          <nav className="flex items-center gap-1.5 text-sm text-[#b3b3b3] mb-2">
+            <NavLink to="/" className="hover:text-white transition-colors">
               Home
             </NavLink>
-            <span className="text-[#444444] select-none">/</span>
-            <span className="text-[#f1f1f1] font-medium">Admin</span>
+            <span className="text-[#626262] select-none">/</span>
+            <span className="text-white font-medium">Admin</span>
           </nav>
 
           {/* Title Header */}
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
             <div>
-              <div className="relative pb-2.5 w-fit">
-                <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#f1f1f1] tracking-tight uppercase">
-                  Admin Dashboard
+              <div className="relative pb-3 w-fit">
+                <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white tracking-tight leading-tight uppercase">
+                  ADMIN DASHBOARD
                 </h1>
-                <div className="absolute bottom-0 left-0 w-2/5 h-[3px] bg-[#f23030] rounded-full" />
+                {/* CC Red Bar: width 60%, height 2.5px */}
+                <div className="absolute bottom-0 left-0 w-3/5 h-[2.5px] bg-[#f23030] rounded-full" />
               </div>
-              <p className="mt-2 text-xs sm:text-sm text-[#aaaaaa] max-w-xl">
+              <p className="mt-3 text-sm sm:text-base text-[#b3b3b3] leading-relaxed max-w-xl">
                 Operations console for clip reviews, reviewer quota tracking, user access, and pipeline packaging.
               </p>
             </div>
 
-            <div className="flex items-center gap-2 self-start sm:self-end">
-              <span className="text-xs uppercase tracking-wider px-3 py-1 bg-[#f23030]/15 text-[#f23030] border border-[#f23030]/30 rounded-full font-semibold">
-                Season {seasonInfo.season.toUpperCase()} {seasonInfo.year}
-              </span>
-            </div>
+
           </div>
         </div>
+      </div>
+
+      {/* Main Container */}
+      <div className="w-full max-w-[1200px] mx-auto px-4 sm:px-8 py-6 grow flex flex-col">
 
         {/* Executive Summary Strip */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
@@ -775,7 +924,7 @@ function AdminDash() {
         onClose={() => setProcessModalOpen(false)}
         onProcess={processClips}
         onProcessingComplete={fetchZips}
-        processing={processingClips}
+        processing={false}
         progress={processProgress}
         currentSeason={seasonInfo.season || ''}
         currentYear={seasonInfo.year || currentYear}
@@ -824,6 +973,344 @@ function AdminDash() {
         onConfirm={confirmDeleteAllClips}
         onCancel={cancelDeleteAllClips}
       />
+
+      {/* Floating Bottom-Right ZIP Compilation Tasks Widget */}
+      {visibleProcessJobs.length > 0 && (
+        <div
+          className={
+            activeTab === 'content' && activeContentSubTab === 'scraper'
+              ? 'fixed bottom-24 sm:bottom-28 right-4 sm:right-6 z-40'
+              : 'fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50'
+          }
+        >
+          <AnimatePresence mode="wait">
+            {!isProcessWidgetExpanded ? (
+              /* Compact Overview Pill / Card */
+              <motion.div
+                key="compact-process-widget"
+                initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 15, scale: 0.95 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setIsProcessWidgetExpanded(true)}
+                className="w-80 sm:w-96 bg-[#181818]/95 backdrop-blur-md border border-[#333] hover:border-[#555] rounded-2xl p-3.5 shadow-2xl shadow-black/70 cursor-pointer transition-all duration-200 group select-none"
+              >
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    {currentProcessJob?.status === 'processing' ? (
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse shrink-0" />
+                    ) : currentProcessJob?.status === 'completed' ? (
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0" />
+                    ) : (
+                      <span className="w-2.5 h-2.5 rounded-full bg-rose-400 shrink-0" />
+                    )}
+                    <span className="text-xs font-bold text-white tracking-wide truncate">
+                      ZIP Pipeline
+                    </span>
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-[#222] text-[#aaa] border border-[#333] shrink-0">
+                      {visibleProcessJobs.filter((j) => j.status === 'processing').length > 0
+                        ? `${visibleProcessJobs.filter((j) => j.status === 'processing').length} running`
+                        : `${visibleProcessJobs.length} tasks`}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0 text-[#888] group-hover:text-white transition-colors">
+                    <span className="text-[11px] font-medium hidden sm:inline">Details</span>
+                    <FaChevronUp size={11} />
+                  </div>
+                </div>
+
+                {currentProcessJob && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-[11px] font-mono">
+                      <span className="text-white font-semibold truncate max-w-[170px]">
+                        {currentProcessJob.season} {currentProcessJob.year}
+                      </span>
+                      <span className="text-[#aaa]">
+                        {currentProcessJob.processed || 0} / {currentProcessJob.total || 0} ({currentProcessJob.progress || 0}%)
+                      </span>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="w-full bg-[#121212] h-1.5 rounded-full overflow-hidden border border-[#2a2a2a]">
+                      <div
+                        className="h-full bg-gradient-to-r from-[#f23030] to-emerald-500 rounded-full transition-all duration-300"
+                        style={{ width: `${currentProcessJob.progress || 0}%` }}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between text-[10px] text-[#717171] font-mono pt-0.5">
+                      <span className="truncate max-w-[170px]">
+                        {currentProcessJob.status === 'processing'
+                          ? `Phase: ${currentProcessJob.phase || 'compiling...'}`
+                          : currentProcessJob.status === 'completed'
+                          ? '✓ Archive ready in Download manager'
+                          : currentProcessJob.status === 'cancelled'
+                          ? '⊘ Compilation cancelled'
+                          : '✕ Process failed'}
+                      </span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {currentProcessJob.status === 'processing' && currentProcessJob.jobId && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCancelProcessJob(currentProcessJob.jobId!);
+                            }}
+                            className="px-2 py-0.5 text-[10px] font-semibold text-rose-400 hover:text-white bg-rose-500/15 hover:bg-rose-500/30 border border-rose-500/30 rounded-md transition-colors cursor-pointer flex items-center gap-1"
+                            title="Cancel compilation"
+                          >
+                            <FaStop size={8} />
+                            <span>Cancel</span>
+                          </button>
+                        )}
+                        <span className="text-[#888]">Click to expand ↗</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            ) : (
+              /* Expanded Detailed Window */
+              <motion.div
+                key="expanded-process-widget"
+                initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 15, scale: 0.95 }}
+                transition={{ duration: 0.2 }}
+                className="w-88 sm:w-[440px] max-h-[85vh] bg-[#181818] border border-[#333] rounded-2xl shadow-2xl shadow-black/90 flex flex-col overflow-hidden"
+              >
+                {/* Header */}
+                <div className="p-3.5 sm:p-4 border-b border-[#262626] bg-[#141414] flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-[#f23030]/15 text-[#f23030] flex items-center justify-center shrink-0">
+                      <FaArchive size={13} />
+                    </div>
+                    <div>
+                      <h3 className="text-xs sm:text-sm font-bold text-white truncate">
+                        Compilation Pipeline
+                      </h3>
+                      <p className="text-[10px] text-[#888] font-mono">
+                        {visibleProcessJobs.filter((j) => j.status === 'processing').length} active • {visibleProcessJobs.length} total
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => fetchAllProcessJobs()}
+                      title="Refresh tasks"
+                      className="p-1.5 text-[#888] hover:text-white hover:bg-[#262626] rounded-lg transition-colors cursor-pointer"
+                    >
+                      <FaSyncAlt size={11} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsProcessWidgetExpanded(false)}
+                      title="Collapse to corner"
+                      className="p-1.5 text-[#888] hover:text-white hover:bg-[#262626] rounded-lg transition-colors cursor-pointer"
+                    >
+                      <FaChevronDown size={12} />
+                    </button>
+                    {visibleProcessJobs.every((j) => j.status !== 'processing') && (
+                      <button
+                        type="button"
+                        onClick={handleDismissAllProcessJobs}
+                        title="Dismiss all finished"
+                        className="p-1.5 text-[#888] hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
+                      >
+                        <FaTimes size={12} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Multi-task Selector Tabs (if >1 job) */}
+                {visibleProcessJobs.length > 1 && (
+                  <div className="flex items-center gap-1.5 px-3 py-2 border-b border-[#262626] bg-[#121212] overflow-x-auto no-scrollbar">
+                    {visibleProcessJobs.map((job) => (
+                      <button
+                        key={job.jobId}
+                        type="button"
+                        onClick={() => setSelectedProcessJobId(job.jobId || null)}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-mono flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer ${
+                          job.jobId === currentProcessJob?.jobId
+                            ? 'bg-[#262626] text-white border border-[#444] font-semibold'
+                            : 'bg-[#181818] text-[#888] hover:text-white border border-[#262626]'
+                        }`}
+                      >
+                        {job.status === 'processing' ? (
+                          <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+                        ) : job.status === 'completed' ? (
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                        ) : (
+                          <span className="w-2 h-2 rounded-full bg-rose-400 shrink-0" />
+                        )}
+                        <span>{job.season} {job.year}</span>
+                        <span className="text-[10px] text-[#666]">({job.progress || 0}%)</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Current Job Details */}
+                {currentProcessJob ? (
+                  <div className="p-3.5 sm:p-4 overflow-y-auto space-y-3.5 flex-1 max-h-[60vh]">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {currentProcessJob.status === 'processing' && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 uppercase tracking-wider animate-pulse">
+                            Compiling ZIP
+                          </span>
+                        )}
+                        {currentProcessJob.status === 'completed' && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 uppercase tracking-wider">
+                            Completed
+                          </span>
+                        )}
+                        {currentProcessJob.status === 'cancelled' && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-400 border border-rose-500/30 uppercase tracking-wider">
+                            Cancelled
+                          </span>
+                        )}
+                        {currentProcessJob.status === 'error' && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-400 border border-rose-500/30 uppercase tracking-wider">
+                            Error
+                          </span>
+                        )}
+                        <span className="text-xs font-semibold text-white">
+                          {currentProcessJob.season} {currentProcessJob.year}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        {currentProcessJob.status === 'processing' && currentProcessJob.jobId && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleCancelProcessJob(currentProcessJob.jobId!)}
+                              className="px-2.5 py-1 bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-400 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                              title="Cancel compilation and discard partial archive"
+                            >
+                              <FaStop size={10} />
+                              <span>Cancel</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleForceCompleteProcess(currentProcessJob.jobId!)}
+                              className="px-2.5 py-1 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                              title="Force complete with available clips"
+                            >
+                              Force Complete
+                            </button>
+                          </>
+                        )}
+                        {currentProcessJob.status !== 'processing' && currentProcessJob.jobId && (
+                          <button
+                            type="button"
+                            onClick={() => handleDismissProcessJob(currentProcessJob.jobId!)}
+                            className="px-2 py-0.5 text-[11px] font-medium text-[#717171] hover:text-white bg-[#202020] hover:bg-[#282828] border border-[#333] rounded-lg transition-colors cursor-pointer"
+                          >
+                            Dismiss
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Phase status info */}
+                    <div className="p-2.5 rounded-lg bg-[#121212] border border-[#262626] space-y-1">
+                      <span className="text-[10px] text-[#717171] uppercase tracking-wider block font-semibold">
+                        Current Phase:
+                      </span>
+                      <p className="text-xs text-white font-mono">
+                        {currentProcessJob.phase || 'Processing clips...'}
+                      </p>
+                      {currentProcessJob.zipFilename && (
+                        <p className="text-[11px] text-[#aaa] font-mono truncate">
+                          ZIP: {currentProcessJob.zipFilename}
+                        </p>
+                      )}
+                      {currentProcessJob.error && (
+                        <p className="text-[11px] text-rose-400 font-mono break-all pt-0.5">
+                          Error: {currentProcessJob.error}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Progress Bar & Percentage */}
+                    <div>
+                      <div className="flex items-center justify-between text-xs text-[#aaa] mb-1 font-mono">
+                        <span>
+                          Processed {currentProcessJob.processed || 0} of {currentProcessJob.total || 0} clips
+                        </span>
+                        <span className="text-white font-semibold">
+                          {currentProcessJob.progress || 0}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-[#121212] h-2 rounded-full overflow-hidden border border-[#2a2a2a]">
+                        <div
+                          className="h-full bg-gradient-to-r from-[#f23030] to-emerald-500 rounded-full transition-all duration-300"
+                          style={{ width: `${currentProcessJob.progress || 0}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Live Terminal Log Stream */}
+                    {currentProcessJob.logs && currentProcessJob.logs.length > 0 && (
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-[#717171] tracking-wider mb-1 block">
+                          Pipeline Logs:
+                        </span>
+                        <div
+                          ref={processLogsContainerRef}
+                          className="bg-[#0e0e0e] border border-[#262626] rounded-xl p-2.5 max-h-36 overflow-y-auto font-mono text-[11px] space-y-1"
+                        >
+                          {currentProcessJob.logs.map((log, idx) => (
+                            <div
+                              key={idx}
+                              className={`flex items-start gap-1.5 ${
+                                log.level === 'warning' || log.level === 'warn'
+                                  ? 'text-amber-400'
+                                  : log.level === 'error'
+                                  ? 'text-rose-400'
+                                  : log.level === 'completed' || log.level === 'success'
+                                  ? 'text-emerald-400'
+                                  : 'text-[#aaa]'
+                              }`}
+                            >
+                              <span className="text-[#555] shrink-0">
+                                [{new Date(log.time).toLocaleTimeString()}]
+                              </span>
+                              <span className="break-all">{log.message}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-6 text-center text-xs text-[#717171]">
+                    No active compilation tasks
+                  </div>
+                )}
+
+                {/* Footer */}
+                <div className="p-2.5 border-t border-[#262626] bg-[#141414]">
+                  <button
+                    type="button"
+                    onClick={() => setIsProcessWidgetExpanded(false)}
+                    className="w-full py-1.5 bg-[#202020] hover:bg-[#282828] text-[#aaa] hover:text-white text-xs font-medium rounded-xl border border-[#333] transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <FaChevronDown size={10} />
+                    <span>Collapse to Corner</span>
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
     </div>
   );
 }

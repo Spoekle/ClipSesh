@@ -4,7 +4,6 @@ import { NavLink, useNavigate, useLocation } from '@/lib/routerCompat';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FaBars,
-  FaUserCircle,
   FaFlag,
   FaSnowflake,
   FaDiscord,
@@ -172,13 +171,13 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
               to="/archive"
               className={({ isActive }) =>
                 `px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                  isActive || location.pathname.startsWith('/archive') || location.pathname.startsWith('/search')
+                  isActive || location.pathname.startsWith('/archive')
                     ? 'text-white font-semibold bg-[#222222]'
                     : 'text-[#aaaaaa] hover:text-white hover:bg-[#1a1a1a]'
                 }`
               }
             >
-              Archive
+              ClipVault
             </NavLink>
 
             {/* Management / Tools Dropdown (Only for Editor / Admin) */}
@@ -223,7 +222,7 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
                           className="flex items-center gap-2.5 px-3.5 py-2 text-sm text-[#f1f1f1] hover:bg-[#222222] transition-colors"
                         >
                           <MdAdminPanelSettings size={16} className="text-[#aaaaaa]" />
-                          <span>Admin Portal</span>
+                          <span>Admin Dashboard</span>
                         </NavLink>
                       )}
                     </motion.div>
@@ -334,15 +333,6 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
                       {/* Navigation Links */}
                       <div className="py-1">
                         <NavLink
-                          to="/profile"
-                          onClick={() => setIsDropdownOpen(false)}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#f1f1f1] hover:bg-[#222222] transition-colors"
-                        >
-                          <FaUserCircle size={17} className="text-[#aaaaaa]" />
-                          <span>Your Profile</span>
-                        </NavLink>
-
-                        <NavLink
                           to="/my-reports"
                           onClick={() => setIsDropdownOpen(false)}
                           className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#f1f1f1] hover:bg-[#222222] transition-colors"
@@ -416,7 +406,7 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.2 }}
+              transition={{ duration: 0.15 }}
               className="lg:hidden border-t border-[#262626] bg-[#121212] overflow-hidden"
             >
               <div className="px-4 py-3 space-y-1">
@@ -456,14 +446,14 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
                   onClick={() => setIsMobileMenuOpen(false)}
                   className={({ isActive }) =>
                     `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                      isActive || location.pathname.startsWith('/archive') || location.pathname.startsWith('/search')
+                      isActive || location.pathname.startsWith('/archive')
                         ? 'bg-[#181818] text-cc-red font-semibold border-l-2 border-cc-red'
                         : 'text-[#aaaaaa] hover:text-white hover:bg-[#181818]'
                     }`
                   }
                 >
                   <MdArchive size={18} />
-                  <span>Archive</span>
+                  <span>ClipVault</span>
                 </NavLink>
 
                 {hasTools && (
@@ -504,7 +494,7 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
                         }
                       >
                         <MdAdminPanelSettings size={17} />
-                        <span>Admin Portal</span>
+                        <span>Admin Dashboard</span>
                       </NavLink>
                     )}
                   </>

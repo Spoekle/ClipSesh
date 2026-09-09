@@ -6,16 +6,21 @@ import { requireAuth } from '@/lib/auth';
 export async function GET(req: NextRequest) {
   try {
     await connectToDatabase();
-    const { errorResponse } = requireAuth(req, ['admin']);
+    const { errorResponse } = requireAuth(req, ['admin', 'clipteam', 'editor']);
     if (errorResponse) return errorResponse;
 
-    let adminConfig = await AdminConfig.findOne();
+    let adminConfig = await AdminConfig.findOne().lean();
     if (!adminConfig) {
-      adminConfig = new AdminConfig();
-      await adminConfig.save();
+      const newConfig = new AdminConfig();
+      await newConfig.save();
+      adminConfig = newConfig.toObject();
     }
 
-    return NextResponse.json({ admin: adminConfig });
+    const configObj = adminConfig as Record<string, any>;
+    return NextResponse.json({
+      ...configObj,
+      admin: configObj,
+    });
   } catch (error: any) {
     console.error('Error fetching admin config:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

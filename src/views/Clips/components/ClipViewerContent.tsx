@@ -125,14 +125,6 @@ const ClipViewerContent: React.FC<ClipViewerContentProps> = ({
 
   const handleSortChange = (newSortOption: string) => {
     setSortOptionState(newSortOption);
-
-    setSearchParams(new URLSearchParams({
-      sort: newSortOption,
-      page: '1',
-      ...(searchTerm && { q: searchTerm }),
-      ...(filterStreamer && { streamer: filterStreamer })
-    }), { replace: true });
-
     const userData = user;
     fetchClipsAndRatings(userData);
   };

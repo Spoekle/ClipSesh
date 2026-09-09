@@ -45,7 +45,7 @@ const ClipViewerHeader: React.FC<ClipViewerHeaderProps> = ({ season, totalClips,
               {season} Season
             </span>
             {totalClips !== undefined && (
-              <span className="text-xs font-medium px-3 py-1 rounded-full bg-[#f23030]/10 border border-[#f23030]/25 text-[#f23030]">
+              <span className="text-xs font-medium px-3 py-1 rounded-sm bg-[#f23030]/10 border border-[#f23030]/25 text-[#f23030]">
                 {totalClips.toLocaleString()} {isFiltered ? 'found' : 'available'}
               </span>
             )}
