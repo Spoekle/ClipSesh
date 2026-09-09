@@ -15,9 +15,10 @@ interface ConfigPanelProps {
     blacklistedSubmitters?: Array<{ username: string; userId: string }>;
     blacklistedStreamers?: string[];
   };
+  onOpenScraper?: (channelId?: string) => void;
 }
 
-const ConfigPanel: React.FC<ConfigPanelProps> = ({ config }) => {
+const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onOpenScraper }) => {
   const [channelIdsText, setChannelIdsText] = useState<string>(
     config?.clipChannelIds?.join('\n') || ''
   );
@@ -318,9 +319,24 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config }) => {
         </div>
 
         <div className="bg-[#141414] border border-[#262626] p-4 rounded-xl">
-          <label htmlFor="clipChannelIds" className="block text-xs font-semibold text-[#aaaaaa] uppercase tracking-wider mb-1.5">
-            Discord Ingest Channel IDs
-          </label>
+          <div className="flex items-center justify-between mb-1.5">
+            <label htmlFor="clipChannelIds" className="block text-xs font-semibold text-[#aaaaaa] uppercase tracking-wider">
+              Discord Ingest Channel IDs
+            </label>
+            {onOpenScraper && (
+              <button
+                type="button"
+                onClick={() => {
+                  const firstId = channelIdsText.split('\n').map(s => s.trim()).find(Boolean);
+                  onOpenScraper(firstId);
+                }}
+                className="text-[11px] font-semibold text-[#5865F2] hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <FaDiscord size={12} />
+                <span>Open Channel Scraper</span>
+              </button>
+            )}
+          </div>
           <textarea
             id="clipChannelIds"
             value={channelIdsText}

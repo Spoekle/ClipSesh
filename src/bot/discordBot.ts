@@ -3,7 +3,8 @@ import path from 'path';
 import fs from 'fs';
 import axios from 'axios';
 import ffmpeg from 'fluent-ffmpeg';
-import ytdl from '@distube/ytdl-core';
+import { downloadFromUrl } from '@/lib/videoDownloader';
+import { getClipOrigin } from '@/lib/discordScraper';
 import { connectToDatabase } from '@/lib/db';
 import Clip from '@/models/clipModel';
 import { AdminConfig, PublicConfig } from '@/models/configModel';
@@ -49,126 +50,7 @@ class AsyncSemaphore {
 const processingSemaphore = new AsyncSemaphore(2);
 let discordClient: Client | null = null;
 
-/**
- * Downloads a video from a supported URL (YouTube, Twitch, Medal, or direct video)
- */
-async function downloadFromUrl(
-  url: string,
-  tempPath: string
-): Promise<{ title: string; streamer: string }> {
-  const parsedUrl = new URL(url);
-  const hostname = parsedUrl.hostname.toLowerCase();
 
-  if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) {
-    console.log(`[DiscordBot] Downloading YouTube video from: ${url}`);
-    const info = await ytdl.getInfo(url);
-    const format = ytdl.chooseFormat(info.formats, {
-      quality: 'highest',
-      filter: 'audioandvideo',
-    });
-
-    await new Promise<void>((resolve, reject) => {
-      const stream = ytdl(url, { format });
-      const writeStream = fs.createWriteStream(tempPath);
-      stream.pipe(writeStream);
-      writeStream.on('finish', () => resolve());
-      writeStream.on('error', (err) => reject(err));
-      stream.on('error', (err) => reject(err));
-    });
-
-    return {
-      title: info.videoDetails.title || 'YouTube Clip',
-      streamer: info.videoDetails.author?.name || 'YouTube Streamer',
-    };
-  }
-
-  if (hostname.includes('twitch.tv')) {
-    console.log(`[DiscordBot] Scraping Twitch clip: ${url}`);
-    const res = await axios.get(url, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      },
-      timeout: 15000,
-    });
-    const html = res.data as string;
-    const mp4Match = html.match(/(https:\/\/[^"]+\.mp4[^"]*)/);
-    if (!mp4Match || !mp4Match[1]) {
-      throw new Error('Could not find Twitch mp4 download link');
-    }
-
-    const downloadUrl = mp4Match[1];
-    const streamRes = await axios.get(downloadUrl, {
-      responseType: 'stream',
-      timeout: 30000,
-    });
-    await new Promise<void>((resolve, reject) => {
-      const writeStream = fs.createWriteStream(tempPath);
-      streamRes.data.pipe(writeStream);
-      writeStream.on('finish', () => resolve());
-      writeStream.on('error', (err: any) => reject(err));
-    });
-
-    const slug = url.split('/').pop() || 'Clip';
-    return {
-      title: `Twitch Clip ${slug}`,
-      streamer: 'Twitch Streamer',
-    };
-  }
-
-  if (hostname.includes('medal.tv')) {
-    console.log(`[DiscordBot] Scraping Medal clip: ${url}`);
-    const res = await axios.get(url, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      },
-      timeout: 15000,
-    });
-    const html = res.data as string;
-    const mp4Match = html.match(/(https:\/\/[^"]+\.mp4[^"]*)/);
-    if (!mp4Match || !mp4Match[1]) {
-      throw new Error('Could not find Medal.tv mp4 link');
-    }
-
-    const downloadUrl = mp4Match[1];
-    const streamRes = await axios.get(downloadUrl, {
-      responseType: 'stream',
-      timeout: 30000,
-    });
-    await new Promise<void>((resolve, reject) => {
-      const writeStream = fs.createWriteStream(tempPath);
-      streamRes.data.pipe(writeStream);
-      writeStream.on('finish', () => resolve());
-      writeStream.on('error', (err: any) => reject(err));
-    });
-
-    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/);
-    const title = titleMatch && titleMatch[1] ? titleMatch[1].trim() : 'Medal.tv Clip';
-    return {
-      title,
-      streamer: 'Medal.tv User',
-    };
-  }
-
-  // Fallback: Direct video URL download
-  console.log(`[DiscordBot] Downloading direct video from: ${url}`);
-  const streamRes = await axios.get(url, {
-    responseType: 'stream',
-    timeout: 30000,
-  });
-  await new Promise<void>((resolve, reject) => {
-    const writeStream = fs.createWriteStream(tempPath);
-    streamRes.data.pipe(writeStream);
-    writeStream.on('finish', () => resolve());
-    writeStream.on('error', (err: any) => reject(err));
-  });
-
-  return {
-    title: path.basename(parsedUrl.pathname) || 'Direct Video',
-    streamer: 'Unknown',
-  };
-}
 
 /**
  * Handles incoming Discord messages for clip ingestion
@@ -213,6 +95,14 @@ async function handleMessage(message: Message): Promise<void> {
 
   if (!attachment && !targetUrl) {
     return;
+  }
+
+  // Validate URL against clip origin whitelist (excludes full YouTube videos, non-whitelisted URLs)
+  if (!attachment && targetUrl) {
+    const origin = getClipOrigin(targetUrl);
+    if (!origin) {
+      return;
+    }
   }
 
   // Process clip in background with concurrency throttle
