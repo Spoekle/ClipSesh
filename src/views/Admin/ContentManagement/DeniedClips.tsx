@@ -64,21 +64,21 @@ const DeniedClips: React.FC<DeniedClipsProps> = ({ clips, ratings, config, locat
         visible: {
             opacity: 1,
             transition: {
-                staggerChildren: 0.06
+                duration: 0.1
             }
         }
     };
 
     const itemVariants = {
-        hidden: { opacity: 0, y: 16 },
-        visible: { opacity: 1, y: 0 }
+        hidden: { opacity: 0 },
+        visible: { opacity: 1 }
     };
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 15 }}
+            initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
+            transition={{ duration: 0.15 }}
             className="w-full bg-[#181818] border border-[#262626] rounded-2xl p-6 text-[#f1f1f1]"
         >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-[#262626]">

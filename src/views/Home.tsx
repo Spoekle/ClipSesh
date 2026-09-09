@@ -128,9 +128,9 @@ function HomePage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
           {/* Left Column: Authentic Brand Headline & Actions */}
           <motion.div
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35 }}
+            transition={{ duration: 0.15 }}
             className="lg:col-span-7 text-center lg:text-left"
           >
             {/* Season Status Badge */}
@@ -223,9 +223,9 @@ function HomePage() {
 
           {/* Right Column: Featured Seasonal Video / Video Player Card */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.97 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.35, delay: 0.1 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.15 }}
             className="lg:col-span-5"
           >
             <div className="bg-[#181818] rounded-xl border border-[#262626] shadow-xl p-2.5 overflow-hidden">

@@ -158,10 +158,10 @@ const ClipItem: React.FC<ClipItemProps> = ({
 
   return (
     <motion.div
-      whileHover={{ y: -4 }}
-      transition={{ duration: 0.15 }}
+      whileHover={{ y: -2 }}
+      transition={{ duration: 0.1 }}
       onClick={() => setExpandedClip(clip._id)}
-      className="flex flex-col h-full bg-[#181818] hover:bg-[#202020] rounded-xl overflow-hidden border border-[#2a2a2a] hover:border-[#3a3a3a] transition-all duration-200 group cursor-pointer shadow-sm hover:shadow-xl select-none"
+      className="flex flex-col h-full bg-[#181818] hover:bg-[#202020] rounded-xl overflow-hidden border border-[#2a2a2a] hover:border-[#3a3a3a] transition-colors duration-150 group cursor-pointer shadow-sm hover:shadow-lg select-none"
     >
       {/* 16:9 Thumbnail Container */}
       <div
@@ -170,22 +170,19 @@ const ClipItem: React.FC<ClipItemProps> = ({
         onMouseLeave={() => setIsHovering(false)}
       >
         {isHovering ? (
-          <motion.video
+          <video
             src={clip.url}
             loop
             muted
             autoPlay
             playsInline
             className="w-full h-full object-cover"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
           />
         ) : (
           <img
             src={clip.thumbnail}
             alt={clip.title}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            className="w-full h-full object-cover transition-transform duration-150 group-hover:scale-103"
             loading="lazy"
             onError={(e) => {
               e.currentTarget.onerror = null;
@@ -195,12 +192,6 @@ const ClipItem: React.FC<ClipItemProps> = ({
 
         {/* Subtle dark overlay for contrast */}
         <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-black/20 pointer-events-none" />
-
-        {/* Comments Badge (Bottom-Right) */}
-        <div className="absolute bottom-2 right-2 flex items-center gap-1 px-2 py-0.5 rounded-md bg-black/80 backdrop-blur-xs text-[11px] font-medium text-[#f1f1f1] border border-white/10">
-          <IoChatbubbleEllipsesOutline size={12} className="text-neutral-300" />
-          <span>{clip.comments?.length || 0}</span>
-        </div>
 
         {/* Rating/Denial Badges (Top-Right) */}
         <div className="absolute top-2 right-2 flex items-center gap-1.5">
@@ -227,33 +218,42 @@ const ClipItem: React.FC<ClipItemProps> = ({
 
       {/* Details: Title + Metadata */}
       <div className="p-3.5 flex flex-col justify-between flex-1">
-        <div>
-          <h3 className="text-sm font-semibold text-[#f1f1f1] group-hover:text-white line-clamp-2 leading-snug tracking-tight transition-colors">
-            {clip.title}
-          </h3>
+        <div className="flex items-start justify-between gap-3">
+          {/* Left Column: Title, Streamer, Date */}
+          <div className="min-w-0 flex-1 flex flex-col">
+            <h3 className="text-sm font-semibold text-[#f1f1f1] group-hover:text-white line-clamp-2 leading-snug tracking-tight transition-colors">
+              {clip.title}
+            </h3>
 
-          <div className="text-xs text-[#aaaaaa] hover:text-white font-medium mt-1 truncate transition-colors flex items-center gap-1">
-            <span>{clip.streamer}</span>
+            <div className="text-xs text-[#aaaaaa] hover:text-white font-medium truncate transition-colors mt-1">
+              <span>{clip.streamer}</span>
+            </div>
+
+            <span className="text-xs text-[#717171] mt-0.5">{formattedDate}</span>
           </div>
 
-          <div className="text-xs text-[#717171] mt-1.5 flex items-center gap-1.5 flex-wrap">
-            <span className="flex items-center gap-1 text-neutral-400 font-medium">
+          {/* Right Column: Views, Comments, Likes */}
+          <div className="flex flex-col items-end justify-start gap-1 shrink-0 text-xs text-neutral-400 font-medium pt-0.5">
+            <span className="flex items-center gap-1.5" title={`${clip.views || 0} views`}>
               <FaEye size={11} className="text-neutral-500" />
               <span>{clip.views || 0}</span>
             </span>
-            <span className="text-neutral-600">•</span>
-            <span className="flex items-center gap-1 text-neutral-400 font-medium">
-              <FaThumbsUp size={10} className="text-neutral-500" />
-              <span>{clip.upvotes}</span>
+
+            <span className="flex items-center gap-1.5" title={`${clip.comments?.length || 0} comments`}>
+              <IoChatbubbleEllipsesOutline size={12} className="text-neutral-400" />
+              <span>{clip.comments?.length || 0}</span>
             </span>
-            <span className="text-neutral-600">•</span>
-            <span>{formattedDate}</span>
+
+            <span className="flex items-center gap-1.5" title={`${clip.upvotes || 0} likes`}>
+              <FaThumbsUp size={10} className="text-neutral-500" />
+              <span>{clip.upvotes || 0}</span>
+            </span>
           </div>
         </div>
 
           {/* Team rating row (admin/clipteam only) */}
           {user && (user.roles.includes('admin') || user.roles.includes('clipteam')) && (
-            <div className="flex items-center gap-2 mt-2 pt-2 border-t border-[#262626]">
+            <div className="flex items-center gap-2 mt-2">
               {averageRating && averageRating !== "0.0" && (
                 <div
                   className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#222222] border border-[#333333] text-[11px] text-[#cccccc] font-medium"

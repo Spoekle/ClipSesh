@@ -188,9 +188,9 @@ const RatingPanel: React.FC<RatingPanelProps> = ({
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
+            transition={{ duration: 0.1 }}
             className="mt-6 p-6 bg-[#161d21] rounded-xl border border-[#263238] shadow-sm text-white"
         >
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#263238]">

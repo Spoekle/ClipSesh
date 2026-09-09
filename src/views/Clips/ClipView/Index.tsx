@@ -245,9 +245,6 @@ const ClipContent: React.FC<ClipContentProps> = ({
         } else if (curPath.includes('admin')) {
             defaultPathname = '/admin';
             defaultLabel = 'Admin';
-        } else if (curPath.includes('profile')) {
-            defaultPathname = '/profile';
-            defaultLabel = 'Profile';
         }
 
         const curSp = new URLSearchParams(curSearch);
@@ -283,8 +280,6 @@ const ClipContent: React.FC<ClipContentProps> = ({
                     label = 'Archive';
                 } else if (pathPart.includes('admin')) {
                     label = 'Admin';
-                } else if (pathPart.includes('profile')) {
-                    label = 'Profile';
                 }
 
                 return {
@@ -315,8 +310,6 @@ const ClipContent: React.FC<ClipContentProps> = ({
                     label = 'Archive';
                 } else if (pathPart.includes('admin')) {
                     label = 'Admin';
-                } else if (pathPart.includes('profile')) {
-                    label = 'Profile';
                 }
 
                 return {
@@ -553,16 +546,6 @@ const ClipContent: React.FC<ClipContentProps> = ({
                     }
                 }
             });
-        } else if (from.pathname.includes('profile')) {
-            items.push({
-                label: 'Profile',
-                path: from.pathname + (from.search ? from.search : ''),
-                onClick: () => {
-                    if (setExpandedClip) {
-                        setExpandedClip(null);
-                    }
-                }
-            });
         } else {
             // Default: Clips
             items.push({
@@ -589,7 +572,7 @@ const ClipContent: React.FC<ClipContentProps> = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
+            transition={{ duration: 0.15 }}
             className="flex flex-col min-h-screen bg-[#0f0f0f] text-[#f1f1f1]"
         >
             {/* Loading overlay */}

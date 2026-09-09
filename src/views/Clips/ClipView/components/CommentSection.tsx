@@ -107,9 +107,9 @@ const CommentSection: React.FC<CommentSectionProps> = ({
 
     return (
         <motion.div
-            initial={{ y: 20, opacity: 0 }}
+            initial={{ y: 4, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2 }}
+            transition={{ duration: 0.1 }}
             className="mt-6 bg-[#181818] rounded-xl border border-[#262626] p-5 sm:p-6 mb-16 sm:mb-6 text-[#f1f1f1]"
         >
             <h3 className="text-lg sm:text-xl font-bold text-[#f1f1f1] mb-5 flex items-center gap-2.5">

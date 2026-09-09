@@ -168,9 +168,9 @@ export const RequireAuth: React.FC<RequireAuthProps> = ({
 
               <motion.h2
                 className="text-2xl font-bold mb-3 text-neutral-900 dark:text-white"
-                initial={{ y: -10, opacity: 0 }}
+                initial={{ y: -4, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.2 }}
+                transition={{ duration: 0.15 }}
               >
                 Secure Access Required
               </motion.h2>
@@ -179,7 +179,7 @@ export const RequireAuth: React.FC<RequireAuthProps> = ({
                 className="text-lg text-neutral-600 dark:text-neutral-300 mb-6"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 0.3 }}
+                transition={{ duration: 0.15 }}
               >
                 {loadingMessage}
               </motion.p>
@@ -190,8 +190,7 @@ export const RequireAuth: React.FC<RequireAuthProps> = ({
                 animate={{
                   opacity: authCheckComplete ? [1, 0] : 1,
                   transition: {
-                    opacity: { duration: 0.2 },
-                    delay: 0.4,
+                    opacity: { duration: 0.15 },
                   },
                 }}
               >
@@ -213,7 +212,7 @@ export const RequireAuth: React.FC<RequireAuthProps> = ({
                 className="w-full mt-6"
                 initial={{ width: 0, opacity: 0 }}
                 animate={{ width: '100%', opacity: 1 }}
-                transition={{ delay: 0.5 }}
+                transition={{ duration: 0.15 }}
               >
                 <div className="w-full h-1 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
                   <motion.div

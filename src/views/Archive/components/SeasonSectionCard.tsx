@@ -93,15 +93,15 @@ const SeasonSectionCard: React.FC<SeasonSectionCardProps> = ({ section, onSelect
 
   return (
     <motion.div
-      whileHover={{ y: -4 }}
-      transition={{ duration: 0.2 }}
+      whileHover={{ y: -2 }}
+      transition={{ duration: 0.1 }}
       onClick={() => onSelect(section)}
-      className={`group relative flex flex-col justify-between rounded-2xl overflow-hidden bg-[#181818] border border-[#262626] ${theme.accentBorder} ${theme.accentGlow} transition-all duration-300 cursor-pointer shadow-md select-none min-h-[300px]`}
+      className={`group relative flex flex-col justify-between rounded-2xl overflow-hidden bg-[#181818] border border-[#262626] ${theme.accentBorder} ${theme.accentGlow} transition-colors duration-150 cursor-pointer shadow-md select-none min-h-[300px]`}
     >
       {/* Background artwork banner with dark gradient */}
       <div className="relative h-40 w-full overflow-hidden bg-[#111111]">
         <div
-          className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105 filter brightness-75 group-hover:brightness-90"
+          className="absolute inset-0 bg-cover bg-center transition-transform duration-200 group-hover:scale-103 filter brightness-75 group-hover:brightness-90"
           style={{ backgroundImage: `url(${bgImage})` }}
         />
         {/* Gradients to fade smoothly into the card body */}
@@ -111,7 +111,7 @@ const SeasonSectionCard: React.FC<SeasonSectionCardProps> = ({ section, onSelect
         <div className="absolute top-3.5 left-3.5 right-3.5 flex items-center justify-between gap-2">
           {/* Season pill */}
           <div
-            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border backdrop-blur-md ${theme.badgeClass}`}
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-sm text-xs font-bold border backdrop-blur-md ${theme.badgeClass}`}
           >
             {theme.icon}
             <span>{section.season}</span>
@@ -120,7 +120,7 @@ const SeasonSectionCard: React.FC<SeasonSectionCardProps> = ({ section, onSelect
           {/* Current season or year indicator */}
           <div className="flex items-center gap-1.5">
             {section.isCurrent && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-cc-red text-white shadow-sm">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-sm text-[11px] font-extrabold uppercase tracking-wider bg-cc-red/30 border border-cc-red text-cc-red shadow-sm">
                 Current Season
               </span>
             )}
@@ -142,7 +142,7 @@ const SeasonSectionCard: React.FC<SeasonSectionCardProps> = ({ section, onSelect
           <FaCalendarAlt size={12} className="text-neutral-400 shrink-0" />
           <div className="min-w-0 flex-1">
             <div className="text-[10px] text-[#717171] uppercase tracking-wider font-semibold flex items-center justify-between">
-              <span>Submission Window</span>
+              <span>Season Window</span>
               {section.isCurrent && (
                 <span className="text-emerald-400 font-bold text-[9px] uppercase tracking-wider">Open</span>
               )}
@@ -163,16 +163,6 @@ const SeasonSectionCard: React.FC<SeasonSectionCardProps> = ({ section, onSelect
             <span className="font-bold text-white font-mono">{section.clipCount.toLocaleString()}</span>
             <span className="text-neutral-400">clips</span>
           </div>
-
-          {section.topStreamers && section.topStreamers.length > 0 && (
-            <div
-              className="text-[11px] text-neutral-400 truncate max-w-[130px]"
-              title={`Featured: ${section.topStreamers.join(', ')}`}
-            >
-              <span className="text-neutral-500">feat. </span>
-              <span className="text-neutral-300 font-medium">{section.topStreamers.join(', ')}</span>
-            </div>
-          )}
         </div>
 
         {/* Footer with Zip Status & Action Button */}

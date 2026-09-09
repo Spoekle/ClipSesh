@@ -210,7 +210,7 @@ function ClipViewer() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
+      transition={{ duration: 0.15 }}
       className="min-h-[calc(100vh-80px)] text-[#e6e6e6] flex flex-col bg-[#0b0b0b] transition-colors"
     >
       <Helmet>
@@ -256,7 +256,8 @@ function ClipViewer() {
           setSortOptionState={(option: string) => {
             const newSearchParams = new URLSearchParams(searchParams.toString());
             newSearchParams.set('sort', option);
-            setSearchParams(newSearchParams);
+            newSearchParams.set('page', '1');
+            setSearchParams(newSearchParams, { replace: true });
           }}
           searchTerm={searchTerm}
           setSearchTerm={(term: string) => {

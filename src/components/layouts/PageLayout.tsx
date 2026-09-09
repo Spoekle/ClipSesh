@@ -29,7 +29,7 @@ const PageLayout: React.FC<PageLayoutProps> = ({
   metaDescription,
   headerRight,
   noMaxWidth = false,
-  contentAnimationDelay = 0.1,
+  contentAnimationDelay = 0,
 }) => {
   const bgUrl =
     typeof backgroundImage === 'object' && backgroundImage !== null
@@ -76,7 +76,7 @@ const PageLayout: React.FC<PageLayoutProps> = ({
           <div className="left flex flex-col">
             {/* Breadcrumbs */}
             {activeBreadcrumbs.length > 1 && (
-              <nav className="flex items-center flex-wrap gap-1.5 text-sm text-[#aaaaaa] mb-2">
+              <nav className="flex items-center flex-wrap gap-1.5 text-sm text-[#b3b3b3] mb-2">
                 {activeBreadcrumbs.map((crumb, index) => {
                   const isLast = index === activeBreadcrumbs.length - 1;
                   return (
@@ -89,11 +89,11 @@ const PageLayout: React.FC<PageLayoutProps> = ({
                           {crumb.label}
                         </NavLink>
                       ) : (
-                        <span className={isLast ? 'text-white font-medium' : 'text-[#aaaaaa]'}>
+                        <span className={isLast ? 'text-white font-medium' : 'text-[#b3b3b3]'}>
                           {crumb.label}
                         </span>
                       )}
-                      {!isLast && <span className="text-[#717171] select-none">/</span>}
+                      {!isLast && <span className="text-[#626262] select-none">/</span>}
                     </React.Fragment>
                   );
                 })}
@@ -102,7 +102,7 @@ const PageLayout: React.FC<PageLayoutProps> = ({
 
             {/* Signature CC Page Title with Red Underline */}
             <div className="relative pb-3 w-fit">
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white tracking-tight leading-tight">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white tracking-tight leading-tight uppercase">
                 {title}
               </h1>
               {/* CC Signature red bar: width 60%, height 2.5px, border-radius 2px */}
@@ -111,7 +111,7 @@ const PageLayout: React.FC<PageLayoutProps> = ({
 
             {/* Subtitle if present */}
             {subtitle && (
-              <p className="mt-3 text-sm sm:text-base text-[#aaaaaa] max-w-2xl leading-relaxed">
+              <p className="mt-3 text-sm sm:text-base text-[#b3b3b3] max-w-2xl leading-relaxed">
                 {subtitle}
               </p>
             )}
@@ -127,9 +127,9 @@ const PageLayout: React.FC<PageLayoutProps> = ({
 
         {/* Page Content Slot */}
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
+          initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: contentAnimationDelay, duration: 0.35 }}
+          transition={{ delay: contentAnimationDelay, duration: 0.15 }}
           className="page-content grow flex flex-col"
         >
           {children}

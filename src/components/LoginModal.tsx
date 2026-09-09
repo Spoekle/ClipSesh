@@ -136,14 +136,14 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
 
   const overlayVariants: any = {
     hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { duration: 0.3 } },
-    exit: { opacity: 0, transition: { duration: 0.3 } }
+    visible: { opacity: 1, transition: { duration: 0.15 } },
+    exit: { opacity: 0, transition: { duration: 0.15 } }
   };
 
   const modalVariants: any = {
-    hidden: { opacity: 0, scale: 0.8 },
-    visible: { opacity: 1, scale: 1, transition: { type: 'spring', damping: 25, stiffness: 500 } },
-    exit: { opacity: 0, scale: 0.8, transition: { duration: 0.3 } }
+    hidden: { opacity: 0, scale: 0.96 },
+    visible: { opacity: 1, scale: 1, transition: { duration: 0.15 } },
+    exit: { opacity: 0, scale: 0.96, transition: { duration: 0.15 } }
   };
 
   return (
@@ -178,9 +178,9 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
             <div className="p-8">
               {formMode === 'login' && (
                 <motion.div
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
+                  transition={{ duration: 0.1 }}
                 >
                   <h2 className="text-2xl font-bold text-[#f1f1f1] mb-2">Sign In</h2>
                   <p className="text-sm text-[#aaaaaa] mb-6">Enter your credentials to access your account</p>
@@ -305,9 +305,9 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
 
               {formMode === 'register' && (
                 <motion.div
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
+                  transition={{ duration: 0.1 }}
                 >
                   <h2 className="text-2xl font-bold text-[#f1f1f1] mb-2">Create Account</h2>
                   <p className="text-sm text-[#aaaaaa] mb-6">Join ClipSesh to rate and submit clips</p>
@@ -419,9 +419,9 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
 
               {formMode === 'reset' && (
                 <motion.div
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
+                  transition={{ duration: 0.1 }}
                 >
                   <h2 className="text-2xl font-bold text-[#f1f1f1] mb-2">Reset Password</h2>
                   <p className="mb-6 text-[#aaaaaa] text-sm">

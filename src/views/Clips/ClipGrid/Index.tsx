@@ -76,21 +76,17 @@ const ClipGrid: React.FC<ClipGridProps> = ({
     show: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.3
+        duration: 0.1,
       }
     }
   };
 
   const itemVariants: any = {
-    hidden: { opacity: 0, y: 20 },
+    hidden: { opacity: 0 },
     show: {
       opacity: 1,
-      y: 0,
       transition: {
-        type: "spring",
-        stiffness: 80,
-        damping: 12
+        duration: 0.1,
       }
     }
   };
