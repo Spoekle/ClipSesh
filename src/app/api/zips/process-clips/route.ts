@@ -7,7 +7,8 @@ export async function POST(req: NextRequest) {
     const { errorResponse } = requireAuth(req, ['admin', 'clipteam']);
     if (errorResponse) return errorResponse;
 
-    const { season, year, denyThreshold } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const { season, year, denyThreshold, clips } = body;
 
     if (!season || !year) {
       return NextResponse.json(
@@ -16,7 +17,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const jobInfo = await startProcessingJob(season, Number(year), denyThreshold);
+    const jobInfo = await startProcessingJob(
+      season,
+      Number(year),
+      denyThreshold,
+      clips
+    );
 
     return NextResponse.json({
       success: true,
@@ -25,6 +31,9 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     console.error('Error starting clip processing:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json(
+      { error: error?.message || 'Internal Server Error' },
+      { status: 500 }
+    );
   }
 }

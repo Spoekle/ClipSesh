@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     const zip = await Zip.findOne({
       season: { $regex: new RegExp(`^${season}$`, 'i') },
       year: parseInt(year, 10),
-    });
+    }).sort({ createdAt: -1 });
 
     if (!zip) {
       return NextResponse.json({ error: 'Zip not found for season/year' }, { status: 404 });

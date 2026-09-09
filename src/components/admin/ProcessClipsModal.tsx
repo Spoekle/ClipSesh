@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaSpinner, FaTimes, FaCheck, FaCog, FaExclamationTriangle } from 'react-icons/fa';
+import { FaSpinner, FaTimes, FaCheck, FaCog, FaExclamationTriangle, FaStop } from 'react-icons/fa';
 import ConfirmationDialog from '../common/ConfirmationDialog';
 import LiveProcessingView from './LiveProcessingView';
-import { forceCompleteProcessJob } from '../../services/adminService';
+import { forceCompleteProcessJob, cancelProcessingJob } from '../../services/adminService';
 import { Clip, Rating } from '../../types/adminTypes';
 
 interface ProcessClipsModalProps {
@@ -283,6 +283,24 @@ const ProcessClipsModal: React.FC<ProcessClipsModalProps> = ({
                         </button>
                       </div>
                     )}
+
+                    <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#262626]">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (processJobId) {
+                            try {
+                              await cancelProcessingJob(processJobId);
+                            } catch {}
+                          }
+                          onClose();
+                        }}
+                        className="px-4 py-2 text-xs font-semibold rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-400 transition-colors cursor-pointer flex items-center gap-1.5"
+                      >
+                        <FaStop size={10} />
+                        <span>Cancel Pipeline</span>
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <form onSubmit={handleSubmit} className="space-y-4">

@@ -232,3 +232,33 @@ export function isLegacyPath(filePath: string): boolean {
   }
   return false;
 }
+
+export const SEASON_ORDER: Record<string, number> = {
+  spring: 1,
+  summer: 2,
+  fall: 3,
+  winter: 4,
+};
+
+/**
+ * Compare two items by year and season descending (newest year and latest season first).
+ * Falls back to createdAt descending if year and season match.
+ */
+export function compareSeasonYear<
+  T extends { season?: string; year?: number; createdAt?: string | Date }
+>(a: T, b: T): number {
+  const yearA = Number(a.year) || 0;
+  const yearB = Number(b.year) || 0;
+  if (yearA !== yearB) {
+    return yearB - yearA; // Newest year first
+  }
+  const seasonA = SEASON_ORDER[(a.season || '').toLowerCase()] ?? 0;
+  const seasonB = SEASON_ORDER[(b.season || '').toLowerCase()] ?? 0;
+  if (seasonA !== seasonB) {
+    return seasonB - seasonA; // Newest season within year first (Winter > Fall > Summer > Spring)
+  }
+  const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+  const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+  return dateB - dateA; // Fallback to newest createdAt
+}
+

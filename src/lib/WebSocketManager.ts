@@ -119,6 +119,23 @@ export class WebSocketManager {
       timestamp: Date.now()
     });
   }
+
+  emitJobCancelled(jobId: string, message: string = 'Job cancelled by administrator') {
+    const io = this.getIo();
+    if (!io) return;
+    io.emit(`job:cancelled:${jobId}`, {
+      jobId,
+      status: 'cancelled',
+      message,
+      timestamp: Date.now()
+    });
+    io.emit(`job:phase:${jobId}`, {
+      jobId,
+      phase: 'cancelled',
+      message,
+      timestamp: Date.now()
+    });
+  }
 }
 
 export const wsManager = new WebSocketManager();

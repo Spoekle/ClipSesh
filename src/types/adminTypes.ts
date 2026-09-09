@@ -189,9 +189,22 @@ export interface ProcessClipsRequest {
 
 // Process job status interface
 export interface ProcessJobStatus {
+  jobId?: string;
   progress: number;
-  status: 'processing' | 'completed' | 'error';
+  status: 'processing' | 'completed' | 'error' | 'cancelled';
+  phase?: string;
+  total?: number;
+  processed?: number;
+  season?: string;
+  year?: number;
+  startTime?: number;
+  endTime?: number | null;
+  zipFilename?: string | null;
+  zipId?: any;
+  error?: string | null;
+  logs?: Array<{ time: number; message: string; level: string }>;
   message?: string;
+  elapsedTime?: number;
 }
 
 // Blacklisted user interfaces

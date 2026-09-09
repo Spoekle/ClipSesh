@@ -18,7 +18,7 @@ import {
   FaPercentage,
   FaSpinner,
 } from 'react-icons/fa';
-import { getCurrentSeason } from '../utils/seasonHelpers';
+import { getCurrentSeason, compareSeasonYear } from '../utils/seasonHelpers';
 import { downloadWithProgress } from '../utils/downloadHelpers';
 
 import { useCombinedConfig } from '../hooks/useConfig';
@@ -45,8 +45,10 @@ const EditorDash: React.FC = () => {
   }>({});
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
 
+  const currentSeason = getCurrentSeason();
   const seasonInfo = {
-    season: getCurrentSeason().season,
+    season: currentSeason.season,
+    year: currentSeason.year,
     clipAmount: clips.length,
   };
 
@@ -180,11 +182,11 @@ const EditorDash: React.FC = () => {
         />
       </div>
 
-      {/* Main 1200px Container */}
-      <div className="w-full max-w-[1200px] mx-auto px-4 sm:px-8 py-6 grow flex flex-col">
-        {/* Header */}
-        <div className="mb-6">
-          <nav className="flex items-center gap-1.5 text-xs text-[#aaaaaa] mb-2">
+      {/* CC Page Header Container (1200px centered) */}
+      <div className="relative w-full overflow-hidden select-none">
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-8 pt-6 pb-4">
+          {/* Breadcrumbs */}
+          <nav className="flex items-center gap-1.5 text-sm text-[#b3b3b3] mb-2">
             <NavLink to="/" className="hover:text-white transition-colors">
               Home
             </NavLink>
@@ -192,29 +194,32 @@ const EditorDash: React.FC = () => {
             <span className="text-white font-medium">Editor</span>
           </nav>
 
+          {/* Title row with signature CC Red Underline */}
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
             <div>
-              <div className="relative pb-2.5 w-fit">
-                <h1 className="text-2xl sm:text-3xl font-bold text-[#f1f1f1] tracking-tight">
-                  Editor Dashboard
+              <div className="relative pb-3 w-fit">
+                <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white tracking-tight leading-tight uppercase">
+                  EDITOR DASHBOARD
                 </h1>
-                <div className="absolute bottom-0 left-0 w-16 h-[2px] bg-[#f23030] rounded-full" />
+                {/* CC Red Bar: width 60%, height 2.5px */}
+                <div className="absolute bottom-0 left-0 w-3/5 h-[2.5px] bg-[#f23030] rounded-full" />
               </div>
-              <p className="mt-2 text-xs sm:text-sm text-[#aaaaaa] leading-relaxed max-w-xl">
+              <p className="mt-3 text-sm sm:text-base text-[#b3b3b3] leading-relaxed max-w-xl">
                 Review clip approval ratios and download seasonal clip archives for video editing.
               </p>
             </div>
 
-            <span className="text-xs tracking-wider px-3 py-1 bg-[#181818] text-[#f1f1f1] border border-[#2a2a2a] rounded-full font-semibold self-start sm:self-end">
-              Editor Portal
-            </span>
           </div>
         </div>
+      </div>
+
+      {/* Main 1200px Container */}
+      <div className="w-full max-w-[1200px] mx-auto px-4 sm:px-8 py-6 grow flex flex-col">
 
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
+          initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25 }}
+          transition={{ duration: 0.15 }}
           className="w-full space-y-6"
         >
           {/* Season Overview Bar */}
@@ -398,10 +403,7 @@ const EditorDash: React.FC = () => {
                 </div>
               ) : (
                 (() => {
-                  const sortedZips = [...zips].sort(
-                    (a, b) =>
-                      new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
-                  );
+                  const sortedZips = [...zips].sort(compareSeasonYear);
                   const displayZips =
                     activeTab === 'latest' ? sortedZips.slice(0, 1) : sortedZips;
 

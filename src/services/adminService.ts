@@ -394,6 +394,33 @@ export const forceCompleteProcessJob = async (jobId: string): Promise<void> => {
   }
 };
 
+// Get all clip processing jobs (recent and active)
+export const getAllProcessingJobs = async (): Promise<{ success: boolean; jobs: ProcessJobStatus[] }> => {
+  try {
+    const response = await axios.get<{ success: boolean; jobs: ProcessJobStatus[] }>(
+      `${backendUrl}/api/zips/process`,
+      { headers: getAuthHeaders() }
+    );
+    return response.data;
+  } catch (error: any) {
+    console.error('Error getting all processing jobs:', error);
+    throw new Error(error.response?.data?.message || 'Failed to get processing jobs');
+  }
+};
+
+export const cancelProcessingJob = async (jobId: string): Promise<{ success: boolean; cancelled: boolean }> => {
+  try {
+    const response = await axios.delete<{ success: boolean; cancelled: boolean }>(
+      `${backendUrl}/api/zips/process?jobId=${encodeURIComponent(jobId)}`,
+      { headers: getAuthHeaders() }
+    );
+    return response.data;
+  } catch (error: any) {
+    console.error('Error cancelling processing job:', error);
+    throw new Error(error.response?.data?.error || error.response?.data?.message || 'Failed to cancel job');
+  }
+};
+
 /**
  * Utility Functions
  */
@@ -536,3 +563,175 @@ export const deleteReportMessage = async (reportId: string, messageId: string): 
     throw new Error(error.response?.data?.message || 'Failed to delete message');
   }
 };
+
+/**
+ * Discord Channel Scraper
+ */
+
+export interface ScrapedClipItem {
+  id: string;
+  link: string;
+  origin: 'youtube' | 'twitch' | 'medal' | 'direct_video';
+  author: string;
+  authorId?: string;
+  timestamp: string;
+  messageId: string;
+  content?: string;
+  title: string;
+  streamer: string;
+  season: 'Winter' | 'Spring' | 'Summer' | 'Fall';
+  year: number;
+  destinationFolder: string;
+  alreadyExists: boolean;
+}
+
+export interface ChannelScanStatusResponse {
+  success: boolean;
+  jobId: string;
+  channelId: string;
+  status: 'scanning' | 'ready' | 'error';
+  scannedMessages: number;
+  foundClipsCount: number;
+  error?: string;
+  stats?: {
+    totalMessages: number;
+    totalClips: number;
+    newClips: number;
+    existingClips: number;
+    origins: {
+      youtube: number;
+      twitch: number;
+      medal: number;
+      direct_video: number;
+    };
+    seasons: Record<string, number>;
+  };
+  clips?: ScrapedClipItem[];
+  startTime: number;
+  endTime?: number;
+}
+
+export interface ScraperDownloadStatusResponse {
+  success: boolean;
+  jobId: string;
+  status: 'downloading' | 'completed' | 'error' | 'stopped';
+  total: number;
+  processed: number;
+  currentClip?: string;
+  successCount: number;
+  errorCount: number;
+  skippedCount: number;
+  startTime: number;
+  endTime?: number;
+  error?: string;
+  logs: Array<{
+    time: number;
+    message: string;
+    level: 'info' | 'success' | 'warn' | 'error';
+  }>;
+  results: Array<{
+    link: string;
+    title: string;
+    season: string;
+    year: number;
+    status: 'saved' | 'skipped' | 'failed';
+    error?: string;
+  }>;
+}
+
+export const startChannelScan = async (channelId: string): Promise<{ success: boolean; jobId: string }> => {
+  try {
+    const response = await axios.post<{ success: boolean; jobId: string }>(
+      `${backendUrl}/api/admin/scraper/scan`,
+      { channelId },
+      { headers: getAuthHeaders() }
+    );
+    return response.data;
+  } catch (error: any) {
+    console.error('Error starting channel scan:', error);
+    throw new Error(error.response?.data?.error || error.response?.data?.message || 'Failed to start channel scan');
+  }
+};
+
+export const getChannelScanStatus = async (jobId: string): Promise<ChannelScanStatusResponse> => {
+  try {
+    const response = await axios.get<ChannelScanStatusResponse>(
+      `${backendUrl}/api/admin/scraper/scan/${jobId}`,
+      { headers: getAuthHeaders() }
+    );
+    return response.data;
+  } catch (error: any) {
+    console.error('Error getting channel scan status:', error);
+    throw new Error(error.response?.data?.error || error.response?.data?.message || 'Failed to get scan status');
+  }
+};
+
+export const stopChannelScan = async (jobId: string): Promise<{ success: boolean; stopped: boolean }> => {
+  try {
+    const response = await axios.post<{ success: boolean; stopped: boolean }>(
+      `${backendUrl}/api/admin/scraper/scan/${jobId}`,
+      {},
+      { headers: getAuthHeaders() }
+    );
+    return response.data;
+  } catch (error: any) {
+    console.error('Error stopping channel scan:', error);
+    throw new Error(error.response?.data?.error || error.response?.data?.message || 'Failed to stop channel scan');
+  }
+};
+
+export const startScraperDownload = async (clips: ScrapedClipItem[]): Promise<{ success: boolean; jobId: string; total: number }> => {
+  try {
+    const response = await axios.post<{ success: boolean; jobId: string; total: number }>(
+      `${backendUrl}/api/admin/scraper/download`,
+      { clips },
+      { headers: getAuthHeaders() }
+    );
+    return response.data;
+  } catch (error: any) {
+    console.error('Error starting scraper download:', error);
+    throw new Error(error.response?.data?.error || error.response?.data?.message || 'Failed to start download');
+  }
+};
+
+export const getScraperDownloadStatus = async (jobId: string): Promise<ScraperDownloadStatusResponse> => {
+  try {
+    const response = await axios.get<ScraperDownloadStatusResponse>(
+      `${backendUrl}/api/admin/scraper/download/${jobId}`,
+      { headers: getAuthHeaders() }
+    );
+    return response.data;
+  } catch (error: any) {
+    console.error('Error getting scraper download status:', error);
+    throw new Error(error.response?.data?.error || error.response?.data?.message || 'Failed to get download status');
+  }
+};
+
+export const stopScraperDownload = async (jobId: string): Promise<{ success: boolean; stopped: boolean }> => {
+  try {
+    const response = await axios.post<{ success: boolean; stopped: boolean }>(
+      `${backendUrl}/api/admin/scraper/download/${jobId}`,
+      {},
+      { headers: getAuthHeaders() }
+    );
+    return response.data;
+  } catch (error: any) {
+    console.error('Error stopping scraper download:', error);
+    throw new Error(error.response?.data?.error || error.response?.data?.message || 'Failed to stop download');
+  }
+};
+
+export const getAllScraperDownloads = async (): Promise<{ success: boolean; jobs: ScraperDownloadStatusResponse[] }> => {
+  try {
+    const response = await axios.get<{ success: boolean; jobs: ScraperDownloadStatusResponse[] }>(
+      `${backendUrl}/api/admin/scraper/download`,
+      { headers: getAuthHeaders() }
+    );
+    return response.data;
+  } catch (error: any) {
+    console.error('Error getting all scraper downloads:', error);
+    throw new Error(error.response?.data?.error || error.response?.data?.message || 'Failed to get downloads');
+  }
+};
+
+
