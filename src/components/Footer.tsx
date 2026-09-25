@@ -35,11 +35,12 @@ function Footer() {
     };
   }, [handleStorageChange]);
 
+  const newLocal = "font-bold text-xl tracking-tight text-[#f1f1f1] group-hover:text-cc-red transition-colors";
   return (
     <footer className="bg-[#0f0f0f] border-t border-[#262626] py-12 text-[#f1f1f1] transition duration-200">
       {isSnowMonth && snow && <SnowOverlay />}
 
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-8">
+      <div className="max-w-300 mx-auto px-4 sm:px-8">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-8 lg:gap-12">
           {/* Brand & Mission Column */}
           <div className="md:col-span-2 flex flex-col items-start">
@@ -50,12 +51,12 @@ function Footer() {
                 className="h-10 w-auto object-contain transition-transform group-hover:scale-105"
               />
               <div className="flex items-center gap-2">
-                <span className="font-bold text-xl tracking-tight text-[#f1f1f1] group-hover:text-[#f23030] transition-colors">
+                <span className={newLocal}>
                   ClipSesh
                 </span>
               </div>
               {process.env.NODE_ENV === 'development' && (
-                <span className="hidden sm:inline-block text-[10px] font-bold text-white bg-[#f23030] shadow-sm shadow-[#f23030]/30 rounded-[6px] px-1.5 py-0.5 ml-1">
+                <span className="hidden sm:inline-block text-[10px] font-bold text-white bg-cc-red shadow-sm shadow-cc-red/30 rounded-md px-1.5 py-0.5 ml-1">
                   DEV
                 </span>
               )}
@@ -73,17 +74,17 @@ function Footer() {
             </div>
             <ul className="flex flex-col space-y-2.5 text-sm">
               <li>
-                <Link to="/" className="text-[#aaaaaa] hover:text-[#f23030] transition-colors">
+                <Link to="/" className="text-[#aaaaaa] hover:text-cc-red transition-colors">
                   Home
                 </Link>
               </li>
               <li>
-                <Link to="/clips" className="text-[#aaaaaa] hover:text-[#f23030] transition-colors">
+                <Link to="/clips" className="text-[#aaaaaa] hover:text-cc-red transition-colors">
                   Clips
                 </Link>
               </li>
               <li>
-                <Link to="/archive" className="text-[#aaaaaa] hover:text-[#f23030] transition-colors">
+                <Link to="/archive" className="text-[#aaaaaa] hover:text-cc-red transition-colors">
                   The ClipVault
                 </Link>
               </li>
@@ -97,7 +98,7 @@ function Footer() {
             </div>
             <ul className="flex flex-col space-y-2.5 text-sm">
               <li>
-                <Link to="/privacystatement" className="text-[#aaaaaa] hover:text-[#f23030] transition-colors">
+                <Link to="/privacystatement" className="text-[#aaaaaa] hover:text-cc-red transition-colors">
                   Privacy Policy
                 </Link>
               </li>
@@ -106,7 +107,7 @@ function Footer() {
                   href="https://github.com/Spoekle/ClipSesh"
                   target="_blank"
                   rel="noreferrer"
-                  className="text-[#aaaaaa] hover:text-[#f23030] transition-colors"
+                  className="text-[#aaaaaa] hover:text-cc-red transition-colors"
                 >
                   GitHub
                 </a>
@@ -125,7 +126,7 @@ function Footer() {
                   href="https://youtube.com/CubeCommunity"
                   target="_blank"
                   rel="noreferrer"
-                  className="text-[#aaaaaa] hover:text-[#f23030] transition-colors"
+                  className="text-[#aaaaaa] hover:text-cc-red transition-colors"
                 >
                   YouTube
                 </a>
@@ -135,7 +136,7 @@ function Footer() {
                   href="https://twitter.com/CubeCommunityVR"
                   target="_blank"
                   rel="noreferrer"
-                  className="text-[#aaaaaa] hover:text-[#f23030] transition-colors"
+                  className="text-[#aaaaaa] hover:text-cc-red transition-colors"
                 >
                   Twitter / X
                 </a>
@@ -145,7 +146,7 @@ function Footer() {
                   href="https://twitch.tv/CubeCommunity"
                   target="_blank"
                   rel="noreferrer"
-                  className="text-[#aaaaaa] hover:text-[#f23030] transition-colors"
+                  className="text-[#aaaaaa] hover:text-cc-red transition-colors"
                 >
                   Twitch
                 </a>
@@ -155,7 +156,7 @@ function Footer() {
                   href="https://discord.gg/dwe8mbC"
                   target="_blank"
                   rel="noreferrer"
-                  className="text-[#aaaaaa] hover:text-[#f23030] transition-colors"
+                  className="text-[#aaaaaa] hover:text-cc-red transition-colors"
                 >
                   Discord
                 </a>

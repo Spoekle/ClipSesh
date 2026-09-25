@@ -241,7 +241,7 @@ export const VirtualClipList = ({
         className="flex items-center p-4 hover:bg-gray-50 cursor-pointer border-b border-gray-200"
         onClick={() => onClipClick(clip)}
       >
-        <div className="w-20 h-16 bg-gray-200 rounded mr-4 flex-shrink-0">
+        <div className="w-20 h-16 bg-gray-200 rounded mr-4 shrink-0">
           {clip.thumbnail && (
             <img
               src={clip.thumbnail}

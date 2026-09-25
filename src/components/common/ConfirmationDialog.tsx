@@ -65,7 +65,7 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-10000 flex items-center justify-center p-4">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -93,7 +93,7 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
             </button>
 
             <div className="flex items-start gap-4 mb-5">
-              <div className={`p-3 rounded-xl flex-shrink-0 flex items-center justify-center ${iconBg}`}>
+              <div className={`p-3 rounded-xl shrink-0 flex items-center justify-center ${iconBg}`}>
                 {icon}
               </div>
 
@@ -101,7 +101,7 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
                 <h3 className="text-base font-bold text-[#f1f1f1] leading-snug">
                   {title}
                 </h3>
-                <p className="text-xs sm:text-sm text-[#aaaaaa] leading-relaxed mt-1.5 break-words">
+                <p className="text-xs sm:text-sm text-[#aaaaaa] leading-relaxed mt-1.5 wrap-break-word">
                   {message}
                 </p>
               </div>

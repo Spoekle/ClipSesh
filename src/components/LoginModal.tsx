@@ -217,7 +217,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
                           placeholder="Enter your username"
                           value={formData.username}
                           onChange={handleChange}
-                          className="bg-[#121212] border border-[#262626] text-white focus:border-[#f23030] rounded-xl pl-10 pr-4 py-2.5 w-full text-sm outline-none transition-colors"
+                          className="bg-[#121212] border border-[#262626] text-white focus:border-cc-red rounded-xl pl-10 pr-4 py-2.5 w-full text-sm outline-none transition-colors"
                           required
                         />
                       </div>
@@ -238,7 +238,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
                           placeholder="Enter your password"
                           value={formData.password}
                           onChange={handleChange}
-                          className="bg-[#121212] border border-[#262626] text-white focus:border-[#f23030] rounded-xl pl-10 pr-4 py-2.5 w-full text-sm outline-none transition-colors"
+                          className="bg-[#121212] border border-[#262626] text-white focus:border-cc-red rounded-xl pl-10 pr-4 py-2.5 w-full text-sm outline-none transition-colors"
                           required
                         />
                       </div>
@@ -247,7 +247,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="bg-[#f23030] hover:bg-[#d92222] text-white w-full py-2.5 rounded-full font-semibold shadow-md shadow-[#f23030]/20 flex items-center justify-center text-sm transition-all"
+                      className="bg-cc-red hover:bg-[#d92222] text-white w-full py-2.5 rounded-full font-semibold shadow-md shadow-cc-red/20 flex items-center justify-center text-sm transition-all"
                     >
                       {isSubmitting ? (
                         <>
@@ -286,7 +286,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
                         setFormMode('register');
                         setError('');
                       }}
-                      className="text-[#f23030] hover:underline"
+                      className="text-cc-red hover:underline"
                     >
                       Don't have an account? Register
                     </button>
@@ -295,7 +295,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
                         setFormMode('reset');
                         setError('');
                       }}
-                      className="text-[#aaaaaa] hover:text-[#f23030] hover:underline"
+                      className="text-[#aaaaaa] hover:text-cc-red hover:underline"
                     >
                       Forgot your password?
                     </button>
@@ -334,7 +334,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
                           value={formData.username}
                           onChange={handleChange}
                           maxLength={30}
-                          className="bg-[#121212] border border-[#262626] text-white focus:border-[#f23030] rounded-xl pl-10 pr-4 py-2.5 w-full text-sm outline-none transition-colors"
+                          className="bg-[#121212] border border-[#262626] text-white focus:border-cc-red rounded-xl pl-10 pr-4 py-2.5 w-full text-sm outline-none transition-colors"
                           required
                         />
                         {formData.username.length > 0 && (
@@ -361,7 +361,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
                           placeholder="Create a strong password"
                           value={formData.password}
                           onChange={handleChange}
-                          className="bg-[#121212] border border-[#262626] text-white focus:border-[#f23030] rounded-xl pl-10 pr-4 py-2.5 w-full text-sm outline-none transition-colors"
+                          className="bg-[#121212] border border-[#262626] text-white focus:border-cc-red rounded-xl pl-10 pr-4 py-2.5 w-full text-sm outline-none transition-colors"
                           required
                         />
                       </div>
@@ -370,7 +370,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="bg-[#f23030] hover:bg-[#d92222] text-white w-full py-2.5 rounded-full font-semibold shadow-md shadow-[#f23030]/20 flex items-center justify-center text-sm transition-all"
+                      className="bg-cc-red hover:bg-[#d92222] text-white w-full py-2.5 rounded-full font-semibold shadow-md shadow-cc-red/20 flex items-center justify-center text-sm transition-all"
                     >
                       {isSubmitting ? (
                         <>
@@ -409,7 +409,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
                         setFormMode('login');
                         setError('');
                       }}
-                      className="text-[#f23030] hover:underline"
+                      className="text-cc-red hover:underline"
                     >
                       Already have an account? Sign in
                     </button>
@@ -452,7 +452,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
                           placeholder="Enter your email"
                           value={email}
                           onChange={handleEmailChange}
-                          className="bg-[#121212] border border-[#262626] text-white focus:border-[#f23030] rounded-xl pl-10 pr-4 py-2.5 w-full text-sm outline-none transition-colors"
+                          className="bg-[#121212] border border-[#262626] text-white focus:border-cc-red rounded-xl pl-10 pr-4 py-2.5 w-full text-sm outline-none transition-colors"
                         />
                       </div>
                     </div>
@@ -460,7 +460,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
                     <button
                       onClick={handlePasswordReset}
                       disabled={awaitingReset || !email.trim()}
-                      className="bg-[#f23030] hover:bg-[#d92222] text-white w-full py-2.5 rounded-full font-semibold shadow-md shadow-[#f23030]/20 flex items-center justify-center text-sm disabled:opacity-50 transition-all"
+                      className="bg-cc-red hover:bg-[#d92222] text-white w-full py-2.5 rounded-full font-semibold shadow-md shadow-cc-red/20 flex items-center justify-center text-sm disabled:opacity-50 transition-all"
                     >
                       {awaitingReset ? (
                         <>
@@ -479,7 +479,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
                         setFormMode('login');
                         setResetMessage({ type: '', message: '' });
                       }}
-                      className="text-[#f23030] hover:underline"
+                      className="text-cc-red hover:underline"
                     >
                       Back to Sign In
                     </button>

@@ -52,7 +52,7 @@ const PageLayout: React.FC<PageLayoutProps> = ({
 
       {/* Ambient background image layer (matching CC app.vue background system) */}
       {bgUrl && (
-        <div className="absolute top-0 left-0 w-full h-[380px] overflow-hidden pointer-events-none -z-10 select-none">
+        <div className="absolute top-0 left-0 w-full h-95 overflow-hidden pointer-events-none -z-10 select-none">
           <div
             className="w-full h-full bg-cover bg-center filter blur-[6px] opacity-30 transform scale-105"
             style={{
@@ -61,14 +61,14 @@ const PageLayout: React.FC<PageLayoutProps> = ({
               WebkitMaskImage: 'linear-gradient(180deg, rgba(0,0,0,1) 0%, rgba(15,15,15,0) 100%)',
             }}
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0f0f0f]/60 to-[#0f0f0f]" />
+          <div className="absolute inset-0 bg-linear-to-b from-transparent via-[#0f0f0f]/60 to-[#0f0f0f]" />
         </div>
       )}
 
       {/* Standard CC Content Wrapper (1200px centered) */}
       <div
         className={`w-full mx-auto px-4 sm:px-8 py-6 md:py-8 flex flex-col grow ${
-          noMaxWidth ? 'max-w-full' : 'max-w-[1200px]'
+          noMaxWidth ? 'max-w-full' : 'max-w-300'
         }`}
       >
         {/* CC Page Header (matching front/layouts/default.vue .page-header) */}
@@ -76,9 +76,10 @@ const PageLayout: React.FC<PageLayoutProps> = ({
           <div className="left flex flex-col">
             {/* Breadcrumbs */}
             {activeBreadcrumbs.length > 1 && (
-              <nav className="flex items-center flex-wrap gap-1.5 text-sm text-[#b3b3b3] mb-2">
+              <nav className="flex items-center flex-wrap gap-1.5 text-sm text-cc-muted mb-2">
                 {activeBreadcrumbs.map((crumb, index) => {
                   const isLast = index === activeBreadcrumbs.length - 1;
+                  const newLocal = "text-[#626262] select-none";
                   return (
                     <React.Fragment key={crumb.path || crumb.label + index}>
                       {crumb.path && !isLast ? (
@@ -89,11 +90,11 @@ const PageLayout: React.FC<PageLayoutProps> = ({
                           {crumb.label}
                         </NavLink>
                       ) : (
-                        <span className={isLast ? 'text-white font-medium' : 'text-[#b3b3b3]'}>
+                        <span className={isLast ? 'text-white font-medium' : 'text-cc-muted'}>
                           {crumb.label}
                         </span>
                       )}
-                      {!isLast && <span className="text-[#626262] select-none">/</span>}
+                      {!isLast && <span className={newLocal}>/</span>}
                     </React.Fragment>
                   );
                 })}
@@ -106,12 +107,12 @@ const PageLayout: React.FC<PageLayoutProps> = ({
                 {title}
               </h1>
               {/* CC Signature red bar: width 60%, height 2.5px, border-radius 2px */}
-              <div className="absolute bottom-0 left-0 w-3/5 h-[2.5px] bg-[#f23030] rounded-full" />
+              <div className="absolute bottom-0 left-0 w-3/5 h-[2.5px] bg-cc-red rounded-full" />
             </div>
 
             {/* Subtitle if present */}
             {subtitle && (
-              <p className="mt-3 text-sm sm:text-base text-[#b3b3b3] max-w-2xl leading-relaxed">
+              <p className="mt-3 text-sm sm:text-base text-cc-muted max-w-2xl leading-relaxed">
                 {subtitle}
               </p>
             )}

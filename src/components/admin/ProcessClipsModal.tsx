@@ -209,7 +209,7 @@ const ProcessClipsModal: React.FC<ProcessClipsModalProps> = ({
             >
               <div className="flex justify-between items-center mb-5 pb-3 border-b border-[#262626]">
                 <h2 className="text-base font-bold text-[#f1f1f1] flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-[#f23030]/15 text-[#f23030] flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-xl bg-cc-red/15 text-cc-red flex items-center justify-center">
                     <FaCog size={14} />
                   </div>
                   <span>Process Clips Pipeline</span>
@@ -238,13 +238,13 @@ const ProcessClipsModal: React.FC<ProcessClipsModalProps> = ({
                         <div className="text-center mb-4">
                           <p className="mb-3 text-xs text-[#aaaaaa]">Processing {clipCount} clips for {season} {year}...</p>
                           <div className="flex justify-center">
-                            <FaSpinner className="animate-spin text-3xl text-[#f23030]" />
+                            <FaSpinner className="animate-spin text-3xl text-cc-red" />
                           </div>
                         </div>
 
                         <div className="w-full bg-[#222222] rounded-full h-2 mb-4 overflow-hidden">
                           <div
-                            className="bg-[#f23030] h-full rounded-full transition-all duration-300"
+                            className="bg-cc-red h-full rounded-full transition-all duration-300"
                             style={{ width: `${progress}%` }}
                           />
                         </div>
@@ -259,7 +259,7 @@ const ProcessClipsModal: React.FC<ProcessClipsModalProps> = ({
                     )}
 
                     {errorMessage && (
-                      <div className="bg-[#f23030]/10 border border-[#f23030]/30 p-3.5 rounded-xl text-[#f23030] text-xs">
+                      <div className="bg-cc-red/10 border border-cc-red/30 p-3.5 rounded-xl text-cc-red text-xs">
                         <p className="font-medium flex items-start">
                           <FaExclamationTriangle className="inline mr-2 mt-0.5 shrink-0" />
                           <span>Error: {errorMessage}</span>
@@ -277,7 +277,7 @@ const ProcessClipsModal: React.FC<ProcessClipsModalProps> = ({
                         <p className="mb-2 text-[#aaaaaa]">It may be experiencing an issue during finalization.</p>
                         <button
                           onClick={handleForceComplete}
-                          className="bg-[#f23030] hover:bg-[#d92222] text-white px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer"
+                          className="bg-cc-red hover:bg-[#d92222] text-white px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer"
                         >
                           {retryCount > 0 ? `Retry (Attempt ${retryCount + 1})` : 'Force Complete'}
                         </button>
@@ -358,7 +358,7 @@ const ProcessClipsModal: React.FC<ProcessClipsModalProps> = ({
                       </button>
                       <button
                         type="submit"
-                        className="px-4 py-2 text-xs rounded-xl bg-[#f23030] hover:bg-[#d92222] text-white font-semibold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                        className="px-4 py-2 text-xs rounded-xl bg-cc-red hover:bg-[#d92222] text-white font-semibold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
                       >
                         <FaCheck size={11} />
                         <span>Process Clips</span>

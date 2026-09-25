@@ -54,11 +54,11 @@ const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ items, className = '' }) => {
                             {isLast || !item.path ? (
                                 // Current page (non-clickable)
                                 <span
-                                    className="flex items-center gap-1.5 text-white font-medium truncate max-w-[200px] sm:max-w-[300px]"
+                                    className="flex items-center gap-1.5 text-white font-medium truncate max-w-50 sm:max-w-75"
                                     aria-current="page"
                                 >
                                     {item.icon && (
-                                        <span className="flex-shrink-0 text-[#8b98a5]">{item.icon}</span>
+                                        <span className="shrink-0 text-[#8b98a5]">{item.icon}</span>
                                     )}
                                     <span className="truncate">{item.label}</span>
                                 </span>
@@ -70,9 +70,9 @@ const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ items, className = '' }) => {
                                     className="flex items-center gap-1.5 text-[#8b98a5] hover:text-white transition-colors duration-150"
                                 >
                                     {item.icon && (
-                                        <span className="flex-shrink-0 text-[#8b98a5]">{item.icon}</span>
+                                        <span className="shrink-0 text-[#8b98a5]">{item.icon}</span>
                                     )}
-                                    <span className="truncate max-w-[150px] sm:max-w-none">{item.label}</span>
+                                    <span className="truncate max-w-37.5 sm:max-w-none">{item.label}</span>
                                 </Link>
                             )}
                         </li>

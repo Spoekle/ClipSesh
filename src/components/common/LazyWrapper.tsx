@@ -9,7 +9,7 @@ interface LazyWrapperProps {
 
 // Default loading component
 const DefaultLoading = () => (
-  <div className="flex items-center justify-center min-h-[200px]">
+  <div className="flex items-center justify-center min-h-50">
     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
     <span className="ml-2 text-gray-600">Loading...</span>
   </div>
@@ -17,7 +17,7 @@ const DefaultLoading = () => (
 
 // Default error component
 const DefaultError = ({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) => (
-  <div className="flex flex-col items-center justify-center min-h-[200px] p-4">
+  <div className="flex flex-col items-center justify-center min-h-50 p-4">
     <div className="text-red-600 text-lg mb-2">Something went wrong</div>
     <div className="text-gray-600 text-sm mb-4">{error.message}</div>
     <button

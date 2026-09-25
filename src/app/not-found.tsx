@@ -4,7 +4,7 @@ export default function NotFound() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[70vh] text-center px-4">
       <div className="max-w-md w-full shadow-2xl text-white">
-        <h1 className="text-7xl sm:text-8xl font-black text-[#f23030] mb-3 tracking-tight">
+        <h1 className="text-7xl sm:text-8xl font-black text-cc-red mb-3 tracking-tight">
           404
         </h1>
         <h2 className="text-xl font-bold text-white mb-2">
@@ -15,7 +15,7 @@ export default function NotFound() {
         </p>
         <Link
           href="/clips"
-          className="btn btn-primary w-full py-3 rounded-[10px] font-semibold inline-flex items-center justify-center text-sm shadow-lg shadow-[#f23030]/20"
+          className="btn btn-primary w-full py-3 rounded-[10px] font-semibold inline-flex items-center justify-center text-sm shadow-lg shadow-cc-red/20"
         >
           Return to Clips
         </Link>
