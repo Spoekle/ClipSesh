@@ -1,5 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
-import axios from 'axios';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
 import { connectToDatabase } from '@/lib/db';
 import User from '@/models/userModel';
@@ -30,7 +29,6 @@ export async function GET(req: NextRequest) {
   const CLIENT_ID = process.env.DISCORD_CLIENT_ID;
   const CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
   const origin = req.nextUrl.origin;
-  const backendUrl = process.env.BACKEND_URL || origin;
   const frontendUrl = process.env.FRONTEND_URL || origin;
 
   if (!code) {
@@ -40,34 +38,42 @@ export async function GET(req: NextRequest) {
   try {
     await connectToDatabase();
 
-    const tokenResponse = await axios.post(
-      'https://discord.com/api/oauth2/token',
-      new URLSearchParams({
+    const tokenResponse = await fetch('https://discord.com/api/oauth2/token', {
+      method: 'POST',
+      body: new URLSearchParams({
         client_id: CLIENT_ID!,
         client_secret: CLIENT_SECRET!,
         grant_type: 'authorization_code',
         code: code,
-        redirect_uri: `${backendUrl}/api/discord/callback`,
+        redirect_uri: `${origin}/api/discord/callback`,
       }),
-      {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      }
-    );
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    });
 
-    const { access_token } = tokenResponse.data;
+    if (!tokenResponse.ok) {
+      throw new Error(`Discord token exchange failed: ${tokenResponse.statusText}`);
+    }
 
-    const userResponse = await axios.get('https://discord.com/api/v10/users/@me', {
+    const { access_token } = await tokenResponse.json();
+
+    const userResponse = await fetch('https://discord.com/api/v10/users/@me', {
       headers: { Authorization: `Bearer ${access_token}` },
     });
-    const discordUser = userResponse.data;
+    if (!userResponse.ok) {
+      throw new Error(`Discord user fetch failed: ${userResponse.statusText}`);
+    }
+    const discordUser = await userResponse.json();
 
     let userGuildRoles: string[] = [];
     try {
-      const guildsResponse = await axios.get(
+      const guildsResponse = await fetch(
         `https://discord.com/api/v10/users/@me/guilds/506190415981051915/member`,
         { headers: { Authorization: `Bearer ${access_token}` } }
       );
-      userGuildRoles = guildsResponse.data.roles || [];
+      if (guildsResponse.ok) {
+        const guildData = await guildsResponse.json();
+        userGuildRoles = guildData.roles || [];
+      }
     } catch {
       // User may not be in guild
     }

@@ -1,20 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import bcrypt from 'bcrypt';
 import { connectToDatabase } from '@/lib/db';
 import Clip from '@/models/clipModel';
-import IpVote from '@/models/ipVoteModel';
-
-function getClientIp(req: NextRequest): string {
-  const forwarded = req.headers.get('x-forwarded-for');
-  if (forwarded) {
-    return forwarded.split(',')[0].trim();
-  }
-  const realIp = req.headers.get('x-real-ip');
-  if (realIp) {
-    return realIp.trim();
-  }
-  return '127.0.0.1';
-}
+import Vote from '@/models/voteModel';
+import { getOrCreateVoterToken, attachVoterCookie } from '@/lib/voterToken';
 
 export async function GET(
   req: NextRequest,
@@ -22,7 +10,7 @@ export async function GET(
 ) {
   try {
     await connectToDatabase();
-    const clientIp = getClientIp(req);
+    const { voterToken, isNew } = getOrCreateVoterToken(req);
     const { id } = await params;
 
     const clip = await Clip.findById(id);
@@ -30,15 +18,21 @@ export async function GET(
       return NextResponse.json({ error: 'Clip not found' }, { status: 404 });
     }
 
-    const existingVotes = await IpVote.find({ clipId: id }).lean();
-
-    for (const vote of existingVotes) {
-      if (await bcrypt.compare(clientIp, vote.ip)) {
-        return NextResponse.json({ hasVoted: true, voteType: vote.vote });
-      }
+    // If this is a newly generated voter token, the user has not voted yet
+    if (isNew) {
+      const response = NextResponse.json({ hasVoted: false });
+      return attachVoterCookie(response, voterToken);
     }
 
-    return NextResponse.json({ hasVoted: false });
+    const existingVote = await Vote.findOne({ clipId: id, voterToken }).lean();
+
+    const response = NextResponse.json(
+      existingVote
+        ? { hasVoted: true, voteType: existingVote.vote }
+        : { hasVoted: false }
+    );
+
+    return attachVoterCookie(response, voterToken);
   } catch (error: any) {
     console.error('Error checking vote status:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

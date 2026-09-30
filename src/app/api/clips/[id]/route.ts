@@ -7,7 +7,7 @@ import { PublicConfig } from '@/models/configModel';
 import { requireAuth } from '@/lib/auth';
 
 import Rating from '@/models/ratingModel';
-import IpVote from '@/models/ipVoteModel';
+import Vote from '@/models/voteModel';
 import Message from '@/models/messageModel';
 import Report from '@/models/reportModel';
 
@@ -127,7 +127,7 @@ export async function DELETE(
     await Promise.all([
       clip.deleteOne(),
       Rating.deleteMany({ clipId: id }),
-      IpVote.deleteMany({ clipId: id }),
+      Vote.deleteMany({ clipId: id }),
       Message.deleteMany({ clipId: id }),
       Report.deleteMany({ clipId: id }),
     ]);

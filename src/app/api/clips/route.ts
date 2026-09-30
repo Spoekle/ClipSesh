@@ -8,7 +8,8 @@ import Clip from '@/models/clipModel';
 import Rating from '@/models/ratingModel';
 import { PublicConfig, AdminConfig } from '@/models/configModel';
 import { requireAuth } from '@/lib/auth';
-import { getCurrentSeason, getClipPath } from '@/lib/seasonHelpers';
+import { getCurrentSeason } from '@/lib/seasonHelpers';
+import { getClipPath } from '@/lib/seasonPathHelpers';
 
 async function updateClipCount(): Promise<number> {
   try {

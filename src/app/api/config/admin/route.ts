@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import { AdminConfig } from '@/models/configModel';
 import { requireAuth } from '@/lib/auth';
@@ -38,6 +38,7 @@ export async function PUT(req: NextRequest) {
       clipChannelIds,
       blacklistedSubmitters,
       blacklistedStreamers,
+      seasonAutomation,
     } = await req.json();
 
     let adminConfig = await AdminConfig.findOne();
@@ -51,6 +52,12 @@ export async function PUT(req: NextRequest) {
       adminConfig.blacklistedSubmitters = blacklistedSubmitters;
     if (blacklistedStreamers !== undefined)
       adminConfig.blacklistedStreamers = blacklistedStreamers;
+    if (seasonAutomation !== undefined) {
+      adminConfig.seasonAutomation = {
+        ...(adminConfig.seasonAutomation || {}),
+        ...seasonAutomation,
+      };
+    }
 
     await adminConfig.save();
     return NextResponse.json(adminConfig);

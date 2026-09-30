@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import Message from '@/models/messageModel';
 import { requireAuth } from '@/lib/auth';
+import { wsManager } from '@/lib/WebSocketManager';
 
 export async function DELETE(
   req: NextRequest,
@@ -21,7 +22,11 @@ export async function DELETE(
 
     const isAdmin = authUser!.roles.includes('admin');
     if (isAdmin || message.userId.toString() === authUser!.id) {
+      const clipId = message.clipId?.toString();
       await message.deleteOne();
+      if (clipId) {
+        wsManager.emitMessageDeleted(clipId, id);
+      }
       return NextResponse.json({ message: 'Message deleted' });
     }
 

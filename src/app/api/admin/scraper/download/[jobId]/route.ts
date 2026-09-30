@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
-import { getDownloadJob, stopDownloadJob } from '@/lib/discordScraper';
+import { getDownloadJob, stopDownloadJob, dismissDownloadJob } from '@/lib/discordScraper';
 
 export async function GET(
   req: NextRequest,
@@ -76,3 +76,34 @@ export async function POST(
     );
   }
 }
+
+export async function DELETE(
+  req: NextRequest,
+  context: { params: Promise<{ jobId: string }> }
+) {
+  try {
+    const { errorResponse } = requireAuth(req, ['admin']);
+    if (errorResponse) return errorResponse;
+
+    const { jobId } = await context.params;
+
+    if (!jobId) {
+      return NextResponse.json({ error: 'jobId is required' }, { status: 400 });
+    }
+
+    const dismissed = dismissDownloadJob(jobId);
+
+    return NextResponse.json({
+      success: true,
+      dismissed,
+      message: dismissed ? 'Download job dismissed' : 'Job not found or actively downloading',
+    });
+  } catch (error: any) {
+    console.error('Error dismissing download job:', error);
+    return NextResponse.json(
+      { error: error?.message || 'Internal Server Error' },
+      { status: 500 }
+    );
+  }
+}
+

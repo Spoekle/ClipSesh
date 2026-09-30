@@ -54,6 +54,8 @@ export async function GET() {
       season: 'Winter' | 'Spring' | 'Summer' | 'Fall';
       year: number;
       clipCount: number;
+      archivedClipsCount: number;
+      unarchivedClipsCount: number;
       totalViews: number;
       totalUpvotes: number;
       thumbnails: string[];
@@ -93,6 +95,8 @@ export async function GET() {
           season: normalizedSeason,
           year,
           clipCount: 0,
+          archivedClipsCount: 0,
+          unarchivedClipsCount: 0,
           totalViews: 0,
           totalUpvotes: 0,
           thumbnails: [],
@@ -102,6 +106,11 @@ export async function GET() {
       }
 
       data.clipCount += 1;
+      if (clip.archived) {
+        data.archivedClipsCount += 1;
+      } else {
+        data.unarchivedClipsCount += 1;
+      }
       data.totalViews += clip.views || 0;
       data.totalUpvotes += clip.upvotes || 0;
 
@@ -127,6 +136,8 @@ export async function GET() {
           season: normalizedSeason,
           year: z.year,
           clipCount: z.clipAmount || 0,
+          archivedClipsCount: z.clipAmount || 0,
+          unarchivedClipsCount: 0,
           totalViews: 0,
           totalUpvotes: 0,
           thumbnails: [],
@@ -158,6 +169,9 @@ export async function GET() {
         season: data.season,
         year: data.year,
         clipCount: data.clipCount,
+        archivedClipsCount: data.archivedClipsCount || 0,
+        unarchivedClipsCount: data.unarchivedClipsCount || 0,
+        isArchived: (data.archivedClipsCount || 0) > 0,
         totalViews: data.totalViews,
         totalUpvotes: data.totalUpvotes,
         previewThumbnails: data.thumbnails,

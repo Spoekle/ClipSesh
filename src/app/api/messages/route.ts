@@ -1,10 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import Message from '@/models/messageModel';
 import Clip from '@/models/clipModel';
 import User from '@/models/userModel';
 import Notification from '@/models/notificationModel';
 import { requireAuth } from '@/lib/auth';
+import { wsManager } from '@/lib/WebSocketManager';
 
 export async function GET(req: NextRequest) {
   try {
@@ -74,6 +75,9 @@ export async function POST(req: NextRequest) {
     if (notifications.length > 0) {
       await Notification.insertMany(notifications);
     }
+
+    const messageObj = newMessage.toObject ? newMessage.toObject() : newMessage;
+    wsManager.emitNewMessage(clipId, messageObj);
 
     return NextResponse.json(newMessage, { status: 201 });
   } catch (error: any) {

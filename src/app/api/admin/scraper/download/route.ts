@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { startScraperDownload, getAllDownloadJobs, ScrapedClipItem } from '@/lib/discordScraper';
 

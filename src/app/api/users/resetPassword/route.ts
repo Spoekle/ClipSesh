@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import User from '@/models/userModel';
 import { signToken } from '@/lib/auth';
@@ -24,7 +24,8 @@ export async function POST(req: NextRequest) {
     const resetToken = signToken({ id: user._id }, '1h');
     const frontendUrl =
       process.env.FRONTEND_URL ||
-      (req.headers.get('origin') ? req.headers.get('origin') : 'http://localhost:3000');
+      req.headers.get('origin') ||
+      (req.headers.get('host') ? `${req.headers.get('x-forwarded-proto') || 'http'}://${req.headers.get('host')}` : '');
     const resetLink = `${frontendUrl}/resetpassword?token=${resetToken}`;
 
     const mailEmail = process.env.MAIL_EMAIL;
