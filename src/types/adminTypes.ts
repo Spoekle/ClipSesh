@@ -11,20 +11,6 @@ export interface User {
   status?: string;
   joinDate?: string;
   createdAt?: string;
-  profile?: {
-    bio?: string;
-    website?: string;
-    socialLinks?: {
-      youtube?: string;
-      twitch?: string;
-      twitter?: string;
-      instagram?: string;
-      github?: string;
-    };
-    vrheadset?: string;
-    isPublic?: boolean;
-    lastActive?: string;
-  };
 }
 
 export interface RatingDistributionProps {
@@ -148,13 +134,43 @@ export interface PieData {
   value: number;
 }
 
+export interface SeasonTransitionLog {
+  timestamp: string | Date;
+  action: 'submission_closed' | 'season_started' | 'auto_zip_started' | 'auto_zip_completed' | 'auto_zip_failed' | 'season_unarchived';
+  season: 'Spring' | 'Summer' | 'Fall' | 'Winter';
+  year: number;
+  details: string;
+}
+
+export interface LastArchivedSeason {
+  season: 'Spring' | 'Summer' | 'Fall' | 'Winter';
+  year: number;
+  jobId?: string;
+  archivedAt: string | Date;
+  clipCount: number;
+  zipUrl?: string;
+  status: 'success' | 'failed';
+  error?: string;
+}
+
+export interface SeasonAutomationConfig {
+  enabled: boolean;
+  seasonEndDay: number;
+  newSeasonStartDay: number;
+  zipArchiveDay: number;
+  denyThreshold?: number;
+  lastArchivedSeason?: LastArchivedSeason;
+  transitionHistory?: SeasonTransitionLog[];
+}
+
 // Admin configuration interfaces
 export interface AdminConfig {
   denyThreshold: number;
-  latestVideoLink: string;
+  latestVideoLink?: string;
   clipChannelIds?: string[];
   blacklistedSubmitters?: Array<{username: string; userId: string}>;
   blacklistedStreamers?: string[];
+  seasonAutomation?: SeasonAutomationConfig;
 }
 
 // Admin statistics interface
@@ -177,6 +193,7 @@ export interface ConfigResponse {
     clipChannelIds?: string[];
     blacklistedSubmitters?: Array<{username: string; userId: string}>;
     blacklistedStreamers?: string[];
+    seasonAutomation?: SeasonAutomationConfig;
   };
 }
 

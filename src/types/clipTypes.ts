@@ -47,4 +47,7 @@ export interface ArchiveSeasonSection {
   topStreamers: string[];
   zip?: ArchiveSeasonZip | null;
   isCurrent: boolean;
+  isArchived?: boolean;
+  archivedClipsCount?: number;
+  unarchivedClipsCount?: number;
 }

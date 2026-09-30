@@ -6,7 +6,8 @@ export type NotificationType =
   | 'rating'
   | 'system'
   | 'team_message'
-  | 'report';
+  | 'report'
+  | 'report_update';
 
 export interface INotification extends Document {
   recipientId: Types.ObjectId;
@@ -15,10 +16,11 @@ export interface INotification extends Document {
   type: NotificationType;
   entityId?: string;
   replyId?: string;
-  clipId: string;
+  clipId?: string;
   read: boolean;
   message: string;
   createdAt: Date;
+  updatedAt: Date;
 }
 
 const notificationSchema = new Schema<INotification>({
@@ -34,11 +36,12 @@ const notificationSchema = new Schema<INotification>({
   },
   senderUsername: {
     type: String,
-    required: true
+    required: true,
+    trim: true
   },
   type: {
     type: String,
-    enum: ['comment_reply', 'mention', 'rating', 'system', 'team_message', 'report'],
+    enum: ['comment_reply', 'mention', 'rating', 'system', 'team_message', 'report', 'report_update'],
     required: true
   },
   entityId: {
@@ -49,7 +52,7 @@ const notificationSchema = new Schema<INotification>({
   },
   clipId: {
     type: String,
-    required: true
+    required: false
   },
   read: {
     type: Boolean,
@@ -57,13 +60,14 @@ const notificationSchema = new Schema<INotification>({
   },
   message: {
     type: String,
-    required: true
+    required: true,
+    trim: true
   },
   createdAt: {
     type: Date,
     default: Date.now
   }
-});
+}, { timestamps: true });
 
 notificationSchema.index({ recipientId: 1, read: 1 });
 notificationSchema.index({ recipientId: 1, createdAt: -1 });

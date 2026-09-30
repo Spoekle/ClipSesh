@@ -8,16 +8,19 @@ export interface IZip extends Document {
   clipAmount: number;
   size: number;
   createdAt: Date;
+  updatedAt: Date;
 }
 
 const zipSchema = new Schema<IZip>({
   name: {
     type: String,
-    required: true
+    required: true,
+    trim: true
   },
   url: {
     type: String,
-    required: true
+    required: true,
+    trim: true
   },
   season: {
     type: String,
@@ -40,7 +43,7 @@ const zipSchema = new Schema<IZip>({
     type: Date,
     default: Date.now
   }
-});
+}, { timestamps: true });
 
 zipSchema.index({ season: 1, year: -1 });
 zipSchema.index({ createdAt: -1 });

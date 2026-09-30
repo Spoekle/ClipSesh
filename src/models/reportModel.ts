@@ -26,15 +26,18 @@ const reportSchema = new Schema<IReport>({
   },
   clipTitle: {
     type: String,
-    required: true
+    required: true,
+    trim: true
   },
   clipStreamer: {
     type: String,
-    required: true
+    required: true,
+    trim: true
   },
   clipSubmitter: {
     type: String,
-    required: true
+    required: true,
+    trim: true
   },
   reporterId: {
     type: Schema.Types.ObjectId,
@@ -43,7 +46,8 @@ const reportSchema = new Schema<IReport>({
   },
   reporterUsername: {
     type: String,
-    required: true
+    required: true,
+    trim: true
   },
   reason: {
     type: String,
@@ -57,7 +61,8 @@ const reportSchema = new Schema<IReport>({
   },
   reviewedBy: {
     type: String,
-    default: null
+    default: null,
+    trim: true
   },
   reviewedAt: {
     type: Date,
@@ -65,15 +70,16 @@ const reportSchema = new Schema<IReport>({
   },
   adminNotes: {
     type: String,
-    default: ''
+    default: '',
+    trim: true
   }
 }, {
   timestamps: true
 });
 
-reportSchema.index({ clipId: 1 });
-reportSchema.index({ reporterId: 1 });
-reportSchema.index({ status: 1 });
+reportSchema.index({ clipId: 1, reporterId: 1 });
+reportSchema.index({ reporterId: 1, createdAt: -1 });
+reportSchema.index({ status: 1, createdAt: -1 });
 reportSchema.index({ createdAt: -1 });
 
 export const Report: Model<IReport> =

@@ -18,25 +18,26 @@ export interface IRating extends Document {
   clipId: Types.ObjectId;
   ratings: IRatingsBucket;
   createdAt: Date;
+  updatedAt: Date;
 }
 
 const ratingEntrySchema = new Schema<IUserRatingEntry>({
   userId: { type: Schema.Types.ObjectId, ref: 'User' },
-  username: { type: String },
+  username: { type: String, trim: true },
   timestamp: { type: Date, default: Date.now }
 }, { _id: false });
 
 const ratingSchema = new Schema<IRating>({
   clipId: { type: Schema.Types.ObjectId, ref: 'Clip', required: true },
   ratings: {
-    '1': [ratingEntrySchema],
-    '2': [ratingEntrySchema],
-    '3': [ratingEntrySchema],
-    '4': [ratingEntrySchema],
-    'deny': [ratingEntrySchema],
+    '1': { type: [ratingEntrySchema], default: [] },
+    '2': { type: [ratingEntrySchema], default: [] },
+    '3': { type: [ratingEntrySchema], default: [] },
+    '4': { type: [ratingEntrySchema], default: [] },
+    'deny': { type: [ratingEntrySchema], default: [] },
   },
   createdAt: { type: Date, default: Date.now }
-});
+}, { timestamps: true });
 
 ratingSchema.index({ clipId: 1 }, { unique: true });
 ratingSchema.index({ 'ratings.1.userId': 1 });
@@ -44,6 +45,7 @@ ratingSchema.index({ 'ratings.2.userId': 1 });
 ratingSchema.index({ 'ratings.3.userId': 1 });
 ratingSchema.index({ 'ratings.4.userId': 1 });
 ratingSchema.index({ 'ratings.deny.userId': 1 });
+ratingSchema.index({ updatedAt: -1 });
 
 export const Rating: Model<IRating> =
   (mongoose.models && mongoose.models.Rating) ||

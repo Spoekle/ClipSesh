@@ -1,6 +1,7 @@
 export * from './userModel';
 export * from './clipModel';
 export * from './ratingModel';
+export * from './voteModel';
 export * from './ipVoteModel';
 export * from './messageModel';
 export * from './reportModel';

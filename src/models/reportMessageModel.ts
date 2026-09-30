@@ -18,6 +18,23 @@ export interface IReportMessage extends Document {
   updatedAt: Date;
 }
 
+const readBySchema = new Schema<IReadBy>({
+  userId: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  username: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  readAt: {
+    type: Date,
+    default: Date.now
+  }
+}, { _id: false });
+
 const reportMessageSchema = new Schema<IReportMessage>({
   reportId: {
     type: Schema.Types.ObjectId,
@@ -31,7 +48,8 @@ const reportMessageSchema = new Schema<IReportMessage>({
   },
   senderUsername: {
     type: String,
-    required: true
+    required: true,
+    trim: true
   },
   senderRole: {
     type: String,
@@ -47,25 +65,16 @@ const reportMessageSchema = new Schema<IReportMessage>({
     type: Boolean,
     default: false
   },
-  readBy: [{
-    userId: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-      required: true
-    },
-    username: {
-      type: String,
-      required: true
-    },
-    readAt: {
-      type: Date,
-      default: Date.now
-    }
-  }]
+  readBy: {
+    type: [readBySchema],
+    default: []
+  }
 }, {
   timestamps: true
 });
 
+reportMessageSchema.index({ reportId: 1, createdAt: 1 });
+reportMessageSchema.index({ reportId: 1, isInternal: 1, createdAt: 1 });
 reportMessageSchema.index({ reportId: 1, createdAt: -1 });
 reportMessageSchema.index({ senderId: 1 });
 reportMessageSchema.index({ createdAt: -1 });
