@@ -1,4 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300..900;1,300..900&display=swap");
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -12,11 +11,11 @@
   --color-cc-border: #263238;
   --color-cc-text: #e6e6e6;
   --color-cc-muted: #b3b3b3;
-  --font-sans: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: var(--font-rubik), 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 :root {
-  --font-family: 'Rubik', sans-serif;
+  --font-family: var(--font-rubik), 'Rubik', sans-serif;
 
   /* Cube Community Official Design Tokens */
   --primary-color: #f23030;
@@ -100,9 +99,9 @@
 }
 
 html, body {
-  font-family: 'Rubik', sans-serif;
+  font-family: var(--font-rubik), 'Rubik', sans-serif;
   color: #e6e6e6;
-  background-color: #0e1315;
+  background-color: #0f0f0f;
 }
 
 
@@ -144,7 +143,7 @@ button {
   justify-content: center;
   gap: var(--space-sm);
   padding: 0.5rem var(--space-md);
-  font-family: 'Rubik', sans-serif;
+  font-family: var(--font-rubik), 'Rubik', sans-serif;
   font-weight: 500;
   font-size: 0.875rem;
   border-radius: 10px;
