@@ -1,19 +1,24 @@
+import 'next/dist/server/node-environment-baseline';
+import { AsyncLocalStorage } from 'node:async_hooks';
+
+if (typeof (globalThis as any).AsyncLocalStorage !== 'function') {
+  (globalThis as any).AsyncLocalStorage = AsyncLocalStorage;
+}
+
+import 'dotenv/config';
 import http from 'http';
 import path from 'path';
 import fs from 'fs';
 import next from 'next';
 import { Server as SocketIOServer } from 'socket.io';
-import dotenv from 'dotenv';
-
-// Load environment variables
-dotenv.config();
-
 import { connectToDatabase } from './src/lib/db';
 import { createOrUpdateAdminUser } from './src/lib/createAdmin';
 import { startDiscordBot, stopDiscordBot } from './src/bot/discordBot';
+import { setupSocketHandlers } from './src/lib/socketHandler';
+import { startSeasonScheduler, stopSeasonScheduler } from './src/lib/seasonScheduler';
 
 const dev = process.env.NODE_ENV !== 'production';
-const hostname = process.env.HOSTNAME || '0.0.0.0';
+const hostname = process.env.HOSTNAME || 'localhost';
 const port = parseInt(process.env.PORT || '3000', 10);
 
 // Ensure media directories exist
@@ -161,23 +166,35 @@ async function startServer() {
 
     // Create unified HTTP server
     const server = http.createServer(async (req, res) => {
-      const parsedUrl = new URL(req.url || '/', `http://${req.headers.host}`);
-      const pathname = decodeURIComponent(parsedUrl.pathname);
+      try {
+        const host = req.headers.host || 'localhost';
+        const parsedUrl = new URL(req.url || '/', `http://${host}`);
+        let pathname = parsedUrl.pathname;
+        try {
+          pathname = decodeURIComponent(pathname);
+        } catch {}
 
-      // Handle static file directories: /uploads, /profilePictures, /download
-      if (pathname.startsWith('/uploads/')) {
-        const relative = pathname.replace(/^\/uploads\//, '');
-        if (await serveStaticFile(req, res, relative, uploadsDir)) return;
-      } else if (pathname.startsWith('/profilePictures/')) {
-        const relative = pathname.replace(/^\/profilePictures\//, '');
-        if (await serveStaticFile(req, res, relative, profilePicturesDir)) return;
-      } else if (pathname.startsWith('/download/')) {
-        const relative = pathname.replace(/^\/download\//, '');
-        if (await serveStaticFile(req, res, relative, downloadDir)) return;
+        // Handle static file directories: /uploads, /profilePictures, /download
+        if (pathname.startsWith('/uploads/')) {
+          const relative = pathname.replace(/^\/uploads\//, '');
+          if (await serveStaticFile(req, res, relative, uploadsDir)) return;
+        } else if (pathname.startsWith('/profilePictures/')) {
+          const relative = pathname.replace(/^\/profilePictures\//, '');
+          if (await serveStaticFile(req, res, relative, profilePicturesDir)) return;
+        } else if (pathname.startsWith('/download/')) {
+          const relative = pathname.replace(/^\/download\//, '');
+          if (await serveStaticFile(req, res, relative, downloadDir)) return;
+        }
+
+        // Delegate all other routes to Next.js handler
+        await handle(req, res);
+      } catch (err) {
+        console.error('Error handling request:', err);
+        if (!res.headersSent) {
+          res.writeHead(500);
+          res.end('Internal Server Error');
+        }
       }
-
-      // Delegate all other routes to Next.js handler
-      handle(req, res);
     });
 
     // Attach Socket.IO
@@ -189,29 +206,20 @@ async function startServer() {
     });
 
     global.socketIoInstance = io;
-
-    io.on('connection', (socket) => {
-      console.log('[Socket.IO] Client connected:', socket.id);
-
-      socket.on('authenticate', (token) => {
-        console.log('[Socket.IO] Client authenticated:', socket.id);
-        socket.join('authenticated');
-      });
-
-      socket.on('disconnect', () => {
-        console.log('[Socket.IO] Client disconnected:', socket.id);
-      });
-    });
+    setupSocketHandlers(io);
 
     server.listen(port, async () => {
       console.log(`> Ready on http://${hostname}:${port} as ${dev ? 'development' : 'production'}`);
       // Start Discord Bot service if configured
       await startDiscordBot();
+      // Start automated 4-Season lifecycle scheduler
+      startSeasonScheduler();
     });
 
     // Graceful shutdown handlers
     const shutdown = async () => {
       console.log('Shutting down server and services...');
+      stopSeasonScheduler();
       await stopDiscordBot();
       server.close(() => {
         console.log('Server closed.');

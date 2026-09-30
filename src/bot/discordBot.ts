@@ -1,14 +1,16 @@
 import { Client, GatewayIntentBits, ActivityType, Message } from 'discord.js';
 import path from 'path';
 import fs from 'fs';
-import axios from 'axios';
+import { Readable } from 'stream';
+import { pipeline } from 'stream/promises';
 import ffmpeg from 'fluent-ffmpeg';
 import { downloadFromUrl } from '@/lib/videoDownloader';
 import { getClipOrigin } from '@/lib/discordScraper';
 import { connectToDatabase } from '@/lib/db';
 import Clip from '@/models/clipModel';
 import { AdminConfig, PublicConfig } from '@/models/configModel';
-import { getCurrentSeason, getClipPath } from '@/lib/seasonHelpers';
+import { getCurrentSeason } from '@/lib/seasonHelpers';
+import { getClipPath } from '@/lib/seasonPathHelpers';
 
 // Semaphore for limiting concurrent video processing
 class AsyncSemaphore {
@@ -78,7 +80,7 @@ async function handleMessage(message: Message): Promise<void> {
   );
   if (isSubmitterBlocked) {
     console.log(
-      `[DiscordBot] 🚫 Blocked submitter: ${message.author.username} (${message.author.id})`
+      `[DiscordBot] Blocked submitter: ${message.author.username} (${message.author.id})`
     );
     return;
   }
@@ -117,7 +119,7 @@ async function handleMessage(message: Message): Promise<void> {
     const tempDownloadedPath = path.join(tmpDir, `raw_${timestamp}.mp4`);
 
     try {
-      console.log(`[DiscordBot] 🎬 Ingesting clip from ${message.author.username}...`);
+      console.log(`[DiscordBot] Received clip from ${message.author.username}...`);
 
       let detectedTitle = 'Discord Clip';
       let detectedStreamer = message.author.displayName || message.author.username;
@@ -126,16 +128,13 @@ async function handleMessage(message: Message): Promise<void> {
       if (attachment) {
         // Download attachment
         console.log(`[DiscordBot] Downloading attachment: ${attachment.name}`);
-        const streamRes = await axios.get(attachment.url, {
-          responseType: 'stream',
-          timeout: 60000,
+        const streamRes = await fetch(attachment.url, {
+          signal: AbortSignal.timeout(60000),
         });
-        await new Promise<void>((resolve, reject) => {
-          const writeStream = fs.createWriteStream(tempDownloadedPath);
-          streamRes.data.pipe(writeStream);
-          writeStream.on('finish', () => resolve());
-          writeStream.on('error', (err: any) => reject(err));
-        });
+        if (!streamRes.ok || !streamRes.body) {
+          throw new Error(`Failed to download attachment: ${streamRes.statusText}`);
+        }
+        await pipeline(Readable.fromWeb(streamRes.body as any), fs.createWriteStream(tempDownloadedPath));
 
         // Use content as title if present, otherwise default
         const contentText = message.content?.trim();
@@ -159,7 +158,7 @@ async function handleMessage(message: Message): Promise<void> {
       );
       if (isStreamerBlocked) {
         console.log(
-          `[DiscordBot] 🚫 Blocked streamer: '${detectedStreamer}' is on the streamer blacklist.`
+          `[DiscordBot] Blocked streamer: '${detectedStreamer}' is on the streamer blacklist.`
         );
         return;
       }
@@ -251,16 +250,9 @@ async function handleMessage(message: Message): Promise<void> {
         global.socketIoInstance.emit('newClip', newClip);
       }
 
-      // React to the original message to confirm successful ingestion
-      try {
-        await message.react('✅');
-      } catch (reactErr) {
-        console.warn('[DiscordBot] Could not add reaction to Discord message:', reactErr);
-      }
-
-      console.log(`[DiscordBot] 🚀 Clip successfully saved: "${detectedTitle}" by ${detectedStreamer}`);
+      console.log(`[DiscordBot] Clip successfully saved: "${detectedTitle}" by ${detectedStreamer}`);
     } catch (err: any) {
-      console.error('[DiscordBot] ❌ Error processing clip:', err);
+      console.error('[DiscordBot] Error processing clip:', err);
     } finally {
       // Clean up temporary downloaded file
       if (fs.existsSync(tempDownloadedPath)) {
@@ -280,13 +272,13 @@ export async function startDiscordBot(): Promise<void> {
 
   if (!token || token.trim() === '') {
     console.log(
-      '[DiscordBot] ℹ️ DISCORD_BOT_TOKEN is not configured in environment. Skipping Discord bot startup.'
+      '[DiscordBot] ℹDISCORD_BOT_TOKEN is not configured in environment. Skipping Discord bot startup.'
     );
     return;
   }
 
   try {
-    console.log('[DiscordBot] 🤖 Initializing Discord bot client...');
+    console.log('[DiscordBot] Initializing Discord bot client...');
     discordClient = new Client({
       intents: [
         GatewayIntentBits.Guilds,
@@ -296,7 +288,7 @@ export async function startDiscordBot(): Promise<void> {
     });
 
     discordClient.on('ready', () => {
-      console.log(`[DiscordBot] ✅ Bot logged in as ${discordClient?.user?.tag}`);
+      console.log(`[DiscordBot] Bot logged in as ${discordClient?.user?.tag}`);
       discordClient?.user?.setActivity('for clips', {
         type: ActivityType.Watching,
       });
@@ -310,7 +302,7 @@ export async function startDiscordBot(): Promise<void> {
 
     await discordClient.login(token);
   } catch (err: any) {
-    console.error('[DiscordBot] ❌ Failed to start Discord bot:', err?.message || err);
+    console.error('[DiscordBot] Failed to start Discord bot:', err?.message || err);
   }
 }
 

@@ -1,13 +1,5 @@
 import { safeLocalStorage } from '@/utils/storage';
-import axios from 'axios';
-
-const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
-
-// Utility function to get auth headers
-const getAuthHeaders = () => {
-  const token = safeLocalStorage.getItem('token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
-};
+import { apiClient, isAbortError } from '@/lib/apiClient';
 
 export interface PublicConfig {
   clipAmount?: number;
@@ -27,9 +19,12 @@ export interface AdminConfig {
  */
 export const getPublicConfig = async (): Promise<PublicConfig> => {
   try {
-    const response = await axios.get(`${backendUrl}/api/config/public`);
-    return response.data || {};
+    const data = await apiClient.get<PublicConfig>(`/api/config/public`);
+    return data || {};
   } catch (error) {
+    if (isAbortError(error)) {
+      return {};
+    }
     console.error('Error fetching public config:', error);
     throw new Error('Failed to fetch public configuration');
   }
@@ -40,9 +35,7 @@ export const getPublicConfig = async (): Promise<PublicConfig> => {
  */
 export const getAdminConfig = async (): Promise<Partial<AdminConfig>> => {
   try {
-    const headers = getAuthHeaders();
-    const response = await axios.get(`${backendUrl}/api/admin/config`, { headers });
-    const data = response.data;
+    const data = await apiClient.get<any>(`/api/admin/config`);
     if (Array.isArray(data)) return data[0] || {};
     if (data?.admin) return { ...data, ...data.admin };
     return data || {};
@@ -58,11 +51,11 @@ export const getAdminConfig = async (): Promise<Partial<AdminConfig>> => {
  */
 export const getCombinedConfig = async (user?: any): Promise<PublicConfig & Partial<AdminConfig>> => {
   const defaultConfig: PublicConfig = {};
-  
+
   try {
     // Always fetch public config first
     let configData = await getPublicConfig();
-    
+
     // Fetch admin config if user has appropriate roles
     const token = safeLocalStorage.getItem('token');
     if (
@@ -76,7 +69,7 @@ export const getCombinedConfig = async (user?: any): Promise<PublicConfig & Part
         const adminConfig = await getAdminConfig();
         configData = {
           ...configData,
-          ...adminConfig
+          ...adminConfig,
         };
       } catch (error) {
         console.warn('Could not fetch admin config, using public config only');
@@ -95,9 +88,7 @@ export const getCombinedConfig = async (user?: any): Promise<PublicConfig & Part
  */
 export const getConfig = async (): Promise<{ public: PublicConfig; admin?: AdminConfig }> => {
   try {
-    const headers = getAuthHeaders();
-    const response = await axios.get(`${backendUrl}/api/config`, { headers });
-    return response.data;
+    return await apiClient.get<{ public: PublicConfig; admin?: AdminConfig }>(`/api/config`);
   } catch (error) {
     console.error('Error fetching config:', error);
     throw new Error('Failed to fetch configuration');

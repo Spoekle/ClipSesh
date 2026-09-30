@@ -1,13 +1,4 @@
-import { safeLocalStorage } from '@/utils/storage';
-import axios from 'axios';
-
-const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
-
-// Utility function to get auth headers
-const getAuthHeaders = () => {
-  const token = safeLocalStorage.getItem('token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
-};
+import { apiClient } from '@/lib/apiClient';
 
 export interface Message {
   _id: string;
@@ -31,9 +22,13 @@ export interface SendMessageData {
  */
 export const getMessagesForClip = async (clipId: string): Promise<Message[]> => {
   try {
-    const headers = getAuthHeaders();
-    const response = await axios.get(`${backendUrl}/api/messages?clipId=${clipId}`, { headers });
-    return response.data.reverse(); // Reverse to show newest first
+    const list = await apiClient.get<Message[]>(`/api/messages`, {
+      params: { clipId },
+    });
+    const items = Array.isArray(list) ? list : [];
+    return items.sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
   } catch (error) {
     console.error('Error fetching messages:', error);
     throw new Error('Failed to fetch messages');
@@ -45,9 +40,7 @@ export const getMessagesForClip = async (clipId: string): Promise<Message[]> => 
  */
 export const sendMessage = async (messageData: SendMessageData): Promise<Message> => {
   try {
-    const headers = getAuthHeaders();
-    const response = await axios.post(`${backendUrl}/api/messages`, messageData, { headers });
-    return response.data;
+    return await apiClient.post<Message>(`/api/messages`, messageData);
   } catch (error) {
     console.error('Error sending message:', error);
     throw new Error('Failed to send message');
@@ -59,10 +52,8 @@ export const sendMessage = async (messageData: SendMessageData): Promise<Message
  */
 export const deleteMessage = async (messageId: string, userId: string, roles: string | string[]): Promise<void> => {
   try {
-    const headers = getAuthHeaders();
-    await axios.delete(`${backendUrl}/api/messages/${messageId}`, {
-      headers,
-      data: { userId, roles }
+    await apiClient.delete(`/api/messages/${messageId}`, {
+      body: { userId, roles },
     });
   } catch (error) {
     console.error('Error deleting message:', error);

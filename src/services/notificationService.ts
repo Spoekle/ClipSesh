@@ -1,36 +1,23 @@
 import { safeLocalStorage } from '@/utils/storage';
-import axios from 'axios';
+import { apiClient } from '@/lib/apiClient';
 import { UserNotification, UserNotificationResponse, UnreadCountResponse } from '../types/notificationTypes';
 import { getCurrentUser } from './userService';
 import { User } from '../types/adminTypes';
-
-const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
-
-// Helper function to get auth headers
-const getAuthHeaders = () => {
-  const token = safeLocalStorage.getItem('token');
-  if (!token) {
-    throw new Error('No authentication token found');
-  }
-  return { Authorization: `Bearer ${token}` };
-};
 
 /**
  * Check if the notifications API is available
  */
 export const checkNotificationsApiAvailability = async (): Promise<boolean> => {
   try {
-    // Only check if user is authenticated
     if (!isAuthenticated()) {
       return false;
     }
 
-    await axios.head(`${backendUrl}/api/notifications`, {
-      headers: getAuthHeaders()
-    });
+    await apiClient.head(`/api/notifications`);
     return true;
   } catch (error: any) {
-    if (error.response && (error.response.status === 404 || error.response.status === 401)) {
+    const status = error?.status || error?.response?.status;
+    if (status === 404 || status === 401) {
       console.log('Notifications API not available or authentication required, disabling notification features');
       return false;
     }
@@ -44,11 +31,7 @@ export const checkNotificationsApiAvailability = async (): Promise<boolean> => {
  */
 export const fetchNotifications = async (): Promise<UserNotificationResponse> => {
   try {
-    const response = await axios.get<UserNotificationResponse>(
-      `${backendUrl}/api/notifications`,
-      { headers: getAuthHeaders() }
-    );
-    return response.data;
+    return await apiClient.get<UserNotificationResponse>(`/api/notifications`);
   } catch (error) {
     console.error('Error fetching notifications', error);
     throw new Error('Failed to load notifications');
@@ -60,11 +43,8 @@ export const fetchNotifications = async (): Promise<UserNotificationResponse> =>
  */
 export const fetchUnreadCount = async (): Promise<number> => {
   try {
-    const response = await axios.get<UnreadCountResponse>(
-      `${backendUrl}/api/notifications/unread-count`,
-      { headers: getAuthHeaders() }
-    );
-    return response.data.unreadCount;  
+    const response = await apiClient.get<UnreadCountResponse>(`/api/notifications/unread-count`);
+    return response.unreadCount;
   } catch {
     console.log('Could not fetch notification count - API may not be implemented yet');
     return 0;
@@ -76,11 +56,7 @@ export const fetchUnreadCount = async (): Promise<number> => {
  */
 export const markNotificationAsRead = async (notificationId: string): Promise<void> => {
   try {
-    await axios.put(
-      `${backendUrl}/api/notifications/${notificationId}/read`,
-      {},
-      { headers: getAuthHeaders() }
-    );
+    await apiClient.put(`/api/notifications/${notificationId}/read`);
   } catch (error) {
     console.error('Error marking notification as read', error);
     throw new Error('Failed to update notification');
@@ -92,11 +68,7 @@ export const markNotificationAsRead = async (notificationId: string): Promise<vo
  */
 export const markAllNotificationsAsRead = async (): Promise<void> => {
   try {
-    await axios.put(
-      `${backendUrl}/api/notifications/read-all`,
-      {},
-      { headers: getAuthHeaders() }
-    );
+    await apiClient.put(`/api/notifications/read-all`);
   } catch (error) {
     console.error('Error marking all notifications as read', error);
     throw new Error('Failed to update notifications');
@@ -108,10 +80,7 @@ export const markAllNotificationsAsRead = async (): Promise<void> => {
  */
 export const deleteNotification = async (notificationId: string): Promise<void> => {
   try {
-    await axios.delete(
-      `${backendUrl}/api/notifications/${notificationId}`,
-      { headers: getAuthHeaders() }
-    );
+    await apiClient.delete(`/api/notifications/${notificationId}`);
   } catch (error) {
     console.error('Error deleting notification', error);
     throw new Error('Failed to delete notification');
@@ -123,10 +92,9 @@ export const deleteNotification = async (notificationId: string): Promise<void> 
  */
 export const clearNotifications = async (all = false): Promise<void> => {
   try {
-    await axios.delete(
-      `${backendUrl}/api/notifications${all ? '?all=true' : ''}`,
-      { headers: getAuthHeaders() }
-    );
+    await apiClient.delete(`/api/notifications`, {
+      params: all ? { all: 'true' } : undefined,
+    });
   } catch (error) {
     console.error('Error clearing notifications', error);
     throw new Error('Failed to clear notifications');
@@ -140,20 +108,20 @@ export const getNotificationNavigationState = (notification: UserNotification) =
   if (notification.type === 'team_message') {
     return {
       openTeamChat: true,
-      messageId: notification.entityId
+      messageId: notification.entityId,
     };
   } else if (notification.type === 'comment_reply') {
     return {
       highlightComment: notification.entityId,
-      highlightReply: notification.replyId
+      highlightReply: notification.replyId,
     };
-  } else if (notification.type === 'report') {
+  } else if (notification.type === 'report' || notification.type === 'report_update') {
     return {
-      highlightReport: notification.entityId
+      highlightReport: notification.entityId,
     };
   } else {
     return {
-      highlightComment: notification.entityId
+      highlightComment: notification.entityId,
     };
   }
 };
@@ -162,15 +130,11 @@ export const getNotificationNavigationState = (notification: UserNotification) =
  * Get the clip URL for a notification
  */
 export const getNotificationClipUrl = async (notification: UserNotification): Promise<string> => {
-  // For report notifications, route based on the current user's role
-  if (notification.type === 'report') {
-    // Get current user data to check their role
+  if (notification.type === 'report' || notification.type === 'report_update') {
     const currentUser: User = await getCurrentUser();
     if (currentUser) {
       try {
-        // Route based on the current user's role
         const isAdmin = currentUser.roles && Array.isArray(currentUser.roles) && currentUser.roles.includes('admin');
-        
         if (isAdmin) {
           return '/admin?tab=reports';
         } else {
@@ -183,7 +147,7 @@ export const getNotificationClipUrl = async (notification: UserNotification): Pr
     }
     return '/my-reports';
   }
-  return `/clips/${notification.clipId}`;
+  return notification.clipId ? `/clips/${notification.clipId}` : '/notifications';
 };
 
 /**

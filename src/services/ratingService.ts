@@ -1,31 +1,19 @@
-import { safeLocalStorage } from '@/utils/storage';
-import axios from 'axios';
+import { apiClient } from '@/lib/apiClient';
 import { Rating } from '../types/adminTypes';
 import { RatingQueryParams, MyRatingsResponse } from '../types/ratingTypes';
-const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
-
-// Utility function to get auth headers
-const getAuthHeaders = () => {
-  const token = safeLocalStorage.getItem('token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
-};
 
 /**
  * Get user's own ratings with optional date filtering
  */
 export const getMyRatings = async (params: RatingQueryParams = {}): Promise<MyRatingsResponse> => {
   try {
-    const headers = getAuthHeaders();
-    const response = await axios.get(`${backendUrl}/api/ratings/my-ratings`, {
-      headers,
-      params
-    });
-    
+    const data = await apiClient.get<any>(`/api/ratings/my-ratings`, { params });
+
     return {
-      ratings: response.data.ratings || [],
-      total: response.data.total,
-      page: response.data.page,
-      pages: response.data.pages
+      ratings: data.ratings || [],
+      total: data.total,
+      page: data.page,
+      pages: data.pages,
     };
   } catch (error) {
     console.error('Error fetching my ratings:', error);
@@ -38,9 +26,7 @@ export const getMyRatings = async (params: RatingQueryParams = {}): Promise<MyRa
  */
 export const getRatingById = async (clipId: string): Promise<Rating> => {
   try {
-    const headers = getAuthHeaders();
-    const response = await axios.get(`${backendUrl}/api/ratings/${clipId}`, { headers });
-    return response.data;
+    return await apiClient.get<Rating>(`/api/ratings/${clipId}`);
   } catch (error) {
     console.error('Error fetching rating:', error);
     throw new Error('Failed to fetch clip rating');
@@ -52,9 +38,7 @@ export const getRatingById = async (clipId: string): Promise<Rating> => {
  */
 export const submitRating = async (clipId: string, rating: '1' | '2' | '3' | '4' | 'deny'): Promise<Rating> => {
   try {
-    const headers = getAuthHeaders();
-    const response = await axios.post(`${backendUrl}/api/ratings/${clipId}`, { rating }, { headers });
-    return response.data;
+    return await apiClient.post<Rating>(`/api/ratings/${clipId}`, { rating });
   } catch (error) {
     console.error('Error submitting rating:', error);
     throw new Error('Failed to submit rating');
@@ -66,9 +50,7 @@ export const submitRating = async (clipId: string, rating: '1' | '2' | '3' | '4'
  */
 export const updateRating = async (clipId: string, rating: '1' | '2' | '3' | '4' | 'deny'): Promise<Rating> => {
   try {
-    const headers = getAuthHeaders();
-    const response = await axios.put(`${backendUrl}/api/ratings/${clipId}`, { rating }, { headers });
-    return response.data;
+    return await apiClient.put<Rating>(`/api/ratings/${clipId}`, { rating });
   } catch (error) {
     console.error('Error updating rating:', error);
     throw new Error('Failed to update rating');
@@ -80,8 +62,7 @@ export const updateRating = async (clipId: string, rating: '1' | '2' | '3' | '4'
  */
 export const deleteRating = async (clipId: string): Promise<void> => {
   try {
-    const headers = getAuthHeaders();
-    await axios.delete(`${backendUrl}/api/ratings/${clipId}`, { headers });
+    await apiClient.delete(`/api/ratings/${clipId}`);
   } catch (error) {
     console.error('Error deleting rating:', error);
     throw new Error('Failed to delete rating');
@@ -93,14 +74,13 @@ export const deleteRating = async (clipId: string): Promise<void> => {
  */
 export const getBulkRatings = async (clipIds: string[]): Promise<Record<string, Rating>> => {
   try {
-    const headers = getAuthHeaders();
-    const ratingPromises = clipIds.map(clipId =>
-      axios.get<Rating>(`${backendUrl}/api/ratings/${clipId}`, { headers })
+    const ratingPromises = clipIds.map((clipId) =>
+      apiClient.get<Rating>(`/api/ratings/${clipId}`)
     );
-    
+
     const ratingResponses = await Promise.all(ratingPromises);
     return ratingResponses.reduce<Record<string, Rating>>((acc, res, index) => {
-      acc[clipIds[index]] = res.data;
+      acc[clipIds[index]] = res;
       return acc;
     }, {});
   } catch (error) {
@@ -112,19 +92,16 @@ export const getBulkRatings = async (clipIds: string[]): Promise<Record<string, 
 /**
  * Get rating statistics for a user
  */
-export const getUserRatingStats = async (userId?: string): Promise<{
+export const getUserRatingStats = async (
+  userId?: string
+): Promise<{
   totalRatings: number;
   ratingBreakdown: Record<string, number>;
   averageRating: number;
 }> => {
   try {
-    const headers = getAuthHeaders();
-    const url = userId 
-      ? `${backendUrl}/api/ratings/stats/${userId}`
-      : `${backendUrl}/api/ratings/stats`;
-    
-    const response = await axios.get(url, { headers });
-    return response.data;
+    const url = userId ? `/api/ratings/stats/${userId}` : `/api/ratings/stats`;
+    return await apiClient.get(url);
   } catch (error) {
     console.error('Error fetching rating stats:', error);
     throw new Error('Failed to fetch rating statistics');
@@ -139,12 +116,7 @@ export const getRatingActivity = async (params: {
   endDate?: string;
 }): Promise<any> => {
   try {
-    const headers = getAuthHeaders();
-    const response = await axios.get(`${backendUrl}/api/ratings/activity`, {
-      headers,
-      params
-    });
-    return response.data;
+    return await apiClient.get(`/api/ratings/activity`, { params });
   } catch (error) {
     console.error('Error fetching rating activity:', error);
     throw new Error('Failed to fetch rating activity');

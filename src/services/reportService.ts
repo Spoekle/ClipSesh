@@ -1,17 +1,5 @@
-import { safeLocalStorage } from '@/utils/storage';
-import axios from 'axios';
+import { apiClient } from '@/lib/apiClient';
 import { Report, ReportMessage } from '../types/adminTypes';
-
-const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
-
-// Utility function to get auth headers
-const getAuthHeaders = () => {
-  const token = safeLocalStorage.getItem('token');
-  if (!token) {
-    throw new Error('No authentication token found');
-  }
-  return { Authorization: `Bearer ${token}` };
-};
 
 /**
  * User Report Services (for users to access their own reports)
@@ -20,39 +8,29 @@ const getAuthHeaders = () => {
 // Get user's own reports
 export const getUserReports = async (): Promise<Report[]> => {
   try {
-    const response = await axios.get<Report[]>(`${backendUrl}/api/clips/reports/my`, {
-      headers: getAuthHeaders()
-    });
-    return response.data;
+    return await apiClient.get<Report[]>(`/api/clips/reports/my`);
   } catch (error: any) {
     console.error('Error fetching user reports:', error);
-    throw new Error(error.response?.data?.message || 'Failed to fetch reports');
+    throw new Error(error.message || 'Failed to fetch reports');
   }
 };
 
 // Get messages for user's own report
 export const getUserReportMessages = async (reportId: string): Promise<ReportMessage[]> => {
   try {
-    const response = await axios.get<ReportMessage[]>(`${backendUrl}/api/clips/reports/${reportId}/messages`, {
-      headers: getAuthHeaders()
-    });
-    return response.data;
+    return await apiClient.get<ReportMessage[]>(`/api/clips/reports/${reportId}/messages`);
   } catch (error: any) {
     console.error('Error fetching report messages:', error);
-    throw new Error(error.response?.data?.message || 'Failed to fetch messages');
+    throw new Error(error.message || 'Failed to fetch messages');
   }
 };
 
 // Send message to user's own report
 export const sendUserReportMessage = async (reportId: string, message: string): Promise<ReportMessage> => {
   try {
-    const response = await axios.post<ReportMessage>(`${backendUrl}/api/clips/reports/${reportId}/messages`, 
-      { message }, 
-      { headers: getAuthHeaders() }
-    );
-    return response.data;
+    return await apiClient.post<ReportMessage>(`/api/clips/reports/${reportId}/messages`, { message });
   } catch (error: any) {
     console.error('Error sending report message:', error);
-    throw new Error(error.response?.data?.message || 'Failed to send message');
+    throw new Error(error.message || 'Failed to send message');
   }
 };
