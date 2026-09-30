@@ -1,15 +1,17 @@
 'use client';
 
+import React, { useState, useEffect, Suspense } from 'react';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from '@/lib/react-query';
+import { NotificationProvider } from '@/context/AlertContext';
 import { safeLocalStorage } from '@/utils/storage';
-import React, { useState, useEffect } from 'react';
 import Navbar from './Navbar';
 import Footer from './Footer';
-import PoweredByGrabs from './PoweredByGrabs';
-import NotificationContainer from './PopupAlerts/NotificationContainer';
+import NotificationContainer from './PopupAlerts';
 import { User } from '../types/adminTypes';
 import { useCurrentUser } from '../hooks/useUser';
 
-export default function AppShell({ children }: { children: React.ReactNode }) {
+function AppShellContent({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
 
   const { data: userData, isLoading: userLoading, error: userError } = useCurrentUser();
@@ -49,9 +51,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
         <Footer />
-        <PoweredByGrabs />
       </div>
       <NotificationContainer />
     </div>
+  );
+}
+
+export default function AppShell({ children }: { children: React.ReactNode }) {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <NotificationProvider>
+        <Suspense fallback={null}>
+          <AppShellContent>{children}</AppShellContent>
+        </Suspense>
+      </NotificationProvider>
+    </QueryClientProvider>
   );
 }

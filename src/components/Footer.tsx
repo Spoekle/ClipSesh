@@ -1,8 +1,6 @@
 import { safeLocalStorage } from '@/utils/storage';
 import { useState, useEffect, useCallback } from 'react';
-import { Link } from '@/lib/routerCompat';
-import { FaDiscord, FaGithub, FaYoutube } from 'react-icons/fa';
-import { motion } from 'framer-motion';
+import Link from 'next/link';
 import { SnowOverlay } from 'react-snow-overlay';
 
 function Footer() {
@@ -44,7 +42,7 @@ function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-5 gap-8 lg:gap-12">
           {/* Brand & Mission Column */}
           <div className="md:col-span-2 flex flex-col items-start">
-            <Link to="/" className="flex items-center gap-3 mb-4 group">
+            <Link href="/" className="flex items-center gap-3 mb-4 group">
               <img
                 src="/img/branding/logo.svg"
                 alt="Cube Community Logo"
@@ -74,17 +72,17 @@ function Footer() {
             </div>
             <ul className="flex flex-col space-y-2.5 text-sm">
               <li>
-                <Link to="/" className="text-[#aaaaaa] hover:text-cc-red transition-colors">
+                <Link href="/" className="text-[#aaaaaa] hover:text-cc-red transition-colors">
                   Home
                 </Link>
               </li>
               <li>
-                <Link to="/clips" className="text-[#aaaaaa] hover:text-cc-red transition-colors">
+                <Link href="/clips" className="text-[#aaaaaa] hover:text-cc-red transition-colors">
                   Clips
                 </Link>
               </li>
               <li>
-                <Link to="/archive" className="text-[#aaaaaa] hover:text-cc-red transition-colors">
+                <Link href="/archive" className="text-[#aaaaaa] hover:text-cc-red transition-colors">
                   The ClipVault
                 </Link>
               </li>
@@ -98,19 +96,9 @@ function Footer() {
             </div>
             <ul className="flex flex-col space-y-2.5 text-sm">
               <li>
-                <Link to="/privacystatement" className="text-[#aaaaaa] hover:text-cc-red transition-colors">
+                <Link href="/privacystatement" className="text-[#aaaaaa] hover:text-cc-red transition-colors">
                   Privacy Policy
                 </Link>
-              </li>
-              <li>
-                <a
-                  href="https://github.com/Spoekle/ClipSesh"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-[#aaaaaa] hover:text-cc-red transition-colors"
-                >
-                  GitHub
-                </a>
               </li>
             </ul>
           </div>
@@ -167,7 +155,7 @@ function Footer() {
 
         <div className="border-t border-[#262626] mt-10 pt-6 flex flex-col md:flex-row justify-between items-center text-xs text-[#717171]">
           <p className="text-center md:text-left mb-2 md:mb-0">
-            © {new Date().getFullYear()} Spoekle. All rights reserved.
+            © {new Date().getFullYear()} Spoekle. All rights reserved. <a href="https://grabssoftware.com" target="_blank" rel="noreferrer">Powered by Grabs Software</a>
           </p>
         </div>
       </div>

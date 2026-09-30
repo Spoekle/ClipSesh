@@ -1,15 +1,34 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
+import { Rubik } from 'next/font/google';
 import './globals.css';
-import ClientProviders from '@/components/ClientProviders';
+import AppShell from '@/components/AppShell';
 
-export const dynamic = 'force-dynamic';
+const rubik = Rubik({
+  subsets: ['latin'],
+  variable: '--font-rubik',
+  display: 'swap',
+  weight: ['300', '400', '500', '600', '700', '800', '900'],
+});
+
+const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://clipsesh.spoekle.com';
 
 export const metadata: Metadata = {
-  title: 'ClipSesh',
+  metadataBase: new URL(baseUrl),
+  title: {
+    default: 'ClipSesh • Beat Saber Highlights & Community Clips',
+    template: '%s • ClipSesh',
+  },
   description: 'Discover, rate, and discuss the best Beat Saber clips from across the community.',
   icons: {
-    icon: '/media/favicon-16x16.png',
+    icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
+    apple: '/apple-touch-icon.png',
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#0e1315',
+  colorScheme: 'dark',
 };
 
 export default function RootLayout({
@@ -18,9 +37,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
-      <body className="min-h-screen bg-cc-ground text-cc-text antialiased selection:bg-cc-red/20 selection:text-cc-red">
-        <ClientProviders>{children}</ClientProviders>
+    <html lang="en" className={`dark ${rubik.variable}`}>
+      <body className="min-h-screen bg-cc-ground text-cc-text antialiased selection:bg-cc-red/20 selection:text-cc-red font-sans">
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

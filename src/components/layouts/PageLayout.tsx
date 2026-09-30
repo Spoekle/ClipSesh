@@ -1,7 +1,8 @@
+'use client';
+
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Helmet } from '@/lib/helmetCompat';
-import { NavLink } from '@/lib/routerCompat';
+import Link from 'next/link';
 
 export interface BreadcrumbItem {
   label: string;
@@ -45,10 +46,8 @@ const PageLayout: React.FC<PageLayoutProps> = ({
 
   return (
     <div className="relative min-h-[calc(100vh-80px)] flex flex-col bg-[#0f0f0f] text-[#f1f1f1] transition-colors">
-      <Helmet>
-        <title>{title} • ClipSesh</title>
-        <meta name="description" content={metaDescription || subtitle || title} />
-      </Helmet>
+      <title>{`${title} • ClipSesh`}</title>
+      {metaDescription && <meta name="description" content={metaDescription} />}
 
       {/* Ambient background image layer (matching CC app.vue background system) */}
       {bgUrl && (
@@ -83,12 +82,12 @@ const PageLayout: React.FC<PageLayoutProps> = ({
                   return (
                     <React.Fragment key={crumb.path || crumb.label + index}>
                       {crumb.path && !isLast ? (
-                        <NavLink
-                          to={crumb.path}
+                        <Link
+                          href={crumb.path}
                           className="hover:text-white transition-colors"
                         >
                           {crumb.label}
-                        </NavLink>
+                        </Link>
                       ) : (
                         <span className={isLast ? 'text-white font-medium' : 'text-cc-muted'}>
                           {crumb.label}

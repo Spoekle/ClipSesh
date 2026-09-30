@@ -1,9 +1,16 @@
-'use client';
+import { getLatestClipsServer, getPublicConfigServer } from '@/lib/server/clips';
+import HomePageClient from './HomePageClient';
 
-import dynamic from 'next/dynamic';
+export default async function HomePage() {
+  const [initialConfig, initialClips] = await Promise.all([
+    getPublicConfigServer(),
+    getLatestClipsServer(4),
+  ]);
 
-const HomePage = dynamic(() => import('@/views/Home'), { ssr: false });
-
-export default function Page() {
-  return <HomePage />;
+  return (
+    <HomePageClient
+      initialConfig={initialConfig}
+      initialClips={initialClips}
+    />
+  );
 }

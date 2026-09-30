@@ -1,13 +1,11 @@
 import { safeLocalStorage } from '@/utils/storage';
 import { useState, useEffect } from 'react';
-import axios from 'axios';
-const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TbLoader2 } from "react-icons/tb";
 import { FaDiscord, FaTimes, FaEnvelope, FaLock, FaUser } from "react-icons/fa";
 import { useLoginUser, useRegisterUser } from '../hooks/useUser';
 import { requestPasswordReset } from '../services/userService';
-import OfflineWarning from './common/OfflineWarning';
+import { OfflineWarning } from './common/OfflineBanner';
 
 interface LoginModalProps {
   setIsLoginModalOpen: (isOpen: boolean) => void;
@@ -80,24 +78,23 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
         safeLocalStorage.setItem('username', response.username);
         handleClose();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error:', error);
-      if (axios.isAxiosError(error)) {
-        if (error.response) {
-          if (error.response.status === 403) {
-            setError('Account awaiting admin approval.');
-          } else if (error.response.status === 400) {
-            setError(error.response.data.message || 'Invalid username or password.');
-          } else if (error.response.status === 409) {
-            setError('Username already exists. Please choose another.');
-          } else {
-            setError('An error occurred. Please try again later.');
-          }
-        } else {
-          setError('Network error. Please check your connection.');
-        }
+      const status = error?.status || error?.response?.status;
+      const msg = error?.data?.message || error?.response?.data?.message || error?.message;
+
+      if (status === 403) {
+        setError('Account awaiting admin approval.');
+      } else if (status === 400) {
+        setError(msg || 'Invalid username or password.');
+      } else if (status === 409) {
+        setError('Username already exists. Please choose another.');
+      } else if (status) {
+        setError(msg || 'An error occurred. Please try again later.');
+      } else if (error?.name === 'TypeError') {
+        setError('Network error. Please check your connection.');
       } else {
-        setError('An unexpected error occurred.');
+        setError(msg || 'An unexpected error occurred.');
       }
     } finally {
       setIsSubmitting(false);
@@ -119,8 +116,9 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
         type: 'success',
         message: `Password reset instructions sent to ${email}. Please check your inbox.`
       });
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response && error.response.status === 404) {
+    } catch (error: any) {
+      const status = error?.status || error?.response?.status;
+      if (status === 404) {
         setResetMessage({ type: 'error', message: 'Email not found. Please try again.' });
       } else {
         setResetMessage({ type: 'error', message: 'Failed to reset password. Please try again later.' });
@@ -131,7 +129,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ setIsLoginModalOpen, isLoginMod
   };
 
   const handleDiscordLogin = () => {
-    window.location.href = `${apiUrl}/api/discord/auth`;
+    window.location.href = '/api/discord/auth';
   };
 
   const overlayVariants: any = {

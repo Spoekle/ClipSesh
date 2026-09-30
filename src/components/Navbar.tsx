@@ -1,6 +1,7 @@
 import { safeLocalStorage } from '@/utils/storage';
 import React, { useState, useEffect, useRef } from 'react';
-import { NavLink, useNavigate, useLocation } from '@/lib/routerCompat';
+import Link from 'next/link';
+import { useRouter, usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FaBars,
@@ -9,7 +10,6 @@ import {
   FaDiscord,
   FaYoutube,
   FaTwitter,
-  FaGithub,
   FaChevronDown,
   FaTools,
 } from 'react-icons/fa';
@@ -18,9 +18,28 @@ import { useNotification } from '../context/AlertContext';
 import LoginModal from './LoginModal';
 import { User } from '../types/adminTypes';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
-import NotificationBadge from './Notification/NotificationBadge';
+import NotificationBadge from './NotificationDropdown';
 import OfflineBanner from './common/OfflineBanner';
 import { getUserAvatarUrl, handleAvatarError } from '@/utils/generateAvatar';
+
+const NavLink: React.FC<{
+  to: string;
+  end?: boolean;
+  className?: string | ((props: { isActive: boolean }) => string);
+  children: React.ReactNode | ((props: { isActive: boolean }) => React.ReactNode);
+  onClick?: () => void;
+}> = ({ to, end, className, children, onClick }) => {
+  const pathname = usePathname();
+  const isActive = end || to === '/' ? pathname === to : pathname.startsWith(to);
+  const resolvedClass = typeof className === 'function' ? className({ isActive }) : className;
+  const resolvedChildren = typeof children === 'function' ? children({ isActive }) : children;
+
+  return (
+    <Link href={to} className={resolvedClass} onClick={onClick}>
+      {resolvedChildren}
+    </Link>
+  );
+};
 
 interface NavbarProps {
   user: User | null;
@@ -30,8 +49,8 @@ interface NavbarProps {
 const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
   const isOnline = useOnlineStatus();
   const { showSuccess } = useNotification();
-  const navigate = useNavigate();
-  const location = useLocation();
+  const router = useRouter();
+  const pathname = usePathname();
 
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
@@ -70,7 +89,7 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
     setIsDropdownOpen(false);
     setIsMobileMenuOpen(false);
     showSuccess('Logged out successfully');
-    navigate('/');
+    router.push('/');
   };
 
   // Close menus on click outside
@@ -102,7 +121,7 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
     setIsDropdownOpen(false);
     setIsToolsOpen(false);
     setIsMobileMenuOpen(false);
-  }, [location.pathname]);
+  }, [pathname]);
 
   const hasEditor = user && (user.roles.includes('admin') || user.roles.includes('editor'));
   const hasAdmin = user && user.roles.includes('admin');
@@ -121,7 +140,7 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
               className="flex items-center gap-3 group transition-opacity hover:opacity-95"
             >
               <img
-                src="/CC_logo_250px.png"
+                src="/img/branding/logo.svg"
                 alt="Cube Community Logo"
                 className="h-10 w-auto object-contain transition-transform group-hover:scale-105"
               />
@@ -171,7 +190,7 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
               to="/archive"
               className={({ isActive }) =>
                 `px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                  isActive || location.pathname.startsWith('/archive')
+                  isActive || pathname.startsWith('/archive')
                     ? 'text-white font-semibold bg-[#222222]'
                     : 'text-[#aaaaaa] hover:text-white hover:bg-[#1a1a1a]'
                 }`
@@ -262,15 +281,6 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
                 className="p-2 text-[#aaaaaa] hover:text-[#1DA1F2] hover:bg-[#1a1a1a] rounded-full transition-colors"
               >
                 <FaTwitter size={17} />
-              </a>
-              <a
-                href="https://github.com/Spoekle/ClipSesh"
-                target="_blank"
-                rel="noopener noreferrer"
-                title="GitHub"
-                className="p-2 text-[#aaaaaa] hover:text-white hover:bg-[#1a1a1a] rounded-full transition-colors"
-              >
-                <FaGithub size={17} />
               </a>
             </div>
 
@@ -446,7 +456,7 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
                   onClick={() => setIsMobileMenuOpen(false)}
                   className={({ isActive }) =>
                     `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                      isActive || location.pathname.startsWith('/archive')
+                      isActive || pathname.startsWith('/archive')
                         ? 'bg-[#181818] text-cc-red font-semibold border-l-2 border-cc-red'
                         : 'text-[#aaaaaa] hover:text-white hover:bg-[#181818]'
                     }`
