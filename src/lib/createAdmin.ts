@@ -4,7 +4,6 @@ import User from '@/models/userModel';
 
 export async function createOrUpdateAdminUser(): Promise<void> {
   const adminUsername = process.env.ADMIN_USERNAME || 'admin';
-  const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || '';
 
   let adminPassword = process.env.ADMIN_PASSWORD;
   if (!adminPassword) {
@@ -22,7 +21,7 @@ export async function createOrUpdateAdminUser(): Promise<void> {
         password: hashedPassword,
         roles: ['admin', 'user'],
         status: 'active',
-        profilePicture: `${backendUrl}/profilePictures/profile_placeholder.png`,
+        profilePicture: '/profilePictures/profile_placeholder.png',
       });
       await adminUser.save();
       console.log(`[Admin Setup] Created initial admin user: ${adminUsername}`);

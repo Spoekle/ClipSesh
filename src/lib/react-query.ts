@@ -10,12 +10,10 @@ export const queryClient = new QueryClient({
       
       // Optimized retry strategy
       retry: (failureCount, error) => {
-        // Don't retry on client errors
-        if (error && typeof error === 'object' && 'response' in error) {
-          const axiosError = error as any;
-          if (axiosError.response?.status === 401 || 
-              axiosError.response?.status === 403 || 
-              axiosError.response?.status === 404) {
+        // Don't retry on client errors (401, 403, 404)
+        if (error && typeof error === 'object') {
+          const status = (error as any).status || (error as any).response?.status;
+          if (status === 401 || status === 403 || status === 404) {
             return false;
           }
         }

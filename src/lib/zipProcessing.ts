@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
+import { Readable } from 'stream';
 import * as archiverPkg from 'archiver';
-import axios from 'axios';
 
 function createZipArchive(options: any = {}) {
   const pkg: any = archiverPkg;
@@ -103,9 +103,14 @@ export async function startProcessingJob(
     denyThreshold = adminConfig?.denyThreshold || 5;
   }
 
+  const yearQuery =
+    season.toLowerCase() === 'winter'
+      ? { $in: [Number(year), Number(year) - 1, Number(year) + 1] }
+      : Number(year);
+
   const clips = await Clip.find({
     season: { $regex: new RegExp(`^${season}$`, 'i') } as any,
-    year: Number(year),
+    year: yearQuery,
     archived: { $ne: true },
   }).select('-comments').lean();
 
@@ -196,15 +201,15 @@ async function processClipsAsync(
   const zipPath = path.join(downloadDir, zipFilename);
 
   let isCancelled = false;
-  let currentAxiosController: AbortController | null = null;
+  let currentDownloadController: AbortController | null = null;
   let archive: any = null;
   let zipStream: any = null;
 
   activeJobCleanups.set(jobId, () => {
     isCancelled = true;
-    if (currentAxiosController) {
+    if (currentDownloadController) {
       try {
-        currentAxiosController.abort();
+        currentDownloadController.abort();
       } catch {}
     }
     try {
@@ -324,6 +329,43 @@ async function processClipsAsync(
 
           await updateClipCount();
 
+          // Update AdminConfig seasonAutomation metadata and audit history
+          try {
+            await AdminConfig.findOneAndUpdate(
+              {},
+              {
+                $set: {
+                  'seasonAutomation.lastArchivedSeason': {
+                    season: capitalizedSeason,
+                    year: Number(year),
+                    jobId,
+                    archivedAt: new Date(),
+                    clipCount: clips.length,
+                    zipUrl: `/download/${zipFilename}`,
+                    status: 'success',
+                  },
+                },
+                $push: {
+                  'seasonAutomation.transitionHistory': {
+                    $each: [
+                      {
+                        timestamp: new Date(),
+                        action: 'auto_zip_completed',
+                        season: capitalizedSeason,
+                        year: Number(year),
+                        details: `Archive generated: ${zipFilename} (${clips.length} clips, ${formatBytes(size)}).`,
+                      },
+                    ],
+                    $position: 0,
+                    $slice: 50,
+                  },
+                },
+              }
+            );
+          } catch (configErr) {
+            console.warn('[ZipProcessing] Could not update AdminConfig season history:', configErr);
+          }
+
           job.zipFilename = zipFilename;
           job.zipId = seasonZip._id;
           job.status = 'completed';
@@ -347,6 +389,29 @@ async function processClipsAsync(
           resolve();
         } catch (err: any) {
           logAndEmit(`Error in finalize: ${err.message}`, 'error', 'error');
+
+          try {
+            await AdminConfig.findOneAndUpdate(
+              {},
+              {
+                $push: {
+                  'seasonAutomation.transitionHistory': {
+                    $each: [
+                      {
+                        timestamp: new Date(),
+                        action: 'auto_zip_failed',
+                        season: (season.charAt(0).toUpperCase() + season.slice(1).toLowerCase()) as any,
+                        year: Number(year),
+                        details: `Archive generation failed: ${err.message}`,
+                      },
+                    ],
+                    $position: 0,
+                    $slice: 50,
+                  },
+                },
+              }
+            );
+          } catch {}
           job.status = 'error';
           job.phase = 'error';
           job.error = err.message;
@@ -389,23 +454,25 @@ async function processClipsAsync(
         if (clip.url && clip.url.startsWith('http')) {
           logAndEmit(`[${i + 1}/${clips.length}] Downloading and packing "${clip.title || 'clip'}"...`, 'info', 'processing');
           const abortController = new AbortController();
-          currentAxiosController = abortController;
+          currentDownloadController = abortController;
 
-          const response = await axios.get(clip.url, {
-            responseType: 'stream',
-            timeout: 30000,
+          const response = await fetch(clip.url, {
             signal: abortController.signal,
             headers: {
               'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
             },
           });
-          currentAxiosController = null;
+          currentDownloadController = null;
+
+          if (!response.ok || !response.body) {
+            throw new Error(`Failed to fetch clip: ${response.statusText}`);
+          }
+
+          const stream = Readable.fromWeb(response.body as any);
 
           if (isCancelled || (job.status as string) === 'cancelled') {
             try {
-              if (response.data && typeof response.data.destroy === 'function') {
-                response.data.destroy();
-              }
+              stream.destroy();
             } catch {}
             return;
           }
@@ -443,26 +510,22 @@ async function processClipsAsync(
               clearTimeout(timeoutTimer);
               archive.off('entry', onEntry);
               archive.off('error', onError);
-              if (response.data && typeof response.data.off === 'function') {
-                response.data.off('error', onError);
-              }
+              stream.off('error', onError);
             };
 
             archive.on('entry', onEntry);
             archive.on('error', onError);
-            if (response.data && typeof response.data.on === 'function') {
-              response.data.on('error', onError);
-            }
-            archive.append(response.data, { name: entryName });
+            stream.on('error', onError);
+            archive.append(stream, { name: entryName });
           });
         } else if (clip.url) {
           // Local file
           const cleanUrl = clip.url.replace(/^\/?uploads\//, '');
           let localPath = path.join(process.cwd(), 'uploads', cleanUrl);
-          if (!fs.existsSync(localPath)) {
-            localPath = path.join(process.cwd(), clip.url.replace(/^\//, ''));
+          if (!fs.existsSync(/*turbopackIgnore: true*/ localPath)) {
+            localPath = path.join(/*turbopackIgnore: true*/ process.cwd(), clip.url.replace(/^\//, ''));
           }
-          if (fs.existsSync(localPath)) {
+          if (fs.existsSync(/*turbopackIgnore: true*/ localPath)) {
             logAndEmit(`[${i + 1}/${clips.length}] Packing local clip "${clip.title || 'clip'}"...`, 'info', 'processing');
             const ext = path.extname(localPath) || '.mp4';
             const entryName = `${i + 1}-${ratingPart}${streamerPart}${safeTitle}${ext}`;
@@ -660,3 +723,17 @@ export async function cancelProcessingJob(jobId: string): Promise<boolean> {
 
   return true;
 }
+
+export function dismissProcessingJob(jobId: string): boolean {
+  const job = processingJobs[jobId];
+  if (!job) return false;
+
+  // Only allow dismissing jobs that are not currently running
+  if (job.status !== 'processing') {
+    delete processingJobs[jobId];
+    return true;
+  }
+
+  return false;
+}
+

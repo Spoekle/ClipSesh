@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
-import axios from 'axios';
+import { Readable } from 'stream';
+import { pipeline } from 'stream/promises';
 import { execFile } from 'child_process';
 
 /**
@@ -23,24 +24,22 @@ export async function downloadFromUrl(
   const parsedUrl = new URL(url);
   const isDirectVideo = /\.(mp4|mov|webm|m4v)(\?.*)?$/i.test(url) || url.includes('cdn.discordapp.com/attachments');
 
-  // Direct video file links: stream directly with axios
+  // Direct video file links: stream directly with native fetch
   if (isDirectVideo) {
     console.log(`[VideoDownloader] 📥 Downloading direct video stream: ${url}`);
-    const streamRes = await axios.get(url, {
-      responseType: 'stream',
-      timeout: 60000,
+    const streamRes = await fetch(url, {
+      signal: AbortSignal.timeout(60000),
       headers: {
         'User-Agent':
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       },
     });
 
-    await new Promise<void>((resolve, reject) => {
-      const writeStream = fs.createWriteStream(tempPath);
-      streamRes.data.pipe(writeStream);
-      writeStream.on('finish', () => resolve());
-      writeStream.on('error', (err: any) => reject(err));
-    });
+    if (!streamRes.ok || !streamRes.body) {
+      throw new Error(`Failed to download direct video: ${streamRes.statusText}`);
+    }
+
+    await pipeline(Readable.fromWeb(streamRes.body as any), fs.createWriteStream(tempPath));
 
     return {
       title: path.basename(parsedUrl.pathname) || 'Direct Video',

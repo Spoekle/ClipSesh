@@ -136,6 +136,22 @@ export class WebSocketManager {
       timestamp: Date.now()
     });
   }
+
+  emitNewMessage(clipId: string, message: any) {
+    const io = this.getIo();
+    if (!io) return;
+    io.to(`clip:${clipId}`).emit('message:new', message);
+    io.to(`clip:${clipId}`).emit(`message:new:${clipId}`, message);
+    io.emit(`message:new:${clipId}`, message);
+  }
+
+  emitMessageDeleted(clipId: string, messageId: string) {
+    const io = this.getIo();
+    if (!io) return;
+    io.to(`clip:${clipId}`).emit('message:deleted', { clipId, messageId });
+    io.to(`clip:${clipId}`).emit(`message:deleted:${clipId}`, { clipId, messageId });
+    io.emit(`message:deleted:${clipId}`, { clipId, messageId });
+  }
 }
 
 export const wsManager = new WebSocketManager();

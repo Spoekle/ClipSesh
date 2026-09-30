@@ -1,6 +1,3 @@
-import path from 'path';
-import fs from 'fs';
-
 export interface SeasonInfo {
   season: 'spring' | 'summer' | 'fall' | 'winter';
   year: number;
@@ -167,34 +164,6 @@ export function getSeasonRemainingDays(date: Date = new Date()): SeasonRemaining
   };
 }
 
-export function getSeasonDirectory(baseDir: string, date: Date = new Date()): string {
-  const { season, year } = getCurrentSeason(date);
-  return path.join(baseDir, `${year}-${season}`);
-}
-
-export function getDailyDirectory(baseDir: string, date: Date = new Date()): string {
-  const seasonDir = getSeasonDirectory(baseDir, date);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return path.join(seasonDir, `${year}-${month}-${day}`);
-}
-
-export function ensureDirectoryExists(directory: string): string {
-  if (!fs.existsSync(directory)) {
-    try {
-      fs.mkdirSync(directory, { recursive: true, mode: 0o777 });
-      try {
-        fs.chmodSync(directory, 0o777);
-      } catch {}
-    } catch (err) {
-      console.error(`Error creating directory ${directory}:`, err);
-      throw err;
-    }
-  }
-  return directory;
-}
-
 export function getDateString(date: Date = new Date()): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -202,26 +171,9 @@ export function getDateString(date: Date = new Date()): string {
   return `${year}-${month}-${day}`;
 }
 
-export function getClipPath(baseDir: string, filename: string, date: Date = new Date()): {
-  fullPath: string;
-  relativePath: string;
-  directory: string;
-} {
-  const dailyDir = getDailyDirectory(baseDir, date);
-  ensureDirectoryExists(dailyDir);
-
-  const fullPath = path.join(dailyDir, filename);
-  const relativePath = path.relative(baseDir, fullPath);
-
-  return {
-    fullPath,
-    relativePath,
-    directory: dailyDir
-  };
-}
-
 export function isLegacyPath(filePath: string): boolean {
-  const pathParts = filePath.split(path.sep);
+  const normalized = filePath.replace(/\\/g, '/');
+  const pathParts = normalized.split('/').filter(Boolean);
   if (pathParts.length === 2 && pathParts[0] === 'uploads') {
     return true;
   }
@@ -239,6 +191,197 @@ export const SEASON_ORDER: Record<string, number> = {
   fall: 3,
   winter: 4,
 };
+
+export type SeasonName = 'Spring' | 'Summer' | 'Fall' | 'Winter';
+
+export interface SeasonTransitionDef {
+  boundaryMonth: number; // 3 = March, 6 = June, 9 = September, 12 = December
+  closingSeason: SeasonName;
+  openingSeason: SeasonName;
+}
+
+export const SEASON_TRANSITIONS: SeasonTransitionDef[] = [
+  { boundaryMonth: 3, closingSeason: 'Winter', openingSeason: 'Spring' },
+  { boundaryMonth: 6, closingSeason: 'Spring', openingSeason: 'Summer' },
+  { boundaryMonth: 9, closingSeason: 'Summer', openingSeason: 'Fall' },
+  { boundaryMonth: 12, closingSeason: 'Fall', openingSeason: 'Winter' },
+];
+
+export interface SeasonAutomationDates {
+  seasonEndDay?: number;
+  newSeasonStartDay?: number;
+  zipArchiveDay?: number;
+}
+
+export interface SeasonLifecycleStatus {
+  phase: 'ACTIVE_SUBMISSIONS' | 'VOTING_GRACE_PERIOD' | 'POST_ARCHIVE_ACTIVE';
+  currentSeason: SeasonName;
+  currentYear: number;
+  isTransitionMonth: boolean;
+  closingSeason?: SeasonName;
+  closingYear?: number;
+  openingSeason?: SeasonName;
+  openingYear?: number;
+  submissionCutoffDate: Date;
+  newSeasonStartDate: Date;
+  zipArchiveDate: Date;
+  daysUntilCutoff: number;
+  daysUntilArchive: number;
+}
+
+/**
+ * Determine lifecycle status across the 4 seasons (Spring, Summer, Fall, Winter)
+ * Transitions occur exclusively during months 3 (Mar), 6 (Jun), 9 (Sep), and 12 (Dec).
+ */
+export function getSeasonLifecycleStatus(
+  date: Date = new Date(),
+  config?: SeasonAutomationDates
+): SeasonLifecycleStatus {
+  const endDay = config?.seasonEndDay ?? 20;
+  const startDay = config?.newSeasonStartDay ?? 21;
+  const zipDay = config?.zipArchiveDay ?? 25;
+
+  const month = date.getMonth() + 1; // 1-12
+  const day = date.getDate();
+  const year = date.getFullYear();
+
+  const transition = SEASON_TRANSITIONS.find((t) => t.boundaryMonth === month);
+  const isTransitionMonth = !!transition;
+
+  if (!isTransitionMonth) {
+    // Non-transition months: Jan, Feb, Apr, May, Jul, Aug, Oct, Nov
+    const { season: curSeasonLower, year: curYear } = getCurrentSeason(date);
+    const curSeason = (curSeasonLower.charAt(0).toUpperCase() + curSeasonLower.slice(1)) as SeasonName;
+
+    // Find the next upcoming transition month
+    const nextTransition =
+      SEASON_TRANSITIONS.find((t) => t.boundaryMonth > month) || SEASON_TRANSITIONS[0];
+    const nextYear = nextTransition.boundaryMonth < month ? year + 1 : year;
+
+    const submissionCutoffDate = new Date(nextYear, nextTransition.boundaryMonth - 1, endDay, 23, 59, 59, 999);
+    const newSeasonStartDate = new Date(nextYear, nextTransition.boundaryMonth - 1, startDay, 0, 0, 0, 0);
+    const zipArchiveDate = new Date(nextYear, nextTransition.boundaryMonth - 1, zipDay, 0, 1, 0, 0);
+
+    const diffCutoff = Math.max(0, Math.ceil((submissionCutoffDate.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)));
+    const diffArchive = Math.max(0, Math.ceil((zipArchiveDate.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)));
+
+    return {
+      phase: 'ACTIVE_SUBMISSIONS',
+      currentSeason: curSeason,
+      currentYear: curYear,
+      isTransitionMonth: false,
+      submissionCutoffDate,
+      newSeasonStartDate,
+      zipArchiveDate,
+      daysUntilCutoff: diffCutoff,
+      daysUntilArchive: diffArchive,
+    };
+  }
+
+  // Inside transition months (March, June, September, December)
+  const { closingSeason, openingSeason } = transition;
+  // Winter closing year is start year (year - 1 in March)
+  const closingYear = month === 3 && closingSeason === 'Winter' ? year - 1 : year;
+  const openingYear = month === 12 && openingSeason === 'Winter' ? year : year;
+
+  const submissionCutoffDate = new Date(year, month - 1, endDay, 23, 59, 59, 999);
+  const newSeasonStartDate = new Date(year, month - 1, startDay, 0, 0, 0, 0);
+  const zipArchiveDate = new Date(year, month - 1, zipDay, 0, 1, 0, 0);
+
+  const diffCutoff = Math.ceil((submissionCutoffDate.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+  const diffArchive = Math.ceil((zipArchiveDate.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (day <= endDay) {
+    // 1st to 20th: Active submissions for closing season
+    return {
+      phase: 'ACTIVE_SUBMISSIONS',
+      currentSeason: closingSeason,
+      currentYear: closingYear,
+      isTransitionMonth: true,
+      closingSeason,
+      closingYear,
+      openingSeason,
+      openingYear,
+      submissionCutoffDate,
+      newSeasonStartDate,
+      zipArchiveDate,
+      daysUntilCutoff: Math.max(0, diffCutoff),
+      daysUntilArchive: Math.max(0, diffArchive),
+    };
+  }
+
+  if (day < zipDay) {
+    // 21st to 24th: Voting grace period for closing season; opening season accepts new submissions
+    return {
+      phase: 'VOTING_GRACE_PERIOD',
+      currentSeason: openingSeason,
+      currentYear: openingYear,
+      isTransitionMonth: true,
+      closingSeason,
+      closingYear,
+      openingSeason,
+      openingYear,
+      submissionCutoffDate,
+      newSeasonStartDate,
+      zipArchiveDate,
+      daysUntilCutoff: 0,
+      daysUntilArchive: Math.max(0, diffArchive),
+    };
+  }
+
+  // 25th+: Auto-zip & Archive phase
+  return {
+    phase: 'POST_ARCHIVE_ACTIVE',
+    currentSeason: openingSeason,
+    currentYear: openingYear,
+    isTransitionMonth: true,
+    closingSeason,
+    closingYear,
+    openingSeason,
+    openingYear,
+    submissionCutoffDate,
+    newSeasonStartDate,
+    zipArchiveDate,
+    daysUntilCutoff: 0,
+    daysUntilArchive: 0,
+  };
+}
+
+/**
+ * Returns the season and year that should be archived if today is on or after zipArchiveDay
+ * in a transition month (March, June, September, December).
+ */
+export function getSeasonToArchive(
+  date: Date = new Date(),
+  config?: SeasonAutomationDates
+): { season: SeasonName; year: number; fallbackYears: number[] } | null {
+  const zipDay = config?.zipArchiveDay ?? 25;
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const year = date.getFullYear();
+
+  // Only transition months can trigger season archiving
+  const transition = SEASON_TRANSITIONS.find((t) => t.boundaryMonth === month);
+  if (!transition) return null;
+
+  if (day < zipDay) return null;
+
+  const { closingSeason } = transition;
+  if (closingSeason === 'Winter') {
+    // Winter started in Dec of (year - 1) and ends in March of year
+    return {
+      season: 'Winter',
+      year: year - 1,
+      fallbackYears: [year - 1, year],
+    };
+  }
+
+  return {
+    season: closingSeason,
+    year,
+    fallbackYears: [year],
+  };
+}
 
 /**
  * Compare two items by year and season descending (newest year and latest season first).
@@ -261,4 +404,5 @@ export function compareSeasonYear<
   const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
   return dateB - dateA; // Fallback to newest createdAt
 }
+
 

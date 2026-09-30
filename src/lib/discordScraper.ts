@@ -1,11 +1,13 @@
 import fs from 'fs';
 import path from 'path';
-import axios from 'axios';
+import { Readable } from 'stream';
+import { pipeline } from 'stream/promises';
 import ffmpeg from 'fluent-ffmpeg';
 import { connectToDatabase } from '@/lib/db';
 import Clip from '@/models/clipModel';
 import { PublicConfig, AdminConfig } from '@/models/configModel';
-import { getCurrentSeason, getClipPath, getDailyDirectory } from '@/lib/seasonHelpers';
+import { getCurrentSeason } from '@/lib/seasonHelpers';
+import { getClipPath, getDailyDirectory } from '@/lib/seasonPathHelpers';
 import { downloadFromUrl } from '@/lib/videoDownloader';
 
 export interface ScrapedClipItem {
@@ -536,16 +538,13 @@ export function startScraperDownload(clipsToDownload: ScrapedClipItem[]): Scrape
         let detectedStreamer = clip.streamer || clip.author;
 
         if (clip.origin === 'direct_video') {
-          const streamRes = await axios.get(clip.link, {
-            responseType: 'stream',
-            timeout: 60000,
+          const streamRes = await fetch(clip.link, {
+            signal: AbortSignal.timeout(60000),
           });
-          await new Promise<void>((resolve, reject) => {
-            const writeStream = fs.createWriteStream(tempDownloadedPath);
-            streamRes.data.pipe(writeStream);
-            writeStream.on('finish', () => resolve());
-            writeStream.on('error', (err: any) => reject(err));
-          });
+          if (!streamRes.ok || !streamRes.body) {
+            throw new Error(`Failed to download direct video: ${streamRes.statusText}`);
+          }
+          await pipeline(Readable.fromWeb(streamRes.body as any), fs.createWriteStream(tempDownloadedPath));
         } else {
           const dlResult = await downloadFromUrl(clip.link, tempDownloadedPath);
           if (dlResult.title && dlResult.title !== 'YouTube Clip') {
@@ -739,3 +738,17 @@ export function stopDownloadJob(jobId: string): boolean {
   }
   return false;
 }
+
+export function dismissDownloadJob(jobId: string): boolean {
+  const job = downloadJobs[jobId];
+  if (!job) return false;
+
+  // Only allow dismissing jobs that are not actively downloading
+  if (job.status !== 'downloading') {
+    delete downloadJobs[jobId];
+    return true;
+  }
+
+  return false;
+}
+
