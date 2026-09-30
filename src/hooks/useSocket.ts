@@ -1,73 +1,131 @@
 import { safeLocalStorage } from '@/utils/storage';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import io, { Socket } from 'socket.io-client';
-const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 
-const useSocket = () => {
-  const [isConnected, setIsConnected] = useState(false);
-  const socketRef = useRef<Socket | null>(null);
+let sharedSocket: Socket | null = null;
 
-  // Initialize the socket connection
-  useEffect(() => {
-    // Create socket connection
-    const socket = io(backendUrl, {
-      reconnectionAttempts: 5,
+export const getSharedSocket = (): Socket | null => {
+  if (typeof window === 'undefined') return null;
+
+  if (!sharedSocket) {
+    sharedSocket = io({
+      reconnectionAttempts: 10,
       reconnectionDelay: 1000,
+      autoConnect: true,
+      transports: ['websocket', 'polling'],
     });
 
-    // Set up connection event handlers
-    socket.on('connect', () => {
-      console.log('Socket connected');
+    sharedSocket.on('connect', () => {
+      console.log('[Socket.IO] Connected:', sharedSocket?.id);
+      const token = safeLocalStorage.getItem('token');
+      if (token) {
+        sharedSocket?.emit('authenticate', token);
+      }
+    });
+
+    sharedSocket.on('connect_error', (err) => {
+      console.error('[Socket.IO] Connection error:', err);
+    });
+
+    sharedSocket.on('disconnect', (reason) => {
+      console.log('[Socket.IO] Disconnected:', reason);
+    });
+  }
+
+  return sharedSocket;
+};
+
+export const authenticateSocket = (token?: string) => {
+  const s = getSharedSocket();
+  if (!s) return;
+  const authToken = token || safeLocalStorage.getItem('token');
+  if (authToken) {
+    s.emit('authenticate', authToken);
+  }
+};
+
+export const useSocket = () => {
+  const [isConnected, setIsConnected] = useState<boolean>(() => {
+    return sharedSocket ? sharedSocket.connected : false;
+  });
+
+  useEffect(() => {
+    const socket = getSharedSocket();
+    if (!socket) return;
+
+    setIsConnected(socket.connected);
+
+    const onConnect = () => {
       setIsConnected(true);
-      
-      // Authenticate the socket connection
       const token = safeLocalStorage.getItem('token');
       if (token) {
         socket.emit('authenticate', token);
       }
-    });
+    };
 
-    socket.on('connect_error', (err) => {
-      console.error('Socket connection error:', err);
+    const onDisconnect = () => {
       setIsConnected(false);
-    });
+    };
 
-    socket.on('disconnect', () => {
-      console.log('Socket disconnected');
-      setIsConnected(false);
-    });
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
 
-    socketRef.current = socket;
+    // If already connected, ensure authentication
+    if (socket.connected) {
+      const token = safeLocalStorage.getItem('token');
+      if (token) {
+        socket.emit('authenticate', token);
+      }
+    }
 
-    // Clean up socket connection when the component unmounts
     return () => {
-      socket.disconnect();
-      socketRef.current = null;
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
     };
   }, []);
 
-  // Listen for socket events
-  const subscribeToEvent = useCallback((event: string, callback: (data: any) => void) => {
-    if (!socketRef.current) return () => {};
-    
-    socketRef.current.on(event, callback);
-    
+  const subscribeToEvent = useCallback((event: string, callback: (...args: any[]) => void) => {
+    const socket = getSharedSocket();
+    if (!socket) return () => {};
+
+    socket.on(event, callback);
+
     return () => {
-      socketRef.current?.off(event, callback);
+      socket.off(event, callback);
     };
   }, []);
 
-  // Emit socket events
-  const emit = useCallback((event: string, data?: any) => {
-    if (!socketRef.current) return;
-    socketRef.current.emit(event, data);
+  const emit = useCallback((event: string, data?: any, callback?: (...args: any[]) => void) => {
+    const socket = getSharedSocket();
+    if (!socket) return;
+    if (typeof callback === 'function') {
+      socket.emit(event, data, callback);
+    } else if (data !== undefined) {
+      socket.emit(event, data);
+    } else {
+      socket.emit(event);
+    }
+  }, []);
+
+  const joinClip = useCallback((clipId: string) => {
+    const socket = getSharedSocket();
+    if (!socket || !clipId) return;
+    socket.emit('join_clip', clipId);
+  }, []);
+
+  const leaveClip = useCallback((clipId: string) => {
+    const socket = getSharedSocket();
+    if (!socket || !clipId) return;
+    socket.emit('leave_clip', clipId);
   }, []);
 
   return {
     isConnected,
-    socket: socketRef.current,
+    socket: sharedSocket,
     subscribeToEvent,
-    emit
+    emit,
+    joinClip,
+    leaveClip,
   };
 };
 

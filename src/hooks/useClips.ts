@@ -53,11 +53,12 @@ export const useSearchClips = (query: string, params: Omit<ClipQueryParams, 'sea
 };
 
 // Hook for fetching a single clip
-export const useClip = (clipId: string) => {
+export const useClip = (clipId: string, initialData?: Clip) => {
   return useQuery({
     queryKey: queryKeys.clips.detail(clipId),
     queryFn: () => clipService.getClipById(clipId),
     enabled: Boolean(clipId),
+    initialData,
   });
 };
 

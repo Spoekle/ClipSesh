@@ -180,19 +180,6 @@ export const useUpdatePublicConfig = () => {
   });
 };
 
-// Mutation for deleting all clips
-export const useDeleteAllClips = () => {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: () => adminService.deleteAllClips(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.clips.all });
-      queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats });
-    },
-  });
-};
-
 // Mutation for uploading zip
 export const useUploadZip = () => {
   const queryClient = useQueryClient();
@@ -326,5 +313,66 @@ export const useDeleteReportMessage = () => {
   });
 };
 
+// Hook for fetching seasonal automation lifecycle and status
+export const useSeasonStatus = () => {
+  return useQuery({
+    queryKey: ['admin', 'seasons', 'status'],
+    queryFn: () => adminService.getSeasonStatus(),
+    enabled: Boolean(safeLocalStorage.getItem('token')),
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000,
+  });
+};
+
+// Mutation for triggering season actions (dry-run, force-archive, trigger-check, unarchive)
+export const useSeasonAction = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: {
+      action: 'dry-run' | 'force-archive' | 'trigger-check' | 'unarchive';
+      season?: string;
+      year?: number;
+      denyThreshold?: number;
+      deleteZip?: boolean;
+    }) => adminService.triggerSeasonAction(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'seasons'] });
+      queryClient.invalidateQueries({ queryKey: ['archive', 'seasons'] });
+      queryClient.invalidateQueries({ queryKey: ['clips'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.config.admin });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'zips'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.config.all });
+    },
+  });
+};
+
+export const useUnarchiveSeason = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      season,
+      year,
+      deleteZip,
+    }: {
+      season: string;
+      year: number;
+      deleteZip?: boolean;
+    }) => adminService.unarchiveSeason(season, year, deleteZip),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'seasons'] });
+      queryClient.invalidateQueries({ queryKey: ['archive', 'seasons'] });
+      queryClient.invalidateQueries({ queryKey: ['clips'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.config.admin });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'zips'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.config.all });
+    },
+  });
+};
+
 // Helper functions
 export const transformRatings = adminService.transformRatings;
+

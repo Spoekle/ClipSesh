@@ -12,9 +12,9 @@ export const useCurrentUser = () => {
     enabled: Boolean(safeLocalStorage.getItem('token')),
     retry: (failureCount, error) => {
       // Don't retry on 401 errors (unauthorized)
-      if (error && typeof error === 'object' && 'response' in error) {
-        const axiosError = error as any;
-        if (axiosError.response?.status === 401) {
+      if (error && typeof error === 'object') {
+        const status = (error as any).status || (error as any).response?.status;
+        if (status === 401) {
           return false;
         }
       }

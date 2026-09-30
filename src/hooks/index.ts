@@ -16,13 +16,6 @@ export * from './useConfig';
 // Notification hooks
 export * from './useNotifications';
 
-// Message hooks
-export * from './useMessages';
-
-// Discord hooks - explicit exports to avoid conflicts
-export {
-  useLinkDiscordAccount,
-} from './useDiscord';
 
 // Admin hooks - explicit exports to avoid conflicts
 export {
@@ -39,7 +32,6 @@ export {
   useUpdateConfig,
   useUpdateAdminConfig,
   useUpdatePublicConfig,
-  useDeleteAllClips,
   useUploadZip,
   useDeleteZip,
   useProcessClips,
