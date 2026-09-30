@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { generateUniqueId } from './fileHelpers';
 
 /**
@@ -26,7 +25,7 @@ interface ChunkedUploadOptions {
 }
 
 /**
- * Upload a file in chunks to prevent timeouts and memory issues
+ * Upload a file in chunks to prevent timeouts and memory issues using native fetch
  * 
  * @param options - Upload options including file and callbacks
  * @returns Promise resolving to success status
@@ -49,20 +48,26 @@ export const uploadFileInChunks = async (options: ChunkedUploadOptions): Promise
   
   try {
     // Initialize upload on the server
-    await axios.post(`${apiUrl}/api/zips/init-chunked-upload`, {
-      filename: file.name,
-      totalChunks: chunks,
-      fileSize: file.size,
-      uploadId,
-      clipAmount,
-      season,
-      year: year.toString()
-    }, {
+    const initRes = await fetch(`${apiUrl}/api/zips/init-chunked-upload`, {
+      method: 'POST',
       headers: { 
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
-      }
+      },
+      body: JSON.stringify({
+        filename: file.name,
+        totalChunks: chunks,
+        fileSize: file.size,
+        uploadId,
+        clipAmount,
+        season,
+        year: year.toString()
+      })
     });
+
+    if (!initRes.ok) {
+      throw new Error(`Failed to initialize upload: ${initRes.statusText}`);
+    }
     
     // Track failed chunks for retry logic
     const failedChunks: number[] = [];
@@ -94,25 +99,17 @@ export const uploadFileInChunks = async (options: ChunkedUploadOptions): Promise
       while (!chunkUploaded && attemptCount < 3) {
         attemptCount++;
         try {
-          await axios.post(`${apiUrl}/api/zips/upload-chunk`, formData, {
+          const chunkRes = await fetch(`${apiUrl}/api/zips/upload-chunk`, {
+            method: 'POST',
             headers: {
-              'Content-Type': 'multipart/form-data',
               'Authorization': `Bearer ${token}`
             },
-            onUploadProgress: (progressEvent) => {
-              const chunkProgress = progressEvent.loaded / (progressEvent.total || chunk.size);
-              const overallProgress = Math.min(
-                Math.round(((i + chunkProgress) / chunks) * 100),
-                99 // Cap at 99% until fully complete
-              );
-              
-              onProgressUpdate?.({
-                currentChunk: i + 1,
-                totalChunks: chunks,
-                uploadProgress: overallProgress
-              });
-            }
+            body: formData
           });
+
+          if (!chunkRes.ok) {
+            throw new Error(`Failed chunk response: ${chunkRes.statusText}`);
+          }
           
           chunkUploaded = true;
         } catch {
@@ -132,19 +129,25 @@ export const uploadFileInChunks = async (options: ChunkedUploadOptions): Promise
     }
     
     // Finalize the upload
-    await axios.post(`${apiUrl}/api/zips/finalize-upload`, {
-      uploadId,
-      filename: file.name,
-      clipAmount,
-      season,
-      year: year.toString()
-    }, {
+    const finalizeRes = await fetch(`${apiUrl}/api/zips/finalize-upload`, {
+      method: 'POST',
       headers: { 
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
-      timeout: 300000 // 5 minute timeout for finalization
+      body: JSON.stringify({
+        uploadId,
+        filename: file.name,
+        clipAmount,
+        season,
+        year: year.toString()
+      }),
+      signal: AbortSignal.timeout(300000) // 5 minute timeout for finalization
     });
+
+    if (!finalizeRes.ok) {
+      throw new Error(`Failed to finalize upload: ${finalizeRes.statusText}`);
+    }
     
     // Signal 100% completion
     onProgressUpdate?.({
