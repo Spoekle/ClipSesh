@@ -16,6 +16,7 @@ import { createOrUpdateAdminUser } from './src/lib/createAdmin';
 import { startDiscordBot, stopDiscordBot } from './src/bot/discordBot';
 import { setupSocketHandlers } from './src/lib/socketHandler';
 import { startSeasonScheduler, stopSeasonScheduler } from './src/lib/seasonScheduler';
+import { verifyAuthToken } from './src/lib/auth';
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = process.env.HOSTNAME || 'localhost';
@@ -182,6 +183,21 @@ async function startServer() {
           const relative = pathname.replace(/^\/profilePictures\//, '');
           if (await serveStaticFile(req, res, relative, profilePicturesDir)) return;
         } else if (pathname.startsWith('/download/')) {
+          const authHeader = req.headers.authorization;
+          const token =
+            (authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7) : authHeader) ||
+            parsedUrl.searchParams.get('token');
+
+          const user = token ? verifyAuthToken(token) : null;
+          const allowedRoles = ['clipteam', 'editor', 'admin'];
+          const isAllowed = user?.roles?.some((r: string) => allowedRoles.includes(r));
+
+          if (!isAllowed) {
+            res.writeHead(403, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Forbidden: Insufficient permissions to view or download archives' }));
+            return;
+          }
+
           const relative = pathname.replace(/^\/download\//, '');
           if (await serveStaticFile(req, res, relative, downloadDir)) return;
         }

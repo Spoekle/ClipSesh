@@ -1,33 +1,36 @@
-import { safeLocalStorage } from '@/utils/storage';
+import { useAuthToken } from './useAuthToken';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../lib/react-query';
 import * as notificationService from '../services/notificationService';
 
 // Hook for checking notification API availability
 export const useNotificationApiAvailability = () => {
+  const token = useAuthToken();
   return useQuery({
     queryKey: ['notifications', 'api-availability'],
     queryFn: () => notificationService.checkNotificationsApiAvailability(),
     staleTime: 10 * 60 * 1000, // 10 minutes
-    enabled: Boolean(safeLocalStorage.getItem('token')),
+    enabled: Boolean(token),
   });
 };
 
 // Hook for fetching all notifications
 export const useNotifications = () => {
+  const token = useAuthToken();
   return useQuery({
     queryKey: queryKeys.notifications.all,
     queryFn: () => notificationService.fetchNotifications(),
-    enabled: Boolean(safeLocalStorage.getItem('token')),
+    enabled: Boolean(token),
   });
 };
 
 // Hook for fetching unread count
 export const useUnreadCount = () => {
+  const token = useAuthToken();
   return useQuery({
     queryKey: queryKeys.notifications.unread,
     queryFn: () => notificationService.fetchUnreadCount(),
-    enabled: Boolean(safeLocalStorage.getItem('token')),
+    enabled: Boolean(token),
     refetchInterval: 30000, // Refetch every 30 seconds
   });
 };

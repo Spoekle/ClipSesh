@@ -4,6 +4,8 @@ export interface ProfileUpdateData {
   password?: string;
   discordId?: string;
   discordUsername?: string;
+  ccId?: string;
+  ccUsername?: string;
 }
 
 // Basic user info for profile/account updating

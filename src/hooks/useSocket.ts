@@ -30,6 +30,13 @@ export const getSharedSocket = (): Socket | null => {
     sharedSocket.on('disconnect', (reason) => {
       console.log('[Socket.IO] Disconnected:', reason);
     });
+
+    window.addEventListener('clipsesh_auth_token_changed', (e: any) => {
+      const token = e.detail || safeLocalStorage.getItem('token');
+      if (token && sharedSocket?.connected) {
+        sharedSocket.emit('authenticate', token);
+      }
+    });
   }
 
   return sharedSocket;

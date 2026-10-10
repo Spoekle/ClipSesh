@@ -1,4 +1,5 @@
 import { safeLocalStorage } from '@/utils/storage';
+import { useAuthToken } from './useAuthToken';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../lib/react-query';
 import * as adminService from '../services/adminService';
@@ -6,57 +7,63 @@ import { User, AdminConfig, ProcessClipsRequest, CreateUserFormData, SendMessage
 
 // Hook for fetching all users
 export const useAllUsers = () => {
+  const token = useAuthToken();
   return useQuery({
     queryKey: queryKeys.admin.users({}),
     queryFn: () => adminService.getAllUsers(),
-    enabled: Boolean(safeLocalStorage.getItem('token')),
+    enabled: Boolean(token),
   });
 };
 
 // Hook for fetching admin configuration
 export const useAdminConfig = () => {
+  const token = useAuthToken();
   return useQuery({
     queryKey: queryKeys.config.admin,
     queryFn: () => adminService.getConfig(),
-    enabled: Boolean(safeLocalStorage.getItem('token')),
+    enabled: Boolean(token),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 };
 
 // Hook for fetching admin statistics
 export const useAdminStats = () => {
+  const token = useAuthToken();
   return useQuery({
     queryKey: queryKeys.admin.stats,
     queryFn: () => adminService.getAdminStats(),
-    enabled: Boolean(safeLocalStorage.getItem('token')),
+    enabled: Boolean(token),
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
 };
 
 // Hook for fetching clips with ratings
 export const useClipsWithRatings = (params?: any) => {
+  const token = useAuthToken();
   return useQuery({
     queryKey: ['admin', 'clips-with-ratings', params],
     queryFn: () => adminService.getClipsWithRatings(params),
-    enabled: Boolean(safeLocalStorage.getItem('token')),
+    enabled: Boolean(token),
   });
 };
 
 // Hook for fetching zips
 export const useZips = () => {
+  const token = useAuthToken();
   return useQuery({
     queryKey: ['admin', 'zips'],
     queryFn: () => adminService.getZips(),
-    enabled: Boolean(safeLocalStorage.getItem('token')),
+    enabled: Boolean(token),
   });
 };
 
 // Hook for fetching process job status
 export const useProcessStatus = (jobId: string) => {
+  const token = useAuthToken();
   return useQuery({
     queryKey: ['admin', 'process-status', jobId],
     queryFn: () => adminService.getProcessStatus(jobId),
-    enabled: Boolean(jobId && safeLocalStorage.getItem('token')),
+    enabled: Boolean(jobId && token),
     refetchInterval: 2000, // Poll every 2 seconds
   });
 };
@@ -233,20 +240,22 @@ export const useForceCompleteProcessJob = () => {
 
 // Hook for fetching blacklisted users
 export const useBlacklistedUsers = () => {
+  const token = useAuthToken();
   return useQuery({
     queryKey: ['admin', 'blacklisted-users'],
     queryFn: () => adminService.getBlacklistedUsers(),
-    enabled: Boolean(safeLocalStorage.getItem('token')),
+    enabled: Boolean(token),
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
 };
 
 // Hook for fetching reports
 export const useReports = (status?: string, page: number = 1, limit: number = 20) => {
+  const token = useAuthToken();
   return useQuery({
     queryKey: ['admin', 'reports', { status, page, limit }],
     queryFn: () => adminService.getReports(status, page, limit),
-    enabled: Boolean(safeLocalStorage.getItem('token')),
+    enabled: Boolean(token),
     staleTime: 1 * 60 * 1000, // 1 minute
   });
 };
@@ -278,10 +287,11 @@ export const useDeleteReport = () => {
 
 // Hook for fetching report messages
 export const useReportMessages = (reportId: string) => {
+  const token = useAuthToken();
   return useQuery({
     queryKey: ['admin', 'reports', reportId, 'messages'],
     queryFn: () => adminService.getReportMessages(reportId),
-    enabled: Boolean(safeLocalStorage.getItem('token') && reportId),
+    enabled: Boolean(token && reportId),
     staleTime: 30 * 1000, // 30 seconds
   });
 };
@@ -315,10 +325,11 @@ export const useDeleteReportMessage = () => {
 
 // Hook for fetching seasonal automation lifecycle and status
 export const useSeasonStatus = () => {
+  const token = useAuthToken();
   return useQuery({
     queryKey: ['admin', 'seasons', 'status'],
     queryFn: () => adminService.getSeasonStatus(),
-    enabled: Boolean(safeLocalStorage.getItem('token')),
+    enabled: Boolean(token),
     staleTime: 30 * 1000,
     refetchInterval: 60 * 1000,
   });

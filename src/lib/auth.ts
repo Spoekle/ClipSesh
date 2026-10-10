@@ -9,6 +9,7 @@ export interface DecodedUser {
   username: string;
   roles: string[];
   discordId?: string;
+  ccId?: string;
 }
 
 export function extractToken(req: Request | NextRequest): string | null {
@@ -24,12 +25,39 @@ export function extractToken(req: Request | NextRequest): string | null {
 
 export function verifyAuthToken(token: string): DecodedUser | null {
   try {
-    const decoded = jwt.verify(token, SECRET_KEY) as any;
+    const decoded = jwt.verify(token, SECRET_KEY);
+    if (!decoded || typeof decoded !== 'object') return null;
+    const payload = decoded as Record<string, unknown>;
+    const id =
+      typeof payload.id === 'string'
+        ? payload.id
+        : typeof payload.botId === 'string'
+        ? payload.botId
+        : typeof payload._id === 'string'
+        ? payload._id
+        : '';
+    const username =
+      typeof payload.username === 'string'
+        ? payload.username
+        : typeof payload.botUsername === 'string'
+        ? payload.botUsername
+        : '';
+    const roles = Array.isArray(payload.roles)
+      ? payload.roles.filter((r): r is string => typeof r === 'string')
+      : typeof payload.role === 'string'
+      ? [payload.role]
+      : [];
+    const discordId =
+      typeof payload.discordId === 'string' ? payload.discordId : undefined;
+    const ccId =
+      typeof payload.ccId === 'string' ? payload.ccId : undefined;
+
     return {
-      id: decoded.id || decoded.botId || decoded._id,
-      username: decoded.username || decoded.botUsername,
-      roles: Array.isArray(decoded.roles) ? decoded.roles : (decoded.role ? [decoded.role] : []),
-      discordId: decoded.discordId,
+      id,
+      username,
+      roles,
+      discordId,
+      ccId,
     };
   } catch {
     return null;

@@ -1,4 +1,6 @@
-import { safeLocalStorage } from '@/utils/storage';
+import { safeLocalStorage, setAuthToken, removeAuthToken } from '@/utils/storage';
+import { useAuthToken } from './useAuthToken';
+import { authenticateSocket } from './useSocket';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../lib/react-query';
 import * as userService from '../services/userService';
@@ -6,10 +8,11 @@ import { ProfileUpdateData, BasicUserInfo } from '../types/profileTypes';
 
 // Hook for fetching current user
 export const useCurrentUser = () => {
+  const token = useAuthToken();
   return useQuery({
     queryKey: queryKeys.user.current,
     queryFn: userService.getCurrentUser,
-    enabled: Boolean(safeLocalStorage.getItem('token')),
+    enabled: Boolean(token),
     retry: (failureCount, error) => {
       // Don't retry on 401 errors (unauthorized)
       if (error && typeof error === 'object') {
@@ -96,8 +99,10 @@ export const useLoginUser = () => {
     mutationFn: ({ username, password }: { username: string; password: string }) =>
       userService.loginUser({ username, password }),
     onSuccess: (data) => {
-      safeLocalStorage.setItem('token', data.token);
+      setAuthToken(data.token);
+      authenticateSocket(data.token);
       queryClient.invalidateQueries({ queryKey: queryKeys.user.current });
+      queryClient.refetchQueries({ queryKey: queryKeys.user.current });
     },
   });
 };
@@ -138,10 +143,15 @@ export const useLogout = () => {
   const queryClient = useQueryClient();
   
   return () => {
-    safeLocalStorage.removeItem('token');
+    removeAuthToken();
+    queryClient.setQueryData(queryKeys.user.current, null);
+    queryClient.invalidateQueries({ queryKey: queryKeys.user.all });
     queryClient.clear(); // Clear all cached data
   };
 };
 
 // Helper function to get Discord auth URL
 export const getDiscordAuthUrl = userService.getDiscordAuthUrl;
+
+// Helper function to get CC auth URL
+export const getCCAuthUrl = userService.getCCAuthUrl;

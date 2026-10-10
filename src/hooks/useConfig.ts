@@ -1,4 +1,4 @@
-import { safeLocalStorage } from '@/utils/storage';
+import { useAuthToken } from './useAuthToken';
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '../lib/react-query';
 import * as configService from '../services/configService';
@@ -15,10 +15,11 @@ export const usePublicConfig = () => {
 
 // Hook for fetching admin configuration
 export const useAdminConfig = () => {
+  const token = useAuthToken();
   return useQuery({
     queryKey: queryKeys.config.admin,
     queryFn: () => configService.getAdminConfig(),
-    enabled: Boolean(safeLocalStorage.getItem('token')),
+    enabled: Boolean(token),
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
   });
@@ -36,10 +37,11 @@ export const useCombinedConfig = (user?: any) => {
 
 // Hook for fetching unified config
 export const useConfig = () => {
+  const token = useAuthToken();
   return useQuery({
     queryKey: ['config', 'unified'],
     queryFn: () => configService.getConfig(),
-    enabled: Boolean(safeLocalStorage.getItem('token')),
+    enabled: Boolean(token),
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
   });

@@ -10,6 +10,8 @@ export interface IUser extends Document {
   status: 'active' | 'disabled';
   discordId?: string;
   discordUsername?: string;
+  ccId?: string;
+  ccUsername?: string;
   joinDate?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -54,6 +56,15 @@ const userSchema = new Schema<IUser>({
     sparse: true
   },
   discordUsername: {
+    type: String,
+    trim: true
+  },
+  ccId: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
+  ccUsername: {
     type: String,
     trim: true
   },

@@ -8,6 +8,8 @@ export interface User {
   profilePicture?: string;
   discordId?: string;
   discordUsername?: string;
+  ccId?: string;
+  ccUsername?: string;
   status?: string;
   joinDate?: string;
   createdAt?: string;

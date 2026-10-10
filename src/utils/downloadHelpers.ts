@@ -1,4 +1,5 @@
 import { saveAs } from 'file-saver';
+import { safeLocalStorage } from '@/utils/storage';
 
 export interface DownloadProgressCallback {
   (progress: number): void;
@@ -25,8 +26,14 @@ export const downloadWithProgress = async (options: DownloadOptions): Promise<vo
     // Notify that download is starting
     onStart?.();
 
+    const token = safeLocalStorage.getItem('token');
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     // Start the fetch request
-    const response = await fetch(url);
+    const response = await fetch(url, { headers });
     
     if (!response.ok) {
       throw new Error(`Download failed: ${response.status} ${response.statusText}`);

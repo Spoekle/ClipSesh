@@ -9,6 +9,8 @@ interface UpdateUserData {
   password?: string;
   discordId?: string;
   discordUsername?: string;
+  ccId?: string;
+  ccUsername?: string;
 }
 
 // Interface for login/register data
@@ -101,6 +103,49 @@ export const unlinkDiscordAccount = async (userId: string): Promise<ApiResponse>
   return apiClient.put<ApiResponse>(`/api/users/${userId}`, {
     discordId: '',
     discordUsername: '',
+  });
+};
+
+/**
+ * Get CC authentication URL.
+ *
+ * @example
+ * ```ts
+ * const url = getCCAuthUrl('user_123');
+ * // '/api/cc/auth?siteUserId=user_123'
+ * ```
+ */
+export const getCCAuthUrl = (userId?: string): string => {
+  return `/api/cc/auth${userId ? `?siteUserId=${encodeURIComponent(userId)}` : ''}`;
+};
+
+/**
+ * Start CC OAuth linking process.
+ *
+ * @example
+ * ```ts
+ * linkCCAccount('user_123');
+ * ```
+ */
+export const linkCCAccount = (userId: string): void => {
+  const ccAuthUrl = getCCAuthUrl(userId);
+  if (typeof window !== 'undefined') {
+    window.location.href = ccAuthUrl;
+  }
+};
+
+/**
+ * Unlink CC account from user profile.
+ *
+ * @example
+ * ```ts
+ * await unlinkCCAccount('user_123');
+ * ```
+ */
+export const unlinkCCAccount = async (userId: string): Promise<ApiResponse> => {
+  return apiClient.put<ApiResponse>(`/api/users/${userId}`, {
+    ccId: '',
+    ccUsername: '',
   });
 };
 

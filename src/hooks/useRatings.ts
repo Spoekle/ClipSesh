@@ -1,4 +1,4 @@
-import { safeLocalStorage } from '@/utils/storage';
+import { useAuthToken } from './useAuthToken';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../lib/react-query';
 import * as ratingService from '../services/ratingService';
@@ -6,10 +6,11 @@ import { RatingQueryParams } from '../types/ratingTypes';
 
 // Hook for fetching user's own ratings
 export const useMyRatings = (params: RatingQueryParams = {}) => {
+  const token = useAuthToken();
   return useQuery({
     queryKey: queryKeys.ratings.bulk(['my-ratings', JSON.stringify(params)]),
     queryFn: () => ratingService.getMyRatings(params),
-    enabled: Boolean(safeLocalStorage.getItem('token')),
+    enabled: Boolean(token),
   });
 };
 
@@ -33,19 +34,21 @@ export const useBulkRatings = (clipIds: string[]) => {
 
 // Hook for fetching user rating stats
 export const useUserRatingStats = (userId?: string) => {
+  const token = useAuthToken();
   return useQuery({
     queryKey: ['ratings', 'stats', userId || 'current'],
     queryFn: () => ratingService.getUserRatingStats(userId),
-    enabled: Boolean(safeLocalStorage.getItem('token')),
+    enabled: Boolean(token),
   });
 };
 
 // Hook for fetching rating activity
 export const useRatingActivity = (params: { startDate?: string; endDate?: string }) => {
+  const token = useAuthToken();
   return useQuery({
     queryKey: ['ratings', 'activity', params],
     queryFn: () => ratingService.getRatingActivity(params),
-    enabled: Boolean(safeLocalStorage.getItem('token')),
+    enabled: Boolean(token),
   });
 };
 

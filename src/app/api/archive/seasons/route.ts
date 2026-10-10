@@ -1,12 +1,13 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import Clip from '@/models/clipModel';
 import Zip from '@/models/zipModel';
 import { getCurrentSeason } from '@/lib/seasonHelpers';
+import { getAuthUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     await connectToDatabase();
 
@@ -64,23 +65,19 @@ export async function GET() {
 
     const sectionsMap = new Map<string, TempSeasonData>();
 
-    const getSeasonFromDate = (date: Date): 'Winter' | 'Spring' | 'Summer' | 'Fall' => {
-      const m = date.getMonth() + 1;
-      const d = date.getDate();
-      if ((m === 3 && d >= 20) || (m > 3 && m < 6) || (m === 6 && d <= 20)) return 'Spring';
-      if ((m === 6 && d >= 21) || (m > 6 && m < 9) || (m === 9 && d <= 20)) return 'Summer';
-      if ((m === 9 && d >= 21) || (m > 9 && m < 12) || (m === 12 && d <= 20)) return 'Fall';
-      return 'Winter';
-    };
-
     clips.forEach((clip) => {
       let season = clip.season;
       let year = clip.year;
 
       if (!season || !year) {
         const d = clip.createdAt ? new Date(clip.createdAt) : new Date();
-        season = getSeasonFromDate(d);
-        year = d.getFullYear();
+        const seasonInfo = getCurrentSeason(d);
+        season = (seasonInfo.season.charAt(0).toUpperCase() + seasonInfo.season.slice(1)) as
+          | 'Winter'
+          | 'Spring'
+          | 'Summer'
+          | 'Fall';
+        year = seasonInfo.year;
       }
 
       // Standardize season casing
@@ -154,6 +151,9 @@ export async function GET() {
       Winter: 4,
     };
 
+    const user = getAuthUser(req);
+    const canAccessZips = Boolean(user?.roles?.some((r) => ['clipteam', 'editor', 'admin'].includes(r)));
+
     const sections = Array.from(sectionsMap.values()).map((data) => {
       const topStreamers = Array.from(data.streamerCounts.entries())
         .sort((a, b) => b[1] - a[1])
@@ -161,7 +161,7 @@ export async function GET() {
         .map(([name]) => name);
 
       const zipKey = `${data.season.toLowerCase()}-${data.year}`;
-      const zip = zipMap.get(zipKey) || null;
+      const zip = canAccessZips ? (zipMap.get(zipKey) || null) : null;
 
       const isCurrent = data.season === currentSeasonCap && data.year === currentYear;
 
