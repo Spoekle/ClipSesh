@@ -29,20 +29,6 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
       transition={{ duration: 0.15 }}
       className="lg:col-span-7 text-center lg:text-left"
     >
-      {/* Season Status Badge */}
-      <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-cc-card border border-border text-xs text-muted-foreground mb-5">
-        <span className="w-2 h-2 rounded-full bg-primary animate-pulse shrink-0" />
-        <span className="font-semibold text-cc-text capitalize">
-          {currentSeason.season} {currentSeason.year}
-        </span>
-        <span className="text-muted-foreground/60">•</span>
-        <span>Submissions Open</span>
-        <span className="text-muted-foreground/60">•</span>
-        <span className="text-amber-400 font-semibold font-mono">
-          {seasonRemaining.daysRemaining}{' '}
-          {seasonRemaining.daysRemaining === 1 ? 'day' : 'days'} left
-        </span>
-      </div>
 
       <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-cc-text leading-[1.12] mb-4">
         The hub for <span className="text-primary">Beat Saber clips.</span>
@@ -91,7 +77,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
       {/* Quick Metrics Strip */}
       <div className="pt-6 border-t border-border grid grid-cols-3 gap-4 max-w-md mx-auto lg:mx-0 text-left">
         <Link href="/archive" className="group block" title="Explore clip archives">
-          <div className="text-xl sm:text-2xl font-bold text-cc-text font-mono group-hover:text-primary transition-colors">
+          <div className="text-xl sm:text-2xl font-bold text-cc-text group-hover:text-primary transition-colors">
             {loadingArchive && !totalClips ? (
               <span className="inline-block w-16 h-7 bg-cc-card rounded animate-pulse align-middle" />
             ) : (
@@ -111,7 +97,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             {currentSeason.season}
           </div>
           <div className="text-xs text-muted-foreground mt-0.5 group-hover:text-cc-text transition-colors">
-            <span className="text-amber-400 font-mono font-semibold">
+            <span className="text-amber-400 font-semibold">
               {seasonRemaining.daysRemaining}d
             </span>{' '}
             remaining
