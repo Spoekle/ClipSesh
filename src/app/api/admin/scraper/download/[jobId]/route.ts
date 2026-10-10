@@ -29,6 +29,8 @@ export async function GET(
       total: job.total,
       processed: job.processed,
       currentClip: job.currentClip,
+      activeClips: job.activeClips,
+      concurrency: job.concurrency,
       successCount: job.successCount,
       errorCount: job.errorCount,
       skippedCount: job.skippedCount,
@@ -38,10 +40,11 @@ export async function GET(
       logs: job.logs,
       results: job.results,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching download job status:', error);
+    const msg = error instanceof Error ? error.message : 'Internal Server Error';
     return NextResponse.json(
-      { error: error?.message || 'Internal Server Error' },
+      { error: msg },
       { status: 500 }
     );
   }
@@ -68,10 +71,11 @@ export async function POST(
       stopped,
       message: stopped ? 'Download job stopped' : 'Job not running or not found',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error stopping download job:', error);
+    const msg = error instanceof Error ? error.message : 'Internal Server Error';
     return NextResponse.json(
-      { error: error?.message || 'Internal Server Error' },
+      { error: msg },
       { status: 500 }
     );
   }
@@ -98,10 +102,11 @@ export async function DELETE(
       dismissed,
       message: dismissed ? 'Download job dismissed' : 'Job not found or actively downloading',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error dismissing download job:', error);
+    const msg = error instanceof Error ? error.message : 'Internal Server Error';
     return NextResponse.json(
-      { error: error?.message || 'Internal Server Error' },
+      { error: msg },
       { status: 500 }
     );
   }

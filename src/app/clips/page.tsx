@@ -1,17 +1,36 @@
 'use client';
 
 import { safeLocalStorage } from '@/utils/storage';
-import { Suspense, useEffect, useState, useCallback } from 'react';
+import React, { Suspense, useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useNotification } from '@/context/AlertContext';
 
-import ClipViewerContent, { ClipViewerHeader } from './components/ClipViewerContent';
+import ClipViewerContent from './components/ClipViewerContent';
+import { ClipViewerHeader, Season } from './components/ClipViewerHeader';
 
 import { useInfiniteClips, useClip } from '@/hooks/useClips';
 import { useBulkRatings } from '@/hooks/useRatings';
 import { useCombinedConfig } from '@/hooks/useConfig';
 import { useCurrentUser } from '@/hooks/useUser';
+import { ClipQueryParams } from '@/types/clipTypes';
+import { Rating } from '@/types/adminTypes';
+import { getCurrentSeason as getSeasonalInfo } from '@/lib/seasonHelpers';
+
+const getCurrentSeason = (): Season => {
+  const { season } = getSeasonalInfo();
+  switch (season) {
+    case 'spring':
+      return 'Spring';
+    case 'summer':
+      return 'Summer';
+    case 'fall':
+      return 'Fall';
+    case 'winter':
+    default:
+      return 'Winter';
+  }
+};
 
 function ClipViewer() {
   const router = useRouter();
@@ -48,76 +67,73 @@ function ClipViewer() {
   });
 
   const [expandedClip, setExpandedClip] = useState<string | null>(clipId || null);
-  const [progress, setProgress] = useState<number>(0);
-  const [seasonInfo, setSeasonInfo] = useState<{ season: string }>({ season: '' });
 
-  const buildClipParams = useCallback(() => {
-    const params: any = {
+  const buildClipParams = useCallback((): ClipQueryParams => {
+    const queryParams: ClipQueryParams = {
       sortBy: 'createdAt',
       sortOrder: 'desc',
-      sortOption: sortOption,
     };
 
     if (sortOption.includes('_')) {
       const [field, direction] = sortOption.split('_');
-      params.sortBy = field;
-      params.sortOrder = direction;
+      queryParams.sortBy = field;
+      queryParams.sortOrder = direction === 'asc' ? 'asc' : 'desc';
     } else {
       switch (sortOption) {
         case 'newest':
-          params.sortBy = 'createdAt';
-          params.sortOrder = 'desc';
+          queryParams.sortBy = 'createdAt';
+          queryParams.sortOrder = 'desc';
           break;
         case 'mostViewed':
-          params.sortBy = 'views';
-          params.sortOrder = 'desc';
+          queryParams.sortBy = 'views';
+          queryParams.sortOrder = 'desc';
           break;
         case 'oldest':
-          params.sortBy = 'createdAt';
-          params.sortOrder = 'asc';
+          queryParams.sortBy = 'createdAt';
+          queryParams.sortOrder = 'asc';
           break;
         case 'highestUpvotes':
-          params.sortBy = 'upvotes';
-          params.sortOrder = 'desc';
+          queryParams.sortBy = 'upvotes';
+          queryParams.sortOrder = 'desc';
           break;
         case 'highestDownvotes':
-          params.sortBy = 'downvotes';
-          params.sortOrder = 'desc';
+          queryParams.sortBy = 'downvotes';
+          queryParams.sortOrder = 'desc';
           break;
         case 'lowestRatio':
-          params.sortBy = 'ratio';
-          params.sortOrder = 'asc';
+          queryParams.sortBy = 'ratio';
+          queryParams.sortOrder = 'asc';
           break;
         case 'highestRatio':
-          params.sortBy = 'ratio';
-          params.sortOrder = 'desc';
+          queryParams.sortBy = 'ratio';
+          queryParams.sortOrder = 'desc';
           break;
         case 'highestAverageRating':
-          params.sortBy = 'averageRating';
-          params.sortOrder = 'desc';
+          queryParams.sortBy = 'averageRating';
+          queryParams.sortOrder = 'desc';
           break;
         case 'mostRated':
-          params.sortBy = 'ratingCount';
-          params.sortOrder = 'desc';
+          queryParams.sortBy = 'ratingCount';
+          queryParams.sortOrder = 'desc';
           break;
         case 'mostDenied':
-          params.sortBy = 'denyCount';
-          params.sortOrder = 'desc';
+          queryParams.sortBy = 'denyCount';
+          queryParams.sortOrder = 'desc';
           break;
       }
     }
 
-    if (filterStreamer) params.streamer = filterStreamer;
-    if (searchTerm) params.search = searchTerm;
-    if (filterRatedClips && user?._id) params.excludeRatedByUser = user._id;
+    if (filterStreamer) queryParams.streamer = filterStreamer;
+    if (searchTerm) queryParams.search = searchTerm;
+    if (filterRatedClips && user?._id) queryParams.excludeRatedByUser = user._id;
     if (filterDeniedClips && user && (user.roles?.includes('admin') || user.roles?.includes('clipteam'))) {
-      params.excludeDeniedClips = true;
+      queryParams.excludeDeniedClips = true;
     }
     if (user && (user.roles?.includes('admin') || user.roles?.includes('clipteam'))) {
-      params.includeRatings = true;
+      queryParams.includeRatings = true;
     }
 
-    return params;
+    return queryParams;
   }, [sortOption, filterStreamer, searchTerm, filterRatedClips, filterDeniedClips, user]);
 
   const {
@@ -141,50 +157,21 @@ function ClipViewer() {
 
   const unratedClips = clipsData?.pages.flatMap(page => page.clips || []).filter((clip): clip is NonNullable<typeof clip> => Boolean(clip)) || [];
 
-  const ratings = clipsData?.pages.reduce((allRatings, page) => {
+  const ratings: Record<string, Rating> = clipsData?.pages.reduce((allRatings, page) => {
     return { ...allRatings, ...(page.ratings || {}) };
-  }, {} as Record<string, any>) || (currentClipRatings || {});
+  }, {} as Record<string, Rating>) || (currentClipRatings || {});
 
   const totalClips = clipsData?.pages[0]?.total || 0;
   const isLoggedIn = Boolean(user);
   const isLoading = clipsLoading || userLoading || configLoading;
 
-  const getSeason = useCallback(() => {
-    const now = new Date();
-    const month = now.getMonth() + 1;
-    const day = now.getDate();
-    let season = '';
-
-    if ((month === 3 && day >= 20) || (month > 3 && month < 6) || (month === 6 && day <= 20)) {
-      season = 'Spring';
-    } else if ((month === 6 && day >= 21) || (month > 6 && month < 9) || (month === 9 && day <= 20)) {
-      season = 'Summer';
-    } else if ((month === 9 && day >= 21) || (month > 9 && month < 12) || (month === 12 && day <= 20)) {
-      season = 'Fall';
-    } else {
-      season = 'Winter';
-    }
-
-    setSeasonInfo({ season });
-  }, []);
+  const currentSeason = useMemo(() => getCurrentSeason(), []);
 
   useEffect(() => {
     if (clipsError) {
       showError("Could not load clips. Please try again later.");
     }
   }, [clipsError, showError]);
-
-  useEffect(() => {
-    getSeason();
-  }, [getSeason]);
-
-  useEffect(() => {
-    if (isLoading) {
-      setProgress(50);
-    } else {
-      setProgress(100);
-    }
-  }, [isLoading]);
 
   const handleSetExpandedClip = useCallback((idOrFn: React.SetStateAction<string | null>) => {
     setExpandedClip((prev) => {
@@ -225,14 +212,14 @@ function ClipViewer() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.15 }}
-      className="min-h-[calc(100vh-80px)] text-[#e6e6e6] flex flex-col bg-[#0b0b0b] transition-colors"
+      className="min-h-[calc(100vh-80px)] text-foreground flex flex-col bg-background transition-colors"
     >
       {/* Seasonal header - only show on clips grid list, NOT when viewing an individual clip */}
       {!expandedClip && (
         <ClipViewerHeader
-          season={(seasonInfo.season as 'Winter' | 'Spring' | 'Summer' | 'Fall') || 'Winter'}
+          season={currentSeason}
           totalClips={totalClips}
-          isFiltered={!!(searchTerm || filterStreamer || filterRatedClips || filterDeniedClips)}
+          isFiltered={Boolean(searchTerm || filterStreamer || filterRatedClips || filterDeniedClips)}
         />
       )}
 

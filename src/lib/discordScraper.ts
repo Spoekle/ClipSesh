@@ -58,6 +58,8 @@ export interface ScraperDownloadJob {
   total: number;
   processed: number;
   currentClip?: string;
+  activeClips?: string[];
+  concurrency: number;
   successCount: number;
   errorCount: number;
   skippedCount: number;
@@ -428,16 +430,36 @@ export function stopScanJob(jobId: string): boolean {
 }
 
 /**
- * Downloads and ingests scraped clips using the message timestamp
+ * Asynchronously downloads and ingests scraped clips concurrently using the message timestamp
  * as dateCreated, season, year, and seasonal directory path.
+ *
+ * @param clipsToDownload - Array of scraped clip items to download and ingest.
+ * @param concurrency - Number of clips to download and process concurrently (default: 3).
+ * @returns The created ScraperDownloadJob tracking the asynchronous ingestion task.
+ *
+ * @example
+ * ```ts
+ * const job = startScraperDownload(scrapedClips, 3);
+ * console.log(`Started scraper job ${job.jobId} with concurrency 3`);
+ * ```
  */
-export function startScraperDownload(clipsToDownload: ScrapedClipItem[]): ScraperDownloadJob {
+export function startScraperDownload(
+  clipsToDownload: ScrapedClipItem[],
+  concurrency: number = 3
+): ScraperDownloadJob {
+  const parsedConcurrency =
+    typeof concurrency === 'number' && Number.isFinite(concurrency) && concurrency > 0
+      ? Math.min(Math.max(1, Math.floor(concurrency)), 10)
+      : 3;
+
   const jobId = `dl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   const job: ScraperDownloadJob = {
     jobId,
     status: 'downloading',
     total: clipsToDownload.length,
     processed: 0,
+    concurrency: parsedConcurrency,
+    activeClips: [],
     successCount: 0,
     errorCount: 0,
     skippedCount: 0,
@@ -445,7 +467,7 @@ export function startScraperDownload(clipsToDownload: ScrapedClipItem[]): Scrape
     logs: [
       {
         time: Date.now(),
-        message: `Starting download of ${clipsToDownload.length} clips...`,
+        message: `Starting asynchronous download of ${clipsToDownload.length} clips (${parsedConcurrency} concurrent)...`,
         level: 'info',
       },
     ],
@@ -455,275 +477,382 @@ export function startScraperDownload(clipsToDownload: ScrapedClipItem[]): Scrape
   downloadJobs[jobId] = job;
 
   (async () => {
-    await connectToDatabase();
-    const uploadsBaseDir = path.join(process.cwd(), 'uploads');
-    const tmpDir = path.join(process.cwd(), 'download', 'tmp');
-    if (!fs.existsSync(tmpDir)) {
-      fs.mkdirSync(tmpDir, { recursive: true });
-    }
-
-    const adminConfig = await AdminConfig.findOne().lean();
-    const blacklistedStreamers = adminConfig?.blacklistedStreamers || [];
-    const blacklistedSubmitters = adminConfig?.blacklistedSubmitters || [];
-
-    for (let i = 0; i < clipsToDownload.length; i++) {
-      if (job.status === 'stopped') {
-        job.logs.push({
-          time: Date.now(),
-          message: 'Download job cancelled by user.',
-          level: 'warn',
-        });
-        break;
+    try {
+      await connectToDatabase();
+      const uploadsBaseDir = path.join(process.cwd(), 'uploads');
+      const tmpDir = path.join(process.cwd(), 'download', 'tmp');
+      if (!fs.existsSync(tmpDir)) {
+        fs.mkdirSync(tmpDir, { recursive: true });
       }
 
-      const clip = clipsToDownload[i];
-      job.currentClip = clip.title || clip.link;
-      const msgDate = new Date(clip.timestamp);
-      const timestamp = msgDate.getTime();
-      const tempDownloadedPath = path.join(tmpDir, `raw_scrape_${Date.now()}_${i}.mp4`);
+      const adminConfig = await AdminConfig.findOne().lean();
+      const blacklistedStreamers = adminConfig?.blacklistedStreamers || [];
+      const blacklistedSubmitters = adminConfig?.blacklistedSubmitters || [];
 
-      try {
-        // Check submitter blacklist
-        const isSubmitterBlocked =
-          clip.authorId &&
-          blacklistedSubmitters.some((s) => s.userId && s.userId.trim() === clip.authorId);
-        if (isSubmitterBlocked) {
-          job.skippedCount++;
-          job.logs.push({
-            time: Date.now(),
-            message: `Skipped: Submitter ${clip.author} is blacklisted.`,
-            level: 'warn',
-          });
-          job.results.push({
-            link: clip.link,
-            title: clip.title,
-            season: clip.season,
-            year: clip.year,
-            status: 'skipped',
-            error: 'Blacklisted submitter',
-          });
-          job.processed = i + 1;
-          continue;
+      const activeClipsMap = new Map<number, string>();
+      const processingLinks = new Set<string>();
+
+      const updateActiveClips = () => {
+        const titles = Array.from(activeClipsMap.values());
+        job.activeClips = titles;
+        if (titles.length === 0) {
+          job.currentClip = undefined;
+        } else if (titles.length === 1) {
+          job.currentClip = titles[0];
+        } else {
+          job.currentClip = `${titles[0]} (+${titles.length - 1} more)`;
+        }
+      };
+
+      const isJobStopped = (): boolean => job.status === 'stopped';
+
+      const processClip = async (clip: ScrapedClipItem, index: number): Promise<void> => {
+        if (isJobStopped()) {
+          return;
         }
 
-        // Check if clip already exists
-        const existing = await Clip.findOne({ link: clip.link }).lean();
-        if (existing) {
-          job.skippedCount++;
+        const clipTitle = clip.title || clip.link;
+        activeClipsMap.set(index, clipTitle);
+        updateActiveClips();
+
+        const msgDate = new Date(clip.timestamp);
+        const timestamp = msgDate.getTime();
+        const tempDownloadedPath = path.join(
+          tmpDir,
+          `raw_scrape_${Date.now()}_${Math.random().toString(36).substring(2, 8)}_${index}.mp4`
+        );
+
+        try {
+          // Check submitter blacklist
+          const isSubmitterBlocked =
+            clip.authorId &&
+            blacklistedSubmitters.some((s) => s.userId && s.userId.trim() === clip.authorId);
+          if (isSubmitterBlocked) {
+            job.skippedCount++;
+            job.logs.push({
+              time: Date.now(),
+              message: `Skipped: Submitter ${clip.author} is blacklisted.`,
+              level: 'warn',
+            });
+            job.results.push({
+              link: clip.link,
+              title: clip.title,
+              season: clip.season,
+              year: clip.year,
+              status: 'skipped',
+              error: 'Blacklisted submitter',
+            });
+            return;
+          }
+
+          // Check if link is already being processed or exists in database
+          if (processingLinks.has(clip.link)) {
+            job.skippedCount++;
+            job.logs.push({
+              time: Date.now(),
+              message: `Skipped: "${clip.title}" duplicate link in batch.`,
+              level: 'info',
+            });
+            job.results.push({
+              link: clip.link,
+              title: clip.title,
+              season: clip.season,
+              year: clip.year,
+              status: 'skipped',
+              error: 'Duplicate link in batch',
+            });
+            return;
+          }
+          processingLinks.add(clip.link);
+
+          const existing = await Clip.findOne({ link: clip.link }).lean();
+          if (existing) {
+            job.skippedCount++;
+            job.logs.push({
+              time: Date.now(),
+              message: `Skipped: "${clip.title}" already exists in database.`,
+              level: 'info',
+            });
+            job.results.push({
+              link: clip.link,
+              title: clip.title,
+              season: clip.season,
+              year: clip.year,
+              status: 'skipped',
+              error: 'Already exists',
+            });
+            return;
+          }
+
           job.logs.push({
             time: Date.now(),
-            message: `Skipped: "${clip.title}" already exists in database.`,
+            message: `Downloading [${index + 1}/${clipsToDownload.length}]: ${clip.title}...`,
             level: 'info',
           });
-          job.results.push({
+
+          // 1. Download video
+          let detectedTitle = clip.title;
+          let detectedStreamer = clip.streamer || clip.author;
+
+          if (clip.origin === 'direct_video') {
+            const streamRes = await fetch(clip.link, {
+              signal: AbortSignal.timeout(60000),
+            });
+            if (!streamRes.ok || !streamRes.body) {
+              throw new Error(`Failed to download direct video: ${streamRes.statusText}`);
+            }
+            // Stream response body into Node.js readable stream
+            const webStream = streamRes.body as unknown as Parameters<typeof Readable.fromWeb>[0];
+            await pipeline(Readable.fromWeb(webStream), fs.createWriteStream(tempDownloadedPath));
+          } else {
+            const dlResult = await downloadFromUrl(clip.link, tempDownloadedPath);
+            if (dlResult.title && dlResult.title !== 'YouTube Clip') {
+              detectedTitle = dlResult.title;
+            }
+            if (dlResult.streamer && dlResult.streamer !== 'Unknown') {
+              detectedStreamer = dlResult.streamer;
+            }
+          }
+
+          if (isJobStopped()) {
+            return;
+          }
+
+          // Check streamer blacklist
+          const isStreamerBlocked = blacklistedStreamers.some(
+            (s) => s.trim().toLowerCase() === detectedStreamer.trim().toLowerCase()
+          );
+          if (isStreamerBlocked) {
+            job.skippedCount++;
+            job.logs.push({
+              time: Date.now(),
+              message: `Skipped: Streamer ${detectedStreamer} is blacklisted.`,
+              level: 'warn',
+            });
+            job.results.push({
+              link: clip.link,
+              title: detectedTitle,
+              season: clip.season,
+              year: clip.year,
+              status: 'skipped',
+              error: 'Blacklisted streamer',
+            });
+            return;
+          }
+
+          // 2. Prepare target destination using messageDate timestamp
+          const finalFilename = `${timestamp}_${Math.random().toString(36).substring(2, 8)}_clip.mp4`;
+          const { fullPath, relativePath, directory } = getClipPath(
+            uploadsBaseDir,
+            finalFilename,
+            msgDate
+          );
+
+          // 3. Compress video via ffmpeg
+          await new Promise<void>((resolve) => {
+            ffmpeg(tempDownloadedPath)
+              .outputOptions(['-vcodec', 'libx264', '-crf', '23'])
+              .output(fullPath)
+              .on('end', () => resolve())
+              .on('error', (err) => {
+                console.warn('[DiscordScraper] FFmpeg compression warning (fallback to copy):', err.message);
+                try {
+                  fs.copyFileSync(tempDownloadedPath, fullPath);
+                } catch (copyErr) {
+                  console.error('[DiscordScraper] Failed to copy fallback file:', copyErr);
+                }
+                resolve();
+              })
+              .run();
+          });
+
+          if (isJobStopped()) {
+            return;
+          }
+
+          // 4. Generate thumbnail via ffmpeg
+          const thumbnailFilename = `${path.parse(finalFilename).name}_thumbnail.png`;
+          const thumbnailFullPath = path.join(directory, thumbnailFilename);
+          try {
+            await new Promise<void>((resolve, reject) => {
+              ffmpeg(fullPath)
+                .screenshots({
+                  timestamps: ['00:00:00.001'],
+                  filename: thumbnailFilename,
+                  folder: directory,
+                  size: '640x360',
+                })
+                .on('end', () => resolve())
+                .on('error', (err) => reject(err));
+            });
+          } catch (thumbErr) {
+            console.warn('[DiscordScraper] Thumbnail generation warning:', thumbErr);
+          }
+
+          const fileUrl = `/uploads/${relativePath.replace(/\\/g, '/')}`;
+          const thumbRelative = path.relative(uploadsBaseDir, thumbnailFullPath);
+          const thumbnailUrl = fs.existsSync(thumbnailFullPath)
+            ? `/uploads/${thumbRelative.replace(/\\/g, '/')}`
+            : undefined;
+
+          // 5. Save Clip with message timestamp as createdAt
+          const newClip = new Clip({
+            url: fileUrl,
+            thumbnail: thumbnailUrl,
+            streamer: detectedStreamer,
+            submitter: clip.author,
+            title: detectedTitle,
             link: clip.link,
-            title: clip.title,
+            discordSubmitterId: clip.authorId,
             season: clip.season,
             year: clip.year,
-            status: 'skipped',
-            error: 'Already exists',
+            createdAt: msgDate,
+            updatedAt: msgDate,
           });
-          job.processed = i + 1;
-          continue;
-        }
 
-        job.logs.push({
-          time: Date.now(),
-          message: `Downloading [${i + 1}/${clipsToDownload.length}]: ${clip.title}...`,
-          level: 'info',
-        });
+          await newClip.save();
+          job.successCount++;
 
-        // 1. Download video
-        let detectedTitle = clip.title;
-        let detectedStreamer = clip.streamer || clip.author;
-
-        if (clip.origin === 'direct_video') {
-          const streamRes = await fetch(clip.link, {
-            signal: AbortSignal.timeout(60000),
-          });
-          if (!streamRes.ok || !streamRes.body) {
-            throw new Error(`Failed to download direct video: ${streamRes.statusText}`);
-          }
-          await pipeline(Readable.fromWeb(streamRes.body as any), fs.createWriteStream(tempDownloadedPath));
-        } else {
-          const dlResult = await downloadFromUrl(clip.link, tempDownloadedPath);
-          if (dlResult.title && dlResult.title !== 'YouTube Clip') {
-            detectedTitle = dlResult.title;
-          }
-          if (dlResult.streamer && dlResult.streamer !== 'Unknown') {
-            detectedStreamer = dlResult.streamer;
-          }
-        }
-
-        // Check streamer blacklist
-        const isStreamerBlocked = blacklistedStreamers.some(
-          (s) => s.trim().toLowerCase() === detectedStreamer.trim().toLowerCase()
-        );
-        if (isStreamerBlocked) {
-          job.skippedCount++;
           job.logs.push({
             time: Date.now(),
-            message: `Skipped: Streamer ${detectedStreamer} is blacklisted.`,
-            level: 'warn',
+            message: `Saved: "${detectedTitle}" (${clip.season} ${clip.year}) to ${fileUrl}`,
+            level: 'success',
           });
+
           job.results.push({
             link: clip.link,
             title: detectedTitle,
             season: clip.season,
             year: clip.year,
-            status: 'skipped',
-            error: 'Blacklisted streamer',
+            status: 'saved',
           });
-          job.processed = i + 1;
-          continue;
-        }
 
-        // 2. Prepare target destination using messageDate timestamp
-        const finalFilename = `${timestamp}_${Math.random().toString(36).substring(2, 8)}_clip.mp4`;
-        const { fullPath, relativePath, directory } = getClipPath(
-          uploadsBaseDir,
-          finalFilename,
-          msgDate
+          // Emit Socket.IO notification if online
+          if (global.socketIoInstance) {
+            global.socketIoInstance.emit('newClip', newClip);
+          }
+        } catch (clipErr: unknown) {
+          const errMsg = clipErr instanceof Error ? clipErr.message : String(clipErr);
+          console.error('[DiscordScraper] Error downloading clip:', clipErr);
+          job.errorCount++;
+          job.logs.push({
+            time: Date.now(),
+            message: `Failed to ingest "${clip.title}": ${errMsg}`,
+            level: 'error',
+          });
+          job.results.push({
+            link: clip.link,
+            title: clip.title,
+            season: clip.season,
+            year: clip.year,
+            status: 'failed',
+            error: errMsg || 'Download error',
+          });
+        } finally {
+          // Clean up temporary downloaded file
+          if (fs.existsSync(tempDownloadedPath)) {
+            try {
+              fs.unlinkSync(tempDownloadedPath);
+            } catch {}
+          }
+          activeClipsMap.delete(index);
+          updateActiveClips();
+          job.processed++;
+        }
+      };
+
+      // Launch concurrent worker pool
+      let nextIndex = 0;
+      const workerCount = Math.min(parsedConcurrency, clipsToDownload.length);
+      const workers = Array.from({ length: workerCount }, async () => {
+        while (nextIndex < clipsToDownload.length) {
+          if (isJobStopped()) {
+            return;
+          }
+          const index = nextIndex++;
+          const clip = clipsToDownload[index];
+          await processClip(clip, index);
+        }
+      });
+
+      await Promise.all(workers);
+
+      // Update public clip count
+      try {
+        const count = await Clip.countDocuments({ archived: { $ne: true } });
+        await PublicConfig.findOneAndUpdate(
+          {},
+          { clipAmount: count },
+          { upsert: true, new: true }
         );
+      } catch {}
 
-        // 3. Compress video via ffmpeg
-        await new Promise<void>((resolve) => {
-          ffmpeg(tempDownloadedPath)
-            .outputOptions(['-vcodec', 'libx264', '-crf', '23'])
-            .output(fullPath)
-            .on('end', () => resolve())
-            .on('error', (err) => {
-              console.warn('[DiscordScraper] FFmpeg compression warning (fallback to copy):', err.message);
-              try {
-                fs.copyFileSync(tempDownloadedPath, fullPath);
-              } catch (copyErr) {
-                console.error('[DiscordScraper] Failed to copy fallback file:', copyErr);
-              }
-              resolve();
-            })
-            .run();
-        });
-
-        // 4. Generate thumbnail via ffmpeg
-        const thumbnailFilename = `${path.parse(finalFilename).name}_thumbnail.png`;
-        const thumbnailFullPath = path.join(directory, thumbnailFilename);
-        try {
-          await new Promise<void>((resolve, reject) => {
-            ffmpeg(fullPath)
-              .screenshots({
-                timestamps: ['00:00:00.001'],
-                filename: thumbnailFilename,
-                folder: directory,
-                size: '640x360',
-              })
-              .on('end', () => resolve())
-              .on('error', (err) => reject(err));
-          });
-        } catch (thumbErr) {
-          console.warn('[DiscordScraper] Thumbnail generation warning:', thumbErr);
-        }
-
-        const fileUrl = `/uploads/${relativePath.replace(/\\/g, '/')}`;
-        const thumbRelative = path.relative(uploadsBaseDir, thumbnailFullPath);
-        const thumbnailUrl = fs.existsSync(thumbnailFullPath)
-          ? `/uploads/${thumbRelative.replace(/\\/g, '/')}`
-          : undefined;
-
-        // 5. Save Clip with message timestamp as createdAt
-        const newClip = new Clip({
-          url: fileUrl,
-          thumbnail: thumbnailUrl,
-          streamer: detectedStreamer,
-          submitter: clip.author,
-          title: detectedTitle,
-          link: clip.link,
-          discordSubmitterId: clip.authorId,
-          season: clip.season,
-          year: clip.year,
-          createdAt: msgDate,
-          updatedAt: msgDate,
-        });
-
-        await newClip.save();
-        job.successCount++;
-
-        job.logs.push({
-          time: Date.now(),
-          message: `Saved: "${detectedTitle}" (${clip.season} ${clip.year}) to ${fileUrl}`,
-          level: 'success',
-        });
-
-        job.results.push({
-          link: clip.link,
-          title: detectedTitle,
-          season: clip.season,
-          year: clip.year,
-          status: 'saved',
-        });
-
-        // Emit Socket.IO notification if online
-        if (global.socketIoInstance) {
-          global.socketIoInstance.emit('newClip', newClip);
-        }
-      } catch (clipErr: any) {
-        console.error('[DiscordScraper] Error downloading clip:', clipErr);
-        job.errorCount++;
-        job.logs.push({
-          time: Date.now(),
-          message: `Failed to ingest "${clip.title}": ${clipErr?.message || clipErr}`,
-          level: 'error',
-        });
-        job.results.push({
-          link: clip.link,
-          title: clip.title,
-          season: clip.season,
-          year: clip.year,
-          status: 'failed',
-          error: clipErr?.message || 'Download error',
-        });
-      } finally {
-        // Clean up temporary downloaded file
-        if (fs.existsSync(tempDownloadedPath)) {
-          try {
-            fs.unlinkSync(tempDownloadedPath);
-          } catch {}
-        }
-        job.processed = i + 1;
+      if (!isJobStopped()) {
+        job.status = 'completed';
       }
+      job.endTime = Date.now();
+      job.currentClip = undefined;
+      job.activeClips = [];
+      job.logs.push({
+        time: Date.now(),
+        message: `Finished! Ingested ${job.successCount} clips, skipped ${job.skippedCount}, errors ${job.errorCount}.`,
+        level: 'info',
+      });
+    } catch (err: unknown) {
+      console.error('[DiscordScraper] Unexpected download job error:', err);
+      job.status = 'error';
+      job.error = err instanceof Error ? err.message : 'Scraper download job failed';
+      job.endTime = Date.now();
+      job.currentClip = undefined;
+      job.activeClips = [];
     }
-
-    // Update public clip count
-    try {
-      const count = await Clip.countDocuments({ archived: { $ne: true } });
-      await PublicConfig.findOneAndUpdate(
-        {},
-        { clipAmount: count },
-        { upsert: true, new: true }
-      );
-    } catch {}
-
-    if (job.status !== 'stopped') {
-      job.status = 'completed';
-    }
-    job.endTime = Date.now();
-    job.logs.push({
-      time: Date.now(),
-      message: `Finished! Ingested ${job.successCount} clips, skipped ${job.skippedCount}, errors ${job.errorCount}.`,
-      level: 'info',
-    });
   })();
 
   return job;
 }
 
+/**
+ * Retrieves a scraper download job by its unique identifier.
+ *
+ * @param jobId - Unique download job identifier.
+ * @returns The ScraperDownloadJob object if found, or null.
+ *
+ * @example
+ * ```ts
+ * const job = getDownloadJob('dl_1710000000_abcde');
+ * if (job) console.log(job.status);
+ * ```
+ */
 export function getDownloadJob(jobId: string): ScraperDownloadJob | null {
   return downloadJobs[jobId] || null;
 }
 
+/**
+ * Retrieves all registered scraper download jobs sorted newest first.
+ *
+ * @returns Array of ScraperDownloadJob objects.
+ *
+ * @example
+ * ```ts
+ * const jobs = getAllDownloadJobs();
+ * console.log(`Found ${jobs.length} jobs`);
+ * ```
+ */
 export function getAllDownloadJobs(): ScraperDownloadJob[] {
   return Object.values(downloadJobs).sort((a, b) => b.startTime - a.startTime);
 }
 
+/**
+ * Requests cancellation of an active scraper download job.
+ *
+ * @param jobId - Unique download job identifier to stop.
+ * @returns True if the job was running and stopped, false otherwise.
+ *
+ * @example
+ * ```ts
+ * const stopped = stopDownloadJob('dl_1710000000_abcde');
+ * ```
+ */
 export function stopDownloadJob(jobId: string): boolean {
   const job = downloadJobs[jobId];
   if (job && job.status === 'downloading') {
@@ -739,6 +868,17 @@ export function stopDownloadJob(jobId: string): boolean {
   return false;
 }
 
+/**
+ * Dismisses a completed, stopped, or failed scraper download job from the store.
+ *
+ * @param jobId - Unique download job identifier to dismiss.
+ * @returns True if dismissed, false if not found or still actively downloading.
+ *
+ * @example
+ * ```ts
+ * const dismissed = dismissDownloadJob('dl_1710000000_abcde');
+ * ```
+ */
 export function dismissDownloadJob(jobId: string): boolean {
   const job = downloadJobs[jobId];
   if (!job) return false;

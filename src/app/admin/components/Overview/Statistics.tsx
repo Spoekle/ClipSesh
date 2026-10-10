@@ -5,14 +5,7 @@ import { SummaryStats, RatingDistribution } from './StatisticsWidgets';
 import ActivityTracker from './ActivityTracker';
 import { motion } from 'framer-motion';
 import { FaChartBar, FaCalendarCheck } from 'react-icons/fa';
-import { UserRating, SeasonInfo } from '@/types/adminTypes';
-
-interface User {
-  _id: string;
-  username: string;
-  roles: string[];
-  [key: string]: any;
-}
+import { User, UserRating, SeasonInfo } from '@/types/adminTypes';
 
 interface StatisticsProps {
   clipTeam: User[];
@@ -32,30 +25,19 @@ const Statistics: React.FC<StatisticsProps> = ({
   userRatings,
   seasonInfo,
   clipStats,
-  loading = false
+  loading = false,
 }) => {
-  const [sortBy, setSortBy] = useState<'username' | 'rating' | 'percentage' | 'tier4' | 'deny'>('rating');
+  const [sortBy, setSortBy] = useState<string>('rating');
 
   const SkeletonBox = ({ className = '' }: { className?: string }) => (
-    <div className={`animate-pulse bg-[#222222] rounded-xl ${className}`} />
+    <div className={`animate-pulse bg-secondary rounded-xl ${className}`} />
   );
 
   const totalRatings = userRatings.reduce((acc, user) => acc + user.total, 0);
   const averageRatings = userRatings.length > 0 ? totalRatings / userRatings.length : 0;
   const mostActiveUser = [...userRatings].sort((a, b) => b.total - a.total)[0]?.username || 'None';
 
-  const sortedUsers = [...userRatings].sort((a, b) => {
-    if (sortBy === 'username') {
-      return a.username.localeCompare(b.username);
-    } else if (sortBy === 'rating') {
-      return b.total - a.total;
-    } else if (sortBy === 'percentage') {
-      return b.percentageRated - a.percentageRated;
-    }
-    return 0;
-  });
-
-  const clipTeamUsernames = clipTeam.map(member => member.username || '').filter(Boolean);
+  const clipTeamUsernames = clipTeam.map((member) => member.username || '').filter(Boolean);
 
   return (
     <motion.div
@@ -65,26 +47,26 @@ const Statistics: React.FC<StatisticsProps> = ({
       className="w-full space-y-6"
     >
       {/* Top Banner */}
-      <div className="bg-[#181818] p-5 sm:p-6 rounded-xl border border-[#262626] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-cc-card p-5 sm:p-6 rounded-xl border border-border shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-[#222222] border border-[#2e2e2e] flex items-center justify-center text-[#f23030]">
+          <div className="w-10 h-10 rounded-xl bg-secondary border border-border flex items-center justify-center text-cc-red">
             <FaChartBar size={18} />
           </div>
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-[#f1f1f1] tracking-tight">
+            <h2 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">
               Review Team Analytics
             </h2>
-            <p className="text-xs text-[#aaaaaa] mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5">
               Live submission intake, review quotas, and team performance metrics
             </p>
           </div>
         </div>
 
         {seasonInfo.season && (
-          <div className="flex items-center gap-2 bg-[#141414] border border-[#262626] px-3.5 py-2 rounded-full self-start sm:self-auto">
-            <FaCalendarCheck className="text-[#f23030]" size={13} />
-            <span className="text-xs text-[#aaaaaa]">Active Season:</span>
-            <span className="text-xs font-bold text-white capitalize">
+          <div className="flex items-center gap-2 bg-cc-ground border border-border px-3.5 py-2 rounded-full self-start sm:self-auto">
+            <FaCalendarCheck className="text-cc-red" size={13} />
+            <span className="text-xs text-muted-foreground">Active Season:</span>
+            <span className="text-xs font-bold text-foreground capitalize">
               {seasonInfo.season} {seasonInfo.year || new Date().getFullYear()}
             </span>
           </div>
@@ -120,7 +102,7 @@ const Statistics: React.FC<StatisticsProps> = ({
           <RatingDistribution
             userRatings={userRatings}
             sortBy={sortBy}
-            setSortBy={setSortBy as React.Dispatch<React.SetStateAction<string>>}
+            setSortBy={setSortBy}
           />
 
           {/* Timeline Velocity Area Chart */}

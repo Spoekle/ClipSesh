@@ -23,15 +23,15 @@ interface SeasonSectionCardProps {
 const getSeasonBackground = (season: string): string => {
   switch (season.toLowerCase()) {
     case 'winter':
-      return '/media/winter.jpg'
+      return '/media/winter.jpg';
     case 'spring':
-      return '/media/spring.jpg'
+      return '/media/spring.jpg';
     case 'summer':
-      return '/media/summer.jpg'
+      return '/media/summer.jpg';
     case 'fall':
-      return '/media/fall.jpg'
+      return '/media/fall.jpg';
     default:
-      return '/media/summer.jpg'
+      return '/media/summer.jpg';
   }
 };
 
@@ -73,8 +73,8 @@ const getSeasonTheme = (season: string) => {
       return {
         icon: <FaCalendarAlt size={12} />,
         label: season,
-        badgeClass: 'bg-neutral-500/15 text-neutral-300 border-neutral-500/30',
-        accentBorder: 'group-hover:border-neutral-500/40',
+        badgeClass: 'bg-muted/40 text-muted-foreground border-border',
+        accentBorder: 'group-hover:border-border',
         accentGlow: 'group-hover:shadow-[0_0_25px_rgba(255,255,255,0.1)]',
       };
   }
@@ -98,16 +98,16 @@ const SeasonSectionCard: React.FC<SeasonSectionCardProps> = ({ section, onSelect
       whileHover={{ y: -2 }}
       transition={{ duration: 0.1 }}
       onClick={() => onSelect(section)}
-      className={`group relative flex flex-col justify-between rounded-2xl overflow-hidden bg-[#181818] border border-[#262626] ${theme.accentBorder} ${theme.accentGlow} transition-colors duration-150 cursor-pointer shadow-md select-none min-h-[300px]`}
+      className={`group relative flex flex-col justify-between rounded-2xl overflow-hidden bg-cc-card border border-border ${theme.accentBorder} ${theme.accentGlow} transition-colors duration-150 cursor-pointer shadow-md select-none min-h-[300px]`}
     >
       {/* Background artwork banner with dark gradient */}
-      <div className="relative h-50 w-full overflow-hidden bg-[#111111]">
+      <div className="relative h-50 w-full overflow-hidden bg-cc-ground">
         <div
           className="absolute inset-0 bg-cover bg-center transition-transform duration-200 group-hover:scale-110"
           style={{ backgroundImage: `url(${bgImage})` }}
         />
         {/* Gradients to fade smoothly into the card body */}
-        <div className="absolute inset-0 bg-linear-to-t from-[#181818] via-[#181818]/10 to-black/30 backdrop-blur-xs" />
+        <div className="absolute inset-0 bg-linear-to-t from-cc-card via-cc-card/10 to-black/30 backdrop-blur-xs" />
 
         {/* Badges on banner */}
         <div className="absolute top-3.5 left-3.5 right-3.5 flex items-center justify-between gap-2">
@@ -140,17 +140,17 @@ const SeasonSectionCard: React.FC<SeasonSectionCardProps> = ({ section, onSelect
       {/* Card Body */}
       <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-3.5">
         {/* Submission Window Block */}
-        <div className="px-3.5 py-2.5 rounded-xl bg-[#141414] border border-[#262626] flex items-center gap-2.5">
-          <FaCalendarAlt size={12} className="text-neutral-400 shrink-0" />
+        <div className="px-3.5 py-2.5 rounded-xl bg-cc-ground border border-border flex items-center gap-2.5">
+          <FaCalendarAlt size={12} className="text-muted-foreground shrink-0" />
           <div className="min-w-0 flex-1">
-            <div className="text-[10px] text-[#717171] uppercase tracking-wider font-semibold flex items-center justify-between">
+            <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold flex items-center justify-between">
               <span>Season Window</span>
               {section.isCurrent && (
                 <span className="text-emerald-400 font-bold text-[9px] uppercase tracking-wider">Open</span>
               )}
             </div>
             <div
-              className="text-xs font-semibold text-[#f1f1f1] truncate mt-0.5"
+              className="text-xs font-semibold text-foreground truncate mt-0.5"
               title={dateRange.shortFormatted}
             >
               {dateRange.shortFormatted}
@@ -162,13 +162,13 @@ const SeasonSectionCard: React.FC<SeasonSectionCardProps> = ({ section, onSelect
         <div className="flex items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-2">
             <FaFilm size={12} className="text-cc-red shrink-0" />
-            <span className="font-bold text-white font-mono">{section.clipCount.toLocaleString()}</span>
-            <span className="text-neutral-400">clips</span>
+            <span className="font-bold text-foreground font-mono">{section.clipCount.toLocaleString()}</span>
+            <span className="text-muted-foreground">clips</span>
           </div>
         </div>
 
         {/* Footer with Zip Status & Action Button */}
-        <div className="pt-3 border-t border-[#262626] flex items-center justify-between gap-2 text-xs">
+        <div className="pt-3 border-t border-border flex items-center justify-between gap-2 text-xs">
           {section.zip ? (
             <div
               className="inline-flex items-center gap-1.5 text-emerald-400 font-medium"
@@ -178,12 +178,12 @@ const SeasonSectionCard: React.FC<SeasonSectionCardProps> = ({ section, onSelect
               <span>{formatBytes(section.zip.size)}</span>
             </div>
           ) : (
-            <span className="text-neutral-500 text-[11px]">
-              {section.isCurrent ? 'Ongoing Season' : 'Individual Clips'}
+            <span className="text-muted-foreground text-[11px]">
+              {section.isCurrent && 'Ongoing Season'}
             </span>
           )}
 
-          <div className="inline-flex items-center gap-1.5 font-semibold text-white group-hover:text-cc-red transition-colors ml-auto">
+          <div className="inline-flex items-center gap-1.5 font-semibold text-foreground group-hover:text-cc-red transition-colors ml-auto">
             <span>Browse</span>
             <FaArrowRight size={10} className="group-hover:translate-x-1 transition-transform" />
           </div>

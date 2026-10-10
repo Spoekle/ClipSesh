@@ -2,15 +2,16 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
-import { FaFilm, FaCalendarAlt, FaExclamationTriangle } from 'react-icons/fa';
+import { FaCalendarAlt, FaExclamationTriangle } from 'react-icons/fa';
 import { useArchiveSeasons, useClip } from '@/hooks/useClips';
 import { useCurrentUser } from '@/hooks/useUser';
 import { ArchiveSeasonSection } from '@/types/clipTypes';
 import ArchiveHero from './components/ArchiveHero';
 import SeasonSectionCard from './components/SeasonSectionCard';
 import SeasonClipsView from './components/SeasonClipsView';
+import ArchiveLoadingGrid from './components/ArchiveLoadingGrid';
 import ClipContent from '@/app/clips/components/ClipView/Index';
+import { Button } from '@/components/common/Button';
 
 const ArchiveView: React.FC = () => {
   const searchParams = useSearchParams();
@@ -26,7 +27,6 @@ const ArchiveView: React.FC = () => {
 
   const sections = useMemo(() => archiveData?.sections || [], [archiveData]);
 
-  // Read initial season and year from URL search params
   const paramSeason = searchParams.get('season');
   const paramYear = searchParams.get('year');
 
@@ -45,7 +45,6 @@ const ArchiveView: React.FC = () => {
     }
   }, [sections, paramSeason, paramYear]);
 
-  // Aggregate metrics
   const totalClips = useMemo(() => {
     return sections.reduce((acc, s) => acc + (s.clipCount || 0), 0);
   }, [sections]);
@@ -60,13 +59,11 @@ const ArchiveView: React.FC = () => {
     return Array.from(yearsSet).sort((a, b) => b - a);
   }, [sections]);
 
-  // Filter sections by selected year in overview mode
   const filteredSections = useMemo(() => {
     if (selectedYear === null) return sections;
     return sections.filter((s) => s.year === selectedYear);
   }, [sections, selectedYear]);
 
-  // Handle selecting a season section
   const handleSelectSeason = useCallback(
     (section: ArchiveSeasonSection) => {
       setSelectedSeason(section);
@@ -77,7 +74,6 @@ const ArchiveView: React.FC = () => {
     [router]
   );
 
-  // Handle returning back to all seasons
   const handleBackToOverview = useCallback(() => {
     setSelectedSeason(null);
     setExpandedClip(null);
@@ -86,14 +82,13 @@ const ArchiveView: React.FC = () => {
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-[#0f0f0f] text-[#f1f1f1] flex flex-col transition-colors">
-      {/* If a clip is expanded for playback, render ClipContent */}
+    <div className="min-h-screen bg-cc-ground text-cc-text flex flex-col transition-colors">
       {expandedClip ? (
         <div className="w-full grow flex flex-col">
           {isClipLoading ? (
             <div className="flex flex-col items-center justify-center min-h-[60vh]">
-              <div className="animate-spin rounded-full h-12 w-12 border-2 border-[#2a2a2a] border-t-cc-red mb-4" />
-              <p className="text-xs text-[#717171]">Loading clip playback...</p>
+              <div className="animate-spin rounded-full h-12 w-12 border-2 border-border border-t-primary mb-4" />
+              <p className="text-xs text-muted-foreground">Loading clip playback...</p>
             </div>
           ) : currentClip ? (
             <ClipContent
@@ -101,23 +96,22 @@ const ArchiveView: React.FC = () => {
               setExpandedClip={setExpandedClip}
               user={user || null}
               fromContext={{
-                label: 'Archive',
+                label: selectedSeason
+                  ? `${selectedSeason.season} ${selectedSeason.year}`
+                  : 'ClipVault',
                 path: selectedSeason
-                  ? `/archive?season=${encodeURIComponent(selectedSeason.season)}&year=${selectedSeason.year}`
+                  ? `/archive?season=${selectedSeason.season}&year=${selectedSeason.year}`
                   : '/archive',
                 season: selectedSeason?.season,
                 year: selectedSeason?.year,
               }}
             />
           ) : (
-            <div className="text-center py-20 bg-[#181818] border border-[#262626] rounded-2xl p-8 max-w-xl mx-auto my-12">
-              <h3 className="text-lg font-bold text-white mb-2">Clip Not Found</h3>
-              <p className="text-xs text-[#aaaaaa] mb-4">
-                The requested clip could not be loaded or may have been deleted.
-              </p>
+            <div className="flex flex-col items-center justify-center min-h-[60vh]">
+              <p className="text-sm text-primary mb-3">Clip could not be loaded.</p>
               <button
                 onClick={() => setExpandedClip(null)}
-                className="px-4 py-2 rounded-xl bg-cc-red text-white text-xs font-bold hover:bg-cc-red-hover transition-colors"
+                className="px-4 py-2 bg-cc-card border border-border text-xs rounded-xl hover:bg-border/60 transition-colors"
               >
                 Back to Archive
               </button>
@@ -125,7 +119,6 @@ const ArchiveView: React.FC = () => {
           )}
         </div>
       ) : selectedSeason ? (
-        /* Season Detail Mode: All clips in the selected season */
         <SeasonClipsView
           section={selectedSeason}
           onBack={handleBackToOverview}
@@ -136,7 +129,6 @@ const ArchiveView: React.FC = () => {
           user={user || null}
         />
       ) : (
-        /* Catalog Overview Mode: All available seasons/years */
         <div>
           <ArchiveHero
             totalClips={totalClips}
@@ -149,29 +141,12 @@ const ArchiveView: React.FC = () => {
 
           <div className="max-w-[1200px] mx-auto px-4 sm:px-8 py-6">
             {isLoading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {Array.from({ length: 6 }).map((_, idx) => (
-                  <div
-                    key={idx}
-                    className="rounded-2xl overflow-hidden bg-[#181818] border border-[#262626] animate-pulse h-80"
-                  >
-                    <div className="h-36 bg-[#202020]" />
-                    <div className="p-4 space-y-3">
-                      <div className="h-4 bg-[#262626] rounded-sm w-2/3" />
-                      <div className="h-3 bg-[#202020] rounded-sm w-1/2" />
-                      <div className="grid grid-cols-2 gap-2 pt-2">
-                        <div className="h-10 bg-[#1c1c1c] rounded-lg" />
-                        <div className="h-10 bg-[#1c1c1c] rounded-lg" />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <ArchiveLoadingGrid />
             ) : error ? (
-              <div className="text-center py-16 bg-[#181818] border border-red-500/30 rounded-2xl p-8">
-                <FaExclamationTriangle size={32} className="text-red-400 mx-auto mb-3" />
+              <div className="text-center py-16 bg-cc-card border border-primary/30 rounded-2xl p-8">
+                <FaExclamationTriangle size={32} className="text-primary mx-auto mb-3" />
                 <h3 className="text-lg font-bold text-white mb-1">Failed to Load Archives</h3>
-                <p className="text-xs text-neutral-400 max-w-md mx-auto">
+                <p className="text-xs text-muted-foreground max-w-md mx-auto">
                   There was an error retrieving available seasonal records. Please refresh the page.
                 </p>
               </div>
@@ -182,11 +157,11 @@ const ArchiveView: React.FC = () => {
                     <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">
                       {selectedYear ? `${selectedYear} Seasons` : 'All Available Seasons'}
                     </h2>
-                    <p className="text-xs text-[#888888] mt-0.5">
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       Select any season below to explore its clips, view count, and highlight package.
                     </p>
                   </div>
-                  <span className="text-xs font-mono text-[#717171] font-semibold">
+                  <span className="text-xs font-mono text-muted-foreground font-semibold">
                     {filteredSections.length} {filteredSections.length === 1 ? 'Season' : 'Seasons'}
                   </span>
                 </div>
@@ -202,18 +177,19 @@ const ArchiveView: React.FC = () => {
                 </div>
               </div>
             ) : (
-              <div className="text-center py-20 bg-[#181818] border border-[#262626] rounded-2xl p-8">
-                <FaCalendarAlt size={28} className="text-[#717171] mx-auto mb-3" />
+              <div className="text-center py-20 bg-cc-card border border-border rounded-2xl p-8">
+                <FaCalendarAlt size={28} className="text-muted-foreground mx-auto mb-3" />
                 <h3 className="text-lg font-bold text-white mb-1">No Seasons for this Year</h3>
-                <p className="text-xs text-[#888888] mb-4">
+                <p className="text-xs text-muted-foreground mb-4">
                   No competitive seasons were found for {selectedYear}.
                 </p>
-                <button
+                <Button
                   onClick={() => setSelectedYear(null)}
-                  className="px-4 py-2 rounded-xl bg-cc-red text-white text-xs font-bold hover:bg-cc-red-hover transition-colors"
+                  variant="primary"
+                  size="sm"
                 >
                   Show All Years
-                </button>
+                </Button>
               </div>
             )}
           </div>
@@ -223,12 +199,10 @@ const ArchiveView: React.FC = () => {
   );
 };
 
-function ArchiveViewWithSuspense() {
+export default function ArchiveViewWithSuspense() {
   return (
     <React.Suspense fallback={null}>
       <ArchiveView />
     </React.Suspense>
   );
 }
-
-export default ArchiveViewWithSuspense;

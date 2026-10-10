@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import React from 'react';
 import { FaShieldAlt, FaUserShield, FaDatabase, FaServer, FaLock, FaTrash, FaFileContract } from 'react-icons/fa';
 import PageLayout from '@/components/layouts/PageLayout';
 
@@ -94,12 +95,12 @@ export default function PrivacyStatementPage() {
       subtitle="How we protect your data and maintain your privacy on ClipSesh"
       metaDescription="ClipSesh privacy statement - Learn how we protect your data and maintain your privacy while using our service."
     >
-      <div className="bg-[#161d21] rounded-xl border border-[#263238] p-6 sm:p-10 text-white shadow-xl transition-all duration-300">
-        <div className="flex items-center justify-between pb-6 mb-8 border-b border-[#263238]">
-          <span className="text-xs uppercase tracking-wider font-semibold text-[#8b98a5]">
+      <div className="bg-cc-card rounded-xl border border-border p-6 sm:p-10 text-foreground shadow-xl transition-all duration-300">
+        <div className="flex items-center justify-between pb-6 mb-8 border-b border-border">
+          <span className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">
             ClipSesh Privacy Policy
           </span>
-          <span className="text-xs font-mono text-[#8b98a5] bg-[#0e1315] px-3 py-1 rounded-full border border-[#263238]">
+          <span className="text-xs font-mono text-muted-foreground bg-cc-ground px-3 py-1 rounded-full border border-border">
             Effective: July 9, 2024
           </span>
         </div>
@@ -109,19 +110,19 @@ export default function PrivacyStatementPage() {
             <section
               key={section.id}
               id={section.id}
-              className="pb-6 border-b border-[#263238]/60 last:border-0"
+              className="pb-6 border-b border-border/60 last:border-0"
             >
-              <h2 className="text-lg sm:text-xl font-bold mb-3 flex items-center text-white">
-                <span className="mr-3 text-[#f23030]">{section.icon}</span>
+              <h2 className="text-lg sm:text-xl font-bold mb-3 flex items-center text-foreground">
+                <span className="mr-3 text-cc-red">{section.icon}</span>
                 {section.title}
               </h2>
 
-              <p className="mb-3 text-[#a0aab0] leading-relaxed text-sm sm:text-base">
+              <p className="mb-3 text-muted-foreground leading-relaxed text-sm sm:text-base">
                 {section.content}
               </p>
 
               {section.list && (
-                <ul className="list-disc ml-5 mb-3 space-y-1.5 text-sm sm:text-base text-[#a0aab0]">
+                <ul className="list-disc ml-5 mb-3 space-y-1.5 text-sm sm:text-base text-muted-foreground">
                   {section.list.map((item, i) => (
                     <li key={i}>{item}</li>
                   ))}
@@ -129,12 +130,12 @@ export default function PrivacyStatementPage() {
               )}
 
               {section.extraContent && (
-                <p className="mt-3 text-[#a0aab0] leading-relaxed text-sm sm:text-base">
+                <p className="mt-3 text-muted-foreground leading-relaxed text-sm sm:text-base">
                   {section.extraContent}
                   {section.id === 'rights' && (
                     <a
                       href="https://discord.gg/dwe8mbC"
-                      className="ml-1 text-[#f23030] hover:text-[#d92626] hover:underline font-medium inline-flex items-center"
+                      className="ml-1 text-cc-red hover:text-cc-red-hover hover:underline font-medium inline-flex items-center"
                       target="_blank"
                       rel="noopener noreferrer"
                     >
@@ -161,12 +162,12 @@ export default function PrivacyStatementPage() {
           ))}
         </div>
 
-        <div className="mt-8 p-5 bg-[#0e1315] rounded-xl border border-[#263238] text-center">
-          <p className="text-sm text-[#8b98a5]">
+        <div className="mt-8 p-5 bg-cc-ground rounded-xl border border-border text-center">
+          <p className="text-sm text-muted-foreground">
             If you have any questions about this Privacy Policy, please contact us via the
             <a
               href="https://discord.gg/dwe8mbC"
-              className="mx-1 text-[#f23030] hover:text-[#d92626] hover:underline font-medium"
+              className="mx-1 text-cc-red hover:text-cc-red-hover hover:underline font-medium"
               target="_blank"
               rel="noopener noreferrer"
             >

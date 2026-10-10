@@ -525,6 +525,8 @@ export interface ScraperDownloadStatusResponse {
   total: number;
   processed: number;
   currentClip?: string;
+  activeClips?: string[];
+  concurrency?: number;
   successCount: number;
   errorCount: number;
   skippedCount: number;
@@ -573,12 +575,19 @@ export const stopChannelScan = async (jobId: string): Promise<{ success: boolean
   }
 };
 
-export const startScraperDownload = async (clips: ScrapedClipItem[]): Promise<{ success: boolean; jobId: string; total: number }> => {
+export const startScraperDownload = async (
+  clips: ScrapedClipItem[],
+  concurrency?: number
+): Promise<{ success: boolean; jobId: string; total: number; concurrency?: number }> => {
   try {
-    return await apiClient.post<{ success: boolean; jobId: string; total: number }>(`/api/admin/scraper/download`, { clips });
-  } catch (error: any) {
+    return await apiClient.post<{ success: boolean; jobId: string; total: number; concurrency?: number }>(
+      `/api/admin/scraper/download`,
+      { clips, concurrency }
+    );
+  } catch (error: unknown) {
     console.error('Error starting scraper download:', error);
-    throw new Error(error.message || 'Failed to start download');
+    const msg = error instanceof Error ? error.message : 'Failed to start download';
+    throw new Error(msg);
   }
 };
 

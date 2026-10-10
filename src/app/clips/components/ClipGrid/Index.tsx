@@ -1,16 +1,16 @@
-﻿'use client';
+'use client';
 
+import React, { useEffect, useRef, useCallback } from 'react';
 import ClipItem from './components/ClipItem';
 import Pagination from './components/Pagination';
-import { motion } from 'framer-motion';
+import { motion, Variants } from 'framer-motion';
 import { Clip, User, Rating } from '@/types/adminTypes';
 import { FaFilm } from 'react-icons/fa';
-import { useEffect, useRef, useCallback } from 'react';
 
 interface ClipGridProps {
   user: User | null;
   ratings: Record<string, Rating>;
-  config: any;
+  config?: { denyThreshold?: number; clipAmount?: number; itemsPerPage?: number } | null;
   filterRatedClips: boolean;
   filterDeniedClips?: boolean;
   setExpandedClip: (clipId: string) => void;
@@ -26,6 +26,26 @@ interface ClipGridProps {
   fetchNextPage?: () => void;
   useInfiniteScroll?: boolean;
 }
+
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      duration: 0.1,
+    },
+  },
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      duration: 0.1,
+    },
+  },
+};
 
 const ClipGrid: React.FC<ClipGridProps> = ({
   isLoading,
@@ -55,7 +75,6 @@ const ClipGrid: React.FC<ClipGridProps> = ({
         const isVisible = rect.top < window.innerHeight + 500;
 
         if (isVisible && hasNextPage && fetchNextPage) {
-          console.log('Loading more - element is visible');
           fetchNextPage();
         }
       }
@@ -73,32 +92,12 @@ const ClipGrid: React.FC<ClipGridProps> = ({
     lastElementRef.current = node;
   }, []);
 
-  const containerVariants: any = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        duration: 0.1,
-      }
-    }
-  };
-
-  const itemVariants: any = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        duration: 0.1,
-      }
-    }
-  };
-
   if (isLoading && currentClips.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[300px] w-full">
         <div className="flex flex-col items-center justify-center gap-3">
-          <div className="animate-spin rounded-full h-10 w-10 border-2 border-[#2a2a2a] border-t-[#f23030]"></div>
-          <p className="text-sm font-medium text-neutral-400">Loading clips...</p>
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-border border-t-primary"></div>
+          <p className="text-sm font-medium text-muted-foreground">Loading clips...</p>
         </div>
       </div>
     );
@@ -106,12 +105,12 @@ const ClipGrid: React.FC<ClipGridProps> = ({
 
   if (filteredClips.length === 0 && !isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[300px] bg-[#181818] rounded-2xl border border-[#2a2a2a] p-10 text-center shadow-sm">
-        <div className="w-14 h-14 rounded-2xl bg-[#222222] border border-[#2f2f2f] flex items-center justify-center text-neutral-400 text-2xl mb-4 shadow-inner">
+      <div className="flex flex-col items-center justify-center min-h-[300px] bg-cc-card rounded-2xl border border-border p-10 text-center shadow-sm">
+        <div className="w-14 h-14 rounded-2xl bg-secondary border border-border flex items-center justify-center text-muted-foreground text-2xl mb-4 shadow-inner">
           <FaFilm />
         </div>
-        <h2 className="text-lg font-bold text-white mb-2">No Clips Found</h2>
-        <p className="text-neutral-400 text-center max-w-md text-xs sm:text-sm leading-relaxed">
+        <h2 className="text-lg font-bold text-foreground mb-2">No Clips Found</h2>
+        <p className="text-muted-foreground text-center max-w-md text-xs sm:text-sm leading-relaxed">
           {filterRatedClips
             ? "You've rated all available clips. Check back later for new content!"
             : "No clips match your current filters. Try adjusting your search settings or resetting filters."}
@@ -154,15 +153,15 @@ const ClipGrid: React.FC<ClipGridProps> = ({
       {/* Loading indicator for infinite scroll */}
       {useInfiniteScroll && isFetchingNextPage && (
         <div className="flex justify-center items-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-4 border-neutral-300 dark:border-neutral-600 border-t-blue-600"></div>
-          <span className="ml-3 text-neutral-600 dark:text-neutral-400">Loading more clips...</span>
+          <div className="animate-spin rounded-full h-8 w-8 border-4 border-border border-t-primary"></div>
+          <span className="ml-3 text-muted-foreground">Loading more clips...</span>
         </div>
       )}
 
       {/* End of content message for infinite scroll */}
       {useInfiniteScroll && !hasNextPage && currentClips.length > 0 && (
         <div className="text-center py-8">
-          <p className="text-neutral-600 dark:text-neutral-400">You've reached the end of the clips!</p>
+          <p className="text-muted-foreground">You've reached the end of the clips!</p>
         </div>
       )}
 
@@ -171,7 +170,7 @@ const ClipGrid: React.FC<ClipGridProps> = ({
         <div className="flex justify-center mt-8">
           <button
             onClick={fetchNextPage}
-            className="px-4 py-2 text-sm bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 text-neutral-700 dark:text-neutral-300 rounded-lg transition-colors"
+            className="px-5 py-2.5 text-sm font-semibold bg-cc-card hover:bg-secondary text-white border border-border rounded-xl transition-all cursor-pointer shadow-xs"
           >
             Load More
           </button>

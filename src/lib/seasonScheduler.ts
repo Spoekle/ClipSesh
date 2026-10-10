@@ -11,7 +11,6 @@ import {
   SeasonName,
 } from '@/lib/seasonHelpers';
 import { startProcessingJob, getAllProcessingJobs } from '@/lib/zipProcessing';
-import { wsManager } from '@/lib/WebSocketManager';
 
 let schedulerTimer: NodeJS.Timeout | null = null;
 let isEvaluating = false;
@@ -373,7 +372,7 @@ export async function checkAndTriggerSeasonAutomation(
     }
 
     console.log(
-      `[SeasonScheduler] 🚀 Auto-archiving milestone reached for ${season} ${year} (Unarchived clips: ${unarchivedCount})`
+      `[SeasonScheduler] Auto-archiving milestone reached for ${season} ${year} (Unarchived clips: ${unarchivedCount})`
     );
 
     // Record transition event in AdminConfig history
@@ -439,7 +438,7 @@ export function startSeasonScheduler(): void {
     return;
   }
 
-  console.log('[SeasonScheduler] ⏱️ Initializing 4-Season automated lifecycle scheduler...');
+  console.log('[SeasonScheduler] Initializing 4-Season automated lifecycle scheduler...');
 
   // Initial check 8 seconds after boot to allow MongoDB connection to settle
   setTimeout(() => {

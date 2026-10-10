@@ -1,9 +1,13 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import Zip from '@/models/zipModel';
+import { requireAuth } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
   try {
+    const { errorResponse } = requireAuth(req, ['clipteam', 'editor', 'admin']);
+    if (errorResponse) return errorResponse;
+
     await connectToDatabase();
     const season = req.nextUrl.searchParams.get('season');
     const year = req.nextUrl.searchParams.get('year');

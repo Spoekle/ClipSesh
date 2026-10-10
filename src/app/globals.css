@@ -6,13 +6,41 @@
   --color-cc-red: #f23030;
   --color-cc-red-hover: #d92626;
   --color-cc-red-active: #c51f1f;
-  --color-cc-ground: #0e1315;
-  --color-cc-card: #161d21;
-  --color-cc-border: #263238;
-  --color-cc-text: #e6e6e6;
+  --color-cc-ground: #0f0f0f;
+  --color-cc-card: #181818;
+  --color-cc-border: #262626;
+  --color-cc-text: #f1f1f1;
   --color-cc-muted: #b3b3b3;
+
+  --color-background: #0f0f0f;
+  --color-foreground: #f1f1f1;
+
+  --color-primary: #f23030;
+  --color-primary-hover: #d92626;
+  --color-primary-active: #c51f1f;
+  --color-primary-foreground: #ffffff;
+
+  --color-secondary: #222222;
+  --color-secondary-hover: #2e2e2e;
+  --color-secondary-foreground: #ffffff;
+
+  --color-muted: #1e1e1e;
+  --color-muted-foreground: #b3b3b3;
+
+  --color-card: #181818;
+  --color-card-foreground: #f1f1f1;
+  --color-border: #262626;
+
+  --color-accent: #f23030;
+  --color-accent-hover: #d92626;
+  --color-accent-foreground: #ffffff;
+
+  --color-input: #262626;
+  --color-ring: #f23030;
+
   --font-sans: var(--font-rubik), 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
+
 
 :root {
   --font-family: var(--font-rubik), 'Rubik', sans-serif;
@@ -38,15 +66,16 @@
   --border-radius: 10px;
 
   /* Primary accent - Cube Community Signature Red (#f23030) */
-  --color-primary: 0 88% 57%;
-  --color-primary-hover: 0 88% 50%;
-  --color-primary-light: 0 88% 95%;
+  --color-primary: #f23030;
+  --color-primary-hover: #d92626;
+  --color-primary-active: #c51f1f;
+  --color-primary-light: #ff6666;
 
   /* Secondary accents */
-  --color-success: 142 71% 45%;
-  --color-warning: 38 92% 50%;
-  --color-danger: 0 88% 57%;
-  --color-info: 199 89% 48%;
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-danger: #f23030;
+  --color-info: #0ea5e9;
 
   /* Surface colors */
   --surface-primary: 197 20% 7%; /* #0e1315 */

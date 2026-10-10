@@ -79,32 +79,7 @@ export const uploadProfilePicture = async (profilePicture: File): Promise<ApiRes
   return apiClient.post<ApiResponse>('/api/users/uploadProfilePicture', formData);
 };
 
-/**
- * Get Discord authentication URL
- */
-export const getDiscordAuthUrl = (userId: string): string => {
-  return `/api/discord/auth?siteUserId=${userId}`;
-};
 
-/**
- * Start Discord OAuth linking process
- */
-export const linkDiscordAccount = (userId: string): void => {
-  const discordAuthUrl = `/api/discord/auth?siteUserId=${encodeURIComponent(userId)}`;
-  if (typeof window !== 'undefined') {
-    window.location.href = discordAuthUrl;
-  }
-};
-
-/**
- * Unlink Discord account from user profile
- */
-export const unlinkDiscordAccount = async (userId: string): Promise<ApiResponse> => {
-  return apiClient.put<ApiResponse>(`/api/users/${userId}`, {
-    discordId: '',
-    discordUsername: '',
-  });
-};
 
 /**
  * Get CC authentication URL.

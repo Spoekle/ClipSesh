@@ -1,6 +1,9 @@
+'use client';
+
 import React, { useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaExclamationTriangle, FaCheck, FaTimes } from 'react-icons/fa';
+import { Button } from './Button';
 
 interface ConfirmationDialogProps {
   isOpen: boolean;
@@ -13,7 +16,7 @@ interface ConfirmationDialogProps {
   onCancel: () => void;
 }
 
-const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
+export const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
   isOpen,
   title,
   message,
@@ -21,7 +24,7 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
   cancelText = 'Cancel',
   confirmVariant = 'danger',
   onConfirm,
-  onCancel
+  onCancel,
 }) => {
   // Handle escape key
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -41,21 +44,16 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
       case 'success':
         return {
           icon: <FaCheck size={16} />,
-          iconBg: 'bg-[#22c55e]/15 text-[#22c55e] border border-[#22c55e]/30',
-          btnClass: 'bg-[#22c55e] hover:bg-[#16a34a] text-white',
+          iconBg: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30',
+          btnClass: 'bg-emerald-600 hover:bg-emerald-500 text-white',
         };
       case 'primary':
-        return {
-          icon: <FaExclamationTriangle size={16} />,
-          iconBg: 'bg-[#f23030]/15 text-[#f23030] border border-[#f23030]/30',
-          btnClass: 'bg-[#f23030] hover:bg-[#d92222] text-white',
-        };
       case 'danger':
       default:
         return {
           icon: <FaExclamationTriangle size={16} />,
-          iconBg: 'bg-[#f23030]/15 text-[#f23030] border border-[#f23030]/30',
-          btnClass: 'bg-[#f23030] hover:bg-[#d92222] text-white',
+          iconBg: 'bg-primary/15 text-primary border border-primary/30',
+          btnClass: 'bg-primary hover:bg-primary/90 text-white',
         };
     }
   };
@@ -65,13 +63,13 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-10000 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-10000 flex items-center justify-center p-4 select-none">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/75 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/75 backdrop-blur-xs"
             onClick={onCancel}
           />
 
@@ -81,12 +79,13 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.95, opacity: 0, y: 10 }}
             transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-            className="relative bg-[#181818] border border-[#262626] rounded-2xl p-6 shadow-2xl max-w-md w-full text-[#f1f1f1] z-10"
+            className="relative bg-cc-card border border-border rounded-2xl p-6 shadow-2xl max-w-md w-full text-foreground z-10"
           >
             {/* Top Close button */}
             <button
+              type="button"
               onClick={onCancel}
-              className="absolute top-4 right-4 p-1.5 text-[#717171] hover:text-[#f1f1f1] rounded-lg hover:bg-[#222222] transition-colors cursor-pointer"
+              className="absolute top-4 right-4 p-1.5 text-muted-foreground hover:text-white rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
               aria-label="Close"
             >
               <FaTimes size={14} />
@@ -98,32 +97,34 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
               </div>
 
               <div className="min-w-0 pr-4">
-                <h3 className="text-base font-bold text-[#f1f1f1] leading-snug">
+                <h3 className="text-base font-bold text-white leading-snug">
                   {title}
                 </h3>
-                <p className="text-xs sm:text-sm text-[#aaaaaa] leading-relaxed mt-1.5 wrap-break-word">
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed mt-1.5 break-words">
                   {message}
                 </p>
               </div>
             </div>
 
             {/* Actions Footer */}
-            <div className="pt-3.5 border-t border-[#262626] flex items-center justify-end gap-2.5">
-              <button
+            <div className="pt-3.5 border-t border-border flex items-center justify-end gap-2.5">
+              <Button
                 type="button"
+                variant="card"
+                size="sm"
                 onClick={onCancel}
-                className="px-4 py-2 bg-[#141414] hover:bg-[#222222] text-[#aaaaaa] hover:text-[#f1f1f1] border border-[#262626] rounded-xl text-xs font-semibold transition-colors cursor-pointer"
               >
                 {cancelText}
-              </button>
+              </Button>
 
-              <button
+              <Button
                 type="button"
+                variant={confirmVariant === 'success' ? 'success' : 'primary'}
+                size="sm"
                 onClick={onConfirm}
-                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer shadow-sm flex items-center gap-1.5 ${btnClass}`}
               >
-                <span>{confirmText}</span>
-              </button>
+                {confirmText}
+              </Button>
             </div>
           </motion.div>
         </div>

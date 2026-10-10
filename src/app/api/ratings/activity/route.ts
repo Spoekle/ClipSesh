@@ -1,8 +1,9 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import Rating from '@/models/ratingModel';
 import Clip from '@/models/clipModel';
 import { requireAuth } from '@/lib/auth';
+import { getCurrentSeason } from '@/lib/seasonHelpers';
 
 export async function GET(req: NextRequest) {
   try {
@@ -44,35 +45,11 @@ export async function GET(req: NextRequest) {
 
       const ratingCreatedDate = new Date(rating.createdAt);
       const clipDate = clip && clip.createdAt ? new Date(clip.createdAt) : ratingCreatedDate;
+      const inferredSeason = getCurrentSeason(clipDate);
+      const clipSeason = clip?.season ? clip.season.toLowerCase() : inferredSeason.season;
+      const clipYear = clip?.year ? clip.year.toString() : inferredSeason.year.toString();
 
-      const clipYear = clipDate.getFullYear().toString();
-      const clipMonth = clipDate.getMonth();
-      const clipDay = clipDate.getDate();
-
-      let clipSeason: string;
-      if (
-        (clipMonth === 2 && clipDay >= 21) ||
-        (clipMonth > 2 && clipMonth < 5) ||
-        (clipMonth === 5 && clipDay < 21)
-      ) {
-        clipSeason = 'spring';
-      } else if (
-        (clipMonth === 5 && clipDay >= 21) ||
-        (clipMonth > 5 && clipMonth < 8) ||
-        (clipMonth === 8 && clipDay < 21)
-      ) {
-        clipSeason = 'summer';
-      } else if (
-        (clipMonth === 8 && clipDay >= 21) ||
-        (clipMonth > 8 && clipMonth < 11) ||
-        (clipMonth === 11 && clipDay < 21)
-      ) {
-        clipSeason = 'fall';
-      } else {
-        clipSeason = 'winter';
-      }
-
-      if ((season && clipSeason !== season) || (year && clipYear !== year)) {
+      if ((season && clipSeason !== season.toLowerCase()) || (year && clipYear !== year)) {
         return;
       }
 

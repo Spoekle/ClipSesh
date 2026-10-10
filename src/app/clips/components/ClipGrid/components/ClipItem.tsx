@@ -2,17 +2,19 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { FaStar, FaThumbsUp, FaThumbsDown, FaBan, FaEye } from 'react-icons/fa';
+import { FaStar, FaThumbsUp, FaEye } from 'react-icons/fa';
 import { IoChatbubbleEllipsesOutline } from 'react-icons/io5';
 import { format } from 'timeago.js';
-import { User, Clip, Rating, RatingUser } from '@/types/adminTypes';
+import { User, Clip, Rating } from '@/types/adminTypes';
 import { getClipVoteStatus } from '@/services/clipService';
+import { computeClipRatingSummary } from '../utils/clipRatingHelpers';
+import { ClipItemTeamRating } from './ClipItemTeamRating';
 
 interface ClipItemProps {
   clip: Clip;
   user: User | null;
   ratings?: Record<string, Rating>;
-  config?: any;
+  config?: { denyThreshold?: number } | null;
   filterRatedClips?: boolean;
   setExpandedClip: (clipId: string) => void;
 }
@@ -27,7 +29,7 @@ const ClipItem: React.FC<ClipItemProps> = ({
   user,
   ratings,
   config,
-  setExpandedClip
+  setExpandedClip,
 }) => {
   const [isHovering, setIsHovering] = useState<boolean>(false);
   const [voteStatus, setVoteStatus] = useState<VoteStatus>({ hasVoted: false });
@@ -38,7 +40,7 @@ const ClipItem: React.FC<ClipItemProps> = ({
       try {
         const voteData = await getClipVoteStatus(clip._id);
         setVoteStatus(voteData);
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Error fetching vote status:', error);
       }
     };
@@ -46,116 +48,20 @@ const ClipItem: React.FC<ClipItemProps> = ({
     checkVoteStatus();
   }, [clip._id]);
 
-  // Get the user's specific rating for this clip
-  const userRating = useMemo(() => {
-    if (!user || !ratings || !ratings[clip._id]) return null;
-    const clipRatings = ratings[clip._id];
+  const {
+    userRating,
+    hasRated,
+    isDenied,
+    averageRating,
+    denialCount,
+    totalRatings,
+  } = useMemo(() => {
+    return computeClipRatingSummary(clip._id, ratings, user, config?.denyThreshold);
+  }, [clip._id, ratings, user, config?.denyThreshold]);
 
-    if (clipRatings.ratings) {
-      const ratingCategories = ['1', '2', '3', '4', 'deny'] as const;
-      for (const category of ratingCategories) {
-        const ratingUsers = clipRatings.ratings[category] || [];
-        if (ratingUsers.some((u: RatingUser) => u && u.userId === user._id)) {
-          return category;
-        }
-      }
-    } else if (clipRatings.ratingCounts) {
-      for (const ratingCount of clipRatings.ratingCounts) {
-        if (ratingCount.users && ratingCount.users.some((u: RatingUser) => u && u.userId === user._id)) {
-          return ratingCount.rating;
-        }
-      }
-    }
-
-    return null;
-  }, [clip._id, user, ratings]);
-
-  const hasRated = useMemo(() => userRating !== null, [userRating]);
-
-  // Check if clip is denied based on threshold
-  const isDenied = useMemo(() => {
-    if (!ratings || !ratings[clip._id]) return false;
-    const clipRatings = ratings[clip._id];
-    const denyThreshold = config?.denyThreshold || 3;
-
-    if (clipRatings.ratingCounts) {
-      return clipRatings.ratingCounts.some(
-        (rateData) => rateData.rating === 'deny' && rateData.count >= denyThreshold
-      );
-    } else if (clipRatings.ratings) {
-      const denyCount = clipRatings.ratings.deny?.length || 0;
-      return denyCount >= denyThreshold;
-    }
-
-    return false;
-  }, [clip._id, ratings, config?.denyThreshold]);
-
-  // Calculate average rating
-  const averageRating = useMemo(() => {
-    if (!ratings || !ratings[clip._id]) return "0.0";
-    const clipRating = ratings[clip._id];
-
-    if (clipRating.ratings) {
-      const ratingCategories = ['1', '2', '3', '4'] as const;
-      let totalCount = 0;
-      let weightedSum = 0;
-      for (const category of ratingCategories) {
-        const usersInCategory = clipRating.ratings[category]?.length || 0;
-        totalCount += usersInCategory;
-        weightedSum += parseInt(category) * usersInCategory;
-      }
-      return (totalCount > 0) ? (weightedSum / totalCount).toFixed(1) : "0.0";
-    } else if (clipRating.ratingCounts) {
-      const ratingCounts = clipRating.ratingCounts;
-      if (!ratingCounts || ratingCounts.length === 0) return "0.0";
-      const numericRatings = ratingCounts.filter(r =>
-        r && r.rating !== 'deny' && ['1', '2', '3', '4'].includes(r.rating)
-      );
-      if (numericRatings.length === 0) return "0.0";
-      const totalCount = numericRatings.reduce((acc, curr) => acc + (curr.count || 0), 0);
-      const weightedSum = numericRatings.reduce(
-        (acc, curr) => acc + (parseInt(curr.rating) * (curr.count || 0)), 0
-      );
-      return (totalCount > 0) ? (weightedSum / totalCount).toFixed(1) : "0.0";
-    }
-
-    return "0.0";
-  }, [clip._id, ratings]);
-
-  // Denial count
-  const denialCount = useMemo(() => {
-    if (!ratings || !ratings[clip._id]) return 0;
-    const clipRating = ratings[clip._id];
-
-    if (clipRating.ratings) {
-      return clipRating.ratings.deny?.length || 0;
-    } else if (clipRating.ratingCounts) {
-      const denyData = clipRating.ratingCounts.find(r => r && r.rating === 'deny');
-      return denyData?.count || 0;
-    }
-    return 0;
-  }, [clip._id, ratings]);
-
-  const totalRatings = useMemo(() => {
-    if (!ratings || !ratings[clip._id]) return 0;
-    const clipRating = ratings[clip._id];
-
-    if (clipRating.ratings) {
-      const ratingCategories = ['1', '2', '3', '4'] as const;
-      let total = 0;
-      for (const category of ratingCategories) {
-        total += clipRating.ratings[category]?.length || 0;
-      }
-      return total;
-    } else if (clipRating.ratingCounts) {
-      const numericRatings = clipRating.ratingCounts.filter(r =>
-        r && r.rating !== 'deny' && ['1', '2', '3', '4'].includes(r.rating)
-      );
-      return numericRatings.reduce((acc, curr) => acc + (curr?.count || 0), 0);
-    }
-    return 0;
-  }, [clip._id, ratings]);
-
+  const isStaff = Boolean(
+    user && (user.roles.includes('admin') || user.roles.includes('clipteam'))
+  );
   const formattedDate = format(new Date(clip.createdAt));
 
   return (
@@ -163,11 +69,11 @@ const ClipItem: React.FC<ClipItemProps> = ({
       whileHover={{ y: -2 }}
       transition={{ duration: 0.1 }}
       onClick={() => setExpandedClip(clip._id)}
-      className="flex flex-col h-full bg-[#181818] hover:bg-[#202020] rounded-xl overflow-hidden border border-[#2a2a2a] hover:border-[#3a3a3a] transition-colors duration-150 group cursor-pointer shadow-sm hover:shadow-lg select-none"
+      className="flex flex-col h-full bg-cc-card hover:bg-secondary/40 rounded-xl overflow-hidden border border-border transition-colors duration-150 group cursor-pointer shadow-sm hover:shadow-lg select-none"
     >
       {/* 16:9 Thumbnail Container */}
       <div
-        className="relative overflow-hidden aspect-video bg-[#181818]"
+        className="relative overflow-hidden aspect-video bg-cc-card"
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
       >
@@ -210,7 +116,7 @@ const ClipItem: React.FC<ClipItemProps> = ({
             </div>
           )}
 
-          {isDenied && user && (user.roles.includes('admin') || user.roles.includes('clipteam')) && (
+          {isDenied && isStaff && (
             <div className="px-2 py-0.5 rounded-md bg-red-950/90 border border-red-500/40 text-red-300 text-[11px] font-bold shadow-sm">
               Denied
             </div>
@@ -223,64 +129,50 @@ const ClipItem: React.FC<ClipItemProps> = ({
         <div className="flex items-start justify-between gap-3">
           {/* Left Column: Title, Streamer, Date */}
           <div className="min-w-0 flex-1 flex flex-col">
-            <h3 className="text-sm font-semibold text-[#f1f1f1] group-hover:text-white line-clamp-2 leading-snug tracking-tight transition-colors">
+            <h3 className="text-sm font-semibold text-foreground group-hover:text-foreground line-clamp-2 leading-snug tracking-tight transition-colors">
               {clip.title}
             </h3>
 
-            <div className="text-xs text-[#aaaaaa] hover:text-white font-medium truncate transition-colors mt-1">
+            <div className="text-xs text-muted-foreground hover:text-foreground font-medium truncate transition-colors mt-1">
               <span>{clip.streamer}</span>
             </div>
 
-            <span className="text-xs text-[#717171] mt-0.5">{formattedDate}</span>
+            <span className="text-xs text-muted-foreground mt-0.5">{formattedDate}</span>
           </div>
 
           {/* Right Column: Views, Comments, Likes */}
-          <div className="flex flex-col items-end justify-start gap-1 shrink-0 text-xs text-neutral-400 font-medium pt-0.5">
+          <div className="flex flex-col items-end justify-start gap-1 shrink-0 text-xs text-muted-foreground font-medium pt-0.5">
             <span className="flex items-center gap-1.5" title={`${clip.views || 0} views`}>
-              <FaEye size={11} className="text-neutral-500" />
+              <FaEye size={11} className="text-muted-foreground/60" />
               <span>{clip.views || 0}</span>
             </span>
 
             <span className="flex items-center gap-1.5" title={`${clip.comments?.length || 0} comments`}>
-              <IoChatbubbleEllipsesOutline size={12} className="text-neutral-400" />
+              <IoChatbubbleEllipsesOutline size={12} className="text-muted-foreground" />
               <span>{clip.comments?.length || 0}</span>
             </span>
 
             <span className="flex items-center gap-1.5" title={`${clip.upvotes || 0} likes`}>
               <FaThumbsUp
                 size={10}
-                className={voteStatus.hasVoted && voteStatus.voteType === 'upvote' ? 'text-[#f23030]' : 'text-neutral-500'}
+                className={voteStatus.hasVoted && voteStatus.voteType === 'upvote' ? 'text-cc-red' : 'text-muted-foreground/60'}
               />
-              <span className={voteStatus.hasVoted && voteStatus.voteType === 'upvote' ? 'text-[#f23030] font-semibold' : ''}>
+              <span className={voteStatus.hasVoted && voteStatus.voteType === 'upvote' ? 'text-cc-red font-semibold' : ''}>
                 {clip.upvotes || 0}
               </span>
             </span>
           </div>
         </div>
 
-          {/* Team rating row (admin/clipteam only) */}
-          {user && (user.roles.includes('admin') || user.roles.includes('clipteam')) && (
-            <div className="flex items-center gap-2 mt-2">
-              {averageRating && averageRating !== "0.0" && (
-                <div
-                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#222222] border border-[#333333] text-[11px] text-[#cccccc] font-medium"
-                  title={totalRatings > 0 ? `Ratings: ${totalRatings}` : 'No ratings yet'}
-                >
-                  <FaStar className="text-amber-400" size={9} />
-                  <span>{averageRating}</span>
-                  {totalRatings > 0 && <span className="text-[10px] text-neutral-500">({totalRatings})</span>}
-                </div>
-              )}
-
-              {denialCount > 0 && (
-                <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#261818] border border-[#442222] text-[11px] text-red-400 font-medium">
-                  <FaBan size={9} />
-                  <span>{denialCount}</span>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        {/* Team rating row (admin/clipteam only) */}
+        {isStaff && (
+          <ClipItemTeamRating
+            averageRating={averageRating}
+            totalRatings={totalRatings}
+            denialCount={denialCount}
+          />
+        )}
+      </div>
     </motion.div>
   );
 };

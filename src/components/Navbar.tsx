@@ -1,45 +1,22 @@
-import { safeLocalStorage } from '@/utils/storage';
+'use client';
+
 import React, { useState, useEffect, useRef } from 'react';
-import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  FaBars,
-  FaFlag,
-  FaSnowflake,
-  FaDiscord,
-  FaYoutube,
-  FaTwitter,
-  FaChevronDown,
-  FaTools,
-} from 'react-icons/fa';
-import { MdLogout, MdLogin, MdAdminPanelSettings, MdDashboard, MdClose, MdHome, MdMovie, MdSearch, MdArchive } from 'react-icons/md';
+import { FaBars } from 'react-icons/fa';
+import { MdLogin, MdClose } from 'react-icons/md';
+import { safeLocalStorage } from '@/utils/storage';
 import { useNotification } from '../context/AlertContext';
 import LoginModal from './LoginModal';
 import { User } from '../types/adminTypes';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import NotificationBadge from './NotificationDropdown';
 import OfflineBanner from './common/OfflineBanner';
-import { getUserAvatarUrl, handleAvatarError } from '@/utils/generateAvatar';
-
-const NavLink: React.FC<{
-  to: string;
-  end?: boolean;
-  className?: string | ((props: { isActive: boolean }) => string);
-  children: React.ReactNode | ((props: { isActive: boolean }) => React.ReactNode);
-  onClick?: () => void;
-}> = ({ to, end, className, children, onClick }) => {
-  const pathname = usePathname();
-  const isActive = end || to === '/' ? pathname === to : pathname.startsWith(to);
-  const resolvedClass = typeof className === 'function' ? className({ isActive }) : className;
-  const resolvedChildren = typeof children === 'function' ? children({ isActive }) : children;
-
-  return (
-    <Link href={to} className={resolvedClass} onClick={onClick}>
-      {resolvedChildren}
-    </Link>
-  );
-};
+import { useLogout } from '../hooks/useUser';
+import NavLink from './navbar/NavLink';
+import NavSocialLinks from './navbar/NavSocialLinks';
+import NavUserDropdown from './navbar/NavUserDropdown';
+import NavMobileMenu from './navbar/NavMobileMenu';
+import { Button } from './common/Button';
 
 interface NavbarProps {
   user: User | null;
@@ -54,7 +31,6 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
 
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
-  const [isToolsOpen, setIsToolsOpen] = useState<boolean>(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
 
   // Snow state (December / January)
@@ -76,15 +52,16 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
   };
 
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const toolsRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
 
   const toggleLoginModal = (): void => {
     setIsLoginModalOpen(!isLoginModalOpen);
   };
 
+  const logout = useLogout();
+
   const handleLogout = (): void => {
-    safeLocalStorage.removeItem('token');
+    logout();
     setUser(null);
     setIsDropdownOpen(false);
     setIsMobileMenuOpen(false);
@@ -95,15 +72,13 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
   // Close menus on click outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (dropdownRef.current && !dropdownRef.current.contains(target)) {
         setIsDropdownOpen(false);
-      }
-      if (toolsRef.current && !toolsRef.current.contains(e.target as Node)) {
-        setIsToolsOpen(false);
       }
       if (
         mobileMenuRef.current &&
-        !mobileMenuRef.current.contains(e.target as Node) &&
+        !mobileMenuRef.current.contains(target) &&
         !(e.target as HTMLElement).closest('.mobile-menu-toggle')
       ) {
         setIsMobileMenuOpen(false);
@@ -119,19 +94,16 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
   // Close all menus on route change
   useEffect(() => {
     setIsDropdownOpen(false);
-    setIsToolsOpen(false);
     setIsMobileMenuOpen(false);
   }, [pathname]);
 
-  const hasEditor = user && (user.roles.includes('admin') || user.roles.includes('editor'));
-  const hasAdmin = user && user.roles.includes('admin');
-  const hasTools = hasEditor || hasAdmin;
+  const isAdmin = Boolean(user && user.roles.includes('admin'));
 
   return (
     <>
       <OfflineBanner isVisible={!isOnline} />
 
-      <header className="sticky top-0 z-40 w-full bg-[#0f0f0f]/95 backdrop-blur-md border-b border-[#262626] transition-colors">
+      <header className="sticky top-0 z-40 w-full bg-cc-ground/95 backdrop-blur-md border-b border-border transition-colors">
         <div className="max-w-300 mx-auto px-4 sm:px-8 h-20 flex items-center justify-between gap-6">
           {/* Left: Brand Logo & Title */}
           <div className="flex items-center gap-3">
@@ -145,19 +117,19 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
                 className="h-10 w-auto object-contain transition-transform group-hover:scale-105"
               />
               <div className="flex items-center gap-2">
-                <span className="font-bold text-xl tracking-tight text-[#f1f1f1] group-hover:text-cc-red transition-colors">
+                <span className="font-bold text-xl tracking-tight text-cc-text group-hover:text-primary transition-colors">
                   ClipSesh
                 </span>
               </div>
               {process.env.NODE_ENV === 'development' && (
-                <span className="hidden sm:inline-block text-[10px] font-bold text-white bg-cc-red shadow-sm shadow-cc-red/30 rounded-md px-1.5 py-0.5 ml-1">
+                <span className="hidden sm:inline-block text-[10px] font-bold text-white bg-primary shadow-sm shadow-primary/30 rounded-md px-1.5 py-0.5 ml-1">
                   DEV
                 </span>
               )}
             </NavLink>
           </div>
 
-          {/* Desktop Navigation Links (YouTube style neutral pill chips) */}
+          {/* Desktop Navigation Links */}
           <nav className="hidden lg:flex items-center gap-1 xl:gap-2">
             <NavLink
               to="/"
@@ -165,8 +137,8 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
               className={({ isActive }) =>
                 `px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors ${
                   isActive
-                    ? 'text-white font-semibold bg-[#222222]'
-                    : 'text-[#aaaaaa] hover:text-white hover:bg-[#1a1a1a]'
+                    ? 'text-white font-semibold bg-cc-card'
+                    : 'text-muted-foreground hover:text-white hover:bg-cc-card'
                 }`
               }
             >
@@ -178,8 +150,8 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
               className={({ isActive }) =>
                 `px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors ${
                   isActive
-                    ? 'text-white font-semibold bg-[#222222]'
-                    : 'text-[#aaaaaa] hover:text-white hover:bg-[#1a1a1a]'
+                    ? 'text-white font-semibold bg-cc-card'
+                    : 'text-muted-foreground hover:text-white hover:bg-cc-card'
                 }`
               }
             >
@@ -191,331 +163,78 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
               className={({ isActive }) =>
                 `px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors ${
                   isActive || pathname.startsWith('/archive')
-                    ? 'text-white font-semibold bg-[#222222]'
-                    : 'text-[#aaaaaa] hover:text-white hover:bg-[#1a1a1a]'
+                    ? 'text-white font-semibold bg-cc-card'
+                    : 'text-muted-foreground hover:text-white hover:bg-cc-card'
                 }`
               }
             >
               ClipVault
             </NavLink>
 
-            {/* Management / Tools Dropdown (Only for Editor / Admin) */}
-            {hasTools && (
-              <div className="relative" ref={toolsRef}>
-                <button
-                  onClick={() => setIsToolsOpen(!isToolsOpen)}
-                  className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 cursor-pointer ${
-                    isToolsOpen
-                      ? 'text-white font-semibold bg-[#222222]'
-                      : 'text-[#aaaaaa] hover:text-white hover:bg-[#1a1a1a]'
-                  }`}
-                >
-                  <FaTools size={12} />
-                  <span>Tools</span>
-                  <FaChevronDown size={10} className={`transition-transform duration-200 ${isToolsOpen ? 'rotate-180' : ''}`} />
-                </button>
-
-                <AnimatePresence>
-                  {isToolsOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95, y: -4 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95, y: -4 }}
-                      transition={{ duration: 0.15 }}
-                      className="absolute left-0 mt-2 w-48 bg-[#181818] rounded-xl shadow-2xl border border-[#262626] py-1.5 z-50 overflow-hidden"
-                    >
-                      {hasEditor && (
-                        <NavLink
-                          to="/editor"
-                          onClick={() => setIsToolsOpen(false)}
-                          className="flex items-center gap-2.5 px-3.5 py-2 text-sm text-[#f1f1f1] hover:bg-[#222222] transition-colors"
-                        >
-                          <MdDashboard size={16} className="text-[#aaaaaa]" />
-                          <span>Editor Dashboard</span>
-                        </NavLink>
-                      )}
-                      {hasAdmin && (
-                        <NavLink
-                          to="/admin"
-                          onClick={() => setIsToolsOpen(false)}
-                          className="flex items-center gap-2.5 px-3.5 py-2 text-sm text-[#f1f1f1] hover:bg-[#222222] transition-colors"
-                        >
-                          <MdAdminPanelSettings size={16} className="text-[#aaaaaa]" />
-                          <span>Admin Dashboard</span>
-                        </NavLink>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+            {isAdmin && (
+              <NavLink
+                to="/admin"
+                className={({ isActive }) =>
+                  `px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                    isActive || pathname.startsWith('/admin')
+                      ? 'text-white font-semibold bg-cc-card'
+                      : 'text-muted-foreground hover:text-white hover:bg-cc-card'
+                  }`
+                }
+              >
+                Admin
+              </NavLink>
             )}
           </nav>
 
           {/* Right Section: Socials + Notification Bell + User Avatar / Sign In + Mobile Hamburger */}
           <div className="flex items-center gap-3 sm:gap-4">
-            {/* Social Links */}
-            <div className="hidden sm:flex items-center gap-1 border-r border-[#262626] pr-3 mr-1">
-              <a
-                href="https://discord.gg/dwe8mbC"
-                target="_blank"
-                rel="noopener noreferrer"
-                title="Discord"
-                className="p-2 text-[#aaaaaa] hover:text-[#5865F2] hover:bg-[#1a1a1a] rounded-full transition-colors"
-              >
-                <FaDiscord size={18} />
-              </a>
-              <a
-                href="https://youtube.com/CubeCommunity"
-                target="_blank"
-                rel="noopener noreferrer"
-                title="YouTube"
-                className="p-2 text-[#aaaaaa] hover:text-cc-red hover:bg-[#1a1a1a] rounded-full transition-colors"
-              >
-                <FaYoutube size={18} />
-              </a>
-              <a
-                href="https://twitter.com/CubeCommunityVR"
-                target="_blank"
-                rel="noopener noreferrer"
-                title="Twitter"
-                className="p-2 text-[#aaaaaa] hover:text-[#1DA1F2] hover:bg-[#1a1a1a] rounded-full transition-colors"
-              >
-                <FaTwitter size={17} />
-              </a>
-            </div>
+            <NavSocialLinks />
 
-            {/* Notification Bell Dropdown (Only next to profile) */}
-            {user && (
-              <NotificationBadge />
-            )}
+            {user && <NotificationBadge />}
 
-            {/* User Profile Dropdown or Sign In */}
             {user ? (
-              <div className="relative" ref={dropdownRef}>
-                <button
-                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  aria-expanded={isDropdownOpen}
-                  aria-haspopup="true"
-                  aria-label="Open profile menu"
-                  className="flex items-center gap-2 p-1.5 rounded-full hover:bg-[#1a1a1a] transition-all focus:outline-none cursor-pointer"
-                >
-                  <img
-                    src={getUserAvatarUrl(user.username, user.profilePicture, 64)}
-                    alt={user.username}
-                    className="h-8 w-8 rounded-full object-cover ring-2 ring-[#262626]"
-                    onError={(e) => handleAvatarError(e, user.username, 64)}
-                  />
-                  <span className="hidden md:block font-medium text-sm text-[#f1f1f1] max-w-30 truncate">
-                    {user.username}
-                  </span>
-                  <FaChevronDown size={10} className="text-[#aaaaaa] hidden md:block" />
-                </button>
-
-                <AnimatePresence>
-                  {isDropdownOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95, y: -6 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95, y: -6 }}
-                      transition={{ duration: 0.15, ease: 'easeOut' }}
-                      className="absolute right-0 mt-2 w-64 bg-[#181818] rounded-xl shadow-2xl border border-[#262626] py-2 z-50 overflow-hidden"
-                    >
-                      {/* User Header */}
-                      <div className="px-4 py-3 border-b border-[#262626]">
-                        <div className="flex items-center gap-3">
-                          <img
-                            src={getUserAvatarUrl(user.username, user.profilePicture, 96)}
-                            alt={user.username}
-                            className="h-10 w-10 rounded-full object-cover ring-2 ring-cc-red/40"
-                            onError={(e) => handleAvatarError(e, user.username, 96)}
-                          />
-                          <div className="min-w-0 flex-1">
-                            <div className="font-semibold text-sm text-white truncate">
-                              {user.username}
-                            </div>
-                            <div className="text-xs text-[#aaaaaa] truncate">
-                              {user.roles.map(r => r.charAt(0).toUpperCase() + r.slice(1)).join(', ')}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Navigation Links */}
-                      <div className="py-1">
-                        <NavLink
-                          to="/my-reports"
-                          onClick={() => setIsDropdownOpen(false)}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#f1f1f1] hover:bg-[#222222] transition-colors"
-                        >
-                          <FaFlag size={15} className="text-[#aaaaaa]" />
-                          <span>My Reports</span>
-                        </NavLink>
-                      </div>
-
-                      {/* Snow Effect (December / January) */}
-                      {isSnowMonth && (
-                        <div className="border-t border-[#262626] py-1">
-                          <button
-                            onClick={toggleSnow}
-                            className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-[#f1f1f1] hover:bg-[#222222] transition-colors cursor-pointer"
-                          >
-                            <div className="flex items-center gap-3">
-                              <FaSnowflake
-                                size={17}
-                                className={snow ? 'text-cc-red' : 'text-[#aaaaaa]'}
-                              />
-                              <span>Snow Effect</span>
-                            </div>
-                            <span className="text-xs text-[#aaaaaa] uppercase font-semibold">
-                              {snow ? 'On' : 'Off'}
-                            </span>
-                          </button>
-                        </div>
-                      )}
-
-                      {/* Sign Out */}
-                      <div className="border-t border-[#262626] pt-1">
-                        <button
-                          onClick={handleLogout}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
-                        >
-                          <MdLogout size={18} />
-                          <span>Sign out</span>
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+              <NavUserDropdown
+                user={user}
+                isOpen={isDropdownOpen}
+                setIsOpen={setIsDropdownOpen}
+                dropdownRef={dropdownRef}
+                isSnowMonth={isSnowMonth}
+                snow={snow}
+                toggleSnow={toggleSnow}
+                onLogout={handleLogout}
+              />
             ) : (
-              <button
+              <Button
+                variant="primary"
+                size="sm"
                 onClick={toggleLoginModal}
-                className="bg-cc-red hover:bg-cc-red-hover text-white font-semibold text-xs rounded-xl px-4 py-2 flex items-center gap-2 shadow-sm transition-all cursor-pointer"
+                leftIcon={<MdLogin size={16} />}
               >
-                <MdLogin size={16} />
-                <span>Sign In</span>
-              </button>
+                Sign In
+              </Button>
             )}
 
             {/* Mobile Hamburger Menu Toggle */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               aria-label="Toggle navigation menu"
-              className="mobile-menu-toggle lg:hidden p-2 rounded-xl hover:bg-[#1a1a1a] text-[#aaaaaa] hover:text-white transition-all focus:outline-none cursor-pointer"
+              className="mobile-menu-toggle lg:hidden p-2 rounded-xl hover:bg-cc-card text-muted-foreground hover:text-white transition-all focus:outline-none cursor-pointer"
             >
               {isMobileMenuOpen ? <MdClose size={22} /> : <FaBars size={20} />}
             </button>
           </div>
         </div>
 
-        {/* Mobile Navigation Dropdown */}
-        <AnimatePresence>
-          {isMobileMenuOpen && (
-            <motion.div
-              ref={mobileMenuRef}
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.15 }}
-              className="lg:hidden border-t border-[#262626] bg-[#121212] overflow-hidden"
-            >
-              <div className="px-4 py-3 space-y-1">
-                <NavLink
-                  to="/"
-                  end
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                      isActive
-                        ? 'bg-[#181818] text-cc-red font-semibold border-l-2 border-cc-red'
-                        : 'text-[#aaaaaa] hover:text-white hover:bg-[#181818]'
-                    }`
-                  }
-                >
-                  <MdHome size={18} />
-                  <span>Home</span>
-                </NavLink>
-
-                <NavLink
-                  to="/clips"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                      isActive
-                        ? 'bg-[#181818] text-cc-red font-semibold border-l-2 border-cc-red'
-                        : 'text-[#aaaaaa] hover:text-white hover:bg-[#181818]'
-                    }`
-                  }
-                >
-                  <MdMovie size={18} />
-                  <span>Clips</span>
-                </NavLink>
-
-                <NavLink
-                  to="/archive"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                      isActive || pathname.startsWith('/archive')
-                        ? 'bg-[#181818] text-cc-red font-semibold border-l-2 border-cc-red'
-                        : 'text-[#aaaaaa] hover:text-white hover:bg-[#181818]'
-                    }`
-                  }
-                >
-                  <MdArchive size={18} />
-                  <span>ClipVault</span>
-                </NavLink>
-
-                {hasTools && (
-                  <>
-                    <div className="border-t border-[#262626] my-2 pt-2">
-                      <span className="text-[10px] font-bold text-[#717171] uppercase tracking-wider px-3.5">
-                        Tools
-                      </span>
-                    </div>
-
-                    {hasEditor && (
-                      <NavLink
-                        to="/editor"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className={({ isActive }) =>
-                          `flex items-center gap-3 px-3.5 py-2 rounded-xl text-sm font-medium transition-colors ${
-                            isActive
-                              ? 'bg-[#181818] text-cc-red font-semibold'
-                              : 'text-[#aaaaaa] hover:text-white hover:bg-[#181818]'
-                          }`
-                        }
-                      >
-                        <MdDashboard size={17} />
-                        <span>Editor Dashboard</span>
-                      </NavLink>
-                    )}
-
-                    {hasAdmin && (
-                      <NavLink
-                        to="/admin"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className={({ isActive }) =>
-                          `flex items-center gap-3 px-3.5 py-2 rounded-xl text-sm font-medium transition-colors ${
-                            isActive
-                              ? 'bg-[#181818] text-cc-red font-semibold'
-                              : 'text-[#aaaaaa] hover:text-white hover:bg-[#181818]'
-                          }`
-                        }
-                      >
-                        <MdAdminPanelSettings size={17} />
-                        <span>Admin Dashboard</span>
-                      </NavLink>
-                    )}
-                  </>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <NavMobileMenu
+          isOpen={isMobileMenuOpen}
+          onClose={() => setIsMobileMenuOpen(false)}
+          mobileMenuRef={mobileMenuRef}
+          pathname={pathname}
+          isAdmin={isAdmin}
+        />
       </header>
 
-      {/* LoginModal */}
       {isLoginModalOpen && (
         <LoginModal
           isLoginModalOpen={isLoginModalOpen}

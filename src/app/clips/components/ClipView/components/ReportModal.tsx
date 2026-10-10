@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { safeLocalStorage } from '@/utils/storage';
 import React, { useState, useEffect } from 'react';
@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaFlag, FaTimes, FaExclamationTriangle } from 'react-icons/fa';
 import { useNotification } from '@/context/AlertContext';
 import { Clip } from '@/types/adminTypes';
+import { Button } from '@/components/common/Button';
 
 interface ReportModalProps {
   clip: Clip;
@@ -13,7 +14,7 @@ interface ReportModalProps {
   onClose: () => void;
 }
 
-const ReportModal: React.FC<ReportModalProps> = ({ clip, isOpen, onClose }) => {
+export const ReportModal: React.FC<ReportModalProps> = ({ clip, isOpen, onClose }) => {
   const [selectedType, setSelectedType] = useState<string>('');
   const [customReason, setCustomReason] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -22,7 +23,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ clip, isOpen, onClose }) => {
   const predefinedReasons = [
     'Inappropriate content',
     'Spam/duplicate',
-    'Wrong category/streamer'
+    'Wrong category/streamer',
   ];
 
   // Escape key listener
@@ -55,10 +56,10 @@ const ReportModal: React.FC<ReportModalProps> = ({ clip, isOpen, onClose }) => {
       const response = await fetch(`${backendUrl}/api/clips/${clip._id}/report`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ reason: finalReason })
+        body: JSON.stringify({ reason: finalReason }),
       });
 
       if (response.ok) {
@@ -67,7 +68,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ clip, isOpen, onClose }) => {
         setCustomReason('');
         onClose();
       } else {
-        const errorData = await response.json();
+        const errorData = (await response.json()) as { error?: string };
         showError(errorData.error || 'Failed to report clip');
       }
     } catch (error) {
@@ -86,7 +87,8 @@ const ReportModal: React.FC<ReportModalProps> = ({ clip, isOpen, onClose }) => {
     }
   };
 
-  const hasValidReason = selectedType === 'other' ? customReason.trim().length > 0 : selectedType.length > 0;
+  const hasValidReason =
+    selectedType === 'other' ? customReason.trim().length > 0 : selectedType.length > 0;
 
   return (
     <AnimatePresence>
@@ -95,46 +97,48 @@ const ReportModal: React.FC<ReportModalProps> = ({ clip, isOpen, onClose }) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50 p-4"
+          className="fixed inset-0 bg-black/70 backdrop-blur-xs flex justify-center items-center z-50 p-4 select-none"
           onMouseDown={(e) => e.target === e.currentTarget && handleClose()}
         >
           <motion.div
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-[#181818] text-[#f1f1f1] w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-[#262626]"
+            className="bg-cc-card text-foreground w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-border"
           >
             {/* Header */}
-            <div className="flex justify-between items-center p-5 border-b border-[#262626] bg-[#141414]">
+            <div className="flex justify-between items-center p-5 border-b border-border bg-cc-ground">
               <div className="flex items-center space-x-3">
-                <div className="p-2.5 bg-cc-red/15 border border-cc-red/25 text-cc-red rounded-xl">
+                <div className="p-2.5 bg-primary/15 border border-primary/25 text-primary rounded-xl">
                   <FaFlag size={15} />
                 </div>
-                <h2 className="text-base sm:text-lg font-bold text-[#f1f1f1]">Report Clip</h2>
+                <h2 className="text-base sm:text-lg font-bold text-white">Report Clip</h2>
               </div>
               <button
+                type="button"
                 onClick={handleClose}
                 disabled={isSubmitting}
-                className="p-2 text-[#717171] hover:text-[#f1f1f1] hover:bg-[#222222] rounded-xl transition-colors cursor-pointer disabled:opacity-40"
+                className="p-2 text-muted-foreground hover:text-white hover:bg-white/5 rounded-xl transition-colors cursor-pointer disabled:opacity-40"
               >
                 <FaTimes size={15} />
               </button>
             </div>
 
             {/* Clip Info Summary */}
-            <div className="p-4 bg-[#141414] border-b border-[#262626]">
-              <h3 className="font-semibold text-xs sm:text-sm text-[#f1f1f1] truncate" title={clip.title}>
+            <div className="p-4 bg-cc-ground border-b border-border">
+              <h3 className="font-semibold text-xs sm:text-sm text-foreground truncate" title={clip.title}>
                 {clip.title}
               </h3>
-              <p className="text-[11px] text-[#717171] mt-0.5">
-                by <span className="text-[#aaaaaa]">{clip.streamer}</span> • submitted by <span className="text-[#aaaaaa]">{clip.submitter}</span>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                by <span className="text-foreground/80">{clip.streamer}</span> • submitted by{' '}
+                <span className="text-foreground/80">{clip.submitter}</span>
               </p>
             </div>
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="p-5">
               <div className="mb-4">
-                <label className="block text-[11px] font-semibold text-[#aaaaaa] uppercase tracking-wider mb-2.5">
+                <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2.5">
                   Why are you reporting this clip?
                 </label>
 
@@ -148,8 +152,8 @@ const ReportModal: React.FC<ReportModalProps> = ({ clip, isOpen, onClose }) => {
                       disabled={isSubmitting}
                       className={`text-left px-3.5 py-2.5 rounded-xl border text-xs transition-all cursor-pointer ${
                         selectedType === predefinedReason
-                          ? 'border-cc-red bg-cc-red/15 text-[#f1f1f1] font-medium'
-                          : 'border-[#262626] bg-[#141414] hover:border-[#3a3a3a] hover:bg-[#1a1a1a] text-[#aaaaaa]'
+                          ? 'border-primary bg-primary/15 text-white font-medium'
+                          : 'border-border bg-cc-ground hover:border-border/80 hover:bg-white/5 text-muted-foreground'
                       }`}
                     >
                       {predefinedReason}
@@ -164,8 +168,8 @@ const ReportModal: React.FC<ReportModalProps> = ({ clip, isOpen, onClose }) => {
                     disabled={isSubmitting}
                     className={`text-left w-full px-3.5 py-2.5 rounded-xl border text-xs transition-all cursor-pointer ${
                       selectedType === 'other'
-                        ? 'border-cc-red bg-cc-red/15 text-[#f1f1f1] font-medium'
-                        : 'border-[#262626] bg-[#141414] hover:border-[#3a3a3a] hover:bg-[#1a1a1a] text-[#aaaaaa]'
+                        ? 'border-primary bg-primary/15 text-white font-medium'
+                        : 'border-border bg-cc-ground hover:border-border/80 hover:bg-white/5 text-muted-foreground'
                     }`}
                   >
                     Other (please specify)
@@ -178,7 +182,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ clip, isOpen, onClose }) => {
                     value={customReason}
                     onChange={(e) => setCustomReason(e.target.value)}
                     placeholder="Please explain why you are reporting this clip..."
-                    className="w-full p-3 rounded-xl bg-[#121212] border border-[#262626] text-[#f1f1f1] placeholder-[#717171] min-h-22.5 resize-vertical text-xs focus:outline-none focus:border-[#444]"
+                    className="w-full p-3 rounded-xl bg-cc-ground border border-border text-foreground placeholder-muted-foreground/60 min-h-22.5 resize-vertical text-xs focus:outline-none focus:border-border/80"
                     disabled={isSubmitting}
                     rows={3}
                     autoFocus
@@ -186,10 +190,10 @@ const ReportModal: React.FC<ReportModalProps> = ({ clip, isOpen, onClose }) => {
                 )}
 
                 {/* Warning / Disclaimers */}
-                <div className="mt-3.5 p-3 bg-[#141414] border border-[#262626] rounded-xl">
+                <div className="mt-3.5 p-3 bg-cc-ground border border-border rounded-xl">
                   <div className="flex items-start space-x-2.5">
-                    <FaExclamationTriangle className="text-[#eab308] mt-0.5 shrink-0" size={13} />
-                    <p className="text-[11px] text-[#aaaaaa] leading-relaxed">
+                    <FaExclamationTriangle className="text-amber-400 mt-0.5 shrink-0" size={13} />
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
                       Reports are reviewed by the moderation team. Repeated fraudulent reports may result in account restrictions.
                     </p>
                   </div>
@@ -197,32 +201,26 @@ const ReportModal: React.FC<ReportModalProps> = ({ clip, isOpen, onClose }) => {
               </div>
 
               {/* Actions Footer */}
-              <div className="flex justify-end space-x-2.5 pt-3 border-t border-[#262626]">
-                <button
+              <div className="flex justify-end space-x-2.5 pt-3 border-t border-border">
+                <Button
                   type="button"
+                  variant="card"
+                  size="sm"
                   onClick={handleClose}
                   disabled={isSubmitting}
-                  className="px-4 py-2 text-xs font-medium rounded-xl bg-[#141414] hover:bg-[#222222] border border-[#262626] text-[#aaaaaa] hover:text-[#f1f1f1] transition-colors cursor-pointer"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
                   type="submit"
-                  disabled={isSubmitting || !hasValidReason}
-                  className="px-4 py-2 text-xs font-semibold rounded-xl bg-cc-red hover:bg-cc-red-hover text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  variant="primary"
+                  size="sm"
+                  disabled={!hasValidReason}
+                  isLoading={isSubmitting}
+                  leftIcon={<FaFlag size={11} />}
                 >
-                  {isSubmitting ? (
-                    <>
-                      <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent"></div>
-                      <span>Submitting...</span>
-                    </>
-                  ) : (
-                    <>
-                      <FaFlag size={11} />
-                      <span>Submit Report</span>
-                    </>
-                  )}
-                </button>
+                  Submit Report
+                </Button>
               </div>
             </form>
           </motion.div>

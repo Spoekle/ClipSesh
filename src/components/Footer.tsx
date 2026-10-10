@@ -1,5 +1,5 @@
 import { safeLocalStorage } from '@/utils/storage';
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { SnowOverlay } from 'react-snow-overlay';
 
@@ -21,10 +21,7 @@ function Footer() {
   }, []);
 
   useEffect(() => {
-    // Listen for storage events from other components
     window.addEventListener('storage', handleStorageChange);
-
-    // Also set up an interval to check more frequently (for same-tab changes)
     const interval = setInterval(handleStorageChange, 500);
 
     return () => {
@@ -33,12 +30,11 @@ function Footer() {
     };
   }, [handleStorageChange]);
 
-  const newLocal = "font-bold text-xl tracking-tight text-[#f1f1f1] group-hover:text-cc-red transition-colors";
   return (
-    <footer className="bg-[#0f0f0f] border-t border-[#262626] py-12 text-[#f1f1f1] transition duration-200">
+    <footer className="bg-background border-t border-border py-12 text-foreground transition duration-200">
       {isSnowMonth && snow && <SnowOverlay />}
 
-      <div className="max-w-300 mx-auto px-4 sm:px-8">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-8">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-8 lg:gap-12">
           {/* Brand & Mission Column */}
           <div className="md:col-span-2 flex flex-col items-start">
@@ -49,7 +45,7 @@ function Footer() {
                 className="h-10 w-auto object-contain transition-transform group-hover:scale-105"
               />
               <div className="flex items-center gap-2">
-                <span className={newLocal}>
+                <span className="font-bold text-xl tracking-tight text-foreground group-hover:text-cc-red transition-colors">
                   ClipSesh
                 </span>
               </div>
@@ -59,30 +55,32 @@ function Footer() {
                 </span>
               )}
             </Link>
-            <p className="text-sm text-[#aaaaaa] leading-relaxed mb-5 max-w-sm">
+            <p className="text-sm text-muted-foreground leading-relaxed mb-5 max-w-sm">
               The official Beat Saber highlight repository for Cube Community. Discover, rate, and submit your clips for the seasonal compilations.
             </p>
-            <span className="text-xs text-[#717171] font-semibold uppercase tracking-wider">V{process.env.NEXT_PUBLIC_APP_VERSION || '3.0.0'}</span>
+            <span className="text-xs text-muted-foreground/80 font-semibold uppercase tracking-wider">
+              V{process.env.NEXT_PUBLIC_APP_VERSION || '3.0.0'}
+            </span>
           </div>
 
           {/* Column 1: WEBSITE */}
           <div className="flex flex-col">
-            <div className="text-xs font-bold uppercase tracking-wider text-[#f1f1f1] mb-3.5">
+            <div className="text-xs font-bold uppercase tracking-wider text-foreground mb-3.5">
               Website
             </div>
             <ul className="flex flex-col space-y-2.5 text-sm">
               <li>
-                <Link href="/" className="text-[#aaaaaa] hover:text-cc-red transition-colors">
+                <Link href="/" className="text-muted-foreground hover:text-cc-red transition-colors">
                   Home
                 </Link>
               </li>
               <li>
-                <Link href="/clips" className="text-[#aaaaaa] hover:text-cc-red transition-colors">
+                <Link href="/clips" className="text-muted-foreground hover:text-cc-red transition-colors">
                   Clips
                 </Link>
               </li>
               <li>
-                <Link href="/archive" className="text-[#aaaaaa] hover:text-cc-red transition-colors">
+                <Link href="/archive" className="text-muted-foreground hover:text-cc-red transition-colors">
                   The ClipVault
                 </Link>
               </li>
@@ -91,12 +89,12 @@ function Footer() {
 
           {/* Column 2: ABOUT */}
           <div className="flex flex-col">
-            <div className="text-xs font-bold uppercase tracking-wider text-[#f1f1f1] mb-3.5">
+            <div className="text-xs font-bold uppercase tracking-wider text-foreground mb-3.5">
               About
             </div>
             <ul className="flex flex-col space-y-2.5 text-sm">
               <li>
-                <Link href="/privacystatement" className="text-[#aaaaaa] hover:text-cc-red transition-colors">
+                <Link href="/privacystatement" className="text-muted-foreground hover:text-cc-red transition-colors">
                   Privacy Policy
                 </Link>
               </li>
@@ -105,7 +103,7 @@ function Footer() {
 
           {/* Column 3: SOCIALS */}
           <div className="flex flex-col">
-            <div className="text-xs font-bold uppercase tracking-wider text-[#f1f1f1] mb-3.5">
+            <div className="text-xs font-bold uppercase tracking-wider text-foreground mb-3.5">
               Socials
             </div>
             <ul className="flex flex-col space-y-2.5 text-sm">
@@ -114,7 +112,7 @@ function Footer() {
                   href="https://youtube.com/CubeCommunity"
                   target="_blank"
                   rel="noreferrer"
-                  className="text-[#aaaaaa] hover:text-cc-red transition-colors"
+                  className="text-muted-foreground hover:text-cc-red transition-colors"
                 >
                   YouTube
                 </a>
@@ -124,7 +122,7 @@ function Footer() {
                   href="https://twitter.com/CubeCommunityVR"
                   target="_blank"
                   rel="noreferrer"
-                  className="text-[#aaaaaa] hover:text-cc-red transition-colors"
+                  className="text-muted-foreground hover:text-cc-red transition-colors"
                 >
                   Twitter / X
                 </a>
@@ -134,7 +132,7 @@ function Footer() {
                   href="https://twitch.tv/CubeCommunity"
                   target="_blank"
                   rel="noreferrer"
-                  className="text-[#aaaaaa] hover:text-cc-red transition-colors"
+                  className="text-muted-foreground hover:text-cc-red transition-colors"
                 >
                   Twitch
                 </a>
@@ -144,7 +142,7 @@ function Footer() {
                   href="https://discord.gg/dwe8mbC"
                   target="_blank"
                   rel="noreferrer"
-                  className="text-[#aaaaaa] hover:text-cc-red transition-colors"
+                  className="text-muted-foreground hover:text-cc-red transition-colors"
                 >
                   Discord
                 </a>
@@ -153,9 +151,12 @@ function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-[#262626] mt-10 pt-6 flex flex-col md:flex-row justify-between items-center text-xs text-[#717171]">
+        <div className="border-t border-border mt-10 pt-6 flex flex-col md:flex-row justify-between items-center text-xs text-muted-foreground/80">
           <p className="text-center md:text-left mb-2 md:mb-0">
-            © {new Date().getFullYear()} Spoekle. All rights reserved. <a href="https://grabssoftware.com" target="_blank" rel="noreferrer">Powered by Grabs Software</a>
+            © {new Date().getFullYear()} Spoekle. All rights reserved.{' '}
+            <a href="https://grabssoftware.com" target="_blank" rel="noreferrer" className="hover:text-foreground transition-colors">
+              Powered by Grabs Software
+            </a>
           </p>
         </div>
       </div>

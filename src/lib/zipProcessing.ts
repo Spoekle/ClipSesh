@@ -88,6 +88,36 @@ function cleanupOldJobs() {
   }
 }
 
+export function calculateClipRating(ratingsDoc: any): string | undefined {
+  if (!ratingsDoc) return undefined;
+
+  let r1 = 0;
+  let r2 = 0;
+  let r3 = 0;
+  let r4 = 0;
+
+  if (Array.isArray(ratingsDoc.ratingCounts)) {
+    for (const item of ratingsDoc.ratingCounts) {
+      if (item.rating === '1') r1 = item.count || 0;
+      else if (item.rating === '2') r2 = item.count || 0;
+      else if (item.rating === '3') r3 = item.count || 0;
+      else if (item.rating === '4') r4 = item.count || 0;
+    }
+  } else if (ratingsDoc.ratings) {
+    r1 = Array.isArray(ratingsDoc.ratings['1']) ? ratingsDoc.ratings['1'].length : (Number(ratingsDoc.ratings['1']) || 0);
+    r2 = Array.isArray(ratingsDoc.ratings['2']) ? ratingsDoc.ratings['2'].length : (Number(ratingsDoc.ratings['2']) || 0);
+    r3 = Array.isArray(ratingsDoc.ratings['3']) ? ratingsDoc.ratings['3'].length : (Number(ratingsDoc.ratings['3']) || 0);
+    r4 = Array.isArray(ratingsDoc.ratings['4']) ? ratingsDoc.ratings['4'].length : (Number(ratingsDoc.ratings['4']) || 0);
+  }
+
+  const totalVotes = r1 + r2 + r3 + r4;
+  if (totalVotes === 0) return undefined;
+
+  const sum = 1 * r1 + 2 * r2 + 3 * r3 + 4 * r4;
+  const avg = Math.round(sum / totalVotes);
+  return Math.max(1, Math.min(4, avg)).toString();
+}
+
 export async function startProcessingJob(
   season: string,
   year: number,
@@ -116,7 +146,25 @@ export async function startProcessingJob(
 
   let allowedClips: any[] = [];
   if (Array.isArray(providedClips) && providedClips.length > 0) {
-    allowedClips = providedClips;
+    const allClipIds = providedClips.map((c) => c._id);
+    const ratings = await Rating.find({ clipId: { $in: allClipIds } }).lean();
+    const ratingsMap = new Map<string, any>(ratings.map((r) => [r.clipId.toString(), r]));
+
+    allowedClips = providedClips
+      .map((clip) => {
+        const ratingsDoc = ratingsMap.get(clip._id?.toString());
+        const denyCount = ratingsDoc?.ratings?.deny?.length || 0;
+        if (denyCount >= (denyThreshold || 5)) return null;
+
+        const rating = clip.rating || calculateClipRating(ratingsDoc);
+        if (!rating) return null;
+
+        return {
+          ...clip,
+          rating,
+        };
+      })
+      .filter((c): c is any => c !== null);
   } else {
     const clipIds = clips.map((c) => c._id);
     const ratings = await Rating.find({ clipId: { $in: clipIds } }).lean();
@@ -126,7 +174,13 @@ export async function startProcessingJob(
       const ratingsDoc = ratingsMap.get(clip._id.toString());
       const denyCount = ratingsDoc?.ratings?.deny?.length || 0;
       if (denyCount < (denyThreshold || 5)) {
-        allowedClips.push(clip);
+        const rating = calculateClipRating(ratingsDoc);
+        if (rating) {
+          allowedClips.push({
+            ...clip,
+            rating,
+          });
+        }
       }
     }
   }
@@ -436,6 +490,8 @@ async function processClipsAsync(
     logAndEmit(`Packaging ${clips.length} clips into ZIP archive...`, 'info', 'processing');
 
     // Process clips sequentially
+    const usedEntryNames = new Map<string, number>();
+
     for (let i = 0; i < clips.length; i++) {
       if (isCancelled || (job.status as string) === 'cancelled') {
         logAndEmit('Processing cancelled by user. Partial archive discarded.', 'warn', 'cancelled');
@@ -449,6 +505,10 @@ async function processClipsAsync(
       const ratingPart = clip.rating ? `${clip.rating}-` : '';
       const streamerPart = clip.streamer ? `${clip.streamer}-` : '';
       const safeTitle = (clip.title || 'clip').replace(/[^a-zA-Z0-9.-]/g, '_');
+      const baseName = `${ratingPart}${streamerPart}${safeTitle}`;
+      const occurrence = (usedEntryNames.get(baseName) || 0) + 1;
+      usedEntryNames.set(baseName, occurrence);
+      const dupSuffix = occurrence > 1 ? `_${occurrence}` : '';
 
       try {
         if (clip.url && clip.url.startsWith('http')) {
@@ -478,7 +538,7 @@ async function processClipsAsync(
           }
 
           const ext = path.extname(clip.url.split('?')[0]) || '.mp4';
-          const entryName = `${i + 1}-${ratingPart}${streamerPart}${safeTitle}${ext}`;
+          const entryName = `${baseName}${dupSuffix}${ext}`;
 
           await new Promise<void>((resolveEntry, rejectEntry) => {
             let settled = false;
@@ -528,7 +588,7 @@ async function processClipsAsync(
           if (fs.existsSync(/*turbopackIgnore: true*/ localPath)) {
             logAndEmit(`[${i + 1}/${clips.length}] Packing local clip "${clip.title || 'clip'}"...`, 'info', 'processing');
             const ext = path.extname(localPath) || '.mp4';
-            const entryName = `${i + 1}-${ratingPart}${streamerPart}${safeTitle}${ext}`;
+            const entryName = `${baseName}${dupSuffix}${ext}`;
 
             await new Promise<void>((resolveEntry, rejectEntry) => {
               let settled = false;

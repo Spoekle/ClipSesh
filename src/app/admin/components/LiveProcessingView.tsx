@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { FaCheckCircle, FaExclamationCircle, FaSpinner, FaCircleNotch, FaHourglassHalf } from 'react-icons/fa';
@@ -18,13 +20,38 @@ interface JobPhase {
   timestamp: number;
 }
 
+interface JobStartedData {
+  totalClips: number;
+}
+
+interface JobClipData {
+  clipIndex: number;
+  clipData: {
+    title?: string;
+    streamer?: string;
+  };
+  processingTime?: number;
+  error?: string;
+}
+
+interface JobProgressData {
+  progress: number;
+  processed: number;
+  total: number;
+  estimatedTimeRemaining: string;
+}
+
+interface JobErrorData {
+  error?: string;
+}
+
 interface LiveProcessingViewProps {
   jobId: string;
   onComplete: () => void;
   onError: (error: string) => void;
 }
 
-const LiveProcessingView: React.FC<LiveProcessingViewProps> = ({ jobId, onComplete, onError }) => {
+export const LiveProcessingView: React.FC<LiveProcessingViewProps> = ({ jobId, onComplete, onError }) => {
   const { subscribeToEvent } = useSocket();
   const [clipsStatus, setClipsStatus] = useState<ClipProcessingStatus[]>([]);
   const [currentPhase, setCurrentPhase] = useState<JobPhase | null>(null);
@@ -34,10 +61,8 @@ const LiveProcessingView: React.FC<LiveProcessingViewProps> = ({ jobId, onComple
   const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<string | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [startTime, setStartTime] = useState<number | null>(null);
-  const [averageProcessingTime, setAverageProcessingTime] = useState(0);
-  const [currentlyProcessing, setCurrentlyProcessing] = useState<ClipProcessingStatus | null>(null); 
+  const [currentlyProcessing, setCurrentlyProcessing] = useState<ClipProcessingStatus | null>(null);
   const [recentErrors, setRecentErrors] = useState<ClipProcessingStatus[]>([]);
-  const [isListening, setIsListening] = useState(false);
 
   // Track elapsed time
   useEffect(() => {
@@ -50,54 +75,40 @@ const LiveProcessingView: React.FC<LiveProcessingViewProps> = ({ jobId, onComple
     return () => clearInterval(timer);
   }, [startTime]);
 
-  // Calculate average processing time when clips status changes
-  useEffect(() => {
-    const processedClips = clipsStatus.filter(clip =>
-      clip.status === 'processed' && clip.processingTime
-    );
-    if (processedClips.length > 0) {
-      const totalTime = processedClips.reduce((sum, clip) => sum + (clip.processingTime || 0), 0);
-      setAverageProcessingTime(totalTime / processedClips.length);
-    }
-  }, [clipsStatus]);
-
-  // Format time from seconds to mm:ss
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
+
   // Subscribe to websocket events
   useEffect(() => {
-    console.log(`Setting up WebSocket listeners for job ${jobId}`);
-    setIsListening(true);
-
-    // Track job start
-    const jobStartedUnsubscribe = subscribeToEvent(`job:started:${jobId}`, (data) => {
-      console.log('Job started:', data);
+    const jobStartedUnsubscribe = subscribeToEvent(`job:started:${jobId}`, (raw: unknown) => {
+      const data = raw as JobStartedData;
       setStartTime(Date.now());
       setTotal(data.totalClips);
 
-      // Initialize clips status array
-      const initialClips = Array(data.totalClips).fill(null).map((_, index) => ({
-        index,
-        title: `Clip ${index + 1}`,
-        streamer: '...',
-        status: 'pending' as const
-      }));
+      const initialClips = Array(data.totalClips)
+        .fill(null)
+        .map((_, index) => ({
+          index,
+          title: `Clip ${index + 1}`,
+          streamer: '...',
+          status: 'pending' as const,
+        }));
       setClipsStatus(initialClips);
-      console.log('Initialized clips status with', data.totalClips, 'clips');
-    });// Track clip processing
-    const clipProcessingUnsubscribe = subscribeToEvent(`job:clip:processing:${jobId}`, (data) => {
-      console.log('Clip processing:', data);
-      const clipData = {
+    });
+
+    const clipProcessingUnsubscribe = subscribeToEvent(`job:clip:processing:${jobId}`, (raw: unknown) => {
+      const data = raw as JobClipData;
+      const clipData: ClipProcessingStatus = {
         index: data.clipIndex,
         title: data.clipData.title || `Clip ${data.clipIndex + 1}`,
         streamer: data.clipData.streamer || '...',
-        status: 'processing' as const
+        status: 'processing',
       };
 
-      setClipsStatus(prev => {
+      setClipsStatus((prev) => {
         const newStatus = [...prev];
         if (newStatus[data.clipIndex]) {
           newStatus[data.clipIndex] = clipData;
@@ -106,17 +117,18 @@ const LiveProcessingView: React.FC<LiveProcessingViewProps> = ({ jobId, onComple
       });
 
       setCurrentlyProcessing(clipData);
-    });    // Track clip processed
-    const clipProcessedUnsubscribe = subscribeToEvent(`job:clip:processed:${jobId}`, (data) => {
-      console.log('Clip processed:', data);
-      const clipData = {
+    });
+
+    const clipProcessedUnsubscribe = subscribeToEvent(`job:clip:processed:${jobId}`, (raw: unknown) => {
+      const data = raw as JobClipData;
+      const clipData: ClipProcessingStatus = {
         index: data.clipIndex,
         title: data.clipData.title || `Clip ${data.clipIndex + 1}`,
         streamer: data.clipData.streamer || '...',
-        status: 'processed' as const,
-        processingTime: data.processingTime
+        status: 'processed',
+        processingTime: data.processingTime,
       };
-      setClipsStatus(prev => {
+      setClipsStatus((prev) => {
         const newStatus = [...prev];
         if (newStatus[data.clipIndex]) {
           newStatus[data.clipIndex] = clipData;
@@ -125,18 +137,19 @@ const LiveProcessingView: React.FC<LiveProcessingViewProps> = ({ jobId, onComple
       });
 
       setCurrentlyProcessing(null);
-    });// Track clip errors
-    const clipErrorUnsubscribe = subscribeToEvent(`job:clip:error:${jobId}`, (data) => {
-      console.log('Clip error:', data);
-      const clipData = {
+    });
+
+    const clipErrorUnsubscribe = subscribeToEvent(`job:clip:error:${jobId}`, (raw: unknown) => {
+      const data = raw as JobClipData;
+      const clipData: ClipProcessingStatus = {
         index: data.clipIndex,
         title: data.clipData.title || `Clip ${data.clipIndex + 1}`,
         streamer: data.clipData.streamer || '...',
-        status: 'error' as const,
-        error: data.error
+        status: 'error',
+        error: data.error,
       };
 
-      setClipsStatus(prev => {
+      setClipsStatus((prev) => {
         const newStatus = [...prev];
         if (newStatus[data.clipIndex]) {
           newStatus[data.clipIndex] = clipData;
@@ -144,28 +157,24 @@ const LiveProcessingView: React.FC<LiveProcessingViewProps> = ({ jobId, onComple
         return newStatus;
       });
 
-      // Track recent errors
-      setRecentErrors(prev => [clipData, ...prev].slice(0, 10));
+      setRecentErrors((prev) => [clipData, ...prev].slice(0, 10));
       setCurrentlyProcessing(null);
-    });    // Track overall progress
-    const progressUnsubscribe = subscribeToEvent(`job:progress:${jobId}`, (data) => {
-      console.log('Progress update:', data);
+    });
+
+    const progressUnsubscribe = subscribeToEvent(`job:progress:${jobId}`, (raw: unknown) => {
+      const data = raw as JobProgressData;
       setOverallProgress(data.progress);
       setProcessed(data.processed);
       setTotal(data.total);
       setEstimatedTimeRemaining(data.estimatedTimeRemaining);
-      console.log(`Progress: ${data.progress}%, Processed: ${data.processed}/${data.total}`);
     });
 
-    // Track job phase changes
-    const phaseUnsubscribe = subscribeToEvent(`job:phase:${jobId}`, (data) => {
-      console.log('Phase change:', data);
+    const phaseUnsubscribe = subscribeToEvent(`job:phase:${jobId}`, (raw: unknown) => {
+      const data = raw as JobPhase;
       setCurrentPhase(data);
     });
 
-    // Track job completion
-    const completedUnsubscribe = subscribeToEvent(`job:completed:${jobId}`, (data) => {
-      console.log('Job completed:', data);
+    const completedUnsubscribe = subscribeToEvent(`job:completed:${jobId}`, () => {
       setOverallProgress(100);
       setProcessed(total);
       setTimeout(() => {
@@ -173,14 +182,12 @@ const LiveProcessingView: React.FC<LiveProcessingViewProps> = ({ jobId, onComple
       }, 2000);
     });
 
-    // Track job errors
-    const errorUnsubscribe = subscribeToEvent(`job:error:${jobId}`, (data) => {
-      console.error('Job error:', data);
+    const errorUnsubscribe = subscribeToEvent(`job:error:${jobId}`, (raw: unknown) => {
+      const data = raw as JobErrorData;
       onError(data.error || 'An unknown error occurred');
-    });    // Clean up all subscriptions
+    });
+
     return () => {
-      console.log(`Cleaning up WebSocket listeners for job ${jobId}`);
-      setIsListening(false);
       jobStartedUnsubscribe();
       clipProcessingUnsubscribe();
       clipProcessedUnsubscribe();
@@ -190,23 +197,25 @@ const LiveProcessingView: React.FC<LiveProcessingViewProps> = ({ jobId, onComple
       completedUnsubscribe();
       errorUnsubscribe();
     };
-  }, [jobId, subscribeToEvent, total, onComplete, onError]); return (
-    <div className="space-y-4 relative text-[#f1f1f1]">
+  }, [jobId, subscribeToEvent, total, onComplete, onError]);
+
+  return (
+    <div className="space-y-4 relative text-foreground">
       {/* Overall progress */}
       <div className="space-y-2">
-        <div className="flex justify-between items-center text-xs font-semibold text-[#f1f1f1]">
+        <div className="flex justify-between items-center text-xs font-semibold text-foreground">
           <span>Overall Progress</span>
-          <span className="text-[#aaaaaa] font-mono">{processed} / {total} clips</span>
+          <span className="text-muted-foreground font-mono">{processed} / {total} clips</span>
         </div>
-        <div className="w-full h-2 bg-[#222222] rounded-full overflow-hidden">
+        <div className="w-full h-2 bg-cc-ground rounded-full overflow-hidden border border-border">
           <motion.div
-            className="h-full bg-[#f23030] rounded-full"
+            className="h-full bg-primary rounded-full"
             initial={{ width: 0 }}
             animate={{ width: `${overallProgress}%` }}
             transition={{ duration: 0.3 }}
           />
         </div>
-        <div className="flex justify-between text-[11px] text-[#717171]">
+        <div className="flex justify-between text-[11px] text-muted-foreground">
           <div>
             <span className="font-medium">Elapsed:</span> {formatTime(elapsedTime)}
           </div>
@@ -216,32 +225,36 @@ const LiveProcessingView: React.FC<LiveProcessingViewProps> = ({ jobId, onComple
             </div>
           )}
           <div>
-            <span className="font-medium text-[#aaaaaa]">{overallProgress}%</span>
+            <span className="font-medium text-muted-foreground">{overallProgress}%</span>
           </div>
         </div>
       </div>
 
       {/* Current phase */}
       {currentPhase && (
-        <div className="p-3 bg-[#141414] border border-[#262626] rounded-xl text-[#f1f1f1] flex items-center text-xs">
-          <FaHourglassHalf className="mr-2 text-[#eab308] flex-shrink-0" />
+        <div className="p-3 bg-cc-ground border border-border rounded-xl text-foreground flex items-center text-xs">
+          <FaHourglassHalf className="mr-2 text-amber-400 shrink-0" />
           <span className="truncate">{currentPhase.message || `Phase: ${currentPhase.phase}`}</span>
         </div>
       )}
 
       {/* Recent clips activity */}
-      <div className="max-h-56 overflow-auto border border-[#262626] bg-[#121212] rounded-xl p-3">
-        <h3 className="text-xs font-semibold text-[#717171] uppercase tracking-wider mb-2.5">Live Processing Stream</h3>
+      <div className="max-h-56 overflow-auto border border-border bg-cc-ground rounded-xl p-3">
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2.5">
+          Live Processing Stream
+        </h3>
 
         {/* Currently processing */}
         {currentlyProcessing && (
-          <div className="mb-2.5 p-2.5 bg-[#181818] rounded-xl border border-[#38bdf8]/40">
+          <div className="mb-2.5 p-2.5 bg-cc-card rounded-xl border border-sky-400/40">
             <div className="flex items-center text-xs">
-              <FaSpinner className="text-[#38bdf8] animate-spin mr-2 flex-shrink-0" />
+              <FaSpinner className="text-sky-400 animate-spin mr-2 shrink-0" />
               <div className="flex-1 min-w-0">
-                <div className="font-semibold text-[#38bdf8] text-[11px] uppercase tracking-wide">Currently Processing</div>
-                <div className="text-[#f1f1f1] font-medium truncate">{currentlyProcessing.title}</div>
-                <div className="text-[10px] text-[#717171]">by {currentlyProcessing.streamer}</div>
+                <div className="font-semibold text-sky-400 text-[11px] uppercase tracking-wide">
+                  Currently Processing
+                </div>
+                <div className="text-foreground font-medium truncate">{currentlyProcessing.title}</div>
+                <div className="text-[10px] text-muted-foreground">by {currentlyProcessing.streamer}</div>
               </div>
             </div>
           </div>
@@ -249,22 +262,25 @@ const LiveProcessingView: React.FC<LiveProcessingViewProps> = ({ jobId, onComple
 
         {/* Recent completed clips */}
         <div className="space-y-1.5">
-          <h4 className="text-[10px] font-bold text-[#717171] uppercase tracking-wider">
+          <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
             Recently Completed
           </h4>
           {clipsStatus
-            .filter(clip => clip.status === 'processed')
+            .filter((clip) => clip.status === 'processed')
             .slice(-3)
             .reverse()
-            .map(clip => (
-              <div key={`processed-${clip.index}`} className="text-xs flex items-center p-2 bg-[#181818] border border-[#262626] rounded-lg">
-                <FaCheckCircle className="text-[#22c55e] mr-2 flex-shrink-0" />
+            .map((clip) => (
+              <div
+                key={`processed-${clip.index}`}
+                className="text-xs flex items-center p-2 bg-cc-card border border-border rounded-lg"
+              >
+                <FaCheckCircle className="text-emerald-400 mr-2 shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-[#f1f1f1] truncate">{clip.title}</div>
-                  <div className="text-[10px] text-[#717171]">by {clip.streamer}</div>
+                  <div className="font-medium text-foreground truncate">{clip.title}</div>
+                  <div className="text-[10px] text-muted-foreground">by {clip.streamer}</div>
                 </div>
                 {clip.processingTime && (
-                  <div className="text-[11px] text-[#22c55e] font-mono font-medium ml-2">
+                  <div className="text-[11px] text-emerald-400 font-mono font-medium ml-2">
                     {(clip.processingTime / 1000).toFixed(1)}s
                   </div>
                 )}
@@ -275,17 +291,22 @@ const LiveProcessingView: React.FC<LiveProcessingViewProps> = ({ jobId, onComple
         {/* Recent errors */}
         {recentErrors.length > 0 && (
           <div className="space-y-1.5 mt-2.5">
-            <h4 className="text-[10px] font-bold text-[#f23030] uppercase tracking-wide">
+            <h4 className="text-[10px] font-bold text-primary uppercase tracking-wide">
               Recent Errors
             </h4>
-            {recentErrors.slice(0, 2).map(clip => (
-              <div key={`error-${clip.index}`} className="text-xs flex items-start p-2 bg-[#181818] border border-[#f23030]/30 rounded-lg">
-                <FaExclamationCircle className="text-[#f23030] mr-2 mt-0.5 flex-shrink-0" />
+            {recentErrors.slice(0, 2).map((clip) => (
+              <div
+                key={`error-${clip.index}`}
+                className="text-xs flex items-start p-2 bg-cc-card border border-primary/30 rounded-lg"
+              >
+                <FaExclamationCircle className="text-primary mr-2 mt-0.5 shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-[#f1f1f1] truncate">{clip.title}</div>
-                  <div className="text-[10px] text-[#717171] mb-0.5">by {clip.streamer}</div>
-                  <div className="text-[11px] text-[#f23030] break-words">
-                    {clip.error && clip.error.length > 50 ? `${clip.error.substring(0, 50)}...` : clip.error}
+                  <div className="font-medium text-foreground truncate">{clip.title}</div>
+                  <div className="text-[10px] text-muted-foreground mb-0.5">by {clip.streamer}</div>
+                  <div className="text-[11px] text-primary break-words">
+                    {clip.error && clip.error.length > 50
+                      ? `${clip.error.substring(0, 50)}...`
+                      : clip.error}
                   </div>
                 </div>
               </div>
@@ -294,12 +315,13 @@ const LiveProcessingView: React.FC<LiveProcessingViewProps> = ({ jobId, onComple
         )}
 
         {/* No activity message */}
-        {!currentlyProcessing && clipsStatus.filter(clip => clip.status !== 'pending').length === 0 && (
-          <div className="text-xs text-[#717171] flex items-center justify-center py-4">
-            <FaCircleNotch className="animate-spin mr-2" />
-            Waiting for worker pipeline to initiate...
-          </div>
-        )}
+        {!currentlyProcessing &&
+          clipsStatus.filter((clip) => clip.status !== 'pending').length === 0 && (
+            <div className="text-xs text-muted-foreground flex items-center justify-center py-4">
+              <FaCircleNotch className="animate-spin mr-2" />
+              Waiting for worker pipeline to initiate...
+            </div>
+          )}
       </div>
     </div>
   );

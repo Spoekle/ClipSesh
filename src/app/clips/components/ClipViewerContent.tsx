@@ -1,7 +1,6 @@
 'use client';
 
-import { useMemo, useEffect, useState, useRef } from 'react';
-import Link from 'next/link';
+import React, { useMemo, useEffect, useState, useRef } from 'react';
 import ClipContent from './ClipView/Index';
 import ClipFilterBar from './ClipGrid/components/ClipFilterBar';
 import ClipGrid from './ClipGrid/Index';
@@ -9,55 +8,10 @@ import Breadcrumbs from '@/components/common/Breadcrumbs';
 import { FaSearch } from 'react-icons/fa';
 import { Clip, User, Rating } from '@/types/adminTypes';
 import { getClipFilterOptions } from '@/services/clipService';
+import { ClipViewerHeader } from './ClipViewerHeader';
 
-export type Season = 'Winter' | 'Spring' | 'Summer' | 'Fall';
-
-export interface ClipViewerHeaderProps {
-  season: Season;
-  totalClips?: number;
-  isFiltered?: boolean;
-}
-
-export const ClipViewerHeader: React.FC<ClipViewerHeaderProps> = ({ season, totalClips, isFiltered }) => {
-  return (
-    <div className="relative w-full overflow-hidden select-none">
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-8 pt-6 pb-4">
-        <nav className="flex items-center gap-1.5 text-sm text-[#b3b3b3] mb-2">
-          <Link href="/" className="hover:text-white transition-colors">
-            Home
-          </Link>
-          <span className="text-[#626262] select-none">/</span>
-          <span className="text-white font-medium">Clips</span>
-        </nav>
-
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-          <div>
-            <div className="relative pb-3 w-fit">
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white tracking-tight leading-tight">
-                CLIPS
-              </h1>
-              <div className="absolute bottom-0 left-0 w-3/5 h-[2.5px] bg-[#f23030] rounded-full" />
-            </div>
-            <p className="mt-3 text-sm sm:text-base text-[#b3b3b3] leading-relaxed max-w-xl">
-              Discover, watch, and rate the best Beat Saber highlights from across the community.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2.5 pb-1">
-            <span className="text-xs font-semibold px-2.5 py-1 rounded-[6px] bg-[#181818] border border-[#2a2a2a] text-[#e6e6e6]">
-              {season} Season
-            </span>
-            {totalClips !== undefined && (
-              <span className="text-xs font-medium px-3 py-1 rounded-sm bg-[#f23030]/10 border border-[#f23030]/25 text-[#f23030]">
-                {totalClips.toLocaleString()} {isFiltered ? 'found' : 'available'}
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+export { ClipViewerHeader };
+export type { Season, ClipViewerHeaderProps } from './ClipViewerHeader';
 
 interface ClipViewerContentProps {
   expandedClip: string | null;
@@ -142,23 +96,23 @@ const ClipViewerContent: React.FC<ClipViewerContentProps> = ({
         if (filterOptions && filterOptions.streamers) {
           setAllStreamers(filterOptions.streamers);
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Error fetching streamers:', error);
-        const uniqueStreamers = [...new Set(unratedClips.map(clip => clip.streamer))];
+        const uniqueStreamers = [...new Set(unratedClips.map((clip) => clip.streamer))];
         setAllStreamers(uniqueStreamers);
       }
     };
 
     fetchStreamers();
-  }, []);
+  }, [unratedClips]);
 
   const streamers = useMemo(() => {
     if (allStreamers.length > 0) {
       return allStreamers;
     }
-    const uniqueStreamers = [...new Set(unratedClips.map(clip => clip.streamer))];
-    return uniqueStreamers;
+    return [...new Set(unratedClips.map((clip) => clip.streamer))];
   }, [allStreamers, unratedClips]);
+
   const filteredClips = unratedClips;
 
   const totalPages = useMemo(() => {
@@ -199,10 +153,11 @@ const ClipViewerContent: React.FC<ClipViewerContentProps> = ({
     if (isClipLoading) {
       return (
         <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="animate-spin rounded-full h-12 w-12 border-2 border-[#2a2a2a] border-t-[#f23030]"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-border border-t-primary"></div>
         </div>
       );
-    } if (currentClip) {
+    }
+    if (currentClip) {
       return (
         <ClipContent
           clip={currentClip}
@@ -215,17 +170,19 @@ const ClipViewerContent: React.FC<ClipViewerContentProps> = ({
     }
 
     return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] bg-[#181818] p-8 rounded-2xl shadow-sm border border-[#2a2a2a]">
-        <div className="w-16 h-16 rounded-2xl bg-[#222222] border border-[#2f2f2f] flex items-center justify-center text-neutral-400 text-3xl mb-4 shadow-inner">
+      <div className="flex flex-col items-center justify-center min-h-[50vh] bg-cc-card p-8 rounded-2xl shadow-sm border border-border">
+        <div className="w-16 h-16 rounded-2xl bg-secondary border border-border flex items-center justify-center text-muted-foreground text-3xl mb-4 shadow-inner">
           <FaSearch />
         </div>
-        <h2 className="text-xl font-bold text-white mb-2">Clip Not Found</h2>
-        <p className="text-neutral-400 mb-6 text-sm">The clip you're looking for may have been deleted or doesn't exist.</p>
+        <h2 className="text-xl font-bold text-foreground mb-2">Clip Not Found</h2>
+        <p className="text-muted-foreground mb-6 text-sm">
+          The clip you're looking for may have been deleted or doesn't exist.
+        </p>
         <Breadcrumbs
           items={[
             { label: 'Home', path: '/' },
             { label: 'Clips', path: '/clips' },
-            { label: 'Not Found' }
+            { label: 'Not Found' },
           ]}
         />
       </div>

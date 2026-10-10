@@ -1,10 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
-import { QueryClientProvider } from '@tanstack/react-query';
-import { queryClient } from '@/lib/react-query';
+import { QueryClientProvider, useQueryClient } from '@tanstack/react-query';
+import { queryClient, queryKeys } from '@/lib/react-query';
 import { NotificationProvider } from '@/context/AlertContext';
-import { safeLocalStorage } from '@/utils/storage';
+import { setAuthToken, removeAuthToken } from '@/utils/storage';
+import { useAuthToken } from '@/hooks/useAuthToken';
+import { authenticateSocket } from '@/hooks/useSocket';
 import Navbar from './Navbar';
 import Footer from './Footer';
 import NotificationContainer from './PopupAlerts';
@@ -13,19 +15,26 @@ import { useCurrentUser } from '../hooks/useUser';
 
 function AppShellContent({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const queryClient = useQueryClient();
+  const token = useAuthToken();
 
   const { data: userData, isLoading: userLoading, error: userError } = useCurrentUser();
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search);
-      const token = urlParams.get('token');
-      if (token) {
-        safeLocalStorage.setItem('token', token);
-        window.history.replaceState({}, document.title, window.location.pathname);
+      const url = new URL(window.location.href);
+      const urlToken = url.searchParams.get('token');
+      if (urlToken) {
+        setAuthToken(urlToken);
+        authenticateSocket(urlToken);
+        url.searchParams.delete('token');
+        const cleanUrl = url.pathname + (url.search ? url.search : '') + url.hash;
+        window.history.replaceState({}, document.title, cleanUrl);
+        queryClient.invalidateQueries({ queryKey: queryKeys.user.current });
+        queryClient.refetchQueries({ queryKey: queryKeys.user.current });
       }
     }
-  }, []);
+  }, [queryClient]);
 
   useEffect(() => {
     if (userData) {
@@ -33,15 +42,15 @@ function AppShellContent({ children }: { children: React.ReactNode }) {
     } else if (userError) {
       setUser(null);
       if (typeof window !== 'undefined') {
-        safeLocalStorage.removeItem('token');
+        removeAuthToken();
       }
-    } else if (!userLoading) {
+    } else if (!userLoading && !token) {
       setUser(null);
     }
-  }, [userData, userError, userLoading]);
+  }, [userData, userError, userLoading, token]);
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#0f0f0f] text-[#f1f1f1] selection:bg-cc-red/20 selection:text-cc-red relative z-0">
+    <div className="flex flex-col min-h-screen bg-background text-foreground selection:bg-cc-red/20 selection:text-cc-red relative z-0">
       <Navbar
         user={user}
         setUser={setUser}

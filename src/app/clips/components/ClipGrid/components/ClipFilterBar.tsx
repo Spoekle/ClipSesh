@@ -1,14 +1,19 @@
-﻿'use client';
+'use client';
 
-import { safeLocalStorage } from '@/utils/storage';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
-  FaSearch, FaTimes, FaChevronDown,
-  FaUpload, FaEye, FaEyeSlash,
-  FaArrowUp, FaArrowDown
+  FaSearch,
+  FaTimes,
+  FaChevronDown,
+  FaUpload,
+  FaEye,
+  FaEyeSlash,
 } from 'react-icons/fa';
 import UploadClipModal from './UploadClipModal';
+import { SortControls } from './filter/SortControls';
+import { safeLocalStorage } from '@/utils/storage';
 import { User } from '@/types/adminTypes';
+import { Button } from '@/components/common/Button';
 
 interface ClipFilterBarProps {
   sortOptionState: string;
@@ -28,10 +33,10 @@ interface ClipFilterBarProps {
   streamers: string[];
   handleFilterReset: () => void;
   fetchClipsAndRatings: (user: User | null) => Promise<void>;
-  setSearchParams: (params: any) => void;
+  setSearchParams: (params: URLSearchParams, options?: { replace?: boolean }) => void;
 }
 
-const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
+export const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
   sortOptionState,
   handleSortChange,
   filterRatedClips,
@@ -47,7 +52,7 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
   streamers,
   handleFilterReset,
   fetchClipsAndRatings,
-  setSearchParams
+  setSearchParams,
 }) => {
   const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -56,6 +61,14 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
 
   const isAdmin = user?.roles?.includes('admin');
   const isTeamMember = user?.roles?.includes('admin') || user?.roles?.includes('clipteam');
+
+  const updateUrlParams = (record: Record<string, string>) => {
+    const urlParams = new URLSearchParams();
+    Object.entries(record).forEach(([k, v]) => {
+      if (v) urlParams.set(k, v);
+    });
+    setSearchParams(urlParams);
+  };
 
   // Parse sortField and sortDirection from sortOptionState
   const [sortField, sortDirection] = useMemo(() => {
@@ -107,11 +120,11 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
     const newValue = !filterRatedClips;
     safeLocalStorage.setItem('filterRatedClips', newValue.toString());
     setFilterRatedClips(newValue);
-    setSearchParams({
+    updateUrlParams({
       sort: sortOptionState,
-      page: "1",
+      page: '1',
       ...(searchTerm && { q: searchTerm }),
-      ...(filterStreamer && { streamer: filterStreamer })
+      ...(filterStreamer && { streamer: filterStreamer }),
     });
   };
 
@@ -119,11 +132,11 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
     const newValue = !filterDeniedClips;
     safeLocalStorage.setItem('filterDeniedClips', newValue.toString());
     setFilterDeniedClips(newValue);
-    setSearchParams({
+    updateUrlParams({
       sort: sortOptionState,
-      page: "1",
+      page: '1',
       ...(searchTerm && { q: searchTerm }),
-      ...(filterStreamer && { streamer: filterStreamer })
+      ...(filterStreamer && { streamer: filterStreamer }),
     });
   };
 
@@ -132,26 +145,26 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
     const timer = setTimeout(() => {
       if (localSearchTerm !== searchTerm) {
         setSearchTerm(localSearchTerm);
-        setSearchParams({
+        updateUrlParams({
           sort: sortOptionState,
-          page: "1",
+          page: '1',
           ...(localSearchTerm && { q: localSearchTerm }),
-          ...(filterStreamer && { streamer: filterStreamer })
+          ...(filterStreamer && { streamer: filterStreamer }),
         });
       }
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [localSearchTerm, searchTerm, setSearchTerm, setSearchParams, sortOptionState, filterStreamer]);
+  }, [localSearchTerm, searchTerm, setSearchTerm, sortOptionState, filterStreamer]);
 
   const handleStreamerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newStreamer = e.target.value;
     setFilterStreamer(newStreamer);
-    setSearchParams({
+    updateUrlParams({
       sort: sortOptionState,
-      page: "1",
+      page: '1',
       ...(searchTerm && { q: searchTerm }),
-      ...(newStreamer && { streamer: newStreamer })
+      ...(newStreamer && { streamer: newStreamer }),
     });
   };
 
@@ -166,10 +179,10 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
   const handleClearSearch = () => {
     setLocalSearchTerm('');
     setSearchTerm('');
-    setSearchParams({
+    updateUrlParams({
       sort: sortOptionState,
-      page: "1",
-      ...(filterStreamer && { streamer: filterStreamer })
+      page: '1',
+      ...(filterStreamer && { streamer: filterStreamer }),
     });
   };
 
@@ -188,7 +201,7 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
   };
 
   return (
-    <div className="sticky top-14 z-10 bg-[#141414]/95 backdrop-blur-md rounded-2xl border border-[#262626] mb-6 p-3 sm:p-3.5 shadow-md select-none">
+    <div className="sticky top-14 z-10 bg-cc-card/95 backdrop-blur-md rounded-2xl border border-border mb-6 p-3 sm:p-3.5 shadow-md select-none">
       <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
         {/* Main Controls: Search, Streamer filter, Sort criteria, Sort direction */}
         <div className="flex flex-wrap items-center gap-2.5 flex-1">
@@ -197,16 +210,17 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
             <input
               ref={searchInputRef}
               type="text"
-              className="w-full pl-9 pr-8 py-2 bg-[#0e0e0e] border border-[#2a2a2a] focus:border-neutral-500 rounded-xl text-xs sm:text-sm text-white placeholder-neutral-500 focus:outline-none transition-colors"
+              className="w-full pl-9 pr-8 py-2 bg-cc-ground border border-border focus:border-border/80 rounded-xl text-xs sm:text-sm text-white placeholder-muted-foreground/60 focus:outline-none transition-colors"
               placeholder="Search clips or streamers..."
               value={localSearchTerm}
               onChange={(e) => setLocalSearchTerm(e.target.value)}
             />
-            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 text-xs" />
+            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs" />
             {localSearchTerm && (
               <button
+                type="button"
                 onClick={handleClearSearch}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white transition-colors"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white transition-colors cursor-pointer"
                 title="Clear search"
               >
                 <FaTimes size={11} />
@@ -219,80 +233,36 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
             <select
               value={filterStreamer}
               onChange={handleStreamerChange}
-              className="appearance-none pl-3 pr-8 py-2 bg-[#0e0e0e] hover:bg-[#181818] border border-[#2a2a2a] focus:border-neutral-500 rounded-xl text-xs sm:text-sm text-neutral-200 focus:outline-none cursor-pointer transition-colors"
+              className="appearance-none pl-3 pr-8 py-2 bg-cc-ground hover:bg-white/5 border border-border focus:border-border/80 rounded-xl text-xs sm:text-sm text-foreground focus:outline-none cursor-pointer transition-colors"
               aria-label="Filter by Streamer"
             >
               <option value="">All Streamers</option>
-              {streamers.map((s: string) => (
+              {streamers.map((s) => (
                 <option key={s} value={s}>
                   {s}
                 </option>
               ))}
             </select>
-            <FaChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none text-[10px]" />
+            <FaChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none text-[10px]" />
           </div>
 
-          {/* Sort Criteria Dropdown */}
-          <div className="relative">
-            <select
-              value={sortField}
-              onChange={(e) => handleSortFieldChange(e.target.value)}
-              className="appearance-none pl-3 pr-8 py-2 bg-[#0e0e0e] hover:bg-[#181818] border border-[#2a2a2a] focus:border-neutral-500 rounded-xl text-xs sm:text-sm text-neutral-200 focus:outline-none cursor-pointer transition-colors"
-              aria-label="Sort criteria"
-            >
-              <option value="createdAt">Upload Date</option>
-              <option value="views">Views</option>
-              <option value="upvotes">Upvotes</option>
-              <option value="downvotes">Downvotes</option>
-              {isTeamMember && (
-                <>
-                  <option value="averageRating">Average Rating</option>
-                  <option value="ratingCount">Rating Count</option>
-                  <option value="denyCount">Deny Count</option>
-                </>
-              )}
-            </select>
-            <FaChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none text-[10px]" />
-          </div>
-
-          {/* Sort Direction Toggle Button Group */}
-          <div className="flex items-center border border-[#2a2a2a] rounded-xl p-0.5 bg-[#0e0e0e] shrink-0" role="group" aria-label="Sort direction">
-            <button
-              type="button"
-              onClick={() => handleSortDirectionChange('desc')}
-              className={`px-2.5 py-1.5 flex items-center gap-1.5 rounded-lg text-xs font-medium transition-all ${
-                sortDirection === 'desc'
-                  ? 'bg-[#262626] text-white shadow-xs'
-                  : 'text-neutral-400 hover:text-white'
-              }`}
-              title="Sort Descending (Highest/Newest first)"
-            >
-              <FaArrowDown size={10} />
-              <span>Desc</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSortDirectionChange('asc')}
-              className={`px-2.5 py-1.5 flex items-center gap-1.5 rounded-lg text-xs font-medium transition-all ${
-                sortDirection === 'asc'
-                  ? 'bg-[#262626] text-white shadow-xs'
-                  : 'text-neutral-400 hover:text-white'
-              }`}
-              title="Sort Ascending (Lowest/Oldest first)"
-            >
-              <FaArrowUp size={10} />
-              <span>Asc</span>
-            </button>
-          </div>
+          {/* Sort Controls */}
+          <SortControls
+            sortField={sortField}
+            sortDirection={sortDirection}
+            isTeamMember={Boolean(isTeamMember)}
+            onSortFieldChange={handleSortFieldChange}
+            onSortDirectionChange={handleSortDirectionChange}
+          />
         </div>
 
         {/* Action Controls: Reset, Reviewer Toggles, Admin Upload */}
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0 pt-1 lg:pt-0">
-          {/* Reset Filters button */}
           {activeFiltersCount > 0 && (
             <button
+              type="button"
               onClick={handleResetAll}
-              className="px-3 py-1.5 rounded-xl text-xs font-medium text-neutral-300 bg-[#1e1e1e] hover:bg-[#282828] border border-[#333333] flex items-center gap-1.5 transition-colors shrink-0"
+              className="px-3 py-1.5 rounded-xl text-xs font-medium text-foreground bg-white/5 hover:bg-white/10 border border-border flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer"
               title="Reset all filters and sort"
             >
               <FaTimes size={10} />
@@ -300,15 +270,15 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
             </button>
           )}
 
-          {/* Team Member Toggles */}
           {isTeamMember && (
             <>
               <button
+                type="button"
                 onClick={toggleFilterRatedClips}
-                className={`px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition-all shrink-0 ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
                   filterRatedClips
-                    ? 'bg-[#f23030] text-white shadow-xs'
-                    : 'bg-[#1e1e1e] hover:bg-[#282828] text-neutral-300 border border-[#2e2e2e]'
+                    ? 'bg-primary text-white shadow-xs'
+                    : 'bg-cc-ground hover:bg-white/5 text-muted-foreground hover:text-white border border-border'
                 }`}
                 title={filterRatedClips ? 'Showing all clips' : 'Hiding rated clips'}
               >
@@ -317,11 +287,12 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
               </button>
 
               <button
+                type="button"
                 onClick={toggleFilterDeniedClips}
-                className={`px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition-all shrink-0 ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
                   filterDeniedClips
-                    ? 'bg-neutral-200 text-neutral-900 font-semibold shadow-xs'
-                    : 'bg-[#1e1e1e] hover:bg-[#282828] text-neutral-300 border border-[#2e2e2e]'
+                    ? 'bg-white text-black font-semibold shadow-xs'
+                    : 'bg-cc-ground hover:bg-white/5 text-muted-foreground hover:text-white border border-border'
                 }`}
                 title={filterDeniedClips ? 'Showing all clips' : 'Hiding denied clips'}
               >
@@ -331,16 +302,17 @@ const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
             </>
           )}
 
-          {/* Admin Upload Button */}
           {isLoggedIn && isAdmin && (
-            <button
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
               onClick={() => setIsUploadModalOpen(true)}
-              className="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-white bg-[#f23030] hover:bg-[#d92222] transition-colors flex items-center gap-1.5 shadow-sm shrink-0"
+              leftIcon={<FaUpload size={10} />}
               title="Upload clip"
             >
-              <FaUpload size={10} />
-              <span>Upload</span>
-            </button>
+              Upload
+            </Button>
           )}
         </div>
       </div>

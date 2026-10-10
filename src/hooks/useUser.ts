@@ -78,18 +78,7 @@ export const useUploadProfilePicture = () => {
   });
 };
 
-// Mutation for unlinking Discord account
-export const useUnlinkDiscordAccount = () => {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: (userId: string) =>
-      userService.unlinkDiscordAccount(userId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.user.current });
-    },
-  });
-};
+
 
 // Mutation for user login
 export const useLoginUser = () => {
@@ -149,9 +138,6 @@ export const useLogout = () => {
     queryClient.clear(); // Clear all cached data
   };
 };
-
-// Helper function to get Discord auth URL
-export const getDiscordAuthUrl = userService.getDiscordAuthUrl;
 
 // Helper function to get CC auth URL
 export const getCCAuthUrl = userService.getCCAuthUrl;

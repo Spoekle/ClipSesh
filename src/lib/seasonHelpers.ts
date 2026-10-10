@@ -4,34 +4,54 @@ export interface SeasonInfo {
 }
 
 export function getCurrentSeason(date: Date = new Date()): SeasonInfo {
-  const month = date.getMonth() + 1; // 0-based to 1-based
+  const month = date.getMonth() + 1; // 0-based to 1-based (1-12)
   const day = date.getDate();
   const year = date.getFullYear();
   let season: SeasonInfo['season'] = 'winter';
+  let seasonYear = year;
 
   if (
-    (month === 3 && day >= 20) ||
+    (month === 3 && day >= 21) ||
     (month > 3 && month < 6) ||
     (month === 6 && day <= 20)
   ) {
     season = 'spring';
+    seasonYear = year;
   } else if (
     (month === 6 && day >= 21) ||
     (month > 6 && month < 9) ||
     (month === 9 && day <= 20)
   ) {
     season = 'summer';
+    seasonYear = year;
   } else if (
     (month === 9 && day >= 21) ||
     (month > 9 && month < 12) ||
     (month === 12 && day <= 20)
   ) {
     season = 'fall';
+    seasonYear = year;
   } else {
     season = 'winter';
+    // Winter starts on Dec 21 of year N and ends on Mar 20 of year N+1.
+    // In December, winter year is the current calendar year.
+    // In January, February, or March (1-20), winter belongs to the previous year.
+    seasonYear = month === 12 ? year : year - 1;
   }
 
-  return { season, year };
+  return { season, year: seasonYear };
+}
+
+export function isSeasonStartDay(date: Date = new Date()): boolean {
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  return day === 21 && (month === 3 || month === 6 || month === 9 || month === 12);
+}
+
+export function hasSeasonChanged(fromDate: Date, toDate: Date): boolean {
+  const fromSeason = getCurrentSeason(fromDate);
+  const toSeason = getCurrentSeason(toDate);
+  return fromSeason.season !== toSeason.season || fromSeason.year !== toSeason.year;
 }
 
 export interface SeasonDateRange {
@@ -154,11 +174,12 @@ export function getSeasonRemainingDays(date: Date = new Date()): SeasonRemaining
   const endDate = new Date(endYear, endMonth - 1, endDay, 23, 59, 59, 999);
   const diffMs = endDate.getTime() - date.getTime();
   const daysRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+  const seasonYear = season === 'Winter' && month !== 12 ? year - 1 : year;
 
   return {
     daysRemaining,
     season,
-    year,
+    year: seasonYear,
     endDate,
     formatted: `${daysRemaining} ${daysRemaining === 1 ? 'day' : 'days'} remaining`,
   };
@@ -229,10 +250,20 @@ export interface SeasonLifecycleStatus {
   daysUntilArchive: number;
 }
 
-/**
- * Determine lifecycle status across the 4 seasons (Spring, Summer, Fall, Winter)
- * Transitions occur exclusively during months 3 (Mar), 6 (Jun), 9 (Sep), and 12 (Dec).
- */
+function toSeasonName(season: string): SeasonName {
+  switch (season.toLowerCase()) {
+    case 'spring':
+      return 'Spring';
+    case 'summer':
+      return 'Summer';
+    case 'fall':
+      return 'Fall';
+    case 'winter':
+    default:
+      return 'Winter';
+  }
+}
+
 export function getSeasonLifecycleStatus(
   date: Date = new Date(),
   config?: SeasonAutomationDates
@@ -251,7 +282,7 @@ export function getSeasonLifecycleStatus(
   if (!isTransitionMonth) {
     // Non-transition months: Jan, Feb, Apr, May, Jul, Aug, Oct, Nov
     const { season: curSeasonLower, year: curYear } = getCurrentSeason(date);
-    const curSeason = (curSeasonLower.charAt(0).toUpperCase() + curSeasonLower.slice(1)) as SeasonName;
+    const curSeason = toSeasonName(curSeasonLower);
 
     // Find the next upcoming transition month
     const nextTransition =
@@ -347,10 +378,6 @@ export function getSeasonLifecycleStatus(
   };
 }
 
-/**
- * Returns the season and year that should be archived if today is on or after zipArchiveDay
- * in a transition month (March, June, September, December).
- */
 export function getSeasonToArchive(
   date: Date = new Date(),
   config?: SeasonAutomationDates
@@ -386,7 +413,7 @@ export function getSeasonToArchive(
 /**
  * Compare two items by year and season descending (newest year and latest season first).
  * Falls back to createdAt descending if year and season match.
- */
+*/
 export function compareSeasonYear<
   T extends { season?: string; year?: number; createdAt?: string | Date }
 >(a: T, b: T): number {

@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import User from '@/models/userModel';
 import { requireAuth, hashPassword } from '@/lib/auth';
@@ -30,18 +30,23 @@ export async function PUT(
     const { id } = await params;
     const { user: authUser, errorResponse } = requireAuth(req);
     if (errorResponse) return errorResponse;
+    if (!authUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    if (authUser!.id !== id && !authUser!.roles.includes('admin')) {
+    if (authUser.id !== id && !authUser.roles.includes('admin')) {
       return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
     }
 
-    const { username, password, discordId, discordUsername, email } = await req.json();
+    const { username, password, discordId, discordUsername, ccId, ccUsername, email } = await req.json();
 
-    const updateData: Record<string, any> = {};
+    const updateData: Record<string, unknown> = {};
     if (username) updateData.username = username;
     if (password) updateData.password = await hashPassword(password);
     if (discordId !== undefined) updateData.discordId = discordId;
     if (discordUsername !== undefined) updateData.discordUsername = discordUsername;
+    if (ccId !== undefined) updateData.ccId = ccId;
+    if (ccUsername !== undefined) updateData.ccUsername = ccUsername;
     if (email !== undefined) updateData.email = email;
 
     await User.findByIdAndUpdate(id, updateData);

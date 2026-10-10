@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
@@ -6,9 +6,10 @@ import { FaUser, FaLock, FaUserPlus, FaShieldAlt, FaEnvelope, FaExclamationTrian
 import { useNotification } from '@/context/AlertContext';
 import { CreateUserFormData, FormErrors } from '@/types/adminTypes';
 import { useCreateUser } from '@/hooks/useAdmin';
+import { Button } from '@/components/Button';
 
 interface CreateUserProps {
-    fetchUsers: () => void;
+    fetchUsers?: () => void;
     AVAILABLE_ROLES: string[];
 }
 
@@ -118,9 +119,10 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
                 roles: ['user']
             });
             setPasswordStrength(0);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Error creating user:', error);
-            showError(error.response?.data?.message || error.message || 'Failed to create user');
+            const msg = error instanceof Error ? error.message : 'Failed to create user';
+            showError(msg);
         } finally {
             setIsSubmitting(false);
         }
@@ -142,23 +144,23 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
-            className="w-full bg-[#181818] text-[#f1f1f1] p-6 rounded-2xl border border-[#262626]"
+            className="w-full bg-cc-card text-foreground p-6 rounded-2xl border border-border"
         >
-            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-[#262626]">
-                <div className="w-8 h-8 rounded-xl bg-[#22c55e]/15 text-[#22c55e] flex items-center justify-center">
+            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-border">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
                     <FaUserPlus size={14} />
                 </div>
                 <div>
-                    <h2 className="text-base font-bold text-[#f1f1f1]">Create User</h2>
-                    <p className="text-xs text-[#717171]">Provision a new user account with role permissions</p>
+                    <h2 className="text-base font-bold text-foreground">Create User</h2>
+                    <p className="text-xs text-muted-foreground">Provision a new user account with role permissions</p>
                 </div>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Username field */}
                 <div className="flex flex-col">
-                    <label htmlFor="username" className="mb-1.5 text-xs font-semibold text-[#aaaaaa] uppercase tracking-wider flex items-center">
-                        <FaUser className="mr-1.5 text-[#717171]" /> Username <span className="text-[#f23030] ml-1">*</span>
+                    <label htmlFor="username" className="mb-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center">
+                        <FaUser className="mr-1.5 text-muted-foreground" /> Username <span className="text-cc-red ml-1">*</span>
                     </label>
                     <div className="relative">
                         <input
@@ -167,15 +169,15 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
                             name="username"
                             value={formData.username}
                             onChange={handleChange}
-                            className={`w-full pl-9 pr-3.5 py-2 bg-[#121212] border rounded-xl text-xs text-[#f1f1f1] focus:outline-none ${
-                                errors.username ? 'border-[#f23030]' : 'border-[#262626] focus:border-[#444]'
+                            className={`w-full pl-9 pr-3.5 py-2 bg-cc-ground border rounded-xl text-xs text-foreground focus:outline-none ${
+                                errors.username ? 'border-cc-red' : 'border-border focus:border-border'
                             }`}
                             placeholder="Enter username"
                         />
-                        <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-[#717171] text-xs" />
+                        <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs" />
                     </div>
                     {errors.username && (
-                        <div className="text-[#f23030] text-[11px] mt-1 flex items-center font-medium">
+                        <div className="text-cc-red text-[11px] mt-1 flex items-center font-medium">
                             <FaExclamationTriangle className="mr-1" /> {errors.username}
                         </div>
                     )}
@@ -183,8 +185,8 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
 
                 {/* Email field */}
                 <div className="flex flex-col">
-                    <label htmlFor="email" className="mb-1.5 text-xs font-semibold text-[#aaaaaa] uppercase tracking-wider flex items-center">
-                        <FaEnvelope className="mr-1.5 text-[#717171]" /> Email Address:
+                    <label htmlFor="email" className="mb-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center">
+                        <FaEnvelope className="mr-1.5 text-muted-foreground" /> Email Address:
                     </label>
                     <div className="relative">
                         <input
@@ -193,15 +195,15 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
                             name="email"
                             value={formData.email}
                             onChange={handleChange}
-                            className={`w-full pl-9 pr-3.5 py-2 bg-[#121212] border rounded-xl text-xs text-[#f1f1f1] focus:outline-none ${
-                                errors.email ? 'border-[#f23030]' : 'border-[#262626] focus:border-[#444]'
+                            className={`w-full pl-9 pr-3.5 py-2 bg-cc-ground border rounded-xl text-xs text-foreground focus:outline-none ${
+                                errors.email ? 'border-cc-red' : 'border-border focus:border-border'
                             }`}
                             placeholder="user@example.com"
                         />
-                        <FaEnvelope className="absolute left-3 top-1/2 -translate-y-1/2 text-[#717171] text-xs" />
+                        <FaEnvelope className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs" />
                     </div>
                     {errors.email && (
-                        <div className="text-[#f23030] text-[11px] mt-1 flex items-center font-medium">
+                        <div className="text-cc-red text-[11px] mt-1 flex items-center font-medium">
                             <FaExclamationTriangle className="mr-1" /> {errors.email}
                         </div>
                     )}
@@ -209,8 +211,8 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
 
                 {/* Password field */}
                 <div className="flex flex-col">
-                    <label htmlFor="password" className="mb-1.5 text-xs font-semibold text-[#aaaaaa] uppercase tracking-wider flex items-center">
-                        <FaLock className="mr-1.5 text-[#717171]" /> Password <span className="text-[#f23030] ml-1">*</span>
+                    <label htmlFor="password" className="mb-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center">
+                        <FaLock className="mr-1.5 text-muted-foreground" /> Password <span className="text-cc-red ml-1">*</span>
                     </label>
                     <div className="relative">
                         <input
@@ -219,34 +221,34 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
                             name="password"
                             value={formData.password}
                             onChange={handleChange}
-                            className={`w-full pl-9 pr-3.5 py-2 bg-[#121212] border rounded-xl text-xs text-[#f1f1f1] focus:outline-none ${
-                                errors.password ? 'border-[#f23030]' : 'border-[#262626] focus:border-[#444]'
+                            className={`w-full pl-9 pr-3.5 py-2 bg-cc-ground border rounded-xl text-xs text-foreground focus:outline-none ${
+                                errors.password ? 'border-cc-red' : 'border-border focus:border-border'
                             }`}
                             placeholder="Enter password"
                         />
-                        <FaLock className="absolute left-3 top-1/2 -translate-y-1/2 text-[#717171] text-xs" />
+                        <FaLock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs" />
                     </div>
                     {errors.password && (
-                        <div className="text-[#f23030] text-[11px] mt-1 flex items-center font-medium">
+                        <div className="text-cc-red text-[11px] mt-1 flex items-center font-medium">
                             <FaExclamationTriangle className="mr-1" /> {errors.password}
                         </div>
                     )}
 
                     {/* Password strength indicator */}
                     {formData.password && (
-                        <div className="mt-2 bg-[#141414] p-2.5 rounded-xl border border-[#262626]">
+                        <div className="mt-2 bg-cc-ground p-2.5 rounded-xl border border-border">
                             <div className="flex justify-between items-center text-[11px] mb-1">
-                                <span className="text-[#717171]">Strength:</span>
-                                <span className="font-semibold text-[#f1f1f1]">{getStrengthLabel()}</span>
+                                <span className="text-muted-foreground">Strength:</span>
+                                <span className="font-semibold text-foreground">{getStrengthLabel()}</span>
                             </div>
-                            <div className="w-full bg-[#222222] h-1.5 rounded-full overflow-hidden">
+                            <div className="w-full bg-secondary h-1.5 rounded-full overflow-hidden">
                                 <div
                                     className={`h-full transition-all duration-300 ${
                                         passwordStrength <= 1
-                                            ? 'bg-[#f23030]'
+                                            ? 'bg-cc-red'
                                             : passwordStrength === 2
-                                                ? 'bg-[#eab308]'
-                                                : 'bg-[#22c55e]'
+                                                ? 'bg-yellow-500'
+                                                : 'bg-emerald-500'
                                     }`}
                                     style={{ width: `${(passwordStrength / 4) * 100}%` }}
                                 />
@@ -257,8 +259,8 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
 
                 {/* Roles selection */}
                 <div className="flex flex-col">
-                    <label className="mb-2 text-xs font-semibold text-[#aaaaaa] uppercase tracking-wider flex items-center">
-                        <FaShieldAlt className="mr-1.5 text-[#717171]" /> Assigned Roles <span className="text-[#f23030] ml-1">*</span>
+                    <label className="mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center">
+                        <FaShieldAlt className="mr-1.5 text-muted-foreground" /> Assigned Roles <span className="text-cc-red ml-1">*</span>
                     </label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {AVAILABLE_ROLES.map((role) => (
@@ -266,8 +268,8 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
                                 key={role}
                                 className={`flex items-center p-2.5 rounded-xl border text-xs font-semibold cursor-pointer transition-all ${
                                     formData.roles.includes(role)
-                                        ? 'bg-[#22c55e]/15 border-[#22c55e]/40 text-[#22c55e]'
-                                        : 'bg-[#141414] border-[#262626] text-[#aaaaaa] hover:border-[#383838]'
+                                        ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400'
+                                        : 'bg-cc-ground border-border text-muted-foreground hover:border-border'
                                 }`}
                             >
                                 <input
@@ -276,37 +278,30 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
                                     value={role}
                                     checked={formData.roles.includes(role)}
                                     onChange={handleChange}
-                                    className="mr-2 rounded text-[#22c55e] focus:ring-0 bg-[#121212] border-[#262626]"
+                                    className="mr-2 rounded text-emerald-500 focus:ring-0 bg-cc-ground border-border"
                                 />
                                 {role.charAt(0).toUpperCase() + role.slice(1)}
                             </label>
                         ))}
                     </div>
                     {errors.roles && (
-                        <div className="text-[#f23030] text-[11px] mt-1 flex items-center font-medium">
+                        <div className="text-cc-red text-[11px] mt-1 flex items-center font-medium">
                             <FaExclamationTriangle className="mr-1" /> {errors.roles}
                         </div>
                     )}
                 </div>
 
                 {/* Submit button */}
-                <button
+                <Button
                     type="submit"
-                    disabled={isSubmitting}
-                    className="w-full py-2.5 rounded-xl font-semibold text-xs text-white bg-[#22c55e] hover:bg-[#16a34a] disabled:opacity-50 transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                    variant="success"
+                    size="md"
+                    fullWidth
+                    isLoading={isSubmitting}
+                    leftIcon={<FaUserPlus />}
                 >
-                    {isSubmitting ? (
-                        <>
-                            <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent" />
-                            <span>Creating user...</span>
-                        </>
-                    ) : (
-                        <>
-                            <FaUserPlus />
-                            <span>Create User</span>
-                        </>
-                    )}
-                </button>
+                    {isSubmitting ? 'Creating user...' : 'Create User'}
+                </Button>
             </form>
         </motion.div>
     );

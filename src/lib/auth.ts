@@ -31,16 +31,12 @@ export function verifyAuthToken(token: string): DecodedUser | null {
     const id =
       typeof payload.id === 'string'
         ? payload.id
-        : typeof payload.botId === 'string'
-        ? payload.botId
         : typeof payload._id === 'string'
         ? payload._id
         : '';
     const username =
       typeof payload.username === 'string'
         ? payload.username
-        : typeof payload.botUsername === 'string'
-        ? payload.botUsername
         : '';
     const roles = Array.isArray(payload.roles)
       ? payload.roles.filter((r): r is string => typeof r === 'string')

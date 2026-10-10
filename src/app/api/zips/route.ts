@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import Zip from '@/models/zipModel';
 import { requireAuth } from '@/lib/auth';
@@ -7,7 +7,7 @@ import { compareSeasonYear } from '@/lib/seasonHelpers';
 export async function GET(req: NextRequest) {
   try {
     await connectToDatabase();
-    const { errorResponse } = requireAuth(req, ['clipteam', 'editor', 'uploader', 'admin']);
+    const { errorResponse } = requireAuth(req, ['clipteam', 'editor', 'admin']);
     if (errorResponse) return errorResponse;
 
     const zips = await Zip.find().lean();

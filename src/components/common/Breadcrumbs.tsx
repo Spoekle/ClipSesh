@@ -43,7 +43,7 @@ const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ items, className = '' }) => {
                             {/* CC Slash Separator */}
                             {!isFirst && (
                                 <span
-                                    className="mx-1.5 text-[#626262] select-none text-xs font-mono"
+                                    className="mx-1.5 text-muted-foreground/60 select-none text-xs font-mono"
                                     aria-hidden="true"
                                 >
                                     /
@@ -54,11 +54,11 @@ const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ items, className = '' }) => {
                             {isLast || !item.path ? (
                                 // Current page (non-clickable)
                                 <span
-                                    className="flex items-center gap-1.5 text-white font-medium truncate max-w-50 sm:max-w-75"
+                                    className="flex items-center gap-1.5 text-foreground font-medium truncate max-w-50 sm:max-w-75"
                                     aria-current="page"
                                 >
                                     {item.icon && (
-                                        <span className="shrink-0 text-[#8b98a5]">{item.icon}</span>
+                                        <span className="shrink-0 text-muted-foreground">{item.icon}</span>
                                     )}
                                     <span className="truncate">{item.label}</span>
                                 </span>
@@ -67,10 +67,10 @@ const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ items, className = '' }) => {
                                 <Link
                                     href={item.path}
                                     onClick={item.onClick}
-                                    className="flex items-center gap-1.5 text-[#8b98a5] hover:text-white transition-colors duration-150"
+                                    className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors duration-150"
                                 >
                                     {item.icon && (
-                                        <span className="shrink-0 text-[#8b98a5]">{item.icon}</span>
+                                        <span className="shrink-0 text-muted-foreground">{item.icon}</span>
                                     )}
                                     <span className="truncate max-w-37.5 sm:max-w-none">{item.label}</span>
                                 </Link>
