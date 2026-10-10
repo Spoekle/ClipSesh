@@ -9,6 +9,8 @@ import {
   FaChevronDown,
   FaChevronUp,
   FaSyncAlt,
+  FaCheck,
+  FaForward,
 } from 'react-icons/fa';
 import { ScraperDownloadStatusResponse } from '@/services/adminService';
 
@@ -147,10 +149,19 @@ export const ScraperIngestionWidget: React.FC<ScraperIngestionWidgetProps> = ({
                   </div>
                 ) : (
                   <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono pt-0.5">
-                    <div className="flex items-center gap-2 truncate">
-                      <span className="text-emerald-400">✓ {currentJob.successCount} saved</span>
-                      <span className="text-amber-400">↷ {currentJob.skippedCount} skipped</span>
-                      <span className="text-rose-400">✕ {currentJob.errorCount} failed</span>
+                    <div className="flex items-center gap-2.5 truncate">
+                      <span className="text-emerald-400 flex items-center gap-1">
+                        <FaCheck size={9} />
+                        <span>{currentJob.successCount} saved</span>
+                      </span>
+                      <span className="text-amber-400 flex items-center gap-1">
+                        <FaForward size={8} />
+                        <span>{currentJob.skippedCount} skipped</span>
+                      </span>
+                      <span className="text-rose-400 flex items-center gap-1">
+                        <FaTimes size={9} />
+                        <span>{currentJob.errorCount} failed</span>
+                      </span>
                     </div>
                     <button
                       type="button"

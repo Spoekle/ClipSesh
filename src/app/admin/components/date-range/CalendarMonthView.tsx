@@ -1,4 +1,5 @@
 import React from 'react';
+import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 
 interface CalendarMonthViewProps {
   currentMonth: Date;
@@ -57,10 +58,12 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
       {/* Calendar header */}
       <div className="flex items-center justify-between mb-3 pb-2 border-b border-border">
         <button
+          type="button"
           onClick={() => onNavigateMonth('prev')}
           className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+          aria-label="Previous month"
         >
-          ←
+          <FaChevronLeft size={11} />
         </button>
         <h3 className="font-semibold text-foreground text-xs sm:text-sm">
           {currentMonth.toLocaleDateString('en-US', {
@@ -69,10 +72,12 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
           })}
         </h3>
         <button
+          type="button"
           onClick={() => onNavigateMonth('next')}
           className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+          aria-label="Next month"
         >
-          →
+          <FaChevronRight size={11} />
         </button>
       </div>
 

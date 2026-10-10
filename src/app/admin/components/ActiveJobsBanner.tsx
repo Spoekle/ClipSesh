@@ -9,6 +9,9 @@ import {
   FaSyncAlt,
   FaTimes,
   FaStop,
+  FaCheck,
+  FaBan,
+  FaExternalLinkAlt,
 } from 'react-icons/fa';
 import { ProcessJobStatus } from '@/types/adminTypes';
 
@@ -125,14 +128,25 @@ export const ActiveJobsBanner: React.FC<ActiveJobsBannerProps> = ({
                 </div>
 
                 <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono pt-0.5">
-                  <span className="truncate max-w-[170px]">
-                    {currentProcessJob.status === 'processing'
-                      ? `Phase: ${currentProcessJob.phase || 'compiling...'}`
-                      : currentProcessJob.status === 'completed'
-                      ? '✓ Archive ready in Download manager'
-                      : currentProcessJob.status === 'cancelled'
-                      ? '⊘ Compilation cancelled'
-                      : '✕ Process failed'}
+                  <span className="truncate max-w-[170px] inline-flex items-center gap-1.5">
+                    {currentProcessJob.status === 'processing' ? (
+                      `Phase: ${currentProcessJob.phase || 'compiling...'}`
+                    ) : currentProcessJob.status === 'completed' ? (
+                      <>
+                        <FaCheck className="text-emerald-400 shrink-0" size={9} />
+                        <span className="truncate">Archive ready in Download manager</span>
+                      </>
+                    ) : currentProcessJob.status === 'cancelled' ? (
+                      <>
+                        <FaBan className="text-amber-400 shrink-0" size={9} />
+                        <span className="truncate">Compilation cancelled</span>
+                      </>
+                    ) : (
+                      <>
+                        <FaTimes className="text-rose-400 shrink-0" size={9} />
+                        <span className="truncate">Process failed</span>
+                      </>
+                    )}
                   </span>
                   <div className="flex items-center gap-1.5 shrink-0">
                     {currentProcessJob.status === 'processing' && currentProcessJob.jobId ? (
@@ -162,7 +176,10 @@ export const ActiveJobsBanner: React.FC<ActiveJobsBannerProps> = ({
                         </button>
                       )
                     )}
-                    <span className="text-muted-foreground">Click to expand ↗</span>
+                    <span className="text-muted-foreground inline-flex items-center gap-1">
+                      <span>Click to expand</span>
+                      <FaExternalLinkAlt size={8} />
+                    </span>
                   </div>
                 </div>
               </div>

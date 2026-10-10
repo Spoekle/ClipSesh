@@ -21,9 +21,17 @@ export const ClipQueueSidebar: React.FC<ClipQueueSidebarProps> = ({
     <div className="bg-cc-card rounded-xl border border-border p-4 flex flex-col gap-3 shadow-sm">
       <div className="flex items-center justify-between pb-2 border-b border-border">
         <h3 className="text-xs font-bold uppercase tracking-wider text-cc-text">
-          Queue Navigation
+          Queue
         </h3>
-        <span className="text-[10px] text-muted-foreground">← → arrow keys</span>
+        <span className="text-[10px] text-muted-foreground inline-flex items-center gap-1">
+          <span>Navigate with</span>
+          <kbd className="inline-flex items-center justify-center px-1 py-0.5 text-[9px] bg-cc-ground rounded border border-border">
+            <FaChevronLeft size={7} />
+          </kbd>
+          <kbd className="inline-flex items-center justify-center px-1 py-0.5 text-[9px] bg-cc-ground rounded border border-border">
+            <FaChevronRight size={7} />
+          </kbd>
+        </span>
       </div>
 
       {nextClip ? (
@@ -84,7 +92,7 @@ export const ClipQueueSidebar: React.FC<ClipQueueSidebarProps> = ({
               </span>
             </div>
           </div>
-          <span className="text-[10px] text-muted-foreground font-mono shrink-0">
+          <span className="text-[10px] text-muted-foreground shrink-0">
             {prevClip.streamer}
           </span>
         </div>
