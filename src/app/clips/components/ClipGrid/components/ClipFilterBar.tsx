@@ -5,15 +5,12 @@ import {
   FaSearch,
   FaTimes,
   FaChevronDown,
-  FaUpload,
   FaEye,
   FaEyeSlash,
 } from 'react-icons/fa';
-import UploadClipModal from './UploadClipModal';
 import { SortControls } from './filter/SortControls';
 import { safeLocalStorage } from '@/utils/storage';
 import { User } from '@/types/adminTypes';
-import { Button } from '@/components/common/Button';
 
 interface ClipFilterBarProps {
   sortOptionState: string;
@@ -25,7 +22,7 @@ interface ClipFilterBarProps {
   setFilterDeniedClips: (filter: boolean) => void;
   user: User | null;
   setExpandedClip: (clip: string | null) => void;
-  isLoggedIn: boolean;
+  isLoggedIn?: boolean;
   searchTerm: string;
   setSearchTerm: (term: string) => void;
   filterStreamer: string;
@@ -44,7 +41,6 @@ export const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
   filterDeniedClips,
   setFilterDeniedClips,
   user,
-  isLoggedIn,
   searchTerm,
   setSearchTerm,
   filterStreamer,
@@ -55,11 +51,9 @@ export const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
   setSearchParams,
 }) => {
   const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm);
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [activeFiltersCount, setActiveFiltersCount] = useState(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const isAdmin = user?.roles?.includes('admin');
   const isTeamMember = user?.roles?.includes('admin') || user?.roles?.includes('clipteam');
 
   const updateUrlParams = (record: Record<string, string>) => {
@@ -196,12 +190,8 @@ export const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
     handleFilterReset();
   };
 
-  const handleUploadSuccess = () => {
-    fetchClipsAndRatings(user);
-  };
-
   return (
-    <div className="sticky top-14 z-10 bg-cc-card/95 backdrop-blur-md rounded-2xl border border-border mb-6 p-3 sm:p-3.5 shadow-md select-none">
+    <div className="sticky top-18 z-10 bg-cc-card/95 backdrop-blur-md rounded-2xl border border-border mb-6 p-3 sm:p-3.5 shadow-md select-none">
       <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
         {/* Main Controls: Search, Streamer filter, Sort criteria, Sort direction */}
         <div className="flex flex-wrap items-center gap-2.5 flex-1">
@@ -256,7 +246,7 @@ export const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
           />
         </div>
 
-        {/* Action Controls: Reset, Reviewer Toggles, Admin Upload */}
+        {/* Action Controls: Reset, Reviewer Toggles */}
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0 pt-1 lg:pt-0">
           {activeFiltersCount > 0 && (
             <button
@@ -301,28 +291,8 @@ export const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
               </button>
             </>
           )}
-
-          {isLoggedIn && isAdmin && (
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              onClick={() => setIsUploadModalOpen(true)}
-              leftIcon={<FaUpload size={10} />}
-              title="Upload clip"
-            >
-              Upload
-            </Button>
-          )}
         </div>
       </div>
-
-      {/* Admin Upload Clip Modal */}
-      <UploadClipModal
-        isOpen={isUploadModalOpen}
-        onClose={() => setIsUploadModalOpen(false)}
-        onSuccess={handleUploadSuccess}
-      />
     </div>
   );
 };
