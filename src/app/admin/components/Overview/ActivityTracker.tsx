@@ -293,7 +293,7 @@ export const ActivityTracker: React.FC<ActivityTrackerProps> = () => {
                 showPerUser ? 'bg-border text-white shadow-xs' : 'text-muted-foreground hover:text-white'
               }`}
             >
-              Per Reviewer
+              Per Member
             </button>
           </div>
 

@@ -34,7 +34,7 @@ export const SummaryStats: React.FC<SummaryStatsProps> = ({
     {
       label: 'Unrated Queue',
       value: unratedClips.toLocaleString(),
-      subtext: 'Awaiting team review',
+      subtext: 'Awaiting review',
       icon: FaHourglassHalf,
       iconColor: 'text-amber-400',
     },
@@ -48,14 +48,14 @@ export const SummaryStats: React.FC<SummaryStatsProps> = ({
      {
       label: 'Total Team Ratings',
       value: totalRatings.toLocaleString(),
-      subtext: 'Cumulative votes cast',
+      subtext: 'Total votes cast',
       icon: FaStar,
       iconColor: 'text-primary',
     },
     {
       label: 'Avg Ratings / Member',
       value: Math.round(averageRatings).toLocaleString(),
-      subtext: 'Reviewer average',
+      subtext: 'Clip Team average',
       icon: FaUserCheck,
       iconColor: 'text-emerald-400',
     }

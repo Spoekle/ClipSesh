@@ -9,8 +9,6 @@ import { UserRating, PieData } from '@/types/adminTypes';
 
 interface RatingDistributionProps {
   userRatings: UserRating[];
-  sortBy: string;
-  setSortBy: React.Dispatch<React.SetStateAction<string>>;
 }
 
 const TIER_COLORS = {
@@ -176,13 +174,13 @@ const customPieTooltip = (
 
 export const RatingDistribution: React.FC<RatingDistributionProps> = ({
   userRatings,
-  sortBy,
-  setSortBy,
 }) => {
   const [activeChart, setActiveChart] = useState<'bar' | 'pie'>('bar');
 
   const activeUserRatings = useMemo(() => {
-    return userRatings.filter((u) => (u.total || 0) > 0);
+    return [...userRatings]
+      .filter((u) => (u.total || 0) > 0)
+      .sort((a, b) => (b.total || 0) - (a.total || 0));
   }, [userRatings]);
 
   const pieData: PieData[] = useMemo(() => {
@@ -369,7 +367,7 @@ export const RatingDistribution: React.FC<RatingDistributionProps> = ({
               }`}
             >
               <FaChartBar size={12} />
-              <span>By Reviewer</span>
+              <span>By Member</span>
             </button>
             <button
               type="button"
@@ -384,18 +382,6 @@ export const RatingDistribution: React.FC<RatingDistributionProps> = ({
               <span>Team Totals</span>
             </button>
           </div>
-
-          {activeChart === 'bar' && (
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="bg-cc-ground border border-border text-xs font-medium text-white/90 rounded-lg px-3 py-1.5 focus:outline-none focus:border-primary cursor-pointer"
-            >
-              <option value="rating">Sort: High to Low</option>
-              <option value="percentage">Sort: Coverage</option>
-              <option value="username">Sort: Name</option>
-            </select>
-          )}
         </div>
       </div>
 

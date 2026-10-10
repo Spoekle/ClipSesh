@@ -128,7 +128,7 @@ export const UnarchiveSeasonModal: React.FC<UnarchiveSeasonModalProps> = ({
                 <div className="flex items-start gap-2.5">
                   <FaCheckCircle className="text-emerald-400 mt-0.5 shrink-0" size={13} />
                   <span>
-                    All existing reviewer votes, star ratings, and discussion comments remain <strong className="text-white">completely preserved</strong>.
+                    All existing clip team votes, star ratings, and discussion comments remain <strong className="text-white">completely preserved</strong>.
                   </span>
                 </div>
                 <div className="flex items-start gap-2.5">

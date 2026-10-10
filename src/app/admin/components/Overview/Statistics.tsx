@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { SummaryStats, RatingDistribution } from './StatisticsWidgets';
 import ActivityTracker from './ActivityTracker';
 import { motion } from 'framer-motion';
@@ -27,8 +27,6 @@ const Statistics: React.FC<StatisticsProps> = ({
   clipStats,
   loading = false,
 }) => {
-  const [sortBy, setSortBy] = useState<string>('rating');
-
   const SkeletonBox = ({ className = '' }: { className?: string }) => (
     <div className={`animate-pulse bg-secondary rounded-xl ${className}`} />
   );
@@ -99,11 +97,7 @@ const Statistics: React.FC<StatisticsProps> = ({
           )}
 
           {/* Rating Distribution (Stacked Bars + Donut) */}
-          <RatingDistribution
-            userRatings={userRatings}
-            sortBy={sortBy}
-            setSortBy={setSortBy}
-          />
+          <RatingDistribution userRatings={userRatings} />
 
           {/* Timeline Velocity Area Chart */}
           <ActivityTracker clipTeamUsernames={clipTeamUsernames} />
