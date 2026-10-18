@@ -1,12 +1,9 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
-import { FaStar, FaThumbsUp, FaEye } from 'react-icons/fa';
-import { IoChatbubbleEllipsesOutline } from 'react-icons/io5';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { FaStar, FaPlay } from 'react-icons/fa';
 import { format } from 'timeago.js';
 import { User, Clip, Rating } from '@/types/adminTypes';
-import { getClipVoteStatus } from '@/services/clipService';
 import { computeClipRatingSummary } from '../utils/clipRatingHelpers';
 import { ClipItemTeamRating } from './ClipItemTeamRating';
 
@@ -19,11 +16,6 @@ interface ClipItemProps {
   setExpandedClip: (clipId: string) => void;
 }
 
-interface VoteStatus {
-  hasVoted: boolean;
-  voteType?: 'upvote' | 'downvote';
-}
-
 const ClipItem: React.FC<ClipItemProps> = ({
   clip,
   user,
@@ -32,21 +24,11 @@ const ClipItem: React.FC<ClipItemProps> = ({
   setExpandedClip,
 }) => {
   const [isHovering, setIsHovering] = useState<boolean>(false);
-  const [voteStatus, setVoteStatus] = useState<VoteStatus>({ hasVoted: false });
-
-  // Fetch the user's vote status for this clip
-  useEffect(() => {
-    const checkVoteStatus = async () => {
-      try {
-        const voteData = await getClipVoteStatus(clip._id);
-        setVoteStatus(voteData);
-      } catch (error: unknown) {
-        console.error('Error fetching vote status:', error);
-      }
-    };
-
-    checkVoteStatus();
-  }, [clip._id]);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const isSwipingRef = useRef<boolean>(false);
+  const justToggledPreviewRef = useRef<boolean>(false);
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const {
     userRating,
@@ -64,16 +46,129 @@ const ClipItem: React.FC<ClipItemProps> = ({
   );
   const formattedDate = format(new Date(clip.createdAt));
 
+  // Dismiss hover effects on mobile when tapping outside this card
+  useEffect(() => {
+    if (!isHovering) return;
+
+    const handleTouchOutside = (e: TouchEvent) => {
+      if (cardRef.current && !cardRef.current.contains(e.target as Node)) {
+        setIsHovering(false);
+      }
+    };
+
+    document.addEventListener('touchstart', handleTouchOutside, { passive: true });
+    return () => {
+      document.removeEventListener('touchstart', handleTouchOutside);
+    };
+  }, [isHovering]);
+
+  // Clean up long press timer on unmount
+  useEffect(() => {
+    return () => {
+      if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    };
+  }, []);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+    isSwipingRef.current = false;
+
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = setTimeout(() => {
+      if (!isSwipingRef.current) {
+        setIsHovering(true);
+        justToggledPreviewRef.current = true;
+      }
+    }, 250);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartRef.current) return;
+    const touch = e.touches[0];
+    const dx = Math.abs(touch.clientX - touchStartRef.current.x);
+    const dy = Math.abs(touch.clientY - touchStartRef.current.y);
+
+    if (dx > 10 || dy > 10) {
+      isSwipingRef.current = true;
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+      }
+      if (isHovering) {
+        setIsHovering(false);
+      }
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+    }
+
+    if (isSwipingRef.current || !touchStartRef.current) {
+      touchStartRef.current = null;
+      return;
+    }
+
+    const duration = Date.now() - touchStartRef.current.time;
+    touchStartRef.current = null;
+
+    if (duration >= 250) {
+      justToggledPreviewRef.current = true;
+      return;
+    }
+
+    const target = e.target as HTMLElement;
+    const isThumbnailTap = Boolean(target.closest('[data-thumbnail-container]'));
+
+    if (isThumbnailTap) {
+      if (!isHovering) {
+        setIsHovering(true);
+        justToggledPreviewRef.current = true;
+      } else {
+        setExpandedClip(clip._id);
+        setIsHovering(false);
+      }
+    } else {
+      setExpandedClip(clip._id);
+    }
+  };
+
+  const handleCardClick = () => {
+    if (justToggledPreviewRef.current) {
+      justToggledPreviewRef.current = false;
+      return;
+    }
+
+    setExpandedClip(clip._id);
+  };
+
   return (
-    <motion.div
-      whileHover={{ y: -2 }}
-      transition={{ duration: 0.1 }}
-      onClick={() => setExpandedClip(clip._id)}
-      className="flex flex-col h-full bg-cc-card hover:bg-secondary/40 rounded-xl overflow-hidden border border-border transition-colors duration-150 group cursor-pointer shadow-sm hover:shadow-lg select-none"
+    <div
+      ref={cardRef}
+      onClick={handleCardClick}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={() => {
+        if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+        touchStartRef.current = null;
+      }}
+      className="group relative isolate flex flex-col h-full p-0 sm:p-2 rounded-none sm:rounded-xl cursor-pointer select-none hover:z-10"
     >
+      {/* YouTube-style hover background: scales up on hover while item content stays fixed */}
+      <div
+        className={`absolute inset-0 -z-10 rounded-none sm:rounded-2xl bg-secondary/50 border-y sm:border border-border/40 transition-all duration-200 ease-out pointer-events-none ${
+          isHovering
+            ? 'opacity-100 scale-[1.02] sm:scale-105 shadow-md sm:shadow-xl'
+            : 'opacity-0 scale-100 group-hover:opacity-100 group-hover:scale-[1.02] sm:group-hover:scale-105 shadow-lg group-hover:shadow-xl'
+        }`}
+      />
+
       {/* 16:9 Thumbnail Container */}
       <div
-        className="relative overflow-hidden aspect-video bg-cc-card"
+        data-thumbnail-container="true"
+        className="relative aspect-video bg-cc-card rounded-none sm:rounded-xl overflow-hidden"
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
       >
@@ -84,22 +179,19 @@ const ClipItem: React.FC<ClipItemProps> = ({
             muted
             autoPlay
             playsInline
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover rounded-none sm:rounded-xl"
           />
         ) : (
           <img
             src={clip.thumbnail}
             alt={clip.title}
-            className="w-full h-full object-cover transition-transform duration-150 group-hover:scale-103"
+            className="w-full h-full object-cover rounded-none sm:rounded-xl"
             loading="lazy"
             onError={(e) => {
               e.currentTarget.onerror = null;
             }}
           />
         )}
-
-        {/* Subtle dark overlay for contrast */}
-        <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-black/20 pointer-events-none" />
 
         {/* Rating/Denial Badges (Top-Right) */}
         <div className="absolute top-2 right-2 flex items-center gap-1.5">
@@ -125,42 +217,21 @@ const ClipItem: React.FC<ClipItemProps> = ({
       </div>
 
       {/* Details: Title + Metadata */}
-      <div className="p-3.5 flex flex-col justify-between flex-1">
+      <div className="px-3.5 py-3 sm:px-0 sm:py-3.5 flex flex-col justify-between flex-1">
         <div className="flex items-start justify-between gap-3">
           {/* Left Column: Title, Streamer, Date */}
           <div className="min-w-0 flex-1 flex flex-col">
-            <h3 className="text-sm font-semibold text-foreground group-hover:text-foreground line-clamp-2 leading-snug tracking-tight transition-colors">
+            <h3 className="text-sm font-semibold text-foreground line-clamp-2 leading-snug tracking-tight transition-colors">
               {clip.title}
             </h3>
-
-            <div className="text-xs text-muted-foreground hover:text-foreground font-medium truncate transition-colors mt-1">
-              <span>{clip.streamer}</span>
-            </div>
-
-            <span className="text-xs text-muted-foreground mt-0.5">{formattedDate}</span>
-          </div>
-
-          {/* Right Column: Views, Comments, Likes */}
-          <div className="flex flex-col items-end justify-start gap-1 shrink-0 text-xs text-muted-foreground font-medium pt-0.5">
-            <span className="flex items-center gap-1.5" title={`${clip.views || 0} views`}>
-              <FaEye size={11} className="text-muted-foreground/60" />
-              <span>{clip.views || 0}</span>
-            </span>
-
-            <span className="flex items-center gap-1.5" title={`${clip.comments?.length || 0} comments`}>
-              <IoChatbubbleEllipsesOutline size={12} className="text-muted-foreground" />
-              <span>{clip.comments?.length || 0}</span>
-            </span>
-
-            <span className="flex items-center gap-1.5" title={`${clip.upvotes || 0} likes`}>
-              <FaThumbsUp
-                size={10}
-                className={voteStatus.hasVoted && voteStatus.voteType === 'upvote' ? 'text-cc-red' : 'text-muted-foreground/60'}
-              />
-              <span className={voteStatus.hasVoted && voteStatus.voteType === 'upvote' ? 'text-cc-red font-semibold' : ''}>
-                {clip.upvotes || 0}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground truncate">{clip.streamer}</span>
+              <span className="flex text-xs text-muted-foreground items-center gap-1" title={`${clip.views || 0} views`}>
+                <FaPlay size={11}/>
+                <span>{clip.views || 0}</span>
               </span>
-            </span>
+              <span className="text-xs text-muted-foreground">{formattedDate}</span>
+            </div>
           </div>
         </div>
 
@@ -173,7 +244,7 @@ const ClipItem: React.FC<ClipItemProps> = ({
           />
         )}
       </div>
-    </motion.div>
+    </div>
   );
 };
 

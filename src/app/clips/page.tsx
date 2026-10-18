@@ -224,7 +224,7 @@ function ClipViewer() {
       )}
 
       {/* Main content container */}
-      <div className={expandedClip ? "w-full grow flex flex-col" : "w-full max-w-[1200px] mx-auto px-4 sm:px-8 py-6 grow flex flex-col"}>
+      <div className={expandedClip ? "w-full grow flex flex-col" : "w-full max-w-[1200px] mx-auto px-4 sm:px-8 py-6 overflow-x-clip grow flex flex-col"}>
         <ClipViewerContent
           expandedClip={expandedClip}
           setExpandedClip={handleSetExpandedClip}
