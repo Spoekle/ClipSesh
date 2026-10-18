@@ -101,7 +101,7 @@ const SeasonSectionCard: React.FC<SeasonSectionCardProps> = ({ section, onSelect
       className={`group relative flex flex-col justify-between rounded-2xl overflow-hidden bg-cc-card border border-border ${theme.accentBorder} ${theme.accentGlow} transition-colors duration-150 cursor-pointer shadow-md select-none min-h-[300px]`}
     >
       {/* Background artwork banner with dark gradient */}
-      <div className="relative h-50 w-full overflow-hidden bg-cc-ground">
+      <div className="relative h-40 w-full overflow-hidden bg-cc-ground">
         <div
           className="absolute inset-0 bg-cover bg-center transition-transform duration-200 group-hover:scale-110"
           style={{ backgroundImage: `url(${bgImage})` }}
@@ -109,24 +109,13 @@ const SeasonSectionCard: React.FC<SeasonSectionCardProps> = ({ section, onSelect
         {/* Gradients to fade smoothly into the card body */}
         <div className="absolute inset-0 bg-linear-to-t from-cc-card via-cc-card/10 to-black/30 backdrop-blur-xs" />
 
-        {/* Badges on banner */}
-        <div className="absolute top-3.5 left-3.5 right-3.5 flex items-center justify-between gap-2">
-          {/* Season pill */}
-          <div
-            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-sm text-xs font-bold border backdrop-blur-md ${theme.badgeClass}`}
-          >
-            {theme.icon}
-            <span>{section.season}</span>
-          </div>
-
-          {/* Current season or year indicator */}
-          <div className="flex items-center gap-1.5">
-            {section.isCurrent && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-sm text-[11px] font-bold uppercase tracking-wider bg-cc-red/30 border border-cc-red text-cc-red shadow-sm">
-                Current Season
-              </span>
-            )}
-          </div>
+        {/* Current season or year indicator */}
+        <div className="absolute top-3.5 left-3.5 right-3.5 flex items-center justify-end gap-2">
+          {section.isCurrent && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-sm text-[11px] font-bold uppercase tracking-wider bg-cc-red/30 border border-cc-red text-cc-red shadow-sm">
+              Current Season
+            </span>
+          )}
         </div>
 
         {/* Season Title and Year overlay */}
@@ -138,7 +127,7 @@ const SeasonSectionCard: React.FC<SeasonSectionCardProps> = ({ section, onSelect
       </div>
 
       {/* Card Body */}
-      <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-3.5">
+      <div className="p-4 sm:p-4 flex-1 flex flex-col justify-between space-y-3">
         {/* Submission Window Block */}
         <div className="px-3.5 py-2.5 rounded-xl bg-cc-ground border border-border flex items-center gap-2.5">
           <FaCalendarAlt size={12} className="text-muted-foreground shrink-0" />
@@ -159,10 +148,10 @@ const SeasonSectionCard: React.FC<SeasonSectionCardProps> = ({ section, onSelect
         </div>
 
         {/* Clips Count & Top Streamers */}
-        <div className="flex items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between text-xs">
+          <div className="flex items-center gap-1">
             <FaFilm size={12} className="text-cc-red shrink-0" />
-            <span className="font-bold text-foreground font-mono">{section.clipCount.toLocaleString()}</span>
+            <span className="font-bold text-foreground">{section.clipCount.toLocaleString()}</span>
             <span className="text-muted-foreground">clips</span>
           </div>
         </div>

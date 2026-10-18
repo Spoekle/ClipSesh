@@ -1,7 +1,14 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  allowedDevOrigins: ['localhost', '127.0.0.1', '*.spoekle.com'],
+  allowedDevOrigins: [
+    'localhost',
+    '127.0.0.1',
+    'clipsesh.cc',
+    '*.clipsesh.cc',
+    'spoekle.com',
+    '*.spoekle.com',
+  ],
   reactStrictMode: false,
   serverExternalPackages: [
     'mongoose',

@@ -126,7 +126,6 @@ const SeasonClipsView: React.FC<SeasonClipsViewProps> = ({
           streamer: streamerFilter,
           season: section.season,
           year: section.year,
-          archived: 'true',
         });
 
         if (!isMounted) return;
