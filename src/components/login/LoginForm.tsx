@@ -273,7 +273,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onForgotPasswor
               }}
               className="text-xs text-muted-foreground hover:text-white transition-colors cursor-pointer hover:underline"
             >
-              Sign in with CC or Discord instead
+              Sign in with CC instead
             </button>
           </div>
         </motion.div>
