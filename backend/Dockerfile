@@ -1,5 +1,5 @@
 # Use an official Node.js image as the base
-FROM node:18
+FROM node:24
 
 # Install Nginx and Certbot
 RUN apt-get update && apt-get install -y nginx certbot python3-certbot-nginx ffmpeg

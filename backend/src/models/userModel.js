@@ -185,11 +185,10 @@ const userSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Pre-save middleware to ensure profile object exists
-userSchema.pre('save', function(next) {
+userSchema.pre('save', function() {
   if (!this.profile) {
     this.profile = {};
   }
-  next();
 });
 
 const User = mongoose.model('User', userSchema);

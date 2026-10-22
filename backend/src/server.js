@@ -145,7 +145,7 @@ app.use((err, req, res, next) => {
 });
 
 // Fallback route handler for undefined routes
-app.use('*', (req, res) => {
+app.use((req, res) => {
   res.status(404).json({ error: 'Not Found', path: req.originalUrl });
 });
 
