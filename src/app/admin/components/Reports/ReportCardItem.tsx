@@ -3,18 +3,18 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import {
-  FaExternalLinkAlt,
-  FaFilm,
-  FaUser,
-  FaCalendar,
-  FaExclamationTriangle,
-  FaCheck,
-  FaTimes,
-  FaEye,
-  FaTrash,
-  FaComments,
-  FaBan,
-} from 'react-icons/fa';
+  ExternalLink,
+  Film,
+  User,
+  Calendar,
+  AlertTriangle,
+  Check,
+  X,
+  Eye,
+  Trash2,
+  MessageSquare,
+  Ban,
+} from 'lucide-react';
 import { Report } from '@/types/adminTypes';
 
 interface ReportCardItemProps {
@@ -83,7 +83,7 @@ export const ReportCardItem: React.FC<ReportCardItemProps> = ({
               className="text-muted-foreground hover:text-white p-1 rounded transition-colors cursor-pointer"
               title="View clip in new tab"
             >
-              <FaExternalLinkAlt size={12} />
+              <ExternalLink className="size-3" />
             </button>
             <span
               className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${getStatusBadge(
@@ -96,15 +96,15 @@ export const ReportCardItem: React.FC<ReportCardItemProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 text-xs text-muted-foreground mb-3">
             <div className="flex items-center space-x-2 truncate">
-              <FaFilm className="text-muted-foreground shrink-0" />
+              <Film className="size-3 text-muted-foreground shrink-0" />
               <span className="truncate">by {report.clipStreamer}</span>
             </div>
             <div className="flex items-center space-x-2 truncate">
-              <FaUser className="text-muted-foreground shrink-0" />
+              <User className="size-3 text-muted-foreground shrink-0" />
               <span className="truncate">submitted by {report.clipSubmitter}</span>
             </div>
             <div className="flex items-center space-x-2 truncate">
-              <FaCalendar className="text-muted-foreground shrink-0" />
+              <Calendar className="size-3 text-muted-foreground shrink-0" />
               <span className="truncate">{formatDate(report.createdAt)}</span>
             </div>
           </div>
@@ -112,7 +112,7 @@ export const ReportCardItem: React.FC<ReportCardItemProps> = ({
           {/* Report Reason Box */}
           <div className="bg-cc-ground border border-border rounded-xl p-3 mb-3">
             <div className="flex items-start space-x-2.5">
-              <FaExclamationTriangle className="text-amber-400 mt-0.5 shrink-0" size={13} />
+              <AlertTriangle className="size-3.5 text-amber-400 mt-0.5 shrink-0" />
               <div className="min-w-0">
                 <span className="text-xs font-semibold text-amber-400">
                   Reported by {report.reporterUsername}:
@@ -152,7 +152,7 @@ export const ReportCardItem: React.FC<ReportCardItemProps> = ({
                 className="flex items-center space-x-1.5 bg-cc-ground hover:bg-border/50 border border-border text-muted-foreground hover:text-white px-3 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer"
                 disabled={isUpdating}
               >
-                <FaEye size={11} />
+                <Eye className="size-3" />
                 <span>Mark Reviewed</span>
               </button>
               <button
@@ -161,7 +161,7 @@ export const ReportCardItem: React.FC<ReportCardItemProps> = ({
                 className="flex items-center space-x-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 px-3 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer"
                 disabled={isUpdating}
               >
-                <FaCheck size={11} />
+                <Check className="size-3" />
                 <span>Resolve</span>
               </button>
               <button
@@ -170,7 +170,7 @@ export const ReportCardItem: React.FC<ReportCardItemProps> = ({
                 className="flex items-center space-x-1.5 bg-cc-ground hover:bg-border/50 border border-border text-muted-foreground hover:text-white px-3 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer"
                 disabled={isUpdating}
               >
-                <FaBan size={11} />
+                <Ban className="size-3" />
                 <span>Dismiss</span>
               </button>
             </>
@@ -183,7 +183,7 @@ export const ReportCardItem: React.FC<ReportCardItemProps> = ({
               className="flex items-center space-x-1.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30 px-3 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer"
               disabled={isUpdating}
             >
-              <FaTimes size={11} />
+              <X className="size-3" />
               <span>Mark Pending</span>
             </button>
           )}
@@ -196,7 +196,7 @@ export const ReportCardItem: React.FC<ReportCardItemProps> = ({
             className="flex items-center space-x-1.5 bg-cc-ground hover:bg-border/50 border border-border text-muted-foreground hover:text-white px-3 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer"
             title="Message reporter"
           >
-            <FaComments size={11} />
+            <MessageSquare className="size-3" />
             <span>Message</span>
           </button>
 
@@ -214,7 +214,7 @@ export const ReportCardItem: React.FC<ReportCardItemProps> = ({
             className="p-1.5 text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
             title="Delete report"
           >
-            <FaTrash size={12} />
+            <Trash2 className="size-3.5" />
           </button>
         </div>
       </div>

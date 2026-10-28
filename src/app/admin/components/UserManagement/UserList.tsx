@@ -3,15 +3,16 @@
 import React from 'react';
 import { AnimatePresence } from 'framer-motion';
 import {
-  FaChevronLeft,
-  FaChevronRight,
-  FaUserShield,
-  FaExclamationTriangle,
-  FaUserPlus,
-} from 'react-icons/fa';
+  ChevronLeft,
+  ChevronRight,
+  ShieldCheck,
+  AlertTriangle,
+  UserPlus,
+  Loader2,
+} from 'lucide-react';
 import { User } from '@/types/adminTypes';
 import ConfirmationDialog from '@/components/common/ConfirmationDialog';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
 import { UserFilterBar } from './components/UserFilterBar';
 import { UserCard } from './components/UserCard';
 import { UserEditPanel } from './components/UserEditPanel';
@@ -78,8 +79,8 @@ export const UserList: React.FC<UserListProps> = ({ AVAILABLE_ROLES }) => {
       {/* Top Header Card */}
       <div className="bg-cc-card border border-border p-5 sm:p-6 rounded-2xl mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-primary/15 text-primary flex items-center justify-center">
-            <FaUserShield className="text-xl" />
+          <div className="size-11 rounded-xl bg-primary/15 text-primary flex items-center justify-center">
+            <ShieldCheck className="size-5" />
           </div>
           <div>
             <h1 className="text-lg sm:text-xl font-bold text-foreground tracking-tight flex items-center gap-2">
@@ -94,13 +95,15 @@ export const UserList: React.FC<UserListProps> = ({ AVAILABLE_ROLES }) => {
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <Button
             type="button"
-            variant={isCreateMode ? 'success' : 'primary'}
+            variant="default"
             size="sm"
             onClick={handleStartCreate}
-            leftIcon={<FaUserPlus />}
-            className="w-full sm:w-auto"
+            className={`w-full sm:w-auto gap-1.5 font-semibold ${
+              isCreateMode ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-primary text-white hover:bg-primary/90'
+            }`}
           >
-            New User
+            <UserPlus className="size-3.5" />
+            <span>New User</span>
           </Button>
         </div>
       </div>
@@ -134,17 +137,17 @@ export const UserList: React.FC<UserListProps> = ({ AVAILABLE_ROLES }) => {
           <div className="grid sm:grid-cols-2 grid-cols-1 gap-2">
             {loading ? (
               <div className="bg-cc-card border border-border p-12 rounded-xl flex flex-col items-center justify-center col-span-full">
-                <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent mb-3" />
+                <Loader2 className="size-7 animate-spin text-primary mb-3" />
                 <p className="text-xs text-muted-foreground">Loading users...</p>
               </div>
             ) : error ? (
               <div className="bg-cc-card border border-primary/40 p-6 rounded-xl text-primary flex items-center gap-3 col-span-full">
-                <FaExclamationTriangle className="text-lg shrink-0" />
+                <AlertTriangle className="size-5 shrink-0" />
                 <span className="text-xs">{error instanceof Error ? error.message : 'Failed to load users'}</span>
               </div>
             ) : currentUsers.length === 0 ? (
               <div className="bg-cc-card border border-border p-10 rounded-xl text-center col-span-full">
-                <FaExclamationTriangle className="text-2xl text-amber-400 mx-auto mb-3" />
+                <AlertTriangle className="size-8 text-amber-400 mx-auto mb-3" />
                 <h3 className="text-sm font-semibold text-foreground mb-1">No Users Found</h3>
                 <p className="text-xs text-muted-foreground max-w-sm mx-auto mb-4">
                   No users matched your current search and role filters.
@@ -181,7 +184,7 @@ export const UserList: React.FC<UserListProps> = ({ AVAILABLE_ROLES }) => {
                 disabled={currentPage === 1}
                 className="px-3 py-1.5 bg-cc-ground hover:bg-white/5 disabled:opacity-30 border border-border rounded-lg transition-colors flex items-center gap-1.5 text-muted-foreground hover:text-foreground cursor-pointer disabled:cursor-not-allowed"
               >
-                <FaChevronLeft className="text-[10px]" />
+                <ChevronLeft className="size-3" />
                 <span>Prev</span>
               </button>
 
@@ -196,7 +199,7 @@ export const UserList: React.FC<UserListProps> = ({ AVAILABLE_ROLES }) => {
                 className="px-3 py-1.5 bg-cc-ground hover:bg-white/5 disabled:opacity-30 border border-border rounded-lg transition-colors flex items-center gap-1.5 text-muted-foreground hover:text-foreground cursor-pointer disabled:cursor-not-allowed"
               >
                 <span>Next</span>
-                <FaChevronRight className="text-[10px]" />
+                <ChevronRight className="size-3" />
               </button>
             </div>
           )}

@@ -1,4 +1,5 @@
-import { Button } from '@/components/common/Button';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 export default function NotFound() {
   return (
@@ -13,7 +14,7 @@ export default function NotFound() {
         <p className="text-sm text-muted-foreground mb-8 leading-relaxed">
           The page you are looking for doesn't exist or has been moved.
         </p>
-        <Button href="/clips" variant="primary" size="md" fullWidth>
+        <Button render={<Link href="/clips" />} size="lg" className="w-full">
           Return to Clips
         </Button>
       </div>

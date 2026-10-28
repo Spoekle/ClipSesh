@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FaCheckCircle, FaExclamationCircle, FaSpinner, FaCircleNotch, FaHourglassHalf } from 'react-icons/fa';
+import { CheckCircle2, AlertCircle, Loader2, Hourglass } from 'lucide-react';
 import useSocket from '@/hooks/useSocket';
 
 interface ClipProcessingStatus {
@@ -207,7 +207,7 @@ export const LiveProcessingView: React.FC<LiveProcessingViewProps> = ({ jobId, o
           <span>Overall Progress</span>
           <span className="text-muted-foreground font-mono">{processed} / {total} clips</span>
         </div>
-        <div className="w-full h-2 bg-cc-ground rounded-full overflow-hidden border border-border">
+        <div className="w-full h-2 bg-background rounded-full overflow-hidden border border-border">
           <motion.div
             className="h-full bg-primary rounded-full"
             initial={{ width: 0 }}
@@ -232,23 +232,23 @@ export const LiveProcessingView: React.FC<LiveProcessingViewProps> = ({ jobId, o
 
       {/* Current phase */}
       {currentPhase && (
-        <div className="p-3 bg-cc-ground border border-border rounded-xl text-foreground flex items-center text-xs">
-          <FaHourglassHalf className="mr-2 text-amber-400 shrink-0" />
+        <div className="p-3 bg-background border border-border rounded-xl text-foreground flex items-center text-xs">
+          <Hourglass className="mr-2 size-3.5 text-amber-400 shrink-0" />
           <span className="truncate">{currentPhase.message || `Phase: ${currentPhase.phase}`}</span>
         </div>
       )}
 
       {/* Recent clips activity */}
-      <div className="max-h-56 overflow-auto border border-border bg-cc-ground rounded-xl p-3">
+      <div className="max-h-56 overflow-auto border border-border bg-background rounded-xl p-3">
         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2.5">
           Live Processing Stream
         </h3>
 
         {/* Currently processing */}
         {currentlyProcessing && (
-          <div className="mb-2.5 p-2.5 bg-cc-card rounded-xl border border-sky-400/40">
+          <div className="mb-2.5 p-2.5 bg-card rounded-xl border border-sky-400/40">
             <div className="flex items-center text-xs">
-              <FaSpinner className="text-sky-400 animate-spin mr-2 shrink-0" />
+              <Loader2 className="text-sky-400 animate-spin mr-2 shrink-0 size-3.5" />
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-sky-400 text-[11px] uppercase tracking-wide">
                   Currently Processing
@@ -272,9 +272,9 @@ export const LiveProcessingView: React.FC<LiveProcessingViewProps> = ({ jobId, o
             .map((clip) => (
               <div
                 key={`processed-${clip.index}`}
-                className="text-xs flex items-center p-2 bg-cc-card border border-border rounded-lg"
+                className="text-xs flex items-center p-2 bg-card border border-border rounded-lg"
               >
-                <FaCheckCircle className="text-emerald-400 mr-2 shrink-0" />
+                <CheckCircle2 className="text-emerald-400 mr-2 shrink-0 size-3.5" />
                 <div className="flex-1 min-w-0">
                   <div className="font-medium text-foreground truncate">{clip.title}</div>
                   <div className="text-[10px] text-muted-foreground">by {clip.streamer}</div>
@@ -297,9 +297,9 @@ export const LiveProcessingView: React.FC<LiveProcessingViewProps> = ({ jobId, o
             {recentErrors.slice(0, 2).map((clip) => (
               <div
                 key={`error-${clip.index}`}
-                className="text-xs flex items-start p-2 bg-cc-card border border-primary/30 rounded-lg"
+                className="text-xs flex items-start p-2 bg-card border border-primary/30 rounded-lg"
               >
-                <FaExclamationCircle className="text-primary mr-2 mt-0.5 shrink-0" />
+                <AlertCircle className="text-primary mr-2 mt-0.5 shrink-0 size-3.5" />
                 <div className="flex-1 min-w-0">
                   <div className="font-medium text-foreground truncate">{clip.title}</div>
                   <div className="text-[10px] text-muted-foreground mb-0.5">by {clip.streamer}</div>
@@ -318,7 +318,7 @@ export const LiveProcessingView: React.FC<LiveProcessingViewProps> = ({ jobId, o
         {!currentlyProcessing &&
           clipsStatus.filter((clip) => clip.status !== 'pending').length === 0 && (
             <div className="text-xs text-muted-foreground flex items-center justify-center py-4">
-              <FaCircleNotch className="animate-spin mr-2" />
+              <Loader2 className="animate-spin mr-2 size-3.5" />
               Waiting for worker pipeline to initiate...
             </div>
           )}

@@ -3,13 +3,13 @@
 import { safeLocalStorage } from '@/utils/storage';
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  FaPlay,
-  FaPause,
-  FaExpand,
-  FaRedo,
-  FaCompress,
-  FaExclamationTriangle,
-} from 'react-icons/fa';
+  Play,
+  Pause,
+  Maximize2,
+  RotateCcw,
+  Minimize2,
+  AlertTriangle,
+} from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Clip } from '@/types/adminTypes';
 import PlayerProgressBar from './player/PlayerProgressBar';
@@ -288,8 +288,8 @@ export const CustomPlayer = ({ currentClip }: { currentClip: Clip }) => {
       onContextMenu={(e) => e.preventDefault()}
     >
       {error ? (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-cc-ground text-white p-4 text-center">
-          <FaExclamationTriangle className="text-4xl text-muted-foreground mb-4" />
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-background text-foreground p-4 text-center">
+          <AlertTriangle className="size-10 text-muted-foreground mb-4" />
           <p className="text-lg mb-2">Video playback error</p>
           <p className="text-sm text-muted-foreground">{error}</p>
           <Button
@@ -342,7 +342,7 @@ export const CustomPlayer = ({ currentClip }: { currentClip: Clip }) => {
                 }}
                 aria-label="Play video"
               >
-                <FaPlay className="text-3xl" />
+                <Play className="size-8 fill-current ml-0.5" />
               </motion.button>
             </div>
           )}
@@ -359,7 +359,7 @@ export const CustomPlayer = ({ currentClip }: { currentClip: Clip }) => {
                 }}
                 aria-label="Replay video"
               >
-                <FaRedo className="text-3xl" />
+                <RotateCcw className="size-8" />
               </motion.button>
             </div>
           )}
@@ -393,7 +393,7 @@ export const CustomPlayer = ({ currentClip }: { currentClip: Clip }) => {
                   className="text-white hover:text-primary transition-colors flex items-center justify-center w-8 h-8 cursor-pointer"
                   aria-label={isPlaying ? 'Pause' : 'Play'}
                 >
-                  {isPlaying ? <FaPause className="text-lg" /> : <FaPlay className="text-lg" />}
+                  {isPlaying ? <Pause className="size-5 fill-current" /> : <Play className="size-5 fill-current ml-0.5" />}
                 </button>
 
                 <div className="text-white text-xs sm:text-sm font-mono">
@@ -439,9 +439,9 @@ export const CustomPlayer = ({ currentClip }: { currentClip: Clip }) => {
                   aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
                 >
                   {isFullscreen ? (
-                    <FaCompress className="text-lg" />
+                    <Minimize2 className="size-5" />
                   ) : (
-                    <FaExpand className="text-lg" />
+                    <Maximize2 className="size-5" />
                   )}
                 </button>
               </div>

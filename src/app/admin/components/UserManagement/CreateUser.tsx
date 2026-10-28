@@ -2,11 +2,12 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FaUser, FaLock, FaUserPlus, FaShieldAlt, FaEnvelope, FaExclamationTriangle } from 'react-icons/fa';
+import { User, Lock, UserPlus, Shield, Mail, AlertTriangle, Loader2 } from 'lucide-react';
 import { useNotification } from '@/context/AlertContext';
 import { CreateUserFormData, FormErrors } from '@/types/adminTypes';
 import { useCreateUser } from '@/hooks/useAdmin';
-import { Button } from '@/components/Button';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 interface CreateUserProps {
     fetchUsers?: () => void;
@@ -148,7 +149,7 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
         >
             <div className="flex items-center gap-3 mb-6 pb-4 border-b border-border">
                 <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
-                    <FaUserPlus size={14} />
+                    <UserPlus className="size-4" />
                 </div>
                 <div>
                     <h2 className="text-base font-bold text-foreground">Create User</h2>
@@ -160,25 +161,25 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
                 {/* Username field */}
                 <div className="flex flex-col">
                     <label htmlFor="username" className="mb-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center">
-                        <FaUser className="mr-1.5 text-muted-foreground" /> Username <span className="text-cc-red ml-1">*</span>
+                        <User className="mr-1.5 size-3.5 text-muted-foreground" /> Username <span className="text-cc-red ml-1">*</span>
                     </label>
                     <div className="relative">
-                        <input
+                        <Input
                             type="text"
                             id="username"
                             name="username"
                             value={formData.username}
                             onChange={handleChange}
-                            className={`w-full pl-9 pr-3.5 py-2 bg-cc-ground border rounded-xl text-xs text-foreground focus:outline-none ${
-                                errors.username ? 'border-cc-red' : 'border-border focus:border-border'
+                            className={`pl-9 bg-cc-ground text-xs ${
+                                errors.username ? 'border-cc-red focus-visible:ring-cc-red/30' : 'border-border'
                             }`}
                             placeholder="Enter username"
                         />
-                        <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs" />
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-3.5" />
                     </div>
                     {errors.username && (
                         <div className="text-cc-red text-[11px] mt-1 flex items-center font-medium">
-                            <FaExclamationTriangle className="mr-1" /> {errors.username}
+                            <AlertTriangle className="mr-1 size-3" /> {errors.username}
                         </div>
                     )}
                 </div>
@@ -186,25 +187,25 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
                 {/* Email field */}
                 <div className="flex flex-col">
                     <label htmlFor="email" className="mb-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center">
-                        <FaEnvelope className="mr-1.5 text-muted-foreground" /> Email Address:
+                        <Mail className="mr-1.5 size-3.5 text-muted-foreground" /> Email Address:
                     </label>
                     <div className="relative">
-                        <input
+                        <Input
                             type="email"
                             id="email"
                             name="email"
                             value={formData.email}
                             onChange={handleChange}
-                            className={`w-full pl-9 pr-3.5 py-2 bg-cc-ground border rounded-xl text-xs text-foreground focus:outline-none ${
-                                errors.email ? 'border-cc-red' : 'border-border focus:border-border'
+                            className={`pl-9 bg-cc-ground text-xs ${
+                                errors.email ? 'border-cc-red focus-visible:ring-cc-red/30' : 'border-border'
                             }`}
                             placeholder="user@example.com"
                         />
-                        <FaEnvelope className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs" />
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-3.5" />
                     </div>
                     {errors.email && (
                         <div className="text-cc-red text-[11px] mt-1 flex items-center font-medium">
-                            <FaExclamationTriangle className="mr-1" /> {errors.email}
+                            <AlertTriangle className="mr-1 size-3" /> {errors.email}
                         </div>
                     )}
                 </div>
@@ -212,25 +213,25 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
                 {/* Password field */}
                 <div className="flex flex-col">
                     <label htmlFor="password" className="mb-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center">
-                        <FaLock className="mr-1.5 text-muted-foreground" /> Password <span className="text-cc-red ml-1">*</span>
+                        <Lock className="mr-1.5 size-3.5 text-muted-foreground" /> Password <span className="text-cc-red ml-1">*</span>
                     </label>
                     <div className="relative">
-                        <input
+                        <Input
                             type="password"
                             id="password"
                             name="password"
                             value={formData.password}
                             onChange={handleChange}
-                            className={`w-full pl-9 pr-3.5 py-2 bg-cc-ground border rounded-xl text-xs text-foreground focus:outline-none ${
-                                errors.password ? 'border-cc-red' : 'border-border focus:border-border'
+                            className={`pl-9 bg-cc-ground text-xs ${
+                                errors.password ? 'border-cc-red focus-visible:ring-cc-red/30' : 'border-border'
                             }`}
                             placeholder="Enter password"
                         />
-                        <FaLock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs" />
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-3.5" />
                     </div>
                     {errors.password && (
                         <div className="text-cc-red text-[11px] mt-1 flex items-center font-medium">
-                            <FaExclamationTriangle className="mr-1" /> {errors.password}
+                            <AlertTriangle className="mr-1 size-3" /> {errors.password}
                         </div>
                     )}
 
@@ -260,7 +261,7 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
                 {/* Roles selection */}
                 <div className="flex flex-col">
                     <label className="mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center">
-                        <FaShieldAlt className="mr-1.5 text-muted-foreground" /> Assigned Roles <span className="text-cc-red ml-1">*</span>
+                        <Shield className="mr-1.5 size-3.5 text-muted-foreground" /> Assigned Roles <span className="text-cc-red ml-1">*</span>
                     </label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {AVAILABLE_ROLES.map((role) => (
@@ -286,7 +287,7 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
                     </div>
                     {errors.roles && (
                         <div className="text-cc-red text-[11px] mt-1 flex items-center font-medium">
-                            <FaExclamationTriangle className="mr-1" /> {errors.roles}
+                            <AlertTriangle className="mr-1 size-3" /> {errors.roles}
                         </div>
                     )}
                 </div>
@@ -294,13 +295,20 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
                 {/* Submit button */}
                 <Button
                     type="submit"
-                    variant="success"
-                    size="md"
-                    fullWidth
-                    isLoading={isSubmitting}
-                    leftIcon={<FaUserPlus />}
+                    disabled={isSubmitting}
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium"
                 >
-                    {isSubmitting ? 'Creating user...' : 'Create User'}
+                    {isSubmitting ? (
+                        <>
+                            <Loader2 className="size-4 animate-spin mr-2" />
+                            Creating user...
+                        </>
+                    ) : (
+                        <>
+                            <UserPlus className="size-4 mr-2" />
+                            Create User
+                        </>
+                    )}
                 </Button>
             </form>
         </motion.div>

@@ -1,8 +1,10 @@
 'use client';
 
 import React from 'react';
-import { FaPlay, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { Play, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Clip } from '@/types/adminTypes';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 interface ClipQueueSidebarProps {
   nextClip: Clip | null;
@@ -18,18 +20,18 @@ export const ClipQueueSidebar: React.FC<ClipQueueSidebarProps> = ({
   isLoading,
 }) => {
   return (
-    <div className="bg-cc-card rounded-xl border border-border p-4 flex flex-col gap-3 shadow-sm">
+    <Card className="p-4 flex flex-col gap-3 shadow-sm bg-card border-border">
       <div className="flex items-center justify-between pb-2 border-b border-border">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-cc-text">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-card-foreground">
           Queue
         </h3>
         <span className="text-[10px] text-muted-foreground inline-flex items-center gap-1">
           <span>Navigate with</span>
-          <kbd className="inline-flex items-center justify-center px-1 py-0.5 text-[9px] bg-cc-ground rounded border border-border">
-            <FaChevronLeft size={7} />
+          <kbd className="inline-flex items-center justify-center px-1 py-0.5 text-[9px] bg-background rounded border border-border">
+            <ChevronLeft className="size-2.5" />
           </kbd>
-          <kbd className="inline-flex items-center justify-center px-1 py-0.5 text-[9px] bg-cc-ground rounded border border-border">
-            <FaChevronRight size={7} />
+          <kbd className="inline-flex items-center justify-center px-1 py-0.5 text-[9px] bg-background rounded border border-border">
+            <ChevronRight className="size-2.5" />
           </kbd>
         </span>
       </div>
@@ -37,7 +39,7 @@ export const ClipQueueSidebar: React.FC<ClipQueueSidebarProps> = ({
       {nextClip ? (
         <div
           onClick={() => !isLoading && onNavigate(nextClip._id)}
-          className="group flex gap-3 p-2 rounded-xl bg-cc-ground/60 hover:bg-border/40 border border-border/80 transition-all cursor-pointer"
+          className="group flex gap-3 p-2 rounded-xl bg-background/60 hover:bg-secondary/40 border border-border/80 transition-all cursor-pointer"
         >
           <div className="relative w-28 aspect-video rounded-lg overflow-hidden bg-black shrink-0">
             <img
@@ -47,16 +49,16 @@ export const ClipQueueSidebar: React.FC<ClipQueueSidebarProps> = ({
               loading="lazy"
             />
             <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-              <FaPlay size={10} className="text-white ml-0.5" />
+              <Play className="size-3 text-white fill-white ml-0.5" />
             </div>
-            <span className="absolute top-1 left-1 bg-primary text-white text-[9px] font-bold px-1 rounded">
+            <Badge className="absolute top-1 left-1 text-[9px] font-bold px-1 py-0 h-4 rounded">
               NEXT
-            </span>
+            </Badge>
           </div>
 
           <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
             <div>
-              <h4 className="text-xs font-semibold text-cc-text line-clamp-2 leading-tight group-hover:text-primary transition-colors">
+              <h4 className="text-xs font-semibold text-foreground line-clamp-2 leading-tight group-hover:text-primary transition-colors">
                 {nextClip.title}
               </h4>
               <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
@@ -71,7 +73,7 @@ export const ClipQueueSidebar: React.FC<ClipQueueSidebarProps> = ({
           </div>
         </div>
       ) : (
-        <div className="p-3 text-center text-xs text-muted-foreground bg-cc-ground/40 rounded-xl border border-dashed border-border">
+        <div className="p-3 text-center text-xs text-muted-foreground bg-background/40 rounded-xl border border-dashed border-border">
           End of playlist
         </div>
       )}
@@ -79,15 +81,15 @@ export const ClipQueueSidebar: React.FC<ClipQueueSidebarProps> = ({
       {prevClip && (
         <div
           onClick={() => !isLoading && onNavigate(prevClip._id)}
-          className="group flex items-center justify-between p-2.5 rounded-xl bg-cc-ground/40 hover:bg-border/30 border border-border/60 transition-all cursor-pointer text-xs"
+          className="group flex items-center justify-between p-2.5 rounded-xl bg-background/40 hover:bg-secondary/30 border border-border/60 transition-all cursor-pointer text-xs"
         >
           <div className="flex items-center gap-2 min-w-0 pr-2">
-            <FaChevronLeft size={10} className="text-muted-foreground shrink-0" />
+            <ChevronLeft className="size-3 text-muted-foreground shrink-0" />
             <div className="truncate">
               <span className="text-[10px] text-muted-foreground block font-bold uppercase tracking-wider">
                 Previous
               </span>
-              <span className="text-cc-text truncate block group-hover:text-white transition-colors">
+              <span className="text-foreground truncate block group-hover:text-white transition-colors">
                 {prevClip.title}
               </span>
             </div>
@@ -97,7 +99,7 @@ export const ClipQueueSidebar: React.FC<ClipQueueSidebarProps> = ({
           </span>
         </div>
       )}
-    </div>
+    </Card>
   );
 };
 

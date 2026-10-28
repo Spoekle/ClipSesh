@@ -5,7 +5,7 @@ import ClipContent from './ClipView/Index';
 import ClipFilterBar from './ClipGrid/components/ClipFilterBar';
 import ClipGrid from './ClipGrid/Index';
 import Breadcrumbs from '@/components/common/Breadcrumbs';
-import { FaSearch } from 'react-icons/fa';
+import { Search } from 'lucide-react';
 import { Clip, User, Rating } from '@/types/adminTypes';
 import { getClipFilterOptions } from '@/services/clipService';
 import { ClipViewerHeader } from './ClipViewerHeader';
@@ -171,8 +171,8 @@ const ClipViewerContent: React.FC<ClipViewerContentProps> = ({
 
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] bg-cc-card p-8 rounded-2xl shadow-sm border border-border">
-        <div className="w-16 h-16 rounded-2xl bg-secondary border border-border flex items-center justify-center text-muted-foreground text-3xl mb-4 shadow-inner">
-          <FaSearch />
+        <div className="w-16 h-16 rounded-2xl bg-secondary border border-border flex items-center justify-center text-muted-foreground mb-4 shadow-inner">
+          <Search className="size-8" />
         </div>
         <h2 className="text-xl font-bold text-foreground mb-2">Clip Not Found</h2>
         <p className="text-muted-foreground mb-6 text-sm">

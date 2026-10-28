@@ -1,13 +1,18 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { FaSave, FaTimes, FaVideo } from 'react-icons/fa';
+import { Video, Save } from 'lucide-react';
 import { useNotification } from '@/context/AlertContext';
 import { Clip } from '@/types/adminTypes';
 import { updateClip } from '@/services/clipService';
 import { EditClipFormFields, EditErrors } from './edit/EditClipFormFields';
 import { Button } from '@/components/common/Button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface EditClipModalProps {
   clip: Clip;
@@ -106,7 +111,7 @@ export const EditClipModal: React.FC<EditClipModalProps> = ({
         showError('No data received from the update.');
       }
 
-      handleClose();
+      setIsEditModalOpen(false);
     } catch (error) {
       console.error('Error updating clip:', error);
       const msg = error instanceof Error ? error.message : 'Error updating clip';
@@ -116,125 +121,65 @@ export const EditClipModal: React.FC<EditClipModalProps> = ({
     }
   };
 
-  const handleClose = () => {
-    setIsEditModalOpen(false);
-  };
-
-  const handleClickOutside = (event: React.MouseEvent<HTMLDivElement>) => {
-    if ((event.target as HTMLElement).classList.contains('modal-overlay')) {
-      handleClose();
-    }
-  };
-
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        handleClose();
-      }
-    };
-
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, []);
-
-  useEffect(() => {
-    if (isEditModalOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'auto';
-    }
-
-    return () => {
-      document.body.style.overflow = 'auto';
-    };
-  }, [isEditModalOpen]);
-
   return (
-    <AnimatePresence>
-      {isEditModalOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          className="modal-overlay fixed inset-0 bg-black/60 backdrop-blur-xs flex justify-center items-center z-50 p-4 select-none"
-          onMouseDown={handleClickOutside}
-        >
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="modal-content relative bg-cc-card text-foreground w-full max-w-lg rounded-2xl shadow-2xl max-h-[90vh] overflow-hidden border border-border"
-          >
-            {/* Header */}
-            <div className="flex justify-between items-center p-5 border-b border-border">
-              <h2 className="text-base font-bold flex items-center text-white">
-                <div className="p-2 bg-primary/15 border border-primary/30 text-primary rounded-xl mr-3">
-                  <FaVideo className="text-primary" />
-                </div>
-                Edit Clip Details
-              </h2>
-              <button
-                type="button"
-                onClick={handleClose}
-                className="p-1.5 text-muted-foreground hover:text-white hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
-                aria-label="Close"
-              >
-                <FaTimes className="w-4 h-4" />
-              </button>
+    <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+      <DialogContent className="max-w-lg w-full bg-card border border-border p-6 shadow-2xl rounded-2xl">
+        <DialogHeader className="border-b border-border pb-4">
+          <DialogTitle className="flex items-center text-foreground text-base font-bold">
+            <div className="p-2 bg-primary/15 border border-primary/30 text-primary rounded-xl mr-3">
+              <Video className="size-4" />
             </div>
+            Edit Clip Details
+          </DialogTitle>
+        </DialogHeader>
 
-            {/* Body */}
-            <div className="p-5 overflow-y-auto max-h-[calc(90vh-160px)]">
-              <form onSubmit={handleUpdate} className="space-y-5">
-                <EditClipFormFields
-                  streamer={streamer}
-                  setStreamer={setStreamer}
-                  submitter={submitter}
-                  setSubmitter={setSubmitter}
-                  title={title}
-                  setTitle={setTitle}
-                  link={link}
-                  setLink={setLink}
-                  submitterId={submitterId}
-                  setSubmitterId={setSubmitterId}
-                  season={season}
-                  setSeason={setSeason}
-                  year={year}
-                  setYear={setYear}
-                  archived={archived}
-                  setArchived={setArchived}
-                  isLoading={isLoading}
-                  errors={errors}
-                />
+        <form onSubmit={handleUpdate} className="space-y-4 pt-2">
+          <div className="max-h-[60vh] overflow-y-auto pr-1">
+            <EditClipFormFields
+              streamer={streamer}
+              setStreamer={setStreamer}
+              submitter={submitter}
+              setSubmitter={setSubmitter}
+              title={title}
+              setTitle={setTitle}
+              link={link}
+              setLink={setLink}
+              submitterId={submitterId}
+              setSubmitterId={setSubmitterId}
+              season={season}
+              setSeason={setSeason}
+              year={year}
+              setYear={setYear}
+              archived={archived}
+              setArchived={setArchived}
+              isLoading={isLoading}
+              errors={errors}
+            />
+          </div>
 
-                <div className="flex justify-end gap-2.5 pt-4 border-t border-border mt-4">
-                  <Button
-                    type="button"
-                    variant="card"
-                    size="sm"
-                    onClick={handleClose}
-                    disabled={isLoading}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    size="sm"
-                    isLoading={isLoading}
-                    leftIcon={<FaSave size={12} />}
-                  >
-                    Save Changes
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+          <div className="flex justify-end gap-2.5 pt-4 border-t border-border">
+            <Button
+              type="button"
+              variant="card"
+              size="sm"
+              onClick={() => setIsEditModalOpen(false)}
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              isLoading={isLoading}
+              leftIcon={<Save className="size-3.5" />}
+            >
+              Save Changes
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 };
 

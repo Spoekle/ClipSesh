@@ -2,8 +2,10 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FaDiscord, FaSearch, FaStop } from 'react-icons/fa';
-import { Button } from '@/components/Button';
+import { FaDiscord } from 'react-icons/fa';
+import { Search, Square, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 interface ScraperChannelScannerProps {
   channelId: string;
@@ -31,7 +33,7 @@ export const ScraperChannelScanner: React.FC<ScraperChannelScannerProps> = ({
     <div className="bg-cc-card p-5 sm:p-6 rounded-xl border border-border shadow-xs">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-border">
         <div className="flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-[#5865F2]/15 text-[#5865F2] border border-[#5865F2]/25 flex items-center justify-center shrink-0">
+          <div className="size-10 rounded-xl bg-[#5865F2]/15 text-[#5865F2] border border-[#5865F2]/25 flex items-center justify-center shrink-0">
             <FaDiscord size={20} />
           </div>
           <div>
@@ -48,45 +50,48 @@ export const ScraperChannelScanner: React.FC<ScraperChannelScannerProps> = ({
       <div className="mt-5 space-y-4">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <div className="relative flex-1">
-            <input
+            <Input
               type="text"
               value={channelId}
               onChange={(e) => setChannelId(e.target.value)}
               placeholder="Enter Discord Channel ID"
               disabled={isScanning}
-              className="w-full bg-cc-ground border border-border focus:border-primary rounded-xl px-4 py-2.5 text-xs text-white placeholder-muted-foreground/60 font-mono transition-colors outline-none"
+              className="bg-cc-ground border-border text-xs text-white placeholder-muted-foreground/60 font-mono"
             />
           </div>
 
           {isScanning ? (
             <div className="flex items-center gap-2 shrink-0">
               <Button
-                variant="primary"
-                size="md"
-                isLoading
+                variant="default"
+                size="default"
                 disabled
+                className="gap-1.5 bg-primary text-white"
               >
-                Scanning Channel...
+                <Loader2 className="size-3.5 animate-spin" />
+                <span>Scanning Channel...</span>
               </Button>
               <Button
-                variant="danger"
-                size="md"
+                variant="destructive"
+                size="default"
                 onClick={onCancelScan}
-                leftIcon={<FaStop size={10} />}
+                className="gap-1.5"
                 title="Cancel channel scan"
               >
-                Cancel Scan
+                <Square className="size-3" />
+                <span>Cancel Scan</span>
               </Button>
             </div>
           ) : (
             <Button
-              variant="primary"
-              size="md"
+              variant="default"
+              size="default"
               onClick={onStartScan}
               disabled={!channelId.trim()}
-              leftIcon={<FaSearch size={12} />}
+              className="gap-1.5 bg-primary text-white hover:bg-primary/90 font-semibold"
             >
-              Scan Channel Clips
+              <Search className="size-3.5" />
+              <span>Scan Channel Clips</span>
             </Button>
           )}
         </div>
@@ -120,8 +125,8 @@ export const ScraperChannelScanner: React.FC<ScraperChannelScannerProps> = ({
           className="mt-5 p-4 rounded-xl bg-cc-ground border border-border flex items-center justify-between gap-4"
         >
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-primary/15 text-primary flex items-center justify-center shrink-0">
-              <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+            <div className="size-8 rounded-lg bg-primary/15 text-primary flex items-center justify-center shrink-0">
+              <Loader2 className="size-4 animate-spin text-primary" />
             </div>
             <div>
               <span className="text-xs font-semibold text-white block">
@@ -137,14 +142,16 @@ export const ScraperChannelScanner: React.FC<ScraperChannelScannerProps> = ({
             <span className="hidden sm:inline text-[11px] px-2 py-0.5 rounded-full bg-cc-card text-muted-foreground border border-border">
               Respecting Discord Rate Limits
             </span>
-            <button
+            <Button
               type="button"
+              variant="destructive"
+              size="sm"
               onClick={onCancelScan}
-              className="px-3 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-400 text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
+              className="gap-1.5"
             >
-              <FaStop size={10} />
+              <Square className="size-3" />
               <span>Cancel Scan</span>
-            </button>
+            </Button>
           </div>
         </motion.div>
       )}

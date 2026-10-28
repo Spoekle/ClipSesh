@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { FaStar, FaPlay } from 'react-icons/fa';
+import { Star, Play } from 'lucide-react';
 import { format } from 'timeago.js';
 import { User, Clip, Rating } from '@/types/adminTypes';
 import { computeClipRatingSummary } from '../utils/clipRatingHelpers';
 import { ClipItemTeamRating } from './ClipItemTeamRating';
+import { Badge } from '@/components/ui/badge';
 
 interface ClipItemProps {
   clip: Clip;
@@ -16,7 +17,7 @@ interface ClipItemProps {
   setExpandedClip: (clipId: string) => void;
 }
 
-const ClipItem: React.FC<ClipItemProps> = ({
+export const ClipItem: React.FC<ClipItemProps> = ({
   clip,
   user,
   ratings,
@@ -168,7 +169,7 @@ const ClipItem: React.FC<ClipItemProps> = ({
       {/* 16:9 Thumbnail Container */}
       <div
         data-thumbnail-container="true"
-        className="relative aspect-video bg-cc-card rounded-none sm:rounded-xl overflow-hidden"
+        className="relative aspect-video bg-card rounded-none sm:rounded-xl overflow-hidden"
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
       >
@@ -196,22 +197,28 @@ const ClipItem: React.FC<ClipItemProps> = ({
         {/* Rating/Denial Badges (Top-Right) */}
         <div className="absolute top-2 right-2 flex items-center gap-1.5">
           {hasRated && userRating && (
-            <div className="px-2 py-0.5 rounded-md bg-black/85 backdrop-blur-xs border border-white/15 text-white text-[11px] font-bold flex items-center gap-1 shadow-sm">
+            <Badge
+              variant="secondary"
+              className="px-2 py-0.5 rounded-md bg-black/85 backdrop-blur-xs border border-white/15 text-white text-[11px] font-bold flex items-center gap-1 shadow-sm"
+            >
               {userRating === 'deny' ? (
                 <span className="text-red-400">Denied</span>
               ) : (
                 <>
-                  <FaStar className="text-amber-400" size={10} />
+                  <Star className="size-2.5 text-amber-400 fill-amber-400" />
                   <span>{userRating}</span>
                 </>
               )}
-            </div>
+            </Badge>
           )}
 
           {isDenied && isStaff && (
-            <div className="px-2 py-0.5 rounded-md bg-red-950/90 border border-red-500/40 text-red-300 text-[11px] font-bold shadow-sm">
+            <Badge
+              variant="destructive"
+              className="px-2 py-0.5 rounded-md bg-red-950/90 border border-red-500/40 text-red-300 text-[11px] font-bold shadow-sm"
+            >
               Denied
-            </div>
+            </Badge>
           )}
         </div>
       </div>
@@ -224,10 +231,10 @@ const ClipItem: React.FC<ClipItemProps> = ({
             <h3 className="text-sm font-semibold text-foreground line-clamp-2 leading-snug tracking-tight transition-colors">
               {clip.title}
             </h3>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 mt-1">
               <span className="text-xs text-muted-foreground truncate">{clip.streamer}</span>
               <span className="flex text-xs text-muted-foreground items-center gap-1" title={`${clip.views || 0} views`}>
-                <FaPlay size={11}/>
+                <Play className="size-2.5" />
                 <span>{clip.views || 0}</span>
               </span>
               <span className="text-xs text-muted-foreground">{formattedDate}</span>

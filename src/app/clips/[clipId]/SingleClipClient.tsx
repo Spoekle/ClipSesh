@@ -8,8 +8,8 @@ import { useCurrentUser } from '@/hooks/useUser';
 import { useQueryClient } from '@tanstack/react-query';
 import { Clip } from '@/types/adminTypes';
 import ClipContent from '@/app/clips/components/ClipView/Index';
-import { FaArrowLeft, FaTimes } from 'react-icons/fa';
-import { Button } from '@/components/common/Button';
+import { ArrowLeft, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface SingleClipClientProps {
   initialClip: Clip;
@@ -45,18 +45,18 @@ export default function SingleClipClient({ initialClip, clipId }: SingleClipClie
         <div className="w-full max-w-[1200px] mx-auto px-4 sm:px-8 py-16 flex flex-col items-center justify-center">
           <div className="bg-cc-card border border-border rounded-xl p-8 max-w-lg w-full text-center flex flex-col items-center shadow-xl">
             <div className="w-14 h-14 rounded-2xl bg-secondary border border-border flex items-center justify-center text-xl text-cc-red mb-4">
-              <FaTimes />
+              <X className="size-6 text-cc-red" />
             </div>
             <h1 className="text-xl font-bold text-foreground mb-2 tracking-tight">Clip Not Found</h1>
             <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
               The clip you are looking for may have been deleted, unapproved, or the link is invalid.
             </p>
             <Button
-              href="/clips"
-              variant="primary"
+              variant="default"
               size="sm"
-              leftIcon={<FaArrowLeft size={11} />}
+              onClick={() => router.push('/clips')}
             >
+              <ArrowLeft className="size-3.5 mr-1.5" />
               Back to Clips
             </Button>
           </div>

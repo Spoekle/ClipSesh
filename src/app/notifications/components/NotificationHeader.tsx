@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { FaCheckDouble, FaBroom } from 'react-icons/fa';
+import { CheckCheck, Trash } from 'lucide-react';
 import { Button } from '@/components/Button';
 
 interface NotificationHeaderProps {
@@ -27,18 +27,18 @@ export const NotificationHeader: React.FC<NotificationHeaderProps> = ({
       <div className="max-w-[1200px] mx-auto px-4 sm:px-8 pt-6 pb-4">
         {/* Breadcrumbs */}
         <nav className="flex items-center gap-1.5 text-sm text-muted-foreground mb-2">
-          <Link href="/" className="hover:text-white transition-colors">
+          <Link href="/" className="hover:text-foreground transition-colors">
             Home
           </Link>
           <span className="text-muted-foreground/60 select-none">/</span>
-          <span className="text-white font-medium">Notifications</span>
+          <span className="text-foreground font-medium">Notifications</span>
         </nav>
 
         {/* Title row with signature CC Red Underline */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
             <div className="relative pb-3 w-fit">
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white tracking-tight leading-tight uppercase">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground tracking-tight leading-tight uppercase">
                 NOTIFICATIONS
               </h1>
               <div className="absolute bottom-0 left-0 w-3/5 h-[2.5px] bg-primary rounded-full" />
@@ -58,7 +58,7 @@ export const NotificationHeader: React.FC<NotificationHeaderProps> = ({
                 onClick={onMarkAllAsRead}
                 disabled={isMarkAllPending}
                 isLoading={isMarkAllPending}
-                leftIcon={<FaCheckDouble size={11} />}
+                leftIcon={<CheckCheck className="size-3.5" />}
               >
                 Mark All Read
               </Button>
@@ -72,7 +72,7 @@ export const NotificationHeader: React.FC<NotificationHeaderProps> = ({
                 onClick={onClearRead}
                 disabled={isClearPending}
                 isLoading={isClearPending}
-                leftIcon={<FaBroom size={11} />}
+                leftIcon={<Trash className="size-3.5" />}
               >
                 Clear Read
               </Button>

@@ -2,15 +2,15 @@
 
 import React from 'react';
 import {
-  FaArchive,
-  FaFileDownload,
-  FaTrash,
-  FaSpinner,
-  FaHistory,
-} from 'react-icons/fa';
+  Archive,
+  Download,
+  Trash2,
+  Loader2,
+  History,
+} from 'lucide-react';
 import { formatFileSize } from '@/utils/fileHelpers';
 import { Zip } from '@/types/adminTypes';
-import { Button } from '@/components/Button';
+import { Button } from '@/components/ui/button';
 
 export interface SeasonStatusItem {
   season: string;
@@ -69,7 +69,7 @@ export const SeasonLifecycleTable: React.FC<SeasonLifecycleTableProps> = ({
   if (loading) {
     return (
       <div className="p-12 text-center bg-cc-ground rounded-xl border border-border">
-        <FaSpinner className="animate-spin text-primary mx-auto mb-2" size={18} />
+        <Loader2 className="size-4 animate-spin text-primary mx-auto mb-2" />
         <p className="text-xs text-muted-foreground">Loading seasonal collections...</p>
       </div>
     );
@@ -149,7 +149,7 @@ export const SeasonLifecycleTable: React.FC<SeasonLifecycleTableProps> = ({
                 <div className="mt-3 p-2.5 rounded-lg bg-cc-card border border-border flex items-center justify-between gap-2">
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 text-xs font-semibold text-white truncate">
-                      <FaArchive size={11} className="text-sky-400 shrink-0" />
+                      <Archive className="size-3 text-sky-400 shrink-0" />
                       <span className="truncate" title={linkedZip.name}>{linkedZip.name}</span>
                     </div>
                     <span className="text-[10px] text-muted-foreground font-mono block mt-0.5">
@@ -158,30 +158,34 @@ export const SeasonLifecycleTable: React.FC<SeasonLifecycleTableProps> = ({
                   </div>
 
                   <div className="flex items-center gap-1 shrink-0">
-                    <button
+                    <Button
                       type="button"
+                      variant="secondary"
+                      size="icon-xs"
                       onClick={() => handleDownloadClick(linkedZip, onDownload)}
                       disabled={isZipDownloading}
-                      className="p-1.5 rounded-lg bg-secondary hover:bg-primary text-white transition-colors cursor-pointer"
+                      className="cursor-pointer"
                       title="Download ZIP Archive"
                     >
                       {isZipDownloading ? (
                         <span className="text-[10px] flex items-center gap-1">
-                          <FaSpinner className="animate-spin" size={10} />
+                          <Loader2 className="size-2.5 animate-spin" />
                           {zipDownloadProgress}%
                         </span>
                       ) : (
-                        <FaFileDownload size={11} />
+                        <Download className="size-3" />
                       )}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="icon-xs"
                       onClick={() => onDeleteZip(linkedZip._id, linkedZip.name)}
-                      className="p-1.5 rounded-lg bg-secondary hover:bg-rose-500/25 text-muted-foreground hover:text-rose-400 transition-colors cursor-pointer"
+                      className="text-muted-foreground hover:text-rose-400 hover:bg-rose-500/20 cursor-pointer"
                       title="Delete ZIP Archive"
                     >
-                      <FaTrash size={11} />
-                    </button>
+                      <Trash2 className="size-3" />
+                    </Button>
                   </div>
                 </div>
               ) : (
@@ -206,31 +210,34 @@ export const SeasonLifecycleTable: React.FC<SeasonLifecycleTableProps> = ({
                   className="w-full py-1.5 px-3 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 hover:text-amber-300 border border-amber-500/30 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                   title="Restore archived clips back to the active reviewer list"
                 >
-                  <FaHistory size={11} />
+                  <History className="size-3" />
                   <span>Unarchive (Undo)</span>
                 </button>
               ) : !s.isCurrent && activeClipsCount > 0 ? (
                 <Button
-                  variant="secondary"
+                  variant="outline"
                   size="sm"
-                  fullWidth
+                  className="w-full gap-1.5"
                   onClick={() => onArchiveSeason(s.season, s.year)}
                   disabled={isArchiving}
-                  isLoading={isArchiving}
-                  leftIcon={<FaArchive size={11} />}
                   title="Archive active clips for this past season"
                 >
-                  Archive Season
+                  {isArchiving ? (
+                    <Loader2 className="size-3 animate-spin" />
+                  ) : (
+                    <Archive className="size-3" />
+                  )}
+                  <span>Archive Season</span>
                 </Button>
               ) : s.isCurrent ? (
                 <Button
-                  variant="danger"
+                  variant="default"
                   size="sm"
-                  fullWidth
+                  className="w-full gap-1.5 bg-primary text-white hover:bg-primary/90 font-semibold"
                   onClick={onCompilePool}
-                  leftIcon={<FaFileDownload size={11} />}
                 >
-                  Compile Current Pool
+                  <Download className="size-3" />
+                  <span>Compile Current Pool</span>
                 </Button>
               ) : (
                 <span className="text-[11px] text-muted-foreground/60 italic block text-center py-1">

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FaUser, FaUserShield, FaEye } from 'react-icons/fa';
+import { User, ShieldAlert, Eye } from 'lucide-react';
 import { ReportMessage } from '@/types/adminTypes';
 
 interface UserReportMessageItemProps {
@@ -24,8 +24,8 @@ export const UserReportMessageItem: React.FC<UserReportMessageItemProps> = ({
     >
       {/* Avatar icon for staff (left side) */}
       {isStaff && (
-        <div className="shrink-0 p-2 rounded-xl bg-cc-red/15 text-cc-red border border-cc-red/20">
-          <FaUserShield size={14} />
+        <div className="shrink-0 p-2 rounded-xl bg-primary/15 text-primary border border-primary/20">
+          <ShieldAlert className="size-3.5" />
         </div>
       )}
 
@@ -34,13 +34,13 @@ export const UserReportMessageItem: React.FC<UserReportMessageItemProps> = ({
           className={`rounded-2xl p-4 text-xs ${
             isStaff
               ? 'bg-secondary/40 border border-border text-foreground shadow-sm'
-              : 'bg-cc-ground border border-border text-foreground'
+              : 'bg-background border border-border text-foreground'
           }`}
         >
           <div className="flex items-center justify-between gap-4 mb-1 text-[11px]">
             <span
               className={`font-semibold ${
-                isStaff ? 'text-cc-red' : 'text-sky-400'
+                isStaff ? 'text-primary' : 'text-sky-400'
               }`}
             >
               {isStaff ? 'ClipSesh Moderator' : 'You'}
@@ -55,7 +55,7 @@ export const UserReportMessageItem: React.FC<UserReportMessageItemProps> = ({
             <span>{formatDate(message.createdAt)}</span>
             {Boolean(message.readBy && message.readBy.length > 1) && (
               <span className="flex items-center ml-2 text-muted-foreground/80">
-                <FaEye className="mr-1" size={10} />
+                <Eye className="mr-1 size-2.5" />
                 Read
               </span>
             )}
@@ -66,7 +66,7 @@ export const UserReportMessageItem: React.FC<UserReportMessageItemProps> = ({
       {/* Avatar icon for user (right side) */}
       {!isStaff && (
         <div className="shrink-0 order-2 p-2 rounded-xl bg-sky-500/15 text-sky-400 border border-sky-500/20">
-          <FaUser size={14} />
+          <User className="size-3.5" />
         </div>
       )}
     </motion.div>

@@ -3,14 +3,16 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
-  FaBan,
-  FaExclamationTriangle,
-  FaFilter,
-  FaSearch,
-} from 'react-icons/fa';
+  Ban,
+  AlertTriangle,
+  Filter,
+  Search,
+} from 'lucide-react';
 import { Clip, Rating } from '@/types/adminTypes';
 import { DeniedClipCard } from './denied/DeniedClipCard';
 import { DeniedClipPagination } from './denied/DeniedClipPagination';
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
 
 type SortBy = 'newest' | 'oldest' | 'mostDenied';
 
@@ -58,37 +60,38 @@ export const DeniedClips: React.FC<DeniedClipsProps> = ({ clips, ratings, config
       } else if (sortBy === 'oldest') {
         return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
       } else if (sortBy === 'mostDenied') {
-        const aDenyCount = ratings[a._id]?.ratings?.deny?.length || 0;
-        const bDenyCount = ratings[b._id]?.ratings?.deny?.length || 0;
-        return bDenyCount - aDenyCount;
+        const aCount = ratings[a._id]?.ratings?.deny?.length || 0;
+        const bCount = ratings[b._id]?.ratings?.deny?.length || 0;
+        return bCount - aCount;
       }
       return 0;
     });
-  }, [filteredClips, sortBy, ratings]);
+  }, [filteredClips, ratings, sortBy]);
 
   const totalPages = Math.ceil(sortedClips.length / clipsPerPage);
-  const indexOfLastClip = currentPage * clipsPerPage;
-  const indexOfFirstClip = indexOfLastClip - clipsPerPage;
-  const currentClips = sortedClips.slice(indexOfFirstClip, indexOfLastClip);
+  const paginatedClips = useMemo(() => {
+    const startIndex = (currentPage - 1) * clipsPerPage;
+    return sortedClips.slice(startIndex, startIndex + clipsPerPage);
+  }, [sortedClips, currentPage, clipsPerPage]);
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 4 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.15 }}
-      className="w-full bg-cc-card border border-border rounded-2xl p-5 sm:p-6 text-foreground shadow-xs space-y-6"
+      className="space-y-4"
     >
       {/* Header and Controls */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-border">
         <div>
-          <h2 className="text-base font-bold flex items-center gap-2.5 text-white">
-            <div className="w-8 h-8 rounded-xl bg-rose-500/15 text-rose-400 flex items-center justify-center">
-              <FaBan size={14} />
+          <h2 className="text-base font-bold flex items-center gap-2.5 text-foreground">
+            <div className="w-8 h-8 rounded-xl bg-destructive/15 text-destructive flex items-center justify-center">
+              <Ban className="size-4" />
             </div>
             <span>Denied Submissions</span>
-            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-cc-ground text-muted-foreground border border-border font-mono">
+            <Badge variant="outline" className="text-xs font-semibold font-mono">
               {filteredClips.length}
-            </span>
+            </Badge>
           </h2>
           <p className="text-xs text-muted-foreground mt-1">
             Clips that have met or exceeded the community rejection threshold ({config.denyThreshold} denial votes) and are excluded from season compilation.
@@ -107,9 +110,9 @@ export const DeniedClips: React.FC<DeniedClipsProps> = ({ clips, ratings, config
                 setSearchQuery(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full bg-cc-ground border border-border text-white text-xs pl-8 pr-3 py-1.5 rounded-xl outline-none focus:border-border/80 transition-colors placeholder:text-muted-foreground/60"
+              className="w-full bg-background border border-border text-foreground text-xs pl-8 pr-3 py-1.5 rounded-xl outline-none focus:border-border/80 transition-colors placeholder:text-muted-foreground/60"
             />
-            <FaSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={11} />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground size-3.5" />
           </div>
 
           {/* Sort Dropdown */}
@@ -122,14 +125,14 @@ export const DeniedClips: React.FC<DeniedClipsProps> = ({ clips, ratings, config
                   setSortBy(e.target.value as SortBy);
                   setCurrentPage(1);
                 }}
-                className="bg-cc-ground border border-border text-foreground text-xs font-medium py-1.5 pl-3 pr-7 rounded-xl appearance-none cursor-pointer focus:border-border/80 focus:outline-none transition-colors"
+                className="bg-background border border-border text-foreground text-xs font-medium py-1.5 pl-3 pr-7 rounded-xl appearance-none cursor-pointer focus:border-border/80 focus:outline-none transition-colors"
               >
                 <option value="newest">Newest First</option>
                 <option value="oldest">Oldest First</option>
                 <option value="mostDenied">Most Denied</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
-                <FaFilter className="text-muted-foreground" size={9} />
+                <Filter className="text-muted-foreground size-3" />
               </div>
             </div>
           </div>
@@ -138,23 +141,23 @@ export const DeniedClips: React.FC<DeniedClipsProps> = ({ clips, ratings, config
 
       {/* Clip Grid / Empty State */}
       {filteredClips.length === 0 ? (
-        <div className="p-12 bg-cc-ground rounded-xl text-center flex flex-col items-center justify-center border border-border">
+        <Card className="p-12 bg-card rounded-xl text-center flex flex-col items-center justify-center border-border">
           <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center mb-3">
-            <FaExclamationTriangle size={20} />
+            <AlertTriangle className="size-5" />
           </div>
-          <h3 className="text-sm font-bold text-white mb-1">
+          <h3 className="text-sm font-bold text-foreground mb-1">
             {searchQuery ? 'No matching denied clips' : 'No Denied Clips'}
           </h3>
           <p className="text-muted-foreground text-xs max-w-sm">
             {searchQuery
               ? `No rejected clips matching "${searchQuery}" were found.`
-              : `There are currently no clips that exceed the denial threshold of ${config.denyThreshold} votes.`}
+              : 'There are currently no clips marked as denied. Clips reach this list when review members cast denial votes reaching the configured threshold.'}
           </p>
-        </div>
+        </Card>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {currentClips.map((clip) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {paginatedClips.map((clip) => (
               <DeniedClipCard
                 key={clip._id}
                 clip={clip}
@@ -167,7 +170,7 @@ export const DeniedClips: React.FC<DeniedClipsProps> = ({ clips, ratings, config
           <DeniedClipPagination
             currentPage={currentPage}
             totalPages={totalPages}
-            onPageChange={(page) => setCurrentPage(Math.max(1, Math.min(page, totalPages)))}
+            onPageChange={setCurrentPage}
           />
         </>
       )}

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { FaHome } from 'react-icons/fa';
+import { Home } from 'lucide-react';
 import CustomPlayer from './components/CustomPlayer';
 import { useNotification } from '@/context/AlertContext';
 import { Clip, User, Rating } from '@/types/adminTypes';
@@ -135,7 +135,7 @@ const ClipContent: React.FC<ClipContentProps> = ({
   const isTeamMember = Boolean(user && (user.roles?.includes('admin') || user.roles?.includes('clipteam') || user.roles?.includes('editor') || user.roles?.includes('uploader')));
 
   const breadcrumbItems: BreadcrumbItem[] = [
-    { label: 'Home', path: '/', icon: <FaHome className="w-3.5 h-3.5" /> },
+    { label: 'Home', path: '/', icon: <Home className="size-3.5" /> },
     {
       label: from.label,
       path: from.pathname + from.search,

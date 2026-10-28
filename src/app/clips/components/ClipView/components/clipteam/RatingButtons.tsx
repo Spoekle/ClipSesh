@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { FaTimes } from 'react-icons/fa';
+import { X } from 'lucide-react';
 
 interface RatingButtonsProps {
   userCurrentRating: string | null;
@@ -22,11 +22,11 @@ export const RatingButtons: React.FC<RatingButtonsProps> = ({
 }) => {
   const getButtonColors = (rating: number, selected: boolean) => {
     if (selected) {
-      return 'bg-cc-red text-white shadow-md shadow-cc-red/25 ring-2 ring-cc-red/50';
+      return 'bg-primary text-primary-foreground shadow-md ring-2 ring-primary/50';
     } else if (cannotRateOwnClip) {
-      return 'bg-cc-ground/50 border border-border text-muted-foreground/50 cursor-not-allowed';
+      return 'bg-background/50 border border-border text-muted-foreground/50 cursor-not-allowed';
     } else {
-      return 'bg-cc-ground border border-border text-foreground hover:border-cc-red hover:text-cc-red transition-colors';
+      return 'bg-background border border-border text-foreground hover:border-primary hover:text-primary transition-colors';
     }
   };
 
@@ -57,19 +57,21 @@ export const RatingButtons: React.FC<RatingButtonsProps> = ({
         type="button"
         className={`flex flex-col items-center justify-center py-4 px-2 rounded-xl font-bold transition-all duration-200 cursor-pointer ${
           isDenied
-            ? 'bg-cc-red text-white shadow-lg ring-2 ring-cc-red/50'
+            ? 'bg-primary text-primary-foreground shadow-lg ring-2 ring-primary/50'
             : cannotRateOwnClip
-            ? 'bg-cc-ground/50 border border-border text-muted-foreground/50 cursor-not-allowed'
-            : 'bg-cc-ground border border-border text-foreground hover:bg-cc-red hover:text-white'
+            ? 'bg-background/50 border border-border text-muted-foreground/50 cursor-not-allowed'
+            : 'bg-background border border-border text-foreground hover:bg-primary hover:text-primary-foreground'
         } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
         onClick={() => !isDisabled && onRateOrDeny(null, true)}
         disabled={isDisabled}
         title={cannotRateOwnClip ? 'You cannot deny your own clips' : 'Deny this clip'}
       >
         <span className="text-2xl">
-          <FaTimes />
+          <X className="size-6" />
         </span>
       </button>
     </div>
   );
 };
+
+export default RatingButtons;

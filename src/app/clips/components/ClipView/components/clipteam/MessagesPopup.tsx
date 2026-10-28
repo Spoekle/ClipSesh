@@ -2,7 +2,7 @@
 
 import { safeLocalStorage } from '@/utils/storage';
 import React, { useState, useEffect, useRef } from 'react';
-import { AiOutlineSend, AiOutlineClose } from 'react-icons/ai';
+import { Send, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNotification } from '@/context/AlertContext';
 import { User } from '@/types/adminTypes';
@@ -145,7 +145,7 @@ const MessagesPopup: React.FC<MessagesPopupProps> = ({
           className="text-muted-foreground hover:text-foreground p-1 transition-colors cursor-pointer"
           onClick={() => setPopout('')}
         >
-          <AiOutlineClose size={18} />
+          <X className="size-4" />
         </button>
       </div>
       
@@ -201,7 +201,7 @@ const MessagesPopup: React.FC<MessagesPopupProps> = ({
               }`}
               title="Send"
             >
-              <AiOutlineSend size={15} />
+              <Send className="size-4" />
             </button>
           </div>
         </div>

@@ -2,14 +2,17 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AiOutlineDelete } from 'react-icons/ai';
+import { Trash2, Loader2, MessageSquare } from 'lucide-react';
 import { format } from 'timeago.js';
 import CommentReply from './CommentReply';
 import { useNotification } from '@/context/AlertContext';
 import { User, Clip, Reply } from '@/types/adminTypes';
 import { useSearchParams } from 'next/navigation';
 import { getClipById, addCommentToClip, deleteCommentFromClip } from '@/services/clipService';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 interface CommentItem {
   _id: string;
@@ -107,15 +110,15 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
 
   if (!currentClip) {
     return (
-      <div className="mt-6 bg-cc-card rounded-xl border border-border p-6 mb-16 sm:mb-6">
+      <Card className="mt-6 p-6 mb-16 sm:mb-6 bg-card border-border">
         <div className="animate-pulse">
-          <div className="h-6 bg-cc-ground rounded-lg mb-4 w-1/4" />
+          <div className="h-6 bg-muted rounded-lg mb-4 w-1/4" />
           <div className="space-y-3">
-            <div className="h-4 bg-cc-ground rounded-lg" />
-            <div className="h-4 bg-cc-ground rounded-lg w-3/4" />
+            <div className="h-4 bg-muted rounded-lg" />
+            <div className="h-4 bg-muted rounded-lg w-3/4" />
           </div>
         </div>
-      </div>
+      </Card>
     );
   }
 
@@ -123,28 +126,23 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
   const clipComments: CommentItem[] = (currentClip.comments as CommentItem[]) || [];
 
   return (
-    <motion.div
-      initial={{ y: 4, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.1 }}
-      className="mt-6 bg-cc-card rounded-xl border border-border p-5 sm:p-6 mb-16 sm:mb-6 text-foreground"
-    >
+    <Card className="mt-6 p-5 sm:p-6 mb-16 sm:mb-6 text-foreground bg-card border-border">
       <h3 className="text-lg sm:text-xl font-bold text-foreground mb-5 flex items-center gap-2.5">
         <span>Comments</span>
         {clipComments.length > 0 && (
-          <span className="px-2.5 py-0.5 bg-cc-ground text-muted-foreground text-xs font-semibold rounded-full border border-border">
+          <Badge variant="outline" className="text-xs font-semibold">
             {clipComments.length}
-          </span>
+          </Badge>
         )}
       </h3>
 
       {/* Add comment form for logged in users */}
       {isLoggedIn ? (
         <form className="mb-6" onSubmit={handleAddComment}>
-          <div className="bg-cc-ground rounded-xl p-3.5 border border-border focus-within:border-border/80 transition-colors">
-            <textarea
+          <div className="bg-background rounded-xl p-3.5 border border-border focus-within:border-border/80 transition-colors">
+            <Textarea
               placeholder="Add a comment..."
-              className="w-full p-2.5 rounded-lg resize-none bg-transparent text-foreground placeholder-muted-foreground/60 text-sm focus:outline-none focus:ring-0 border-0"
+              className="w-full resize-none bg-transparent text-foreground placeholder:text-muted-foreground/60 text-sm focus-visible:ring-0 focus-visible:border-transparent border-0 p-1 min-h-[60px]"
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
               rows={3}
@@ -175,20 +173,25 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                 )}
                 <Button
                   type="submit"
-                  variant="primary"
+                  variant="default"
                   size="xs"
-                  pill
-                  disabled={!newComment.trim()}
-                  isLoading={isLoading}
+                  disabled={!newComment.trim() || isLoading}
                 >
-                  Comment
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="size-3 animate-spin mr-1" />
+                      Posting...
+                    </>
+                  ) : (
+                    'Comment'
+                  )}
                 </Button>
               </div>
             </div>
           </div>
         </form>
       ) : (
-        <div className="mb-6 p-4 bg-cc-ground rounded-xl border border-border text-center">
+        <div className="mb-6 p-4 bg-background rounded-xl border border-border text-center">
           <p className="text-muted-foreground text-xs sm:text-sm">
             You must be logged in to add a comment.
           </p>
@@ -209,7 +212,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.2 }}
-                  className={`p-4 bg-cc-ground rounded-xl border transition-all ${
+                  className={`p-4 bg-background rounded-xl border transition-all ${
                     comment._id === highlightCommentId
                       ? 'border-primary ring-1 ring-primary/30'
                       : 'border-border'
@@ -218,7 +221,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-full bg-cc-card border border-border flex items-center justify-center text-foreground font-semibold text-xs shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center text-foreground font-semibold text-xs shrink-0">
                         {comment.username?.charAt(0).toUpperCase() || '?'}
                       </div>
                       <div>
@@ -244,7 +247,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                           onClick={() => handleDeleteComment(comment._id)}
                           title="Delete comment"
                         >
-                          <AiOutlineDelete size={16} />
+                          <Trash2 className="size-4" />
                         </button>
                       )}
                   </div>
@@ -265,13 +268,14 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
           </AnimatePresence>
         ) : (
           <div className="text-center py-8">
+            <MessageSquare className="size-8 text-muted-foreground/30 mx-auto mb-2" />
             <p className="text-muted-foreground text-sm">
               No comments yet. Be the first to share your thoughts!
             </p>
           </div>
         )}
       </div>
-    </motion.div>
+    </Card>
   );
 };
 

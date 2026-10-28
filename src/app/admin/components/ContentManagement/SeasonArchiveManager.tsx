@@ -2,15 +2,15 @@
 
 import React, { useState, useMemo } from 'react';
 import {
-  FaArchive,
-  FaFileDownload,
-  FaUpload,
-  FaSpinner,
-  FaCalendarAlt,
-  FaSyncAlt,
-} from 'react-icons/fa';
+  Archive,
+  Download,
+  Upload,
+  Loader2,
+  Calendar,
+  RefreshCw,
+} from 'lucide-react';
 import ConfirmationDialog from '@/components/common/ConfirmationDialog';
-import { Button } from '@/components/Button';
+import { Button } from '@/components/ui/button';
 import UnarchiveSeasonModal from '../UnarchiveSeasonModal';
 import { SeasonArchiveMetrics } from './season/SeasonArchiveMetrics';
 import { UploadZipModal } from './season/UploadZipModal';
@@ -254,8 +254,8 @@ export const SeasonArchiveManager: React.FC<SeasonArchiveManagerProps> = ({
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h2 className="text-base font-bold text-white flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-primary/15 text-primary flex items-center justify-center">
-                  <FaArchive size={14} />
+                <div className="size-8 rounded-xl bg-primary/15 text-primary flex items-center justify-center">
+                  <Archive className="size-4" />
                 </div>
                 <span>Seasons & Distribution Archives</span>
               </h2>
@@ -267,32 +267,42 @@ export const SeasonArchiveManager: React.FC<SeasonArchiveManagerProps> = ({
             {/* Quick Actions */}
             <div className="flex items-center gap-2 shrink-0">
               <Button
-                variant="card"
+                variant="outline"
                 size="icon"
                 onClick={() => refetchSeasonStatus()}
                 title="Refresh season data"
               >
-                <FaSyncAlt size={12} />
+                <RefreshCw className="size-3.5" />
               </Button>
 
               <Button
-                variant="card"
-                size="md"
+                variant="outline"
+                size="default"
                 onClick={() => setShowUploadModal(true)}
-                leftIcon={<FaUpload size={11} className="text-emerald-400" />}
+                className="gap-1.5"
               >
-                Upload ZIP
+                <Upload className="size-3.5 text-emerald-400" />
+                <span>Upload ZIP</span>
               </Button>
 
               <Button
-                variant="primary"
-                size="md"
+                variant="default"
+                size="default"
                 onClick={() => setShowProcessConfirm(true)}
                 disabled={downloading}
-                isLoading={downloading}
-                leftIcon={<FaFileDownload size={12} />}
+                className="gap-1.5 bg-primary text-white hover:bg-primary/90 font-semibold"
               >
-                {downloading ? 'Compiling...' : 'Compile Season ZIP'}
+                {downloading ? (
+                  <>
+                    <Loader2 className="size-3.5 animate-spin" />
+                    <span>Compiling...</span>
+                  </>
+                ) : (
+                  <>
+                    <Download className="size-3.5" />
+                    <span>Compile Season ZIP</span>
+                  </>
+                )}
               </Button>
             </div>
           </div>
@@ -319,7 +329,7 @@ export const SeasonArchiveManager: React.FC<SeasonArchiveManagerProps> = ({
                     : 'text-muted-foreground hover:text-white'
                 }`}
               >
-                <FaCalendarAlt size={11} className={activeView === 'seasons' ? 'text-primary' : ''} />
+                <Calendar className={`size-3.5 ${activeView === 'seasons' ? 'text-primary' : ''}`} />
                 <span>Season Lifecycles</span>
                 {seasonsList.length > 0 && (
                   <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-cc-card text-muted-foreground border border-border">
@@ -337,7 +347,7 @@ export const SeasonArchiveManager: React.FC<SeasonArchiveManagerProps> = ({
                     : 'text-muted-foreground hover:text-white'
                 }`}
               >
-                <FaArchive size={11} className={activeView === 'packages' ? 'text-sky-400' : ''} />
+                <Archive className={`size-3.5 ${activeView === 'packages' ? 'text-sky-400' : ''}`} />
                 <span>Compiled Packages</span>
                 <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-cc-card text-muted-foreground border border-border">
                   {zips.length}

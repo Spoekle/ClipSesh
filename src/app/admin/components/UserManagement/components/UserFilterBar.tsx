@@ -1,8 +1,9 @@
 'use client';
 
 import React from 'react';
-import { FaSearch, FaTimes, FaCheck } from 'react-icons/fa';
+import { Search, X, Check } from 'lucide-react';
 import { getRoleBadgeClasses } from '../utils/roleBadgeHelper';
+import { Input } from '@/components/ui/input';
 
 interface UserFilterBarProps {
   search: string;
@@ -37,21 +38,21 @@ export const UserFilterBar: React.FC<UserFilterBarProps> = ({
     <div className="bg-cc-card border border-border p-4 rounded-xl space-y-3">
       {/* Search input */}
       <div className="relative">
-        <input
+        <Input
           type="text"
           placeholder="Search by username, email, or Discord tag..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-10 pr-10 py-2 bg-cc-ground border border-border rounded-xl text-xs text-foreground placeholder-muted-foreground/60 focus:outline-none focus:border-border/80 transition-colors"
+          className="pl-10 pr-10 bg-cc-ground text-xs placeholder:text-muted-foreground/60 border-border"
         />
-        <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs" />
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground size-4" />
         {search && (
           <button
             type="button"
             onClick={() => setSearch('')}
             className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
           >
-            <FaTimes className="text-xs" />
+            <X className="size-3.5" />
           </button>
         )}
       </div>
@@ -116,7 +117,7 @@ export const UserFilterBar: React.FC<UserFilterBarProps> = ({
                 isActive
               )}`}
             >
-              {isActive && <FaCheck className="text-[10px]" />}
+              {isActive && <Check className="size-3" />}
               {role}
             </button>
           );

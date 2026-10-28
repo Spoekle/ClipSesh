@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { FaStar, FaComments } from 'react-icons/fa';
+import { Star, MessageSquare } from 'lucide-react';
 import { useNotification } from '@/context/AlertContext';
 import { User, Clip, Rating, RatingUser } from '@/types/adminTypes';
 import { getRatingById, submitRating } from '@/services/ratingService';
@@ -216,16 +216,16 @@ const TeamSidebar: React.FC<TeamSidebarProps> = ({
       : 'N/A';
 
   const tabs = [
-    { id: 'rate' as TabType, label: 'Rate Clip', icon: FaStar },
-    { id: 'chat' as TabType, label: 'Team Chat', icon: FaComments },
+    { id: 'rate' as TabType, label: 'Rate Clip', icon: Star },
+    { id: 'chat' as TabType, label: 'Team Chat', icon: MessageSquare },
   ];
 
   const isDisabled = isRatingLoading || isSubmitting || isUserStreamerOrSubmitter;
 
   return (
-    <div className="bg-cc-card rounded-2xl shadow-sm border border-border overflow-hidden sticky top-20 text-white select-none">
+    <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden sticky top-20 text-foreground select-none">
       {/* Tab Header */}
-      <div className="flex border-b border-border p-1.5 bg-cc-ground">
+      <div className="flex border-b border-border p-1.5 bg-background">
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -233,11 +233,11 @@ const TeamSidebar: React.FC<TeamSidebarProps> = ({
             onClick={() => setActiveTab(tab.id)}
             className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 text-xs font-semibold rounded-xl transition-all cursor-pointer ${
               activeTab === tab.id
-                ? 'bg-white text-black shadow-xs'
-                : 'text-muted-foreground hover:text-white'
+                ? 'bg-foreground text-background shadow-xs'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            <tab.icon className="text-xs" />
+            <tab.icon className="size-3.5" />
             <span>{tab.label}</span>
           </button>
         ))}

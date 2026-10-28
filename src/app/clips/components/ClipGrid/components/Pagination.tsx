@@ -2,12 +2,12 @@
 
 import React, { useEffect } from 'react';
 import {
-  FaAngleLeft,
-  FaAngleRight,
-  FaAngleDoubleLeft,
-  FaAngleDoubleRight,
-  FaEllipsisH,
-} from 'react-icons/fa';
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  MoreHorizontal,
+} from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface PaginationProps {
@@ -34,10 +34,10 @@ const NavButton: React.FC<NavButtonProps> = ({
     whileTap={{ scale: 0.95 }}
     whileHover={!navDisabled ? { scale: 1.05, y: -1 } : undefined}
     onClick={onClick}
-    className={`mx-1 h-9.5 w-9.5 flex items-center justify-center rounded-xl border border-border text-sm ${
+    className={`mx-1 h-9 w-9 flex items-center justify-center rounded-lg border border-border text-sm ${
       navDisabled
-        ? 'bg-cc-ground/50 text-muted-foreground/40 cursor-not-allowed opacity-50'
-        : 'bg-cc-card text-muted-foreground hover:bg-secondary hover:text-white cursor-pointer'
+        ? 'bg-background/50 text-muted-foreground/40 cursor-not-allowed opacity-50'
+        : 'bg-card text-muted-foreground hover:bg-secondary hover:text-foreground cursor-pointer'
     } transition-all duration-150`}
     disabled={navDisabled}
     aria-label={label}
@@ -46,7 +46,7 @@ const NavButton: React.FC<NavButtonProps> = ({
   </motion.button>
 );
 
-const Pagination: React.FC<PaginationProps> = ({
+export const Pagination: React.FC<PaginationProps> = ({
   currentPage,
   totalPages,
   onPageChange,
@@ -76,10 +76,10 @@ const Pagination: React.FC<PaginationProps> = ({
       whileTap={{ scale: 0.95 }}
       whileHover={!disabled ? { scale: 1.05, y: -1 } : undefined}
       onClick={() => !disabled && onPageChange(page)}
-      className={`mx-1 min-w-[38px] h-9.5 px-2 flex items-center justify-center rounded-xl text-sm font-semibold transition-all duration-150 ${
+      className={`mx-1 min-w-[36px] h-9 px-2 flex items-center justify-center rounded-lg text-sm font-semibold transition-all duration-150 ${
         page === currentPage
-          ? 'bg-primary text-white font-bold shadow-lg shadow-primary/30 border border-primary'
-          : 'bg-cc-card text-muted-foreground border border-border hover:bg-secondary hover:text-white'
+          ? 'bg-primary text-primary-foreground font-bold shadow-md shadow-primary/20 border border-primary'
+          : 'bg-card text-muted-foreground border border-border hover:bg-secondary hover:text-foreground'
       } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
       disabled={disabled}
       aria-label={`Page ${page}`}
@@ -103,8 +103,8 @@ const Pagination: React.FC<PaginationProps> = ({
 
     if (currentPage > 3) {
       pageButtons.push(
-        <div key="ellipsis-start" className="flex items-center px-2 text-muted-foreground">
-          <FaEllipsisH />
+        <div key="ellipsis-start" className="flex items-center px-1 text-muted-foreground">
+          <MoreHorizontal className="size-4" />
         </div>
       );
     }
@@ -124,8 +124,8 @@ const Pagination: React.FC<PaginationProps> = ({
 
     if (currentPage < totalPages - 2) {
       pageButtons.push(
-        <div key="ellipsis-end" className="flex items-center px-2 text-muted-foreground">
-          <FaEllipsisH />
+        <div key="ellipsis-end" className="flex items-center px-1 text-muted-foreground">
+          <MoreHorizontal className="size-4" />
         </div>
       );
     }
@@ -142,14 +142,14 @@ const Pagination: React.FC<PaginationProps> = ({
       <NavButton
         onClick={() => onPageChange(1)}
         disabled={currentPage === 1 || disabled}
-        icon={<FaAngleDoubleLeft className="text-lg" />}
+        icon={<ChevronsLeft className="size-4" />}
         label="First page"
       />
 
       <NavButton
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1 || disabled}
-        icon={<FaAngleLeft className="text-lg" />}
+        icon={<ChevronLeft className="size-4" />}
         label="Previous page"
       />
 
@@ -158,14 +158,14 @@ const Pagination: React.FC<PaginationProps> = ({
       <NavButton
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages || disabled}
-        icon={<FaAngleRight className="text-lg" />}
+        icon={<ChevronRight className="size-4" />}
         label="Next page"
       />
 
       <NavButton
         onClick={() => onPageChange(totalPages)}
         disabled={currentPage === totalPages || disabled}
-        icon={<FaAngleDoubleRight className="text-lg" />}
+        icon={<ChevronsRight className="size-4" />}
         label="Last page"
       />
     </div>

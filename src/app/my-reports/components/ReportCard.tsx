@@ -2,34 +2,51 @@
 
 import React from 'react';
 import {
-  FaComments,
-  FaExternalLinkAlt,
-  FaCalendar,
-  FaFilm,
-  FaUserShield,
-  FaEye,
-  FaExclamationTriangle,
-} from 'react-icons/fa';
+  MessageSquare,
+  ExternalLink,
+  Calendar,
+  Film,
+  ShieldAlert,
+  Eye,
+  AlertTriangle,
+} from 'lucide-react';
 import { Report } from '@/types/adminTypes';
-import { Button } from '@/components/Button';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 interface ReportCardProps {
   report: Report;
   onOpenMessaging: (report: Report) => void;
 }
 
-const getStatusBadge = (status: string) => {
+const getStatusBadgeVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
   switch (status) {
     case 'pending':
-      return 'bg-amber-500/15 text-amber-400 border border-amber-500/30';
+      return 'outline';
     case 'reviewed':
-      return 'bg-sky-500/15 text-sky-400 border border-sky-500/30';
+      return 'secondary';
     case 'resolved':
-      return 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30';
+      return 'default';
     case 'dismissed':
-      return 'bg-border/60 text-muted-foreground border border-border';
+      return 'outline';
     default:
-      return 'bg-cc-card text-muted-foreground border border-border';
+      return 'outline';
+  }
+};
+
+const getStatusBadgeStyle = (status: string) => {
+  switch (status) {
+    case 'pending':
+      return 'bg-amber-500/15 text-amber-400 border-amber-500/30';
+    case 'reviewed':
+      return 'bg-sky-500/15 text-sky-400 border-sky-500/30';
+    case 'resolved':
+      return 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30';
+    case 'dismissed':
+      return 'bg-border/60 text-muted-foreground border-border';
+    default:
+      return 'bg-muted/30 text-muted-foreground border-border';
   }
 };
 
@@ -41,51 +58,50 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report, onOpenMessaging 
   const isClosed = report.status === 'resolved' || report.status === 'dismissed';
 
   return (
-    <div className="bg-cc-card rounded-2xl border border-border p-5 sm:p-6 hover:border-muted-foreground/30 transition-colors shadow-sm">
+    <Card className="p-5 sm:p-6 bg-card border-border hover:border-muted-foreground/30 transition-colors shadow-sm">
       <div className="flex justify-between items-start mb-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2.5 mb-2.5 flex-wrap">
-            <h3 className="font-semibold text-sm sm:text-base text-cc-text truncate">
+            <h3 className="font-semibold text-sm sm:text-base text-card-foreground truncate">
               {report.clipTitle}
             </h3>
             <button
               onClick={() => window.open(`/clips/${report.clipId}`, '_blank')}
-              className="text-muted-foreground hover:text-cc-text p-1 rounded-lg transition-colors cursor-pointer"
+              className="text-muted-foreground hover:text-foreground p-1 rounded-md transition-colors cursor-pointer"
               title="View clip in new tab"
             >
-              <FaExternalLinkAlt size={12} />
+              <ExternalLink className="size-3.5" />
             </button>
-            <span
-              className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${getStatusBadge(
-                report.status
-              )}`}
+            <Badge
+              variant={getStatusBadgeVariant(report.status)}
+              className={`text-[10px] font-semibold uppercase tracking-wider ${getStatusBadgeStyle(report.status)}`}
             >
               {report.status}
-            </span>
+            </Badge>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 text-xs text-muted-foreground mb-3.5">
             <div className="flex items-center gap-2 truncate">
-              <FaFilm className="text-muted-foreground shrink-0" />
+              <Film className="size-3.5 text-muted-foreground shrink-0" />
               <span className="truncate">
-                by <span className="text-cc-text font-medium">{report.clipStreamer}</span>
+                by <span className="text-foreground font-medium">{report.clipStreamer}</span>
               </span>
             </div>
             <div className="flex items-center gap-2 truncate">
-              <FaCalendar className="text-muted-foreground shrink-0" />
+              <Calendar className="size-3.5 text-muted-foreground shrink-0" />
               <span className="truncate">{formatDate(report.createdAt)}</span>
             </div>
           </div>
 
           {/* Report Reason Box */}
-          <div className="bg-cc-ground border border-border rounded-xl p-3.5 mb-3">
+          <div className="bg-background border border-border rounded-xl p-3.5 mb-3">
             <div className="flex items-start gap-2.5">
-              <FaExclamationTriangle className="text-amber-400 mt-0.5 shrink-0" size={13} />
+              <AlertTriangle className="text-amber-400 mt-0.5 shrink-0 size-3.5" />
               <div className="min-w-0">
                 <span className="font-semibold text-xs text-amber-400 block">
                   Your Report:
                 </span>
-                <p className="text-xs text-cc-text mt-1 leading-relaxed">
+                <p className="text-xs text-foreground mt-1 leading-relaxed">
                   {report.reason}
                 </p>
               </div>
@@ -96,21 +112,21 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report, onOpenMessaging 
           {report.reviewedBy && (
             <div className="text-[11px] text-muted-foreground mb-2.5">
               Reviewed by{' '}
-              <span className="text-cc-text font-medium">{report.reviewedBy}</span> on{' '}
+              <span className="text-foreground font-medium">{report.reviewedBy}</span> on{' '}
               {formatDate(report.reviewedAt || '')}
             </div>
           )}
 
           {/* Admin Notes Box */}
           {report.adminNotes && (
-            <div className="bg-cc-ground border border-border rounded-xl p-3.5 mb-3">
+            <div className="bg-background border border-border rounded-xl p-3.5 mb-3">
               <div className="flex items-start gap-2.5">
-                <FaUserShield className="text-sky-400 mt-0.5 shrink-0" size={13} />
+                <ShieldAlert className="text-sky-400 mt-0.5 shrink-0 size-3.5" />
                 <div className="min-w-0">
                   <span className="font-semibold text-xs text-sky-400 block">
                     Admin Notes:
                   </span>
-                  <p className="text-xs text-cc-text mt-1 leading-relaxed">
+                  <p className="text-xs text-foreground mt-1 leading-relaxed">
                     {report.adminNotes}
                   </p>
                 </div>
@@ -120,8 +136,8 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report, onOpenMessaging 
 
           {/* Closed Notice */}
           {isClosed && (
-            <div className="bg-cc-ground border border-border rounded-xl p-3 flex items-start gap-2.5">
-              <FaEye className="text-muted-foreground mt-0.5 shrink-0" size={13} />
+            <div className="bg-background border border-border rounded-xl p-3 flex items-start gap-2.5">
+              <Eye className="text-muted-foreground mt-0.5 shrink-0 size-3.5" />
               <div>
                 <span className="font-semibold text-xs text-muted-foreground block">
                   Report {report.status.charAt(0).toUpperCase() + report.status.slice(1)}:
@@ -139,25 +155,27 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report, onOpenMessaging 
       <div className="flex justify-end pt-3.5 border-t border-border">
         {isClosed ? (
           <Button
-            variant="card"
+            variant="outline"
             size="sm"
             onClick={() => onOpenMessaging(report)}
-            leftIcon={<FaEye size={11} />}
+            className="gap-1.5"
           >
+            <Eye className="size-3.5" />
             View Messages
           </Button>
         ) : (
           <Button
-            variant="primary"
+            variant="default"
             size="sm"
             onClick={() => onOpenMessaging(report)}
-            leftIcon={<FaComments size={11} />}
+            className="gap-1.5"
           >
+            <MessageSquare className="size-3.5" />
             Messages
           </Button>
         )}
       </div>
-    </div>
+    </Card>
   );
 };
 

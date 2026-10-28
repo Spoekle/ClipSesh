@@ -2,9 +2,10 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { FaFlag } from 'react-icons/fa';
+import { Flag, Loader2 } from 'lucide-react';
 import { useUserReports } from '@/hooks/useReports';
 import { Report } from '@/types/adminTypes';
+import { Badge } from '@/components/ui/badge';
 import UserReportMessagingModal from './components/UserReportMessagingModal';
 import ReportCard from './components/ReportCard';
 import RequireAuth from '@/components/RequireAuth';
@@ -28,7 +29,7 @@ function UserReportsPage() {
   if (isLoading) {
     return (
       <div className="min-h-[calc(100vh-80px)] bg-cc-ground text-cc-text py-16 flex flex-col justify-center items-center">
-        <div className="w-8 h-8 border-2 border-border border-t-primary rounded-full animate-spin" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
         <span className="mt-3 text-xs text-muted-foreground font-medium">
           Loading your reports...
         </span>
@@ -66,12 +67,12 @@ function UserReportsPage() {
 
             {/* Badges */}
             <div className="flex items-center gap-2.5 pb-1">
-              <span className="text-xs font-semibold px-2.5 py-1 rounded-[6px] bg-cc-card border border-border text-cc-text">
+              <Badge variant="outline" className="text-xs font-semibold px-2.5 py-1 text-cc-text">
                 Reports Console
-              </span>
-              <span className="text-xs font-medium px-3 py-1 rounded-sm bg-primary/10 border border-primary/25 text-primary">
+              </Badge>
+              <Badge variant="destructive" className="text-xs font-medium px-3 py-1 bg-primary/10 border border-primary/25 text-primary">
                 {reports.length} {reports.length === 1 ? 'report' : 'reports'} submitted
-              </span>
+              </Badge>
             </div>
           </div>
         </div>
@@ -82,7 +83,7 @@ function UserReportsPage() {
         {reports.length === 0 ? (
           <div className="text-center py-16 bg-cc-card rounded-2xl border border-border shadow-sm">
             <div className="w-12 h-12 bg-cc-ground border border-border rounded-xl flex items-center justify-center mx-auto mb-3 text-muted-foreground">
-              <FaFlag size={18} />
+              <Flag size={18} />
             </div>
             <h3 className="text-sm font-bold text-cc-text mb-1">
               No reports submitted

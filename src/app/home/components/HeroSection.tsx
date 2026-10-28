@@ -3,7 +3,8 @@
 import React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { FaArrowRight, FaDiscord, FaYoutube } from 'react-icons/fa';
+import { ArrowRight } from 'lucide-react';
+import { FaDiscord, FaYoutube } from 'react-icons/fa';
 
 import { Button } from '@/components/common/Button';
 
@@ -46,7 +47,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           variant="primary"
           size="lg"
           pill
-          rightIcon={<FaArrowRight size={12} />}
+          rightIcon={<ArrowRight className="size-4" />}
         >
           Browse Clips
         </Button>

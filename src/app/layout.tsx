@@ -1,7 +1,10 @@
 import type { Metadata, Viewport } from 'next';
-import { Rubik } from 'next/font/google';
+import { Rubik, Geist } from 'next/font/google';
 import './globals.css';
 import AppShell from '@/components/AppShell';
+import { cn } from "@/lib/utils";
+
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 const rubik = Rubik({
   subsets: ['latin'],
@@ -37,7 +40,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`dark ${rubik.variable}`}>
+    <html lang="en" className={cn("dark", rubik.variable, "font-sans", geist.variable)}>
       <body className="min-h-screen bg-cc-ground text-cc-text antialiased selection:bg-cc-red/20 selection:text-cc-red font-sans">
         <AppShell>{children}</AppShell>
       </body>

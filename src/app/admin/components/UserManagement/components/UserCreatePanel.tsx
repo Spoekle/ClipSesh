@@ -3,18 +3,20 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import {
-  FaUserPlus,
-  FaTimes,
-  FaUser,
-  FaEnvelope,
-  FaLock,
-  FaEye,
-  FaEyeSlash,
-  FaCheck,
-} from 'react-icons/fa';
+  UserPlus,
+  X,
+  User,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  Check,
+  Loader2,
+} from 'lucide-react';
 import { CreateUserFormData, FormErrors } from '@/types/adminTypes';
 import { getRoleBadgeClasses } from '../utils/roleBadgeHelper';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 interface UserCreatePanelProps {
   allRoles: string[];
@@ -54,7 +56,7 @@ export const UserCreatePanel: React.FC<UserCreatePanelProps> = ({
       <div className="flex items-center justify-between gap-3 pb-4 border-b border-border">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-base">
-            <FaUserPlus />
+            <UserPlus className="size-5" />
           </div>
           <div>
             <h2 className="text-base font-bold text-foreground">Create New User</h2>
@@ -62,13 +64,14 @@ export const UserCreatePanel: React.FC<UserCreatePanelProps> = ({
           </div>
         </div>
 
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon-xs"
           onClick={onClose}
-          className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors cursor-pointer"
         >
-          <FaTimes size={14} />
-        </button>
+          <X className="size-4" />
+        </Button>
       </div>
 
       {/* Create Form */}
@@ -79,20 +82,20 @@ export const UserCreatePanel: React.FC<UserCreatePanelProps> = ({
             Username <span className="text-primary">*</span>
           </label>
           <div className="relative">
-            <input
+            <Input
               type="text"
               value={createFormData.username}
               onChange={(e) =>
                 setCreateFormData((prev) => ({ ...prev, username: e.target.value }))
               }
               placeholder="e.g. SpeedRunner42"
-              className={`w-full pl-9 pr-3.5 py-2 bg-cc-ground border rounded-xl text-xs text-foreground placeholder-muted-foreground/60 focus:outline-none ${
+              className={`pl-9 bg-cc-ground text-xs placeholder:text-muted-foreground/60 ${
                 createErrors.username
-                  ? 'border-primary'
-                  : 'border-border focus:border-border/80'
+                  ? 'border-primary focus-visible:ring-primary/30'
+                  : 'border-border'
               }`}
             />
-            <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs" />
+            <User className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-3.5" />
           </div>
           {createErrors.username && (
             <p className="text-xs text-primary mt-1">{createErrors.username}</p>
@@ -105,20 +108,20 @@ export const UserCreatePanel: React.FC<UserCreatePanelProps> = ({
             Email Address
           </label>
           <div className="relative">
-            <input
+            <Input
               type="email"
               value={createFormData.email ?? ''}
               onChange={(e) =>
                 setCreateFormData((prev) => ({ ...prev, email: e.target.value }))
               }
               placeholder="user@example.com"
-              className={`w-full pl-9 pr-3.5 py-2 bg-cc-ground border rounded-xl text-xs text-foreground placeholder-muted-foreground/60 focus:outline-none ${
+              className={`pl-9 bg-cc-ground text-xs placeholder:text-muted-foreground/60 ${
                 createErrors.email
-                  ? 'border-primary'
-                  : 'border-border focus:border-border/80'
+                  ? 'border-primary focus-visible:ring-primary/30'
+                  : 'border-border'
               }`}
             />
-            <FaEnvelope className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs" />
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-3.5" />
           </div>
           {createErrors.email && (
             <p className="text-xs text-primary mt-1">{createErrors.email}</p>
@@ -131,26 +134,26 @@ export const UserCreatePanel: React.FC<UserCreatePanelProps> = ({
             Password <span className="text-primary">*</span>
           </label>
           <div className="relative">
-            <input
+            <Input
               type={showCreatePassword ? 'text' : 'password'}
               value={createFormData.password}
               onChange={(e) =>
                 setCreateFormData((prev) => ({ ...prev, password: e.target.value }))
               }
               placeholder="Minimum 6 characters"
-              className={`w-full pl-9 pr-10 py-2 bg-cc-ground border rounded-xl text-xs text-foreground placeholder-muted-foreground/60 focus:outline-none ${
+              className={`pl-9 pr-10 bg-cc-ground text-xs placeholder:text-muted-foreground/60 ${
                 createErrors.password
-                  ? 'border-primary'
-                  : 'border-border focus:border-border/80'
+                  ? 'border-primary focus-visible:ring-primary/30'
+                  : 'border-border'
               }`}
             />
-            <FaLock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs" />
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-3.5" />
             <button
               type="button"
               onClick={() => setShowCreatePassword((prev) => !prev)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
             >
-              {showCreatePassword ? <FaEyeSlash size={13} /> : <FaEye size={13} />}
+              {showCreatePassword ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
             </button>
           </div>
           {createErrors.password && (
@@ -178,7 +181,7 @@ export const UserCreatePanel: React.FC<UserCreatePanelProps> = ({
                   }`}
                 >
                   <span>{role}</span>
-                  {isAssigned && <FaCheck className="text-[10px]" />}
+                  {isAssigned && <Check className="size-3" />}
                 </button>
               );
             })}
@@ -192,7 +195,7 @@ export const UserCreatePanel: React.FC<UserCreatePanelProps> = ({
         <div className="flex items-center justify-end gap-2 pt-4 border-t border-border">
           <Button
             type="button"
-            variant="card"
+            variant="outline"
             size="sm"
             onClick={onClose}
           >
@@ -200,12 +203,21 @@ export const UserCreatePanel: React.FC<UserCreatePanelProps> = ({
           </Button>
           <Button
             type="submit"
-            variant="success"
             size="sm"
-            isLoading={isCreating}
-            leftIcon={<FaUserPlus />}
+            disabled={isCreating}
+            className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium"
           >
-            Create User
+            {isCreating ? (
+              <>
+                <Loader2 className="size-3.5 animate-spin mr-1.5" />
+                Creating User...
+              </>
+            ) : (
+              <>
+                <UserPlus className="size-3.5 mr-1.5" />
+                Create User
+              </>
+            )}
           </Button>
         </div>
       </form>

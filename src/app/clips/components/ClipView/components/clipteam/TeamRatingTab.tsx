@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FaTimes, FaExclamationTriangle } from 'react-icons/fa';
+import { X, AlertTriangle } from 'lucide-react';
 import RatingDistributionGraph from './RatingDistributionGraph';
 import { RatingUser } from '@/types/adminTypes';
 
@@ -29,12 +29,12 @@ export const TeamRatingTab: React.FC<TeamRatingTabProps> = ({
 }) => {
   const getButtonColors = (rating: number, selected: boolean) => {
     if (selected) {
-      return 'bg-primary text-white ring-2 ring-primary/50 shadow-md shadow-primary/20';
+      return 'bg-primary text-primary-foreground ring-2 ring-primary/50 shadow-md shadow-primary/20';
     }
     if (isUserStreamerOrSubmitter) {
-      return 'bg-cc-ground/50 border border-border text-muted-foreground cursor-not-allowed';
+      return 'bg-background/50 border border-border text-muted-foreground cursor-not-allowed';
     }
-    return 'bg-cc-card border border-border text-white/90 hover:border-primary hover:text-primary transition-colors';
+    return 'bg-card border border-border text-foreground/90 hover:border-primary hover:text-primary transition-colors';
   };
 
   return (
@@ -47,7 +47,7 @@ export const TeamRatingTab: React.FC<TeamRatingTabProps> = ({
     >
       <div className="flex items-center justify-between mb-4 pb-3 border-b border-border">
         <div>
-          <h3 className="font-bold text-white text-sm">Rating Score</h3>
+          <h3 className="font-bold text-foreground text-sm">Rating Score</h3>
           <p className="text-[11px] text-muted-foreground">1 = Top Tier · 4 = Filler Material</p>
         </div>
         <span className="text-[10px] font-semibold uppercase tracking-wider text-primary bg-primary/10 border border-primary/20 px-2.5 py-0.5 rounded-full">
@@ -58,7 +58,7 @@ export const TeamRatingTab: React.FC<TeamRatingTabProps> = ({
       {isUserStreamerOrSubmitter && (
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 mb-4">
           <p className="text-amber-400 text-xs font-medium flex items-center gap-1.5">
-            <FaExclamationTriangle className="shrink-0" />
+            <AlertTriangle className="size-3.5 shrink-0" />
             <span>You cannot rate your own clips.</span>
           </p>
         </div>
@@ -90,13 +90,13 @@ export const TeamRatingTab: React.FC<TeamRatingTabProps> = ({
           title="Deny clip"
           className={`flex items-center justify-center py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer ${
             userCurrentRating === 'deny'
-              ? 'bg-rose-600 text-white ring-2 ring-rose-500/50 shadow-md'
+              ? 'bg-destructive text-destructive-foreground ring-2 ring-destructive/50 shadow-md'
               : isUserStreamerOrSubmitter
-              ? 'bg-cc-ground/50 border border-border text-muted-foreground cursor-not-allowed'
-              : 'bg-cc-card border border-border text-white/80 hover:border-rose-500/60 hover:text-rose-400'
+              ? 'bg-background/50 border border-border text-muted-foreground cursor-not-allowed'
+              : 'bg-card border border-border text-foreground/80 hover:border-destructive/60 hover:text-destructive'
           } ${isSubmitting ? 'opacity-50' : ''}`}
         >
-          <FaTimes />
+          <X className="size-4" />
         </button>
       </div>
 
@@ -104,11 +104,11 @@ export const TeamRatingTab: React.FC<TeamRatingTabProps> = ({
       <div className="space-y-3 pt-3 border-t border-border">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>Average Rating</span>
-          <span className="font-bold text-white font-mono">{averageRating} / 4.0</span>
+          <span className="font-bold text-foreground font-mono">{averageRating} / 4.0</span>
         </div>
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>Total Ratings</span>
-          <span className="font-bold text-white font-mono">{totalRatings}</span>
+          <span className="font-bold text-foreground font-mono">{totalRatings}</span>
         </div>
 
         <RatingDistributionGraph

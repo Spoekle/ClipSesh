@@ -2,10 +2,12 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FaEdit, FaDiscord } from 'react-icons/fa';
+import { Pencil } from 'lucide-react';
+import { FaDiscord } from 'react-icons/fa';
 import { User } from '@/types/adminTypes';
 import { getUserAvatarUrl, handleAvatarError } from '@/utils/generateAvatar';
 import { getRoleBadgeClasses } from '../utils/roleBadgeHelper';
+import { Button } from '@/components/ui/button';
 
 interface UserCardProps {
   user: User;
@@ -117,18 +119,15 @@ export const UserCard: React.FC<UserCardProps> = ({ user, isSelected, onSelect }
           className="flex items-center gap-1.5 shrink-0"
           onClick={(e) => e.stopPropagation()}
         >
-          <button
+          <Button
             type="button"
+            variant={isSelected ? "default" : "outline"}
+            size="icon-xs"
             onClick={() => onSelect(user)}
             title="Edit User"
-            className={`p-2 rounded-lg text-xs transition-colors cursor-pointer ${
-              isSelected
-                ? 'bg-primary text-white'
-                : 'bg-cc-card hover:bg-white/10 text-muted-foreground hover:text-foreground border border-border'
-            }`}
           >
-            <FaEdit />
-          </button>
+            <Pencil className="size-3.5" />
+          </Button>
         </div>
       </div>
     </motion.div>

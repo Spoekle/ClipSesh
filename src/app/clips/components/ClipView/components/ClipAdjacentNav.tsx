@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { Clip } from '@/types/adminTypes';
 
 interface ClipAdjacentNavProps {
@@ -25,16 +25,16 @@ export const ClipAdjacentNav: React.FC<ClipAdjacentNavProps> = ({
           disabled={isLoading}
           className={`hidden 2xl:flex fixed left-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full items-center justify-center shadow-2xl border transition-all cursor-pointer ${
             isLoading
-              ? 'bg-cc-card/50 border-border opacity-50 cursor-not-allowed'
-              : 'bg-cc-card/90 hover:bg-border/60 text-cc-text border-border hover:scale-110 active:scale-95'
+              ? 'bg-card/50 border-border opacity-50 cursor-not-allowed'
+              : 'bg-card/90 hover:bg-secondary text-foreground border-border hover:scale-110 active:scale-95'
           }`}
           title={`Previous: ${prevClip.title}`}
           aria-label="Previous clip"
         >
           {isLoading ? (
-            <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
+            <Loader2 className="animate-spin size-4 text-primary" />
           ) : (
-            <FaChevronLeft size={16} />
+            <ChevronLeft className="size-5" />
           )}
         </button>
       )}
@@ -45,16 +45,16 @@ export const ClipAdjacentNav: React.FC<ClipAdjacentNavProps> = ({
           disabled={isLoading}
           className={`hidden 2xl:flex fixed right-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full items-center justify-center shadow-2xl border transition-all cursor-pointer ${
             isLoading
-              ? 'bg-cc-card/50 border-border opacity-50 cursor-not-allowed'
-              : 'bg-cc-card/90 hover:bg-border/60 text-cc-text border-border hover:scale-110 active:scale-95'
+              ? 'bg-card/50 border-border opacity-50 cursor-not-allowed'
+              : 'bg-card/90 hover:bg-secondary text-foreground border-border hover:scale-110 active:scale-95'
           }`}
           title={`Next: ${nextClip.title}`}
           aria-label="Next clip"
         >
           {isLoading ? (
-            <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
+            <Loader2 className="animate-spin size-4 text-primary" />
           ) : (
-            <FaChevronRight size={16} />
+            <ChevronRight className="size-5" />
           )}
         </button>
       )}

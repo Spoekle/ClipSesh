@@ -2,8 +2,9 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { FaUser, FaThumbsDown, FaExternalLinkAlt } from 'react-icons/fa';
+import { User, ThumbsDown, ExternalLink } from 'lucide-react';
 import { Clip, Rating } from '@/types/adminTypes';
+import { Card } from '@/components/ui/card';
 
 interface DeniedClipCardProps {
   clip: Clip;
@@ -20,7 +21,7 @@ export const DeniedClipCard: React.FC<DeniedClipCardProps> = ({
   const denyPercentage = Math.round((denyCount / (denyThreshold * 1.5)) * 100);
 
   return (
-    <div className="bg-cc-ground hover:bg-cc-card border border-border hover:border-border/80 rounded-xl overflow-hidden flex flex-col transition-all group shadow-xs">
+    <Card className="bg-background hover:bg-card border-border hover:border-border/80 rounded-xl overflow-hidden flex flex-col transition-all group shadow-xs">
       <Link
         href={`/clips/${clip._id}`}
         className="relative aspect-video bg-black/40 overflow-hidden block"
@@ -44,20 +45,20 @@ export const DeniedClipCard: React.FC<DeniedClipCardProps> = ({
 
         {/* Hover Inspect Icon */}
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
-          <div className="w-10 h-10 rounded-full bg-cc-card/90 border border-border flex items-center justify-center text-white shadow-lg">
-            <FaExternalLinkAlt size={12} />
+          <div className="w-10 h-10 rounded-full bg-card/90 border border-border flex items-center justify-center text-foreground shadow-lg">
+            <ExternalLink className="size-3.5" />
           </div>
         </div>
 
         {/* Top Badges */}
         <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between pointer-events-none">
           <span className="bg-black/80 backdrop-blur-md border border-border text-white/90 px-2 py-0.5 rounded-md text-[10px] font-medium flex items-center gap-1">
-            <FaUser size={9} className="text-muted-foreground" />
+            <User className="size-2.5 text-muted-foreground" />
             <span>{clip.streamer}</span>
           </span>
 
           <span className="bg-black/80 backdrop-blur-md border border-rose-500/40 text-rose-400 px-2 py-0.5 rounded-md text-[11px] font-semibold flex items-center gap-1.5 shadow-xs font-mono">
-            <FaThumbsDown size={10} />
+            <ThumbsDown className="size-3" />
             <span>{denyCount} rejected</span>
           </span>
         </div>
@@ -67,7 +68,7 @@ export const DeniedClipCard: React.FC<DeniedClipCardProps> = ({
         <div>
           <Link
             href={`/clips/${clip._id}`}
-            className="font-semibold text-xs text-white mb-2 line-clamp-1 group-hover:text-primary transition-colors block"
+            className="font-semibold text-xs text-foreground mb-2 line-clamp-1 group-hover:text-primary transition-colors block"
             title={clip.title}
           >
             {clip.title}
@@ -88,7 +89,7 @@ export const DeniedClipCard: React.FC<DeniedClipCardProps> = ({
             </span>
           </div>
 
-          <div className="w-full bg-cc-card rounded-full h-1.5 overflow-hidden">
+          <div className="w-full bg-card rounded-full h-1.5 overflow-hidden">
             <div
               className="bg-gradient-to-r from-rose-500 to-primary h-full rounded-full transition-all duration-300"
               style={{ width: `${Math.min(100, denyPercentage)}%` }}
@@ -96,7 +97,7 @@ export const DeniedClipCard: React.FC<DeniedClipCardProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    </Card>
   );
 };
 

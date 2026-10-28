@@ -3,16 +3,17 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import {
-  FaThumbsUp,
-  FaThumbsDown,
-  FaShare,
-  FaLink,
-  FaEye,
-  FaRegCalendarAlt,
-} from 'react-icons/fa';
+  ThumbsUp,
+  ThumbsDown,
+  Share2,
+  Link2,
+  Eye,
+  Calendar,
+} from 'lucide-react';
 import { format } from 'timeago.js';
 import { Clip } from '@/types/adminTypes';
 import { Button } from '@/components/Button';
+import { Card } from '@/components/ui/card';
 
 interface ClipDetailsProps {
   clipData: Clip;
@@ -37,7 +38,7 @@ export const ClipDetails: React.FC<ClipDetailsProps> = ({
 
   return (
     <div>
-      <h1 className="text-xl sm:text-2xl font-bold text-cc-text tracking-tight leading-snug">
+      <h1 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight leading-snug">
         {clipData.title}
       </h1>
 
@@ -48,14 +49,14 @@ export const ClipDetails: React.FC<ClipDetailsProps> = ({
           <div>
             <Link
               href={`/clips?streamer=${encodeURIComponent(clipData.streamer)}`}
-              className="font-bold text-cc-text text-base hover:text-white transition-colors block leading-tight"
+              className="font-bold text-foreground text-base hover:text-primary transition-colors block leading-tight"
             >
               {clipData.streamer}
             </Link>
             <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
               {clipData.submitter !== 'Legacy(no data)' && (
                 <span>
-                  submitted by <span className="text-neutral-300 font-medium">{clipData.submitter}</span>
+                  submitted by <span className="text-foreground font-medium">{clipData.submitter}</span>
                 </span>
               )}
             </div>
@@ -65,20 +66,19 @@ export const ClipDetails: React.FC<ClipDetailsProps> = ({
         {/* Right: Actions */}
         <div className="flex items-center gap-2 flex-wrap">
           {/* Segmented Like / Dislike Pill */}
-          <div className="flex items-center bg-cc-card border border-border rounded-full overflow-hidden shadow-xs">
+          <div className="flex items-center bg-card border border-border rounded-full overflow-hidden shadow-xs">
             <button
               onClick={onUpvote}
               disabled={isLoading}
               className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold transition-colors cursor-pointer ${
                 userVote === 'upvote'
                   ? 'bg-primary/20 text-primary'
-                  : 'text-cc-text hover:bg-border/60'
+                  : 'text-foreground hover:bg-secondary'
               }`}
               title={userVote === 'upvote' ? 'Remove upvote' : 'Upvote'}
             >
-              <FaThumbsUp
-                size={12}
-                className={userVote === 'upvote' ? 'text-primary' : 'text-muted-foreground'}
+              <ThumbsUp
+                className={`size-3.5 ${userVote === 'upvote' ? 'text-primary' : 'text-muted-foreground'}`}
               />
               <span>{clipData.upvotes}</span>
             </button>
@@ -89,13 +89,12 @@ export const ClipDetails: React.FC<ClipDetailsProps> = ({
               className={`flex items-center gap-2 px-3.5 py-2 text-xs font-semibold transition-colors cursor-pointer ${
                 userVote === 'downvote'
                   ? 'bg-primary/20 text-primary'
-                  : 'text-cc-text hover:bg-border/60'
+                  : 'text-foreground hover:bg-secondary'
               }`}
               title={userVote === 'downvote' ? 'Remove downvote' : 'Downvote'}
             >
-              <FaThumbsDown
-                size={12}
-                className={userVote === 'downvote' ? 'text-primary' : 'text-muted-foreground'}
+              <ThumbsDown
+                className={`size-3.5 ${userVote === 'downvote' ? 'text-primary' : 'text-muted-foreground'}`}
               />
               {clipData.downvotes > 0 && <span>{clipData.downvotes}</span>}
             </button>
@@ -109,7 +108,7 @@ export const ClipDetails: React.FC<ClipDetailsProps> = ({
             onClick={() => {
               navigator.clipboard.writeText(shareUrl).then(onCopyShareLink);
             }}
-            leftIcon={<FaShare size={11} className="text-muted-foreground" />}
+            leftIcon={<Share2 className="size-3.5 text-muted-foreground" />}
           >
             Share
           </Button>
@@ -123,7 +122,7 @@ export const ClipDetails: React.FC<ClipDetailsProps> = ({
             target="_blank"
             rel="noreferrer"
             title="View original clip source"
-            leftIcon={<FaLink size={11} className="text-muted-foreground" />}
+            leftIcon={<Link2 className="size-3.5 text-muted-foreground" />}
           >
             Source
           </Button>
@@ -131,20 +130,20 @@ export const ClipDetails: React.FC<ClipDetailsProps> = ({
       </div>
 
       {/* Expandable Description Box */}
-      <div
+      <Card
         onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
-        className="mt-4 bg-cc-card hover:bg-border/30 transition-colors rounded-xl p-4 border border-border cursor-pointer"
+        className="mt-4 bg-card hover:bg-secondary/40 transition-colors rounded-xl p-4 border border-border cursor-pointer shadow-xs"
       >
-        <div className="flex flex-wrap items-center gap-2 font-semibold text-xs text-cc-text mb-1">
-          <span className="flex items-center gap-1.5 text-cc-text">
-            <FaEye size={12} className="text-muted-foreground" />
+        <div className="flex flex-wrap items-center gap-2 font-semibold text-xs text-foreground mb-1">
+          <span className="flex items-center gap-1.5 text-foreground">
+            <Eye className="size-3.5 text-muted-foreground" />
             <span>{clipData.views || 0} views</span>
           </span>
           <span>•</span>
           <span>{clipData.upvotes + clipData.downvotes} total votes</span>
           <span>•</span>
           <span className="flex items-center gap-1 text-muted-foreground">
-            <FaRegCalendarAlt size={10} />
+            <Calendar className="size-3" />
             {new Date(clipData.createdAt).toLocaleDateString('en-US', {
               year: 'numeric',
               month: 'short',
@@ -162,12 +161,12 @@ export const ClipDetails: React.FC<ClipDetailsProps> = ({
 
         <div className="text-xs text-muted-foreground space-y-1 mt-2">
           <p>
-            Streamer: <span className="text-cc-text font-medium">{clipData.streamer}</span>
+            Streamer: <span className="text-foreground font-medium">{clipData.streamer}</span>
           </p>
           {clipData.submitter && (
             <p>
               Submitted by:{' '}
-              <span className="text-cc-text font-medium">{clipData.submitter}</span>
+              <span className="text-foreground font-medium">{clipData.submitter}</span>
             </p>
           )}
           {isDescriptionExpanded && (
@@ -189,10 +188,10 @@ export const ClipDetails: React.FC<ClipDetailsProps> = ({
             </div>
           )}
         </div>
-        <span className="text-[11px] font-semibold text-cc-text mt-2 inline-block">
+        <span className="text-[11px] font-semibold text-foreground mt-2 inline-block">
           {isDescriptionExpanded ? 'Show less' : '...more'}
         </span>
-      </div>
+      </Card>
     </div>
   );
 };

@@ -2,13 +2,15 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaUser, FaLock, FaArrowLeft } from 'react-icons/fa';
+import { User, Lock, ArrowLeft } from 'lucide-react';
 import { useLoginUser, useRegisterUser } from '@/hooks/useUser';
 import { setAuthToken, safeLocalStorage } from '@/utils/storage';
 import { authenticateSocket } from '@/hooks/useSocket';
 import { OfflineWarning } from '../common/OfflineBanner';
 import CCAuthButton from './CCAuthButton';
 import { Button } from '@/components/common/Button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface LoginFormProps {
   onSuccess: () => void;
@@ -90,7 +92,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onForgotPasswor
           exit={{ opacity: 0, y: -4 }}
           transition={{ duration: 0.1 }}
         >
-          <h2 className="text-2xl font-bold text-cc-text mb-2">Sign In</h2>
+          <h2 className="text-2xl font-bold text-foreground mb-2">Sign In</h2>
           <p className="text-sm text-muted-foreground mb-6">
             Choose your preferred sign-in method
           </p>
@@ -117,7 +119,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onForgotPasswor
               <div className="w-full border-t border-border" />
             </div>
             <div className="relative flex justify-center">
-              <span className="px-2 bg-cc-card text-xs text-muted-foreground">
+              <span className="px-2 bg-card text-xs text-muted-foreground">
                 or
               </span>
             </div>
@@ -153,11 +155,11 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onForgotPasswor
             }}
             className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-white transition-colors cursor-pointer mb-4"
           >
-            <FaArrowLeft size={12} />
+            <ArrowLeft className="size-3.5" />
             <span>Back to sign in options</span>
           </button>
 
-          <h2 className="text-2xl font-bold text-cc-text mb-2">
+          <h2 className="text-2xl font-bold text-foreground mb-2">
             {isRegister ? 'Create Account' : 'Sign In'}
           </h2>
           <p className="text-sm text-muted-foreground mb-6">
@@ -181,48 +183,48 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onForgotPasswor
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
-              <label
+              <Label
                 htmlFor="auth-username"
-                className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
               >
                 Username
-              </label>
+              </Label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <FaUser className="text-muted-foreground" size={14} />
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted-foreground">
+                  <User className="size-4" />
                 </div>
-                <input
+                <Input
                   id="auth-username"
                   type="text"
                   name="username"
                   placeholder="Enter your username"
                   value={formData.username}
                   onChange={handleChange}
-                  className="bg-cc-ground border border-border text-white focus:border-primary rounded-xl pl-10 pr-4 py-2.5 w-full text-sm outline-none transition-colors"
+                  className="pl-10 h-10 bg-secondary/40 border-border text-foreground"
                   required
                 />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label
+              <Label
                 htmlFor="auth-password"
-                className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
               >
                 Password
-              </label>
+              </Label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <FaLock className="text-muted-foreground" size={14} />
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted-foreground">
+                  <Lock className="size-4" />
                 </div>
-                <input
+                <Input
                   id="auth-password"
                   type="password"
                   name="password"
                   placeholder="Enter your password"
                   value={formData.password}
                   onChange={handleChange}
-                  className="bg-cc-ground border border-border text-white focus:border-primary rounded-xl pl-10 pr-4 py-2.5 w-full text-sm outline-none transition-colors"
+                  className="pl-10 h-10 bg-secondary/40 border-border text-foreground"
                   required
                 />
               </div>

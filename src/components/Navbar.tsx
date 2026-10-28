@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { FaBars } from 'react-icons/fa';
-import { MdLogin, MdClose } from 'react-icons/md';
+import { Menu, X, LogIn } from 'lucide-react';
 import { safeLocalStorage } from '@/utils/storage';
 import { useNotification } from '../context/AlertContext';
 import LoginModal from './LoginModal';
@@ -209,7 +208,7 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
                 variant="primary"
                 size="sm"
                 onClick={toggleLoginModal}
-                leftIcon={<MdLogin size={16} />}
+                leftIcon={<LogIn className="size-4" />}
               >
                 Sign In
               </Button>
@@ -219,9 +218,9 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               aria-label="Toggle navigation menu"
-              className="mobile-menu-toggle lg:hidden p-2 rounded-xl hover:bg-cc-card text-muted-foreground hover:text-white transition-all focus:outline-none cursor-pointer"
+              className="mobile-menu-toggle lg:hidden p-2 rounded-xl hover:bg-card text-muted-foreground hover:text-foreground transition-all focus:outline-none cursor-pointer"
             >
-              {isMobileMenuOpen ? <MdClose size={22} /> : <FaBars size={20} />}
+              {isMobileMenuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
             </button>
           </div>
         </div>

@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { FaSearch, FaTimes } from 'react-icons/fa';
+import { Search, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 
 interface SeasonFilterBarProps {
   searchInput: string;
@@ -27,26 +28,26 @@ export const SeasonFilterBar: React.FC<SeasonFilterBarProps> = ({
   onSortChange,
 }) => {
   return (
-    <div className="sticky top-14 z-10 bg-cc-card/95 backdrop-blur-md rounded-2xl border border-border mb-6 p-3 sm:p-3.5 shadow-md select-none">
+    <div className="sticky top-14 z-10 bg-card/95 backdrop-blur-md rounded-2xl border border-border mb-6 p-3 sm:p-3.5 shadow-md select-none">
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         {/* Search Box */}
         <div className="relative flex-1 min-w-[200px] sm:min-w-[240px] max-w-sm">
-          <input
+          <Input
             type="text"
-            className="w-full pl-9 pr-8 py-2 bg-cc-ground border border-border focus:border-border/80 rounded-xl text-xs sm:text-sm text-white placeholder-muted-foreground focus:outline-none transition-colors"
+            className="pl-9 pr-8 h-9 bg-background border-border text-xs sm:text-sm text-foreground placeholder:text-muted-foreground"
             placeholder="Search clips or streamers..."
             value={searchInput}
             onChange={onSearchChange}
           />
-          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-3.5" />
           {searchInput && (
             <button
               type="button"
               onClick={onClearSearch}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white transition-colors cursor-pointer"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
               title="Clear filter"
             >
-              <FaTimes size={11} />
+              <X className="size-3" />
             </button>
           )}
         </div>
@@ -58,7 +59,7 @@ export const SeasonFilterBar: React.FC<SeasonFilterBarProps> = ({
               <select
                 value={streamerFilter}
                 onChange={(e) => onStreamerFilterChange(e.target.value)}
-                className="appearance-none pl-3 pr-8 py-2 bg-cc-ground hover:bg-cc-card border border-border focus:border-border/80 rounded-xl text-xs sm:text-sm text-white/90 focus:outline-none cursor-pointer transition-colors"
+                className="appearance-none pl-3 pr-8 py-2 bg-background hover:bg-secondary/40 border border-border focus:border-ring rounded-xl text-xs sm:text-sm text-foreground focus:outline-none cursor-pointer transition-colors"
               >
                 <option value="">All Streamers</option>
                 {streamers.map((s) => (
@@ -83,7 +84,7 @@ export const SeasonFilterBar: React.FC<SeasonFilterBarProps> = ({
                   onSortChange('createdAt', 'desc');
                 }
               }}
-              className="appearance-none pl-3 pr-8 py-2 bg-cc-ground hover:bg-cc-card border border-border focus:border-border/80 rounded-xl text-xs sm:text-sm text-white/90 focus:outline-none cursor-pointer transition-colors"
+              className="appearance-none pl-3 pr-8 py-2 bg-background hover:bg-secondary/40 border border-border focus:border-ring rounded-xl text-xs sm:text-sm text-foreground focus:outline-none cursor-pointer transition-colors"
             >
               <option value="createdAt_desc">Upload Date (Desc)</option>
               <option value="createdAt_asc">Upload Date (Asc)</option>

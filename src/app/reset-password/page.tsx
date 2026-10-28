@@ -3,12 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { FaLock, FaExclamationTriangle, FaCheckCircle } from 'react-icons/fa';
+import { Lock, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
 import PageLayout from '@/components/layouts/PageLayout';
 import { useNotification } from '@/context/AlertContext';
 import { confirmPasswordReset } from '@/services/userService';
 import PasswordStrengthBar from './components/PasswordStrengthBar';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 const ResetPassword: React.FC = () => {
   const [password, setPassword] = useState<string>('');
@@ -97,7 +98,7 @@ const ResetPassword: React.FC = () => {
               animate={{ opacity: 1, height: 'auto' }}
               className="mb-6 p-4 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 rounded-[10px] flex items-center text-sm"
             >
-              <FaCheckCircle className="h-5 w-5 mr-2 shrink-0 text-emerald-400" />
+              <CheckCircle className="size-5 mr-2 shrink-0 text-emerald-400" />
               <span>{message}</span>
             </motion.div>
           )}
@@ -108,7 +109,7 @@ const ResetPassword: React.FC = () => {
               animate={{ opacity: 1, height: 'auto' }}
               className="mb-6 p-4 bg-primary/10 border border-primary/30 text-primary rounded-[10px] flex items-center text-sm"
             >
-              <FaExclamationTriangle className="h-5 w-5 mr-2 shrink-0 text-primary" />
+              <AlertTriangle className="size-5 mr-2 shrink-0 text-primary" />
               <span>{error}</span>
             </motion.div>
           )}
@@ -116,20 +117,19 @@ const ResetPassword: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="flex flex-col">
               <label className="mb-2 font-medium text-xs text-muted-foreground uppercase tracking-wider flex items-center">
-                <FaLock className="mr-2 text-primary" /> New Password
+                <Lock className="mr-2 size-3.5 text-primary" /> New Password
               </label>
               <div className="relative">
-                <input
+                <Input
                   type="password"
                   value={password}
                   onChange={handlePasswordChange}
                   required
-                  className="bg-cc-ground border border-border focus:border-primary focus:ring-1 focus:ring-primary rounded-[8px] pl-10 pr-4 py-2.5 w-full text-sm text-white placeholder-muted-foreground/60 outline-none transition-colors"
+                  className="bg-cc-ground border-border pl-10 pr-4 text-sm text-white placeholder:text-muted-foreground/60"
                   placeholder="Enter a strong password"
                 />
-                <FaLock
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/60"
-                  size={14}
+                <Lock
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 size-4"
                 />
               </div>
 
@@ -138,20 +138,19 @@ const ResetPassword: React.FC = () => {
 
             <div className="flex flex-col">
               <label className="mb-2 font-medium text-xs text-muted-foreground uppercase tracking-wider flex items-center">
-                <FaLock className="mr-2 text-primary" /> Confirm Password
+                <Lock className="mr-2 size-3.5 text-primary" /> Confirm Password
               </label>
               <div className="relative">
-                <input
+                <Input
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
-                  className="bg-cc-ground border border-border focus:border-primary focus:ring-1 focus:ring-primary rounded-[8px] pl-10 pr-4 py-2.5 w-full text-sm text-white placeholder-muted-foreground/60 outline-none transition-colors"
+                  className="bg-cc-ground border-border pl-10 pr-4 text-sm text-white placeholder:text-muted-foreground/60"
                   placeholder="Confirm your password"
                 />
-                <FaLock
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/60"
-                  size={14}
+                <Lock
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 size-4"
                 />
               </div>
               {password && confirmPassword && password !== confirmPassword && (
@@ -160,20 +159,25 @@ const ResetPassword: React.FC = () => {
                   animate={{ opacity: 1 }}
                   className="mt-1.5 text-xs text-primary flex items-center"
                 >
-                  <FaExclamationTriangle className="mr-1" /> Passwords do not match
+                  <AlertTriangle className="mr-1 size-3.5" /> Passwords do not match
                 </motion.p>
               )}
             </div>
 
             <Button
               type="submit"
-              variant="primary"
-              size="md"
-              fullWidth
-              isLoading={loading}
-              className="py-3 shadow-lg shadow-primary/20"
+              size="lg"
+              disabled={loading}
+              className="w-full py-3 shadow-lg shadow-primary/20 bg-primary hover:bg-primary/90 text-primary-foreground font-medium"
             >
-              Reset Password
+              {loading ? (
+                <>
+                  <Loader2 className="size-4 animate-spin mr-2" />
+                  Resetting Password...
+                </>
+              ) : (
+                'Reset Password'
+              )}
             </Button>
           </form>
         </motion.div>

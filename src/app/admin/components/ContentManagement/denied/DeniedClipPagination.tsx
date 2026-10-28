@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface DeniedClipPaginationProps {
   currentPage: number;
@@ -22,10 +22,10 @@ export const DeniedClipPagination: React.FC<DeniedClipPaginationProps> = ({
         type="button"
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
-        className="p-2 rounded-xl border border-border bg-cc-ground text-muted-foreground hover:text-white hover:border-border/80 disabled:opacity-30 transition-colors text-xs cursor-pointer disabled:cursor-not-allowed"
+        className="p-2 rounded-xl border border-border bg-background text-muted-foreground hover:text-foreground hover:border-border/80 disabled:opacity-30 transition-colors text-xs cursor-pointer disabled:cursor-not-allowed"
         aria-label="Previous page"
       >
-        <FaChevronLeft size={10} />
+        <ChevronLeft className="size-3" />
       </button>
 
       <div className="flex gap-1">
@@ -50,8 +50,8 @@ export const DeniedClipPagination: React.FC<DeniedClipPaginationProps> = ({
                 onClick={() => onPageChange(pageToShow as number)}
                 className={`w-8 h-8 flex items-center justify-center rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                   isActive
-                    ? 'bg-primary text-white shadow-xs'
-                    : 'bg-cc-ground border border-border text-muted-foreground hover:text-white hover:border-border/80'
+                    ? 'bg-primary text-primary-foreground shadow-xs'
+                    : 'bg-background border border-border text-muted-foreground hover:text-foreground hover:border-border/80'
                 }`}
               >
                 {pageToShow}
@@ -70,10 +70,10 @@ export const DeniedClipPagination: React.FC<DeniedClipPaginationProps> = ({
         type="button"
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
-        className="p-2 rounded-xl border border-border bg-cc-ground text-muted-foreground hover:text-white hover:border-border/80 disabled:opacity-30 transition-colors text-xs cursor-pointer disabled:cursor-not-allowed"
+        className="p-2 rounded-xl border border-border bg-background text-muted-foreground hover:text-foreground hover:border-border/80 disabled:opacity-30 transition-colors text-xs cursor-pointer disabled:cursor-not-allowed"
         aria-label="Next page"
       >
-        <FaChevronRight size={10} />
+        <ChevronRight className="size-3" />
       </button>
     </div>
   );

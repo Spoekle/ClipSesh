@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { AiOutlineSend, AiOutlineDelete } from 'react-icons/ai';
+import { Send, Trash2, Loader2 } from 'lucide-react';
 import { format } from 'timeago.js';
 import { Message as MessageType } from '@/services/messageService';
 import { User } from '@/types/adminTypes';
@@ -38,10 +38,10 @@ export const TeamChatTab: React.FC<TeamChatTabProps> = ({
       className="flex flex-col h-[520px]"
     >
       {/* Message Stream */}
-      <div className="flex-1 overflow-y-auto p-3.5 space-y-3 bg-cc-ground select-text custom-scrollbar">
+      <div className="flex-1 overflow-y-auto p-3.5 space-y-3 bg-background select-text custom-scrollbar">
         {chatLoading ? (
           <div className="flex justify-center items-center h-full">
-            <div className="animate-spin rounded-full h-8 w-8 border-2 border-border border-t-primary" />
+            <Loader2 className="animate-spin size-6 text-primary" />
           </div>
         ) : messages.length > 0 ? (
           messages.map((msg) => {
@@ -52,10 +52,10 @@ export const TeamChatTab: React.FC<TeamChatTabProps> = ({
               <div
                 key={msg._id}
                 id={`message-${msg._id}`}
-                className="group flex items-start gap-2.5 hover:bg-white/[0.03] p-1.5 rounded-xl transition-colors"
+                className="group flex items-start gap-2.5 hover:bg-muted/30 p-1.5 rounded-xl transition-colors"
               >
                 {/* Author Avatar */}
-                <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 bg-cc-card border border-border mt-0.5">
+                <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 bg-card border border-border mt-0.5">
                   <img
                     src={avatarUrl}
                     alt={msg.user}
@@ -68,7 +68,7 @@ export const TeamChatTab: React.FC<TeamChatTabProps> = ({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 truncate">
-                      <span className="text-xs font-bold text-white truncate">{msg.user}</span>
+                      <span className="text-xs font-bold text-foreground truncate">{msg.user}</span>
                       <span className="text-[10px] text-muted-foreground font-mono">
                         {format(new Date(msg.timestamp))}
                       </span>
@@ -78,10 +78,10 @@ export const TeamChatTab: React.FC<TeamChatTabProps> = ({
                       <button
                         type="button"
                         onClick={() => handleDeleteMessage(msg._id)}
-                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-rose-400 p-1 transition-opacity cursor-pointer"
+                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive p-1 transition-opacity cursor-pointer"
                         title="Delete message"
                       >
-                        <AiOutlineDelete size={13} />
+                        <Trash2 className="size-3.5" />
                       </button>
                     )}
                   </div>
@@ -89,8 +89,8 @@ export const TeamChatTab: React.FC<TeamChatTabProps> = ({
                   <div
                     className={`mt-1 text-xs sm:text-sm leading-relaxed p-2.5 rounded-xl break-words ${
                       isOwnMessage
-                        ? 'bg-cc-card border border-border text-white'
-                        : 'bg-cc-ground border border-border/80 text-white/90'
+                        ? 'bg-card border border-border text-foreground'
+                        : 'bg-background border border-border/80 text-foreground/90'
                     }`}
                   >
                     {msg.message}
@@ -109,8 +109,8 @@ export const TeamChatTab: React.FC<TeamChatTabProps> = ({
       </div>
 
       {/* Chat Input - Fixed Bottom Bar */}
-      <div className="p-3 border-t border-border bg-cc-card">
-        <div className="flex items-end gap-2 bg-cc-ground border border-border focus-within:border-border/80 rounded-xl p-2 transition-colors">
+      <div className="p-3 border-t border-border bg-card">
+        <div className="flex items-end gap-2 bg-background border border-border focus-within:border-border/80 rounded-xl p-2 transition-colors">
           <textarea
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
@@ -120,7 +120,7 @@ export const TeamChatTab: React.FC<TeamChatTabProps> = ({
                 handleSendMessage();
               }
             }}
-            className="w-full bg-transparent resize-none text-xs sm:text-sm text-white placeholder-muted-foreground focus:outline-none max-h-24 py-1 px-1"
+            className="w-full bg-transparent resize-none text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none max-h-24 py-1 px-1"
             placeholder="Message team... (Enter to send)"
             rows={1}
           />
@@ -130,12 +130,12 @@ export const TeamChatTab: React.FC<TeamChatTabProps> = ({
             disabled={!newMessage.trim()}
             className={`p-2 rounded-lg transition-all shrink-0 cursor-pointer ${
               newMessage.trim()
-                ? 'bg-white text-black hover:bg-neutral-200 shadow-xs'
+                ? 'bg-foreground text-background hover:bg-foreground/90 shadow-xs'
                 : 'text-muted-foreground/40 cursor-not-allowed'
             }`}
             title="Send message"
           >
-            <AiOutlineSend size={15} />
+            <Send className="size-3.5" />
           </button>
         </div>
       </div>

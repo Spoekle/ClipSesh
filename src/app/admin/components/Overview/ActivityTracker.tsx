@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import '@/lib/chart';
 import { Line } from 'react-chartjs-2';
 import type { ChartOptions, Chart as ChartJS, TooltipModel } from 'chart.js';
-import { FaChartLine } from 'react-icons/fa';
+import { LineChart, Loader2 } from 'lucide-react';
 import DateRangePicker from '../DateRangePicker';
 import useActivityData, { ActivityData, UserActivityData } from './activity/useActivityData';
 import ActivityVelocityMetrics from './activity/ActivityVelocityMetrics';
@@ -263,7 +263,7 @@ export const ActivityTracker: React.FC<ActivityTrackerProps> = () => {
       <div className="p-4 sm:p-5 border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-cc-ground border border-border flex items-center justify-center text-primary">
-            <FaChartLine size={16} />
+            <LineChart className="size-4" />
           </div>
           <div>
             <h3 className="text-base font-bold text-white leading-tight">
@@ -309,7 +309,7 @@ export const ActivityTracker: React.FC<ActivityTrackerProps> = () => {
       <div className="p-4 sm:p-6">
         {isLoading ? (
           <div className="h-[360px] bg-cc-ground rounded-xl border border-border flex flex-col items-center justify-center text-muted-foreground gap-3">
-            <div className="w-8 h-8 border-2 border-border border-t-primary rounded-full animate-spin" />
+            <Loader2 className="size-8 text-primary animate-spin" />
             <span className="text-xs">Aggregating rating timeline...</span>
           </div>
         ) : error ? (
@@ -318,7 +318,7 @@ export const ActivityTracker: React.FC<ActivityTrackerProps> = () => {
           </div>
         ) : activityData.length === 0 ? (
           <div className="h-[360px] bg-cc-ground rounded-xl border border-border flex flex-col items-center justify-center text-muted-foreground gap-2">
-            <FaChartLine size={28} />
+            <LineChart className="size-7" />
             <span className="text-sm font-semibold text-white">No activity in this window</span>
             <span className="text-xs text-muted-foreground">Try selecting a broader date range</span>
           </div>

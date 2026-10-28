@@ -3,16 +3,16 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  FaArchive,
-  FaChevronUp,
-  FaChevronDown,
-  FaSyncAlt,
-  FaTimes,
-  FaStop,
-  FaCheck,
-  FaBan,
-  FaExternalLinkAlt,
-} from 'react-icons/fa';
+  Archive,
+  ChevronUp,
+  ChevronDown,
+  RotateCw,
+  X,
+  Square,
+  Check,
+  Ban,
+  ExternalLink,
+} from 'lucide-react';
 import { ProcessJobStatus } from '@/types/adminTypes';
 
 interface ActiveJobsBannerProps {
@@ -89,7 +89,7 @@ export const ActiveJobsBanner: React.FC<ActiveJobsBannerProps> = ({
               <div className="flex items-center gap-1.5 shrink-0">
                 <div className="flex items-center gap-1 text-muted-foreground group-hover:text-white transition-colors">
                   <span className="text-[11px] font-medium hidden sm:inline">Details</span>
-                  <FaChevronUp size={11} />
+                  <ChevronUp className="size-3" />
                 </div>
                 {visibleProcessJobs.every((j) => j.status !== 'processing') && (
                   <button
@@ -101,7 +101,7 @@ export const ActiveJobsBanner: React.FC<ActiveJobsBannerProps> = ({
                     title="Dismiss finished tasks"
                     className="p-1 text-muted-foreground hover:text-rose-400 hover:bg-rose-500/15 rounded-md transition-colors cursor-pointer"
                   >
-                    <FaTimes size={11} />
+                    <X className="size-3" />
                   </button>
                 )}
               </div>
@@ -133,17 +133,17 @@ export const ActiveJobsBanner: React.FC<ActiveJobsBannerProps> = ({
                       `Phase: ${currentProcessJob.phase || 'compiling...'}`
                     ) : currentProcessJob.status === 'completed' ? (
                       <>
-                        <FaCheck className="text-emerald-400 shrink-0" size={9} />
+                        <Check className="text-emerald-400 shrink-0 size-2.5" />
                         <span className="truncate">Archive ready in Download manager</span>
                       </>
                     ) : currentProcessJob.status === 'cancelled' ? (
                       <>
-                        <FaBan className="text-amber-400 shrink-0" size={9} />
+                        <Ban className="text-amber-400 shrink-0 size-2.5" />
                         <span className="truncate">Compilation cancelled</span>
                       </>
                     ) : (
                       <>
-                        <FaTimes className="text-rose-400 shrink-0" size={9} />
+                        <X className="text-rose-400 shrink-0 size-2.5" />
                         <span className="truncate">Process failed</span>
                       </>
                     )}
@@ -159,7 +159,7 @@ export const ActiveJobsBanner: React.FC<ActiveJobsBannerProps> = ({
                         className="px-2 py-0.5 text-[10px] font-semibold text-rose-400 hover:text-white bg-rose-500/15 hover:bg-rose-500/30 border border-rose-500/30 rounded-md transition-colors cursor-pointer flex items-center gap-1"
                         title="Cancel compilation"
                       >
-                        <FaStop size={8} />
+                        <Square className="size-2.5" />
                         <span>Cancel</span>
                       </button>
                     ) : (
@@ -178,7 +178,7 @@ export const ActiveJobsBanner: React.FC<ActiveJobsBannerProps> = ({
                     )}
                     <span className="text-muted-foreground inline-flex items-center gap-1">
                       <span>Click to expand</span>
-                      <FaExternalLinkAlt size={8} />
+                      <ExternalLink className="size-2.5" />
                     </span>
                   </div>
                 </div>
@@ -199,7 +199,7 @@ export const ActiveJobsBanner: React.FC<ActiveJobsBannerProps> = ({
             <div className="p-3.5 sm:p-4 border-b border-border bg-cc-ground flex items-center justify-between gap-3">
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-7 h-7 rounded-lg bg-primary/15 text-primary flex items-center justify-center shrink-0">
-                  <FaArchive size={13} />
+                  <Archive className="size-3.5" />
                 </div>
                 <div>
                   <h3 className="text-xs sm:text-sm font-bold text-white truncate">
@@ -219,7 +219,7 @@ export const ActiveJobsBanner: React.FC<ActiveJobsBannerProps> = ({
                   title="Refresh tasks"
                   className="p-1.5 text-muted-foreground hover:text-white hover:bg-border/60 rounded-lg transition-colors cursor-pointer"
                 >
-                  <FaSyncAlt size={11} />
+                  <RotateCw className="size-3" />
                 </button>
                 <button
                   type="button"
@@ -227,7 +227,7 @@ export const ActiveJobsBanner: React.FC<ActiveJobsBannerProps> = ({
                   title="Collapse to corner"
                   className="p-1.5 text-muted-foreground hover:text-white hover:bg-border/60 rounded-lg transition-colors cursor-pointer"
                 >
-                  <FaChevronDown size={12} />
+                  <ChevronDown className="size-3.5" />
                 </button>
                 {visibleProcessJobs.every((j) => j.status !== 'processing') && (
                   <button
@@ -236,7 +236,7 @@ export const ActiveJobsBanner: React.FC<ActiveJobsBannerProps> = ({
                     title="Dismiss all finished"
                     className="p-1.5 text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
                   >
-                    <FaTimes size={12} />
+                    <X className="size-3.5" />
                   </button>
                 )}
               </div>
@@ -313,7 +313,7 @@ export const ActiveJobsBanner: React.FC<ActiveJobsBannerProps> = ({
                           className="px-2.5 py-1 bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-400 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
                           title="Cancel compilation and discard partial archive"
                         >
-                          <FaStop size={10} />
+                          <Square className="size-3" />
                           <span>Cancel</span>
                         </button>
                         <button

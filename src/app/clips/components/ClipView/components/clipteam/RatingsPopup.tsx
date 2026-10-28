@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { AiOutlineClose } from 'react-icons/ai';
+import { X, Loader2 } from 'lucide-react';
 import { getRatingById } from '@/services/ratingService';
 import { Clip, Rating, User } from '@/types/adminTypes';
 import RatingDistributionGraph, { RatingCountItem } from './RatingDistributionGraph';
@@ -61,11 +61,11 @@ const RatingsPopup: React.FC<RatingsPopupProps> = ({ clip, ratings, setPopout })
             className="text-muted-foreground hover:text-foreground transition-colors p-1"
             onClick={() => setPopout('')}
           >
-            <AiOutlineClose size={18} />
+            <X className="size-4" />
           </button>
         </div>
         <div className="p-10 flex justify-center items-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-2 border-t-transparent border-primary"></div>
+          <Loader2 className="animate-spin size-8 text-primary" />
         </div>
       </motion.div>
     );
@@ -85,7 +85,7 @@ const RatingsPopup: React.FC<RatingsPopupProps> = ({ clip, ratings, setPopout })
             className="text-muted-foreground hover:text-foreground transition-colors p-1"
             onClick={() => setPopout('')}
           >
-            <AiOutlineClose size={18} />
+            <X className="size-4" />
           </button>
         </div>
         <div className="p-8 text-center">
@@ -142,7 +142,7 @@ const RatingsPopup: React.FC<RatingsPopupProps> = ({ clip, ratings, setPopout })
           className="text-muted-foreground hover:text-foreground transition-colors p-1"
           onClick={() => setPopout('')}
         >
-          <AiOutlineClose size={18} />
+          <X className="size-4" />
         </button>
       </div>
 

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef } from 'react';
-import { FaVolumeUp, FaVolumeMute } from 'react-icons/fa';
+import { Volume2, VolumeX } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface PlayerVolumeControlProps {
@@ -77,9 +77,9 @@ export const PlayerVolumeControl: React.FC<PlayerVolumeControlProps> = ({
         aria-label={isMuted ? 'Unmute' : 'Mute'}
       >
         {isMuted || volume === 0 ? (
-          <FaVolumeMute className="text-lg" />
+          <VolumeX className="size-5" />
         ) : (
-          <FaVolumeUp className="text-lg" />
+          <Volume2 className="size-5" />
         )}
       </button>
 

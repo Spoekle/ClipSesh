@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FaShieldAlt } from 'react-icons/fa';
+import { Shield } from 'lucide-react';
 
 interface PasswordStrengthBarProps {
   strength: number;
@@ -47,7 +47,7 @@ export const PasswordStrengthBar: React.FC<PasswordStrengthBarProps> = ({ streng
     <div className="mt-3">
       <div className="flex justify-between mb-1 text-xs">
         <div className="font-medium flex items-center text-muted-foreground">
-          <FaShieldAlt className="mr-1 text-primary" /> Strength: {getStrengthText()}
+          <Shield className="mr-1.5 size-3.5 text-primary" /> Strength: {getStrengthText()}
         </div>
       </div>
       <div className="h-2 w-full bg-cc-ground rounded-full overflow-hidden border border-border">

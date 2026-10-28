@@ -2,12 +2,12 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
-  FaSearch,
-  FaTimes,
-  FaChevronDown,
-  FaEye,
-  FaEyeSlash,
-} from 'react-icons/fa';
+  Search,
+  X,
+  ChevronDown,
+  Eye,
+  EyeOff,
+} from 'lucide-react';
 import { SortControls } from './filter/SortControls';
 import { safeLocalStorage } from '@/utils/storage';
 import { User } from '@/types/adminTypes';
@@ -205,15 +205,15 @@ export const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
               value={localSearchTerm}
               onChange={(e) => setLocalSearchTerm(e.target.value)}
             />
-            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-3.5" />
             {localSearchTerm && (
               <button
                 type="button"
                 onClick={handleClearSearch}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white transition-colors cursor-pointer"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                 title="Clear search"
               >
-                <FaTimes size={11} />
+                <X className="size-3" />
               </button>
             )}
           </div>
@@ -223,7 +223,7 @@ export const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
             <select
               value={filterStreamer}
               onChange={handleStreamerChange}
-              className="appearance-none pl-3 pr-8 py-2 bg-cc-ground hover:bg-white/5 border border-border focus:border-border/80 rounded-xl text-xs sm:text-sm text-foreground focus:outline-none cursor-pointer transition-colors"
+              className="appearance-none pl-3 pr-8 py-2 bg-background hover:bg-secondary/40 border border-border focus:border-ring rounded-xl text-xs sm:text-sm text-foreground focus:outline-none cursor-pointer transition-colors"
               aria-label="Filter by Streamer"
             >
               <option value="">All Streamers</option>
@@ -233,7 +233,7 @@ export const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
                 </option>
               ))}
             </select>
-            <FaChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none text-[10px]" />
+            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none size-3" />
           </div>
 
           {/* Sort Controls */}
@@ -252,10 +252,10 @@ export const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
             <button
               type="button"
               onClick={handleResetAll}
-              className="px-3 py-1.5 rounded-xl text-xs font-medium text-foreground bg-white/5 hover:bg-white/10 border border-border flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer"
+              className="px-3 py-1.5 rounded-xl text-xs font-medium text-foreground bg-secondary hover:bg-secondary-hover border border-border flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer"
               title="Reset all filters and sort"
             >
-              <FaTimes size={10} />
+              <X className="size-3" />
               <span>Reset ({activeFiltersCount})</span>
             </button>
           )}
@@ -268,11 +268,11 @@ export const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
                 className={`px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
                   filterRatedClips
                     ? 'bg-primary text-white shadow-xs'
-                    : 'bg-cc-ground hover:bg-white/5 text-muted-foreground hover:text-white border border-border'
+                    : 'bg-background hover:bg-secondary text-muted-foreground hover:text-foreground border border-border'
                 }`}
                 title={filterRatedClips ? 'Showing all clips' : 'Hiding rated clips'}
               >
-                {filterRatedClips ? <FaEyeSlash size={11} /> : <FaEye size={11} />}
+                {filterRatedClips ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
                 <span>{filterRatedClips ? 'Hiding Rated' : 'Hide Rated'}</span>
               </button>
 
@@ -282,11 +282,11 @@ export const ClipFilterBar: React.FC<ClipFilterBarProps> = ({
                 className={`px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
                   filterDeniedClips
                     ? 'bg-white text-black font-semibold shadow-xs'
-                    : 'bg-cc-ground hover:bg-white/5 text-muted-foreground hover:text-white border border-border'
+                    : 'bg-background hover:bg-secondary text-muted-foreground hover:text-foreground border border-border'
                 }`}
                 title={filterDeniedClips ? 'Showing all clips' : 'Hiding denied clips'}
               >
-                {filterDeniedClips ? <FaEyeSlash size={11} /> : <FaEye size={11} />}
+                {filterDeniedClips ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
                 <span>{filterDeniedClips ? 'Hiding Denied' : 'Hide Denied'}</span>
               </button>
             </>

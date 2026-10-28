@@ -1,5 +1,5 @@
 import React from 'react';
-import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface CalendarMonthViewProps {
   currentMonth: Date;
@@ -63,7 +63,7 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
           className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
           aria-label="Previous month"
         >
-          <FaChevronLeft size={11} />
+          <ChevronLeft className="size-3.5" />
         </button>
         <h3 className="font-semibold text-foreground text-xs sm:text-sm">
           {currentMonth.toLocaleDateString('en-US', {
@@ -77,12 +77,12 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
           className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
           aria-label="Next month"
         >
-          <FaChevronRight size={11} />
+          <ChevronRight className="size-3.5" />
         </button>
       </div>
 
       {/* Status indicator */}
-      <div className="mb-3 text-[11px] text-cc-red font-medium text-center">
+      <div className="mb-3 text-[11px] text-primary font-medium text-center">
         {selectingStart ? 'Select start date' : 'Select end date'}
       </div>
 
@@ -103,9 +103,9 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
                 onClick={() => onDateClick(date)}
                 className={`w-full h-full text-xs rounded-lg flex items-center justify-center transition-all cursor-pointer font-medium ${
                   isDateSelected(date)
-                    ? 'bg-cc-red text-white shadow-sm font-bold'
+                    ? 'bg-primary text-primary-foreground shadow-sm font-bold'
                     : isDateInRange(date)
-                    ? 'bg-cc-red/15 text-cc-red'
+                    ? 'bg-primary/15 text-primary'
                     : 'hover:bg-secondary text-foreground'
                 }`}
               >

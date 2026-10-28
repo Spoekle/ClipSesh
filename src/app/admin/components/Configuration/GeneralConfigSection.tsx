@@ -1,8 +1,11 @@
 'use client';
 
 import React from 'react';
-import { FaDiscord, FaCheck } from 'react-icons/fa';
-import { Button } from '@/components/common/Button';
+import { FaDiscord } from 'react-icons/fa';
+import { Check, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 
 interface GeneralConfigSectionProps {
   denyThreshold: number;
@@ -35,13 +38,13 @@ export const GeneralConfigSection: React.FC<GeneralConfigSectionProps> = ({
           >
             Deny Threshold
           </label>
-          <input
+          <Input
             type="number"
             id="denyThreshold"
             name="denyThreshold"
             value={denyThreshold}
             onChange={(e) => setDenyThreshold(parseInt(e.target.value, 10) || 5)}
-            className="w-full bg-cc-card border border-border rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-border/80"
+            className="bg-cc-card border-border text-xs text-white"
             required
             min="1"
           />
@@ -57,13 +60,13 @@ export const GeneralConfigSection: React.FC<GeneralConfigSectionProps> = ({
           >
             Latest Video Link
           </label>
-          <input
+          <Input
             type="text"
             id="latestVideoLink"
             name="latestVideoLink"
             value={latestVideoLink}
             onChange={(e) => setLatestVideoLink(e.target.value)}
-            className="w-full bg-cc-card border border-border rounded-xl px-3.5 py-2 text-xs text-white placeholder-muted-foreground focus:outline-none focus:border-border/80"
+            className="bg-cc-card border-border text-xs text-white placeholder-muted-foreground"
             placeholder="https://www.youtube.com/watch?v=..."
           />
           <p className="mt-1.5 text-[11px] text-muted-foreground">
@@ -97,11 +100,11 @@ export const GeneralConfigSection: React.FC<GeneralConfigSectionProps> = ({
             </button>
           )}
         </div>
-        <textarea
+        <Textarea
           id="clipChannelIds"
           value={channelIdsText}
           onChange={onChannelIdsChange}
-          className="w-full bg-cc-card border border-border text-white font-mono rounded-xl p-3 text-xs focus:outline-none focus:border-border/80 h-24 resize-none"
+          className="bg-cc-card border-border text-white font-mono text-xs min-h-24 resize-none"
           placeholder="123456789012345678&#10;234567890123456789"
         />
         <p className="mt-1.5 text-[11px] text-muted-foreground">
@@ -112,13 +115,17 @@ export const GeneralConfigSection: React.FC<GeneralConfigSectionProps> = ({
       <div className="pt-2">
         <Button
           type="submit"
-          variant="primary"
-          size="md"
-          fullWidth
-          isLoading={isSubmitting}
-          leftIcon={<FaCheck size={12} />}
+          variant="default"
+          size="default"
+          disabled={isSubmitting}
+          className="w-full gap-1.5 bg-primary text-white hover:bg-primary/90 font-semibold"
         >
-          Update System Settings
+          {isSubmitting ? (
+            <Loader2 className="size-3.5 animate-spin" />
+          ) : (
+            <Check className="size-3.5" />
+          )}
+          <span>Update System Settings</span>
         </Button>
       </div>
     </div>

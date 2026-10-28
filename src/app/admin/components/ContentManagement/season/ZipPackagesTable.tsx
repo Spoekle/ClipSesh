@@ -1,10 +1,10 @@
 'use client';
 
 import React from 'react';
-import { FaBoxOpen, FaFileDownload, FaSpinner, FaTrash } from 'react-icons/fa';
+import { Package, Download, Loader2, Trash2 } from 'lucide-react';
 import { formatFileSize, formatDate } from '@/utils/fileHelpers';
 import { Zip } from '@/types/adminTypes';
-import { Button } from '@/components/Button';
+import { Button } from '@/components/ui/button';
 
 interface ZipPackagesTableProps {
   zips: Zip[];
@@ -26,7 +26,7 @@ export const ZipPackagesTable: React.FC<ZipPackagesTableProps> = ({
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-        <FaSpinner className="animate-spin text-2xl text-primary mb-2" />
+        <Loader2 className="size-6 animate-spin text-primary mb-2" />
         <p className="text-xs">Loading compiled packages...</p>
       </div>
     );
@@ -35,14 +35,15 @@ export const ZipPackagesTable: React.FC<ZipPackagesTableProps> = ({
   if (zips.length === 0) {
     return (
       <div className="text-center py-16 rounded-xl border border-border bg-cc-ground flex flex-col items-center justify-center">
-        <FaBoxOpen className="text-3xl text-muted-foreground/60 mb-2" />
+        <Package className="size-8 text-muted-foreground/60 mb-2" />
         <p className="text-sm font-bold text-white">No Packages Found</p>
         <p className="text-xs text-muted-foreground mt-0.5 max-w-sm mb-4">
           Compile a season archive using the compilation pipeline or upload an existing raw archive.
         </p>
         <Button
-          variant="primary"
-          size="md"
+          variant="default"
+          size="default"
+          className="bg-primary text-white hover:bg-primary/90 font-semibold"
           onClick={onCompileFirstZip}
         >
           Compile First ZIP
@@ -84,25 +85,34 @@ export const ZipPackagesTable: React.FC<ZipPackagesTableProps> = ({
 
             <div className="flex items-center gap-2 shrink-0">
               <Button
-                variant="card"
+                variant="outline"
                 size="sm"
                 onClick={() => onDownload(zip._id, zip.url, zip.name)}
                 disabled={isDownloading}
-                isLoading={isDownloading}
-                leftIcon={<FaFileDownload size={11} />}
+                className="gap-1.5"
                 title="Download Package"
               >
-                {isDownloading ? `${progress}%` : 'Download'}
+                {isDownloading ? (
+                  <>
+                    <Loader2 className="size-3 animate-spin" />
+                    <span>{progress}%</span>
+                  </>
+                ) : (
+                  <>
+                    <Download className="size-3" />
+                    <span>Download</span>
+                  </>
+                )}
               </Button>
 
               <Button
-                variant="card"
+                variant="ghost"
                 size="icon-sm"
                 onClick={() => onDeleteZip(zip._id, zip.name)}
-                className="hover:bg-rose-500/20 hover:text-rose-400"
+                className="text-muted-foreground hover:bg-rose-500/20 hover:text-rose-400"
                 title="Delete Package"
               >
-                <FaTrash size={11} />
+                <Trash2 className="size-3.5" />
               </Button>
             </div>
           </div>

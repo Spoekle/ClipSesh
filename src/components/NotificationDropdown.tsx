@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { FaBell } from 'react-icons/fa';
+import { Bell } from 'lucide-react';
 import { safeLocalStorage } from '@/utils/storage';
 import { useUnreadCount } from '../hooks/useNotifications';
 import { playNotificationChime } from './notifications/NotificationAudio';
@@ -86,7 +86,7 @@ export default function NotificationBadge({ className = '' }: NotificationBadgeP
             : 'text-muted-foreground hover:text-white hover:bg-cc-card border-transparent'
         }`}
       >
-        <FaBell size={16} />
+        <Bell className="size-4" />
 
         {unreadCount > 0 && (
           <>

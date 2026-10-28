@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { AiOutlineDelete } from 'react-icons/ai';
+import { Trash2 } from 'lucide-react';
 import { format } from 'timeago.js';
 import { User } from '@/types/adminTypes';
 import { Message as MessageType } from '@/services/messageService';
@@ -58,10 +58,10 @@ export const TeamMessageItem: React.FC<TeamMessageItemProps> = ({
           {canDelete && (
             <button
               onClick={() => onDelete(msg._id)}
-              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-cc-red p-0.5 transition-opacity cursor-pointer"
+              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive p-0.5 transition-opacity cursor-pointer"
               title="Delete message"
             >
-              <AiOutlineDelete size={13} />
+              <Trash2 className="size-3.5" />
             </button>
           )}
         </div>
@@ -69,7 +69,7 @@ export const TeamMessageItem: React.FC<TeamMessageItemProps> = ({
           className={`mt-1 text-xs leading-relaxed p-2.5 rounded-xl break-words ${
             isOwnMessage
               ? 'bg-secondary/60 border border-border text-foreground'
-              : 'bg-cc-card border border-border text-foreground'
+              : 'bg-card border border-border text-foreground'
           }`}
         >
           <p className="whitespace-pre-wrap">{msg.message}</p>

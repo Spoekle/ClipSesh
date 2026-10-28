@@ -2,9 +2,10 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { FaArrowLeft, FaDownload, FaHistory, FaSpinner } from 'react-icons/fa';
+import { ArrowLeft, Download, History, Loader2 } from 'lucide-react';
 import { ArchiveSeasonSection } from '@/types/clipTypes';
-import { Button } from '@/components/Button';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { downloadWithProgress } from '@/utils/downloadHelpers';
 
 interface SeasonViewHeaderProps {
@@ -64,24 +65,25 @@ export const SeasonViewHeader: React.FC<SeasonViewHeaderProps> = ({
         {/* Navigation Breadcrumb / Back button */}
         <div className="flex items-center gap-2 mb-3">
           <Button
-            variant="card"
+            variant="outline"
             size="sm"
             onClick={onBack}
-            leftIcon={<FaArrowLeft size={10} />}
+            className="gap-1.5"
           >
+            <ArrowLeft className="size-3.5" />
             All Seasons
           </Button>
           <span className="text-muted-foreground/60 select-none">/</span>
           <nav className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Link href="/" className="hover:text-white transition-colors">
+            <Link href="/" className="hover:text-foreground transition-colors">
               Home
             </Link>
             <span className="text-muted-foreground/60 select-none">/</span>
-            <Link href="/archive" className="hover:text-white transition-colors">
+            <Link href="/archive" className="hover:text-foreground transition-colors">
               Archive
             </Link>
             <span className="text-muted-foreground/60 select-none">/</span>
-            <span className="text-white font-medium">
+            <span className="text-foreground font-medium">
               {section.season} {section.year}
             </span>
           </nav>
@@ -91,7 +93,7 @@ export const SeasonViewHeader: React.FC<SeasonViewHeaderProps> = ({
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <div className="relative pb-3 w-fit">
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white tracking-tight leading-tight uppercase">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground tracking-tight leading-tight uppercase">
                 {section.season} {section.year}
               </h1>
               <div className="absolute bottom-0 left-0 w-3/5 h-[2.5px] bg-primary rounded-full" />
@@ -99,46 +101,55 @@ export const SeasonViewHeader: React.FC<SeasonViewHeaderProps> = ({
             <div className="mt-3 flex flex-wrap items-center gap-2.5 text-sm text-muted-foreground">
               <span>
                 Season Window:{' '}
-                <strong className="text-white font-medium">{dateRange.fullFormatted}</strong>
+                <strong className="text-foreground font-medium">{dateRange.fullFormatted}</strong>
               </span>
               {section.isCurrent && (
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-primary/15 text-primary border border-primary/30 uppercase tracking-wider">
+                <Badge variant="destructive" className="bg-primary/15 text-primary border-primary/30 uppercase tracking-wider text-[11px] font-bold">
                   Active
-                </span>
+                </Badge>
               )}
             </div>
           </div>
 
           {/* Right Badges & Download Zip Button */}
           <div className="flex items-center gap-2.5 pb-1 flex-wrap">
-            <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-cc-card border border-border text-white">
+            <Badge variant="outline" className="text-xs font-semibold px-2.5 py-1 text-foreground">
               {totalClips.toLocaleString()} clips
-            </span>
+            </Badge>
             {section.zip && canDownloadZip && (
               <Button
-                variant="success"
-                size="xs"
+                variant="outline"
+                size="sm"
                 onClick={handleDownload}
                 disabled={isDownloading}
-                isLoading={isDownloading}
-                leftIcon={<FaDownload size={10} />}
+                className="gap-1.5 bg-emerald-500/10 text-emerald-400 border-emerald-500/25 hover:bg-emerald-500/20"
                 title={`Download batch archive: ${section.zip.name}`}
               >
-                {isDownloading
-                  ? `Downloading ${downloadProgress}%`
-                  : `Zip (${formatBytes(section.zip.size)})`}
+                {isDownloading ? (
+                  <>
+                    <Loader2 className="size-3.5 animate-spin" />
+                    Downloading {downloadProgress}%
+                  </>
+                ) : (
+                  <>
+                    <Download className="size-3.5" />
+                    Zip ({formatBytes(section.zip.size)})
+                  </>
+                )}
               </Button>
             )}
             {isAdmin && (
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={onOpenUnarchive}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/25 text-xs font-medium transition-colors shrink-0 shadow-xs cursor-pointer"
+                className="gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/25"
                 title={`Unarchive ${section.season} ${section.year} (Undo Archive)`}
               >
-                <FaHistory size={10} />
+                <History className="size-3.5" />
                 <span>Unarchive Season</span>
-              </button>
+              </Button>
             )}
           </div>
         </div>

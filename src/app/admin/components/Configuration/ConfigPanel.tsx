@@ -3,7 +3,7 @@
 import { safeLocalStorage } from '@/utils/storage';
 import { motion } from 'framer-motion';
 import React, { useState, useEffect } from 'react';
-import { FaCog } from 'react-icons/fa';
+import { Settings } from 'lucide-react';
 import { useUpdateAdminConfig, useUpdatePublicConfig, useBlacklistedUsers } from '@/hooks/useAdmin';
 import { useNotification } from '@/context/AlertContext';
 import GeneralConfigSection from './GeneralConfigSection';
@@ -233,8 +233,8 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onOpenScraper 
     >
       <div className="flex items-center justify-between pb-4 border-b border-border">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-primary/15 text-primary flex items-center justify-center">
-            <FaCog size={15} />
+          <div className="size-8 rounded-xl bg-primary/15 text-primary flex items-center justify-center">
+            <Settings className="size-4" />
           </div>
           <div>
             <h2 className="text-base font-bold text-white">System Configuration</h2>

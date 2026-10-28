@@ -2,12 +2,13 @@
 
 import React from 'react';
 import {
-  FaChartBar,
-  FaUsers,
-  FaFilm,
-  FaCog,
-  FaFlag,
-} from 'react-icons/fa';
+  BarChart3,
+  Users,
+  Film,
+  Settings,
+  Flag,
+} from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 export type AdminTab = 'overview' | 'users' | 'content' | 'config' | 'reports';
 
@@ -23,14 +24,14 @@ export const AdminTabsNav: React.FC<AdminTabsNavProps> = ({
   pendingReportsCount,
 }) => {
   const tabs: { id: AdminTab; label: string; icon: React.ReactNode; badge?: number }[] = [
-    { id: 'overview', label: 'Overview', icon: <FaChartBar size={13} /> },
-    { id: 'users', label: 'Users', icon: <FaUsers size={13} /> },
-    { id: 'content', label: 'Content Management', icon: <FaFilm size={13} /> },
-    { id: 'config', label: 'Configuration', icon: <FaCog size={13} /> },
+    { id: 'overview', label: 'Overview', icon: <BarChart3 className="size-3.5" /> },
+    { id: 'users', label: 'Users', icon: <Users className="size-3.5" /> },
+    { id: 'content', label: 'Content Management', icon: <Film className="size-3.5" /> },
+    { id: 'config', label: 'Configuration', icon: <Settings className="size-3.5" /> },
     {
       id: 'reports',
       label: 'Reports',
-      icon: <FaFlag size={13} />,
+      icon: <Flag className="size-3.5" />,
       badge: pendingReportsCount,
     },
   ];
@@ -43,20 +44,19 @@ export const AdminTabsNav: React.FC<AdminTabsNavProps> = ({
           onClick={() => onTabChange(tab.id)}
           className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
             activeTab === tab.id
-              ? 'bg-primary text-white shadow-sm'
-              : 'text-muted-foreground hover:text-white bg-cc-card hover:bg-border/60 border border-border'
+              ? 'bg-primary text-primary-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground bg-card hover:bg-secondary border border-border'
           }`}
         >
           {tab.icon}
           <span>{tab.label}</span>
           {tab.badge !== undefined && tab.badge > 0 && (
-            <span
-              className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                activeTab === tab.id ? 'bg-white/20 text-white' : 'bg-primary/20 text-primary'
-              }`}
+            <Badge
+              variant={activeTab === tab.id ? 'secondary' : 'default'}
+              className="text-[10px] font-bold px-1.5 py-0 h-4 rounded-full"
             >
               {tab.badge}
-            </span>
+            </Badge>
           )}
         </button>
       ))}

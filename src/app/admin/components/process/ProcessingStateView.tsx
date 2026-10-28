@@ -1,9 +1,9 @@
 'use client';
 
 import React from 'react';
-import { FaSpinner, FaExclamationTriangle, FaStop } from 'react-icons/fa';
+import { Loader2, AlertTriangle, Square } from 'lucide-react';
 import LiveProcessingView from '../LiveProcessingView';
-import { Button } from '@/components/Button';
+import { Button } from '@/components/ui/button';
 
 interface ProcessingStateViewProps {
   processJobId?: string | null;
@@ -53,11 +53,11 @@ export const ProcessingStateView: React.FC<ProcessingStateViewProps> = ({
               Processing {clipCount} clips for {season} {year}...
             </p>
             <div className="flex justify-center">
-              <FaSpinner className="animate-spin text-3xl text-primary" />
+              <Loader2 className="animate-spin size-8 text-primary" />
             </div>
           </div>
 
-          <div className="w-full bg-cc-ground rounded-full h-2 mb-4 overflow-hidden border border-border">
+          <div className="w-full bg-background rounded-full h-2 mb-4 overflow-hidden border border-border">
             <div
               className="bg-primary h-full rounded-full transition-all duration-300"
               style={{ width: `${progress}%` }}
@@ -76,7 +76,7 @@ export const ProcessingStateView: React.FC<ProcessingStateViewProps> = ({
       {errorMessage && (
         <div className="bg-primary/10 border border-primary/30 p-3.5 rounded-xl text-primary text-xs">
           <p className="font-medium flex items-start">
-            <FaExclamationTriangle className="inline mr-2 mt-0.5 shrink-0" />
+            <AlertTriangle className="inline mr-2 mt-0.5 shrink-0 size-3.5" />
             <span>Error: {errorMessage}</span>
           </p>
           <p className="mt-1.5 text-[11px] opacity-75">Check the browser console for more details.</p>
@@ -86,12 +86,12 @@ export const ProcessingStateView: React.FC<ProcessingStateViewProps> = ({
       {stuckForTooLong && (
         <div className="bg-amber-500/10 border border-amber-500/30 p-3.5 rounded-xl text-amber-400 text-xs">
           <p className="font-semibold mb-1 flex items-center">
-            <FaExclamationTriangle className="inline mr-1.5" />
+            <AlertTriangle className="inline mr-1.5 size-3.5" />
             The process appears to be stuck at 100%.
           </p>
           <p className="mb-2 text-muted-foreground">It may be experiencing an issue during finalization.</p>
           <Button
-            variant="primary"
+            variant="default"
             size="xs"
             onClick={onForceComplete}
           >
@@ -102,11 +102,12 @@ export const ProcessingStateView: React.FC<ProcessingStateViewProps> = ({
 
       <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
         <Button
-          variant="danger"
+          variant="destructive"
           size="sm"
           onClick={onCancelPipeline}
-          leftIcon={<FaStop size={10} />}
+          className="gap-1.5"
         >
+          <Square className="size-3" />
           Cancel Pipeline
         </Button>
       </div>

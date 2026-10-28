@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaCheckDouble, FaAngleRight, FaRegBell, FaVolumeUp, FaVolumeMute } from 'react-icons/fa';
+import { CheckCheck, ChevronRight, Bell, Volume2, VolumeX } from 'lucide-react';
 import { UserNotification } from '@/types/notificationTypes';
 import { useNotification } from '@/context/AlertContext';
 import {
@@ -100,14 +100,14 @@ export const NotificationDropdownMenu: React.FC<NotificationDropdownMenuProps> =
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -6, scale: 0.96 }}
           transition={{ duration: 0.15, ease: 'easeOut' }}
-          className="absolute right-0 mt-2.5 w-84 sm:w-96 bg-cc-card rounded-xl shadow-[0_12px_40px_rgba(0,0,0,0.85)] border border-border overflow-hidden z-[100] select-none flex flex-col"
+          className="absolute right-0 mt-2.5 w-84 sm:w-96 bg-card rounded-2xl shadow-2xl border border-border overflow-hidden z-[100] select-none flex flex-col text-foreground"
           style={{ transformOrigin: 'top right' }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="p-3.5 px-4 bg-cc-ground border-b border-border flex items-center justify-between gap-2">
+          <div className="p-3.5 px-4 bg-secondary/40 border-b border-border flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <span className="font-bold text-sm text-cc-text flex items-center gap-1.5">
+              <span className="font-bold text-sm text-foreground flex items-center gap-1.5">
                 Notifications
               </span>
               {unreadCount > 0 && (
@@ -120,10 +120,10 @@ export const NotificationDropdownMenu: React.FC<NotificationDropdownMenuProps> =
             <div className="flex items-center gap-1.5">
               <button
                 onClick={onToggleSound}
-                className={`p-1.5 rounded-[6px] transition-colors text-xs flex items-center gap-1 cursor-pointer ${
+                className={`p-1.5 rounded-lg transition-colors text-xs flex items-center gap-1 cursor-pointer ${
                   isSoundEnabled
-                    ? 'text-muted-foreground hover:text-white hover:bg-white/5'
-                    : 'text-muted-foreground/60 hover:text-muted-foreground hover:bg-white/5'
+                    ? 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+                    : 'text-muted-foreground/60 hover:text-muted-foreground hover:bg-secondary'
                 }`}
                 title={
                   isSoundEnabled
@@ -131,17 +131,17 @@ export const NotificationDropdownMenu: React.FC<NotificationDropdownMenuProps> =
                     : 'Notification sound muted (click to enable)'
                 }
               >
-                {isSoundEnabled ? <FaVolumeUp size={12} /> : <FaVolumeMute size={12} />}
+                {isSoundEnabled ? <Volume2 className="size-3.5" /> : <VolumeX className="size-3.5" />}
               </button>
 
               {unreadCount > 0 && (
                 <button
                   onClick={handleMarkAllAsRead}
                   disabled={markAllAsReadMutation.isPending}
-                  className="p-1.5 px-2 rounded-[6px] text-xs font-medium text-muted-foreground hover:text-white hover:bg-white/5 transition-colors flex items-center gap-1.5 cursor-pointer"
+                  className="p-1.5 px-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-1.5 cursor-pointer"
                   title="Mark all as read"
                 >
-                  <FaCheckDouble size={11} className="text-primary" />
+                  <CheckCheck className="size-3.5 text-primary" />
                   <span className="hidden sm:inline">Mark read</span>
                 </button>
               )}
@@ -149,19 +149,19 @@ export const NotificationDropdownMenu: React.FC<NotificationDropdownMenuProps> =
           </div>
 
           {/* Filter Pills */}
-          <div className="px-4 py-2 border-b border-border bg-cc-card flex items-center gap-1.5">
+          <div className="px-4 py-2 border-b border-border bg-card flex items-center gap-1.5">
             <button
               onClick={() => setFilter('all')}
               className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer ${
                 filter === 'all'
                   ? 'bg-primary text-white shadow-xs'
-                  : 'text-muted-foreground hover:text-white hover:bg-cc-ground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
               }`}
             >
               <span>All</span>
               <span
                 className={`text-[10px] px-1 rounded-full ${
-                  filter === 'all' ? 'bg-white/20' : 'bg-border'
+                  filter === 'all' ? 'bg-white/20' : 'bg-secondary'
                 }`}
               >
                 {allNotifications.length}
@@ -172,7 +172,7 @@ export const NotificationDropdownMenu: React.FC<NotificationDropdownMenuProps> =
               className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer ${
                 filter === 'unread'
                   ? 'bg-primary text-white shadow-xs'
-                  : 'text-muted-foreground hover:text-white hover:bg-cc-ground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
               }`}
             >
               <span>Unread</span>
@@ -196,10 +196,10 @@ export const NotificationDropdownMenu: React.FC<NotificationDropdownMenuProps> =
               </div>
             ) : displayedNotifications.length === 0 ? (
               <div className="py-10 px-4 text-center">
-                <div className="w-12 h-12 rounded-full bg-cc-ground border border-border flex items-center justify-center mx-auto mb-3 text-muted-foreground">
-                  <FaRegBell size={20} />
+                <div className="w-12 h-12 rounded-full bg-secondary border border-border flex items-center justify-center mx-auto mb-3 text-muted-foreground">
+                  <Bell className="size-5" />
                 </div>
-                <p className="text-xs font-semibold text-cc-text">
+                <p className="text-xs font-semibold text-foreground">
                   {filter === 'unread' ? 'No unread notifications' : 'No notifications yet'}
                 </p>
                 <p className="text-[11px] text-muted-foreground mt-1 max-w-xs mx-auto">
@@ -222,14 +222,14 @@ export const NotificationDropdownMenu: React.FC<NotificationDropdownMenuProps> =
           </div>
 
           {/* Footer */}
-          <div className="p-2.5 px-4 bg-cc-ground border-t border-border flex items-center justify-between">
+          <div className="p-2.5 px-4 bg-secondary/30 border-t border-border flex items-center justify-between">
             <Button
               variant="card"
               size="sm"
               pill
               fullWidth
               onClick={handleViewAll}
-              rightIcon={<FaAngleRight size={12} className="text-primary" />}
+              rightIcon={<ChevronRight className="size-3.5 text-primary" />}
             >
               View all notifications
             </Button>

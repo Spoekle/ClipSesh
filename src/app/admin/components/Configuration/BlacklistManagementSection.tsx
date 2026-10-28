@@ -1,9 +1,10 @@
 'use client';
 
 import React from 'react';
-import { FaTrashAlt } from 'react-icons/fa';
+import { Trash2, Loader2 } from 'lucide-react';
 import { BlacklistData } from '@/types/adminTypes';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 interface BlacklistManagementSectionProps {
   discordUserInput: string;
@@ -56,23 +57,24 @@ export const BlacklistManagementSection: React.FC<BlacklistManagementSectionProp
             Block Submitter (Discord ID)
           </label>
           <div className="flex gap-2 mb-2">
-            <input
+            <Input
               id="discordUserInput"
               type="text"
               value={discordUserInput}
               onChange={(e) => setDiscordUserInput(e.target.value)}
-              className="flex-1 bg-cc-card border border-border rounded-xl px-3.5 py-2 text-xs text-white placeholder-muted-foreground focus:outline-none focus:border-border/80"
+              className="flex-1 bg-cc-card border-border text-xs text-white placeholder-muted-foreground"
               placeholder="Enter Discord ID"
             />
             <Button
               type="button"
-              variant="primary"
+              variant="default"
               size="sm"
               onClick={onAddDiscordUser}
-              disabled={!discordUserInput.trim() || !previewUser}
-              isLoading={isAddingUser}
+              disabled={!discordUserInput.trim() || !previewUser || isAddingUser}
+              className="bg-primary text-white hover:bg-primary/90 font-semibold gap-1"
             >
-              Add
+              {isAddingUser && <Loader2 className="size-3 animate-spin" />}
+              <span>Add</span>
             </Button>
           </div>
 
@@ -84,7 +86,7 @@ export const BlacklistManagementSection: React.FC<BlacklistManagementSectionProp
                   <img
                     src={`https://cdn.discordapp.com/avatars/${previewUser.id}/${previewUser.avatar}.png?size=32`}
                     alt={previewUser.username}
-                    className="w-5 h-5 rounded-full"
+                    className="size-5 rounded-full"
                   />
                 )}
                 <span className="text-xs font-semibold text-sky-400">
@@ -127,7 +129,7 @@ export const BlacklistManagementSection: React.FC<BlacklistManagementSectionProp
                         <img
                           src={`https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=24`}
                           alt={user.username}
-                          className="w-4 h-4 rounded-full"
+                          className="size-4 rounded-full"
                         />
                       )}
                       <div className="truncate">
@@ -139,14 +141,16 @@ export const BlacklistManagementSection: React.FC<BlacklistManagementSectionProp
                         </span>
                       </div>
                     </div>
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="icon-xs"
                       onClick={() => onRemoveDiscordUser(user.id)}
-                      className="text-muted-foreground hover:text-primary p-1 transition cursor-pointer"
+                      className="text-muted-foreground hover:text-primary"
                       title="Remove from blacklist"
                     >
-                      <FaTrashAlt size={10} />
-                    </button>
+                      <Trash2 className="size-3" />
+                    </Button>
                   </div>
                 ))}
               </div>
@@ -164,23 +168,24 @@ export const BlacklistManagementSection: React.FC<BlacklistManagementSectionProp
             Block Streamer / Channel
           </label>
           <div className="flex gap-2 mb-2">
-            <input
+            <Input
               id="streamerInput"
               type="text"
               value={streamerInput}
               onChange={(e) => setStreamerInput(e.target.value)}
-              className="flex-1 bg-cc-card border border-border rounded-xl px-3.5 py-2 text-xs text-white placeholder-muted-foreground focus:outline-none focus:border-border/80"
+              className="flex-1 bg-cc-card border-border text-xs text-white placeholder-muted-foreground"
               placeholder="Enter streamer handle"
             />
             <Button
               type="button"
-              variant="primary"
+              variant="default"
               size="sm"
               onClick={onAddStreamer}
-              disabled={!streamerInput.trim()}
-              isLoading={isAddingStreamer}
+              disabled={!streamerInput.trim() || isAddingStreamer}
+              className="bg-primary text-white hover:bg-primary/90 font-semibold gap-1"
             >
-              Add
+              {isAddingStreamer && <Loader2 className="size-3 animate-spin" />}
+              <span>Add</span>
             </Button>
           </div>
 
@@ -204,14 +209,16 @@ export const BlacklistManagementSection: React.FC<BlacklistManagementSectionProp
                     className="flex items-center justify-between bg-cc-card p-2 rounded-lg border border-border"
                   >
                     <span className="text-xs font-medium text-white truncate">{streamer}</span>
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="icon-xs"
                       onClick={() => onRemoveStreamer(streamer)}
-                      className="text-muted-foreground hover:text-primary p-1 transition cursor-pointer"
+                      className="text-muted-foreground hover:text-primary"
                       title="Remove from blacklist"
                     >
-                      <FaTrashAlt size={10} />
-                    </button>
+                      <Trash2 className="size-3" />
+                    </Button>
                   </div>
                 ))}
               </div>

@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { useNotification } from '@/context/AlertContext';
 import { User, Clip, Rating, RatingUser } from '@/types/adminTypes';
 import { getRatingById, submitRating } from '@/services/ratingService';
-import { FaExclamationTriangle } from 'react-icons/fa';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 import { RatingButtons } from './RatingButtons';
 
 interface RatingPanelProps {
@@ -174,9 +174,9 @@ const RatingPanel: React.FC<RatingPanelProps> = ({
           <p className="text-xs text-muted-foreground">1 = Top Tier · 4 = Filler Material</p>
         </div>
         {isSubmitting && (
-          <div className="flex items-center bg-cc-red/15 border border-cc-red/30 px-3 py-1 rounded-full">
-            <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-cc-red border-t-transparent"></div>
-            <span className="ml-2 text-xs text-cc-red font-semibold">Submitting...</span>
+          <div className="flex items-center bg-primary/15 border border-primary/30 px-3 py-1 rounded-full">
+            <Loader2 className="animate-spin size-3.5 text-primary" />
+            <span className="ml-2 text-xs text-primary font-semibold">Submitting...</span>
           </div>
         )}
       </div>
@@ -184,7 +184,7 @@ const RatingPanel: React.FC<RatingPanelProps> = ({
       {cannotRateOwnClip && (
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 mb-4">
           <p className="text-amber-400 text-sm font-medium flex items-center gap-1.5">
-            <FaExclamationTriangle className="shrink-0" />
+            <AlertTriangle className="size-4 shrink-0" />
             <span>You cannot rate clips you submitted or are the streamer of.</span>
           </p>
         </div>
@@ -192,7 +192,7 @@ const RatingPanel: React.FC<RatingPanelProps> = ({
 
       {isLoading ? (
         <div className="flex items-center justify-center py-6">
-          <div className="animate-spin rounded-full h-8 w-8 border-4 border-border border-t-primary"></div>
+          <Loader2 className="animate-spin size-8 text-primary" />
           <span className="ml-3 text-muted-foreground text-sm">Loading ratings...</span>
         </div>
       ) : (

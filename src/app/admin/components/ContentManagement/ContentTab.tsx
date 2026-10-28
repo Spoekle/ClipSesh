@@ -1,11 +1,13 @@
 'use client';
 
 import React from 'react';
-import { FaArchive, FaBan, FaDiscord } from 'react-icons/fa';
+import { Archive, Ban } from 'lucide-react';
+import { FaDiscord } from 'react-icons/fa';
 import SeasonArchiveManager from './SeasonArchiveManager';
 import DeniedClips from './DeniedClips';
 import DiscordScraper from './DiscordScraper';
 import { Clip, Rating, Zip } from '@/types/adminTypes';
+import { Badge } from '@/components/ui/badge';
 
 export type ContentSubTab = 'pipeline' | 'denied' | 'scraper';
 
@@ -50,28 +52,25 @@ export const ContentTab: React.FC<ContentTabProps> = ({
     <div className="space-y-6">
       {/* Content Sub-Tab Switcher */}
       <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-border">
-        <div className="flex flex-wrap items-center gap-1.5 p-1 bg-cc-card border border-border rounded-xl">
+        <div className="flex flex-wrap items-center gap-1.5 p-1 bg-card border border-border rounded-xl">
           <button
             type="button"
             onClick={() => setActiveContentSubTab('pipeline')}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
               activeContentSubTab === 'pipeline'
-                ? 'bg-primary text-white shadow-xs'
-                : 'text-muted-foreground hover:text-white hover:bg-border/50'
+                ? 'bg-primary text-primary-foreground shadow-xs'
+                : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
             }`}
           >
-            <FaArchive size={12} />
+            <Archive className="size-3.5" />
             <span>Processing & Archives</span>
             {zips.length > 0 && (
-              <span
-                className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                  activeContentSubTab === 'pipeline'
-                    ? 'bg-white/20 text-white'
-                    : 'bg-cc-ground text-muted-foreground'
-                }`}
+              <Badge
+                variant={activeContentSubTab === 'pipeline' ? 'secondary' : 'outline'}
+                className="text-[10px] px-1.5 py-0 h-4 font-mono"
               >
                 {zips.length}
-              </span>
+              </Badge>
             )}
           </button>
 
@@ -80,22 +79,19 @@ export const ContentTab: React.FC<ContentTabProps> = ({
             onClick={() => setActiveContentSubTab('denied')}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
               activeContentSubTab === 'denied'
-                ? 'bg-primary text-white shadow-xs'
-                : 'text-muted-foreground hover:text-white hover:bg-border/50'
+                ? 'bg-primary text-primary-foreground shadow-xs'
+                : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
             }`}
           >
-            <FaBan size={12} />
+            <Ban className="size-3.5" />
             <span>Denied Submissions</span>
             {deniedClipsCount > 0 && (
-              <span
-                className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                  activeContentSubTab === 'denied'
-                    ? 'bg-white/20 text-white'
-                    : 'bg-rose-500/20 text-rose-400 font-semibold'
-                }`}
+              <Badge
+                variant="destructive"
+                className="text-[10px] px-1.5 py-0 h-4 font-mono font-semibold"
               >
                 {deniedClipsCount}
-              </span>
+              </Badge>
             )}
           </button>
 
@@ -104,25 +100,22 @@ export const ContentTab: React.FC<ContentTabProps> = ({
             onClick={() => setActiveContentSubTab('scraper')}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
               activeContentSubTab === 'scraper'
-                ? 'bg-primary text-white shadow-xs'
-                : 'text-muted-foreground hover:text-white hover:bg-border/50'
+                ? 'bg-primary text-primary-foreground shadow-xs'
+                : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
             }`}
           >
             <FaDiscord
               size={13}
-              className={activeContentSubTab === 'scraper' ? 'text-white' : 'text-[#5865F2]'}
+              className={activeContentSubTab === 'scraper' ? 'text-primary-foreground' : 'text-[#5865F2]'}
             />
             <span>Discord Scraper</span>
             {config.clipChannelIds && config.clipChannelIds.length > 0 && (
-              <span
-                className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                  activeContentSubTab === 'scraper'
-                    ? 'bg-white/20 text-white'
-                    : 'bg-cc-ground text-muted-foreground'
-                }`}
+              <Badge
+                variant={activeContentSubTab === 'scraper' ? 'secondary' : 'outline'}
+                className="text-[10px] px-1.5 py-0 h-4 font-mono"
               >
                 {config.clipChannelIds.length}
-              </span>
+              </Badge>
             )}
           </button>
         </div>

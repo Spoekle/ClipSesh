@@ -1,6 +1,8 @@
+'use client';
+
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaWifi } from 'react-icons/fa';
+import { WifiOff } from 'lucide-react';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 
 interface OfflineBannerProps {
@@ -16,17 +18,15 @@ export const OfflineBanner: React.FC<OfflineBannerProps> = ({ isVisible }) => {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -100 }}
           transition={{ duration: 0.3 }}
-          className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg border-b-2 border-orange-400 relative z-[60]"
+          className="w-full bg-destructive text-destructive-foreground shadow-lg border-b border-destructive/40 relative z-[60]"
         >
-          <div className="container mx-auto px-4 py-3">
+          <div className="container mx-auto px-4 py-2.5">
             <div className="flex items-center justify-center space-x-3">
-              <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
-                <div className="flex items-center space-x-2">
-                  <FaWifi className="relative text-red-200" size={16} />
-                  <span className="font-medium">
-                    You're currently offline
-                  </span>
-                </div>
+              <div className="flex items-center space-x-2">
+                <WifiOff className="size-4 shrink-0" />
+                <span className="font-medium text-sm">
+                  You are currently offline
+                </span>
               </div>
             </div>
           </div>
@@ -58,7 +58,7 @@ export const OfflineWarning: React.FC<OfflineWarningProps> = ({
           transition={{ duration: 0.2 }}
           className={`flex items-center space-x-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 text-sm ${className}`}
         >
-          <FaWifi className="text-amber-400" size={14} />
+          <WifiOff className="size-4 text-amber-400 shrink-0" />
           <span>{message}</span>
         </motion.div>
       )}

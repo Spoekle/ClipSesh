@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { FaFilm } from 'react-icons/fa';
+import { Film } from 'lucide-react';
 import debounce from 'lodash.debounce';
 import { ArchiveSeasonSection } from '@/types/clipTypes';
 import { Clip, User, Rating } from '@/types/adminTypes';
@@ -234,7 +234,7 @@ const SeasonClipsView: React.FC<SeasonClipsViewProps> = ({
         ) : (
           <div className="py-20 text-center flex flex-col items-center justify-center bg-cc-card border border-border rounded-2xl p-8">
             <div className="w-14 h-14 rounded-2xl bg-cc-ground border border-border flex items-center justify-center text-muted-foreground mb-4">
-              <FaFilm size={22} />
+              <Film className="size-6" />
             </div>
             <h3 className="text-lg font-bold text-white mb-1">No Clips Found</h3>
             <p className="text-xs sm:text-sm text-muted-foreground max-w-md mb-5">

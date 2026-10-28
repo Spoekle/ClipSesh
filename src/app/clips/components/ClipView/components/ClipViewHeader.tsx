@@ -1,11 +1,10 @@
 'use client';
 
 import React from 'react';
-import { FaArrowLeft, FaShare, FaFlag } from 'react-icons/fa';
-import { AiOutlineEdit, AiOutlineDelete } from 'react-icons/ai';
+import { ArrowLeft, Share2, Flag, Edit, Trash2 } from 'lucide-react';
 import Breadcrumbs, { BreadcrumbItem } from '@/components/common/Breadcrumbs';
 import { User } from '@/types/adminTypes';
-import { Button } from '@/components/Button';
+import { Button } from '@/components/ui/button';
 
 interface ClipViewHeaderProps {
   onBack: () => void;
@@ -35,18 +34,18 @@ export const ClipViewHeader: React.FC<ClipViewHeaderProps> = ({
   onDelete,
 }) => {
   return (
-    <div className="border-b border-border bg-cc-ground/95 py-3 sticky top-0 z-30 backdrop-blur-md">
+    <div className="border-b border-border bg-background/95 py-3 sticky top-0 z-30 backdrop-blur-md">
       <div className="max-w-[1720px] mx-auto px-4 sm:px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         {/* Left: Back button + Breadcrumbs */}
         <div className="flex items-center gap-3">
           <Button
-            variant="card"
+            variant="outline"
             size="sm"
-            pill
             onClick={onBack}
             title={backTitle}
-            leftIcon={<FaArrowLeft size={10} />}
+            className="rounded-full gap-1.5"
           >
+            <ArrowLeft className="size-3.5" />
             Back
           </Button>
 
@@ -56,30 +55,30 @@ export const ClipViewHeader: React.FC<ClipViewHeaderProps> = ({
         {/* Right: Actions */}
         <div className="flex items-center gap-2 flex-wrap">
           <Button
-            variant="card"
+            variant="outline"
             size="sm"
-            pill
             onClick={() => {
               navigator.clipboard
                 .writeText(shareUrl)
                 .then(() => onCopyShareLink())
                 .catch((err) => console.error('Failed to copy text: ', err));
             }}
-            leftIcon={<FaShare size={11} />}
+            className="rounded-full gap-1.5"
           >
+            <Share2 className="size-3.5" />
             Share
           </Button>
 
           {canReportClip && (
             <Button
-              variant="card"
+              variant="outline"
               size="sm"
-              pill
               onClick={onReport}
               disabled={isLoading}
               title="Report this clip"
-              leftIcon={<FaFlag size={11} />}
+              className="rounded-full gap-1.5"
             >
+              <Flag className="size-3.5" />
               Report
             </Button>
           )}
@@ -87,23 +86,23 @@ export const ClipViewHeader: React.FC<ClipViewHeaderProps> = ({
           {user && user.roles?.includes('admin') && (
             <>
               <Button
-                variant="card"
+                variant="outline"
                 size="sm"
-                pill
                 onClick={onEdit}
                 disabled={isLoading}
-                leftIcon={<AiOutlineEdit size={13} />}
+                className="rounded-full gap-1.5"
               >
+                <Edit className="size-3.5" />
                 Edit
               </Button>
               <Button
-                variant="danger"
+                variant="destructive"
                 size="sm"
-                pill
                 onClick={onDelete}
                 disabled={isLoading}
-                leftIcon={<AiOutlineDelete size={13} />}
+                className="rounded-full gap-1.5"
               >
+                <Trash2 className="size-3.5" />
                 Delete
               </Button>
             </>

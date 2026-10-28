@@ -5,7 +5,7 @@ import ClipItem from './components/ClipItem';
 import Pagination from './components/Pagination';
 import { motion, Variants } from 'framer-motion';
 import { Clip, User, Rating } from '@/types/adminTypes';
-import { FaFilm } from 'react-icons/fa';
+import { Film } from 'lucide-react';
 
 interface ClipGridProps {
   user: User | null;
@@ -106,8 +106,8 @@ const ClipGrid: React.FC<ClipGridProps> = ({
   if (filteredClips.length === 0 && !isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[300px] bg-cc-card rounded-2xl border border-border p-10 text-center shadow-sm">
-        <div className="w-14 h-14 rounded-2xl bg-secondary border border-border flex items-center justify-center text-muted-foreground text-2xl mb-4 shadow-inner">
-          <FaFilm />
+        <div className="w-14 h-14 rounded-2xl bg-secondary border border-border flex items-center justify-center text-muted-foreground mb-4 shadow-inner">
+          <Film className="size-6" />
         </div>
         <h2 className="text-lg font-bold text-foreground mb-2">No Clips Found</h2>
         <p className="text-muted-foreground text-center max-w-md text-xs sm:text-sm leading-relaxed">

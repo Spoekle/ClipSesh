@@ -2,10 +2,11 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { TbLoader2 } from 'react-icons/tb';
-import { FaEnvelope } from 'react-icons/fa';
+import { Mail } from 'lucide-react';
 import { requestPasswordReset } from '@/services/userService';
 import { Button } from '@/components/Button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface ResetPasswordFormProps {
   onBackToLogin: () => void;
@@ -57,7 +58,7 @@ export const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({ onBackToLo
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.1 }}
     >
-      <h2 className="text-2xl font-bold text-cc-text mb-2">Reset Password</h2>
+      <h2 className="text-2xl font-bold text-foreground mb-2">Reset Password</h2>
       <p className="mb-6 text-muted-foreground text-sm">
         Enter your email address and we'll send you instructions to reset your password.
       </p>
@@ -76,17 +77,17 @@ export const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({ onBackToLo
 
       <div className="space-y-4">
         <div className="space-y-1.5">
-          <label
+          <Label
             htmlFor="reset-email"
-            className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+            className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
           >
             Email Address
-          </label>
+          </Label>
           <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-              <FaEnvelope className="text-muted-foreground" size={14} />
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted-foreground">
+              <Mail className="size-4" />
             </div>
-            <input
+            <Input
               id="reset-email"
               type="email"
               placeholder="Enter your email"
@@ -95,7 +96,7 @@ export const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({ onBackToLo
                 setEmail(e.target.value);
                 setResetMessage({ type: '', message: '' });
               }}
-              className="bg-cc-ground border border-border text-white focus:border-primary rounded-xl pl-10 pr-4 py-2.5 w-full text-sm outline-none transition-colors"
+              className="pl-10 h-10 bg-secondary/40 border-border text-foreground"
             />
           </div>
         </div>

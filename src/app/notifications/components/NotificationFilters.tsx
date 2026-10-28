@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { FaFilter } from 'react-icons/fa';
+import { Filter } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 export type NotificationCategory = 'all' | 'personal' | 'team' | 'ratings';
 
@@ -43,14 +44,14 @@ export const NotificationFilters: React.FC<NotificationFiltersProps> = ({
             onClick={() => setActiveCategory(cat.id)}
             className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer ${
               activeCategory === cat.id
-                ? 'bg-primary text-white shadow-xs'
-                : 'text-muted-foreground hover:text-white bg-cc-card hover:bg-border/60 border border-border'
+                ? 'bg-primary text-primary-foreground shadow-xs'
+                : 'text-muted-foreground hover:text-foreground bg-card hover:bg-secondary border border-border'
             }`}
           >
             <span>{cat.label}</span>
             <span
               className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                activeCategory === cat.id ? 'bg-white/20' : 'bg-cc-ground text-muted-foreground'
+                activeCategory === cat.id ? 'bg-white/20' : 'bg-background text-muted-foreground'
               }`}
             >
               {cat.count}
@@ -65,10 +66,10 @@ export const NotificationFilters: React.FC<NotificationFiltersProps> = ({
         className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer border self-start sm:self-auto ${
           unreadOnly
             ? 'bg-primary/20 text-primary border-primary/40'
-            : 'text-muted-foreground hover:text-white bg-cc-card border-border hover:bg-border/60'
+            : 'text-muted-foreground hover:text-foreground bg-card border-border hover:bg-secondary'
         }`}
       >
-        <FaFilter size={10} />
+        <Filter className="size-3" />
         <span>Unread Only</span>
         {counts.unread > 0 && (
           <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-primary/20 text-primary">

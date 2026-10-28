@@ -1,5 +1,5 @@
 import React from 'react';
-import { FaStar, FaBan } from 'react-icons/fa';
+import { Star, Ban } from 'lucide-react';
 
 interface ClipItemTeamRatingProps {
   averageRating: string;
@@ -19,7 +19,7 @@ export const ClipItemTeamRating: React.FC<ClipItemTeamRatingProps> = ({
           className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-secondary border border-border text-[11px] text-foreground font-medium"
           title={totalRatings > 0 ? `Ratings: ${totalRatings}` : 'No ratings yet'}
         >
-          <FaStar className="text-amber-400" size={9} />
+          <Star className="size-2.5 text-amber-400 fill-amber-400" />
           <span>{averageRating}</span>
           {totalRatings > 0 && (
             <span className="text-[10px] text-muted-foreground">({totalRatings})</span>
@@ -28,8 +28,11 @@ export const ClipItemTeamRating: React.FC<ClipItemTeamRatingProps> = ({
       )}
 
       {denialCount > 0 && (
-        <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-500/10 border border-red-500/25 text-[11px] text-red-400 font-medium">
-          <FaBan size={9} />
+        <div
+          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-destructive/10 border border-destructive/25 text-[11px] text-destructive font-medium"
+          title={`Denied count: ${denialCount}`}
+        >
+          <Ban className="size-2.5" />
           <span>{denialCount}</span>
         </div>
       )}

@@ -2,13 +2,7 @@
 
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
-import {
-  FaCheckCircle,
-  FaTimesCircle,
-  FaInfoCircle,
-  FaExclamationTriangle,
-  FaTimes,
-} from 'react-icons/fa';
+import { CheckCircle2, XCircle, AlertTriangle, Info, X } from 'lucide-react';
 import { Notification } from '@/types/notificationTypes';
 
 interface NotificationItemProps {
@@ -69,7 +63,7 @@ export const AlertItem: React.FC<NotificationItemProps> = React.memo(({ notifica
           iconColor: 'text-emerald-400',
           iconBg: 'bg-emerald-500/15 border border-emerald-500/25',
           progressBar: 'bg-emerald-500',
-          icon: <FaCheckCircle className="w-4 h-4" />,
+          icon: <CheckCircle2 className="size-4" />,
           title: 'Success',
         };
       case 'error':
@@ -78,7 +72,7 @@ export const AlertItem: React.FC<NotificationItemProps> = React.memo(({ notifica
           iconColor: 'text-primary',
           iconBg: 'bg-primary/15 border border-primary/25',
           progressBar: 'bg-primary',
-          icon: <FaTimesCircle className="w-4 h-4" />,
+          icon: <XCircle className="size-4" />,
           title: 'Error',
         };
       case 'warning':
@@ -87,7 +81,7 @@ export const AlertItem: React.FC<NotificationItemProps> = React.memo(({ notifica
           iconColor: 'text-amber-400',
           iconBg: 'bg-amber-500/15 border border-amber-500/25',
           progressBar: 'bg-amber-500',
-          icon: <FaExclamationTriangle className="w-4 h-4" />,
+          icon: <AlertTriangle className="size-4" />,
           title: 'Warning',
         };
       case 'info':
@@ -97,45 +91,52 @@ export const AlertItem: React.FC<NotificationItemProps> = React.memo(({ notifica
           iconColor: 'text-sky-400',
           iconBg: 'bg-sky-500/15 border border-sky-500/25',
           progressBar: 'bg-sky-500',
-          icon: <FaInfoCircle className="w-4 h-4" />,
-          title: 'Notice',
+          icon: <Info className="size-4" />,
+          title: 'Info',
         };
     }
   }, [notification.type]);
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: -20, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -15, scale: 0.95 }}
-      transition={{ duration: 0.2, ease: 'easeOut' }}
+      initial={{ opacity: 0, x: 50, scale: 0.95 }}
+      animate={{ opacity: 1, x: 0, scale: 1 }}
+      exit={{ opacity: 0, x: 50, scale: 0.95 }}
+      transition={{ type: 'spring', damping: 25, stiffness: 350 }}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
-      className={`relative w-full max-w-sm bg-cc-card/95 backdrop-blur-md rounded-2xl shadow-2xl p-3.5 mb-2.5 overflow-hidden border border-border ${config.borderClass} select-none transition-all duration-200 hover:border-muted-foreground/30`}
+      className={`relative w-80 sm:w-96 bg-card border border-border rounded-xl shadow-2xl overflow-hidden pointer-events-auto backdrop-blur-md ${config.borderClass}`}
     >
-      <div className="flex items-start gap-3">
-        <div className={`p-2 rounded-xl shrink-0 ${config.iconBg} ${config.iconColor}`}>
+      <div className="p-3.5 flex items-start gap-3">
+        <div
+          className={`p-1.5 rounded-lg shrink-0 flex items-center justify-center mt-0.5 ${config.iconBg} ${config.iconColor}`}
+        >
           {config.icon}
         </div>
-        <div className="flex-grow min-w-0 pr-1">
-          <p className="text-cc-text font-medium text-xs leading-relaxed break-words">
+
+        <div className="min-w-0 flex-1">
+          <div className="text-xs font-bold text-foreground">
+            {config.title}
+          </div>
+          <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed break-words">
             {notification.message}
-          </p>
+          </div>
         </div>
+
         <button
           onClick={handleRemove}
-          className="text-muted-foreground hover:text-white transition-colors p-1 rounded-md hover:bg-white/5 shrink-0 cursor-pointer"
-          title="Dismiss"
+          className="p-1 text-muted-foreground hover:text-foreground rounded-md hover:bg-secondary transition-colors shrink-0 cursor-pointer"
+          aria-label="Dismiss alert"
         >
-          <FaTimes className="w-3 h-3" />
+          <X className="size-3.5" />
         </button>
       </div>
 
-      {notification.duration && (
-        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-cc-ground">
+      {notification.duration && notification.duration > 0 && (
+        <div className="h-0.5 w-full bg-secondary/50">
           <div
+            className={`h-full transition-all ease-linear ${config.progressBar}`}
             style={{ width: `${progress}%` }}
-            className={`h-full transition-all duration-75 ease-linear ${config.progressBar}`}
           />
         </div>
       )}
@@ -144,5 +145,4 @@ export const AlertItem: React.FC<NotificationItemProps> = React.memo(({ notifica
 });
 
 AlertItem.displayName = 'AlertItem';
-
 export default AlertItem;

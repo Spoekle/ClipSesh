@@ -2,13 +2,14 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaReply, FaTrash, FaAngleDown, FaAngleUp } from 'react-icons/fa';
+import { Reply as ReplyIcon, Trash2, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { format } from 'timeago.js';
 import { useNotification } from '@/context/AlertContext';
 import { User, Clip, Reply } from '@/types/adminTypes';
 import ConfirmationDialog from '@/components/common/ConfirmationDialog';
 import { addReplyToComment, deleteReplyFromComment } from '@/services/clipService';
-import { Button } from '@/components/Button';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 
 interface CommentReplyProps {
   clipId: string;
@@ -98,9 +99,9 @@ export const CommentReply: React.FC<CommentReplyProps> = ({
         <button
           type="button"
           onClick={() => setShowReplyInput(true)}
-          className="text-sm text-primary hover:text-primary/90 flex items-center gap-1 mt-1 font-medium transition-colors cursor-pointer"
+          className="text-xs text-primary hover:text-primary/90 flex items-center gap-1.5 mt-1 font-medium transition-colors cursor-pointer"
         >
-          <FaReply size={12} /> Reply
+          <ReplyIcon className="size-3" /> Reply
         </button>
       )}
 
@@ -115,10 +116,10 @@ export const CommentReply: React.FC<CommentReplyProps> = ({
             onSubmit={handleSubmitReply}
           >
             <div className="border-l-2 border-border pl-3">
-              <textarea
+              <Textarea
                 value={replyContent}
                 onChange={(e) => setReplyContent(e.target.value)}
-                className="w-full p-2.5 bg-cc-card rounded-lg border border-border text-foreground placeholder-muted-foreground/60 text-xs sm:text-sm focus:outline-none focus:border-border/80"
+                className="w-full text-xs sm:text-sm min-h-[50px] resize-none"
                 placeholder="Write your reply..."
                 rows={2}
                 maxLength={200}
@@ -132,9 +133,8 @@ export const CommentReply: React.FC<CommentReplyProps> = ({
                 <div className="flex items-center gap-2">
                   <Button
                     type="button"
-                    variant="card"
+                    variant="outline"
                     size="xs"
-                    pill
                     onClick={() => setShowReplyInput(false)}
                   >
                     Cancel
@@ -142,13 +142,18 @@ export const CommentReply: React.FC<CommentReplyProps> = ({
 
                   <Button
                     type="submit"
-                    variant="primary"
+                    variant="default"
                     size="xs"
-                    pill
                     disabled={!replyContent.trim() || isSubmitting}
-                    isLoading={isSubmitting}
                   >
-                    {isSubmitting ? 'Replying...' : 'Reply'}
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="size-3 animate-spin mr-1" />
+                        Replying...
+                      </>
+                    ) : (
+                      'Reply'
+                    )}
                   </Button>
                 </div>
               </div>
@@ -165,7 +170,7 @@ export const CommentReply: React.FC<CommentReplyProps> = ({
             onClick={() => setShowReplies(!showReplies)}
             className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors font-medium cursor-pointer"
           >
-            {showReplies ? <FaAngleUp size={12} /> : <FaAngleDown size={12} />}
+            {showReplies ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
             <span>
               {showReplies ? 'Hide' : 'Show'} {replies.length}{' '}
               {replies.length === 1 ? 'reply' : 'replies'}
@@ -208,7 +213,7 @@ export const CommentReply: React.FC<CommentReplyProps> = ({
                           className="text-muted-foreground hover:text-primary transition p-1 cursor-pointer"
                           title="Delete reply"
                         >
-                          <FaTrash size={11} />
+                          <Trash2 className="size-3" />
                         </button>
                       )}
                     </div>

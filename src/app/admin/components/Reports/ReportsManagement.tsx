@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { FaFlag, FaFilter } from 'react-icons/fa';
+import { Flag, Filter } from 'lucide-react';
 import { useReports, useUpdateReport, useDeleteReport } from '@/hooks/useAdmin';
 import { Report } from '@/types/adminTypes';
 import ReportMessagingModal from './ReportMessagingModal';
@@ -110,8 +110,8 @@ export const ReportsManagement: React.FC = () => {
       {/* Header */}
       <div className="bg-cc-card border border-border p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-primary/15 text-primary flex items-center justify-center">
-            <FaFlag size={14} />
+          <div className="size-9 rounded-xl bg-primary/15 text-primary flex items-center justify-center">
+            <Flag className="size-4" />
           </div>
           <div>
             <h2 className="text-base font-bold text-white flex items-center gap-2">
@@ -144,7 +144,7 @@ export const ReportsManagement: React.FC = () => {
               <option value="dismissed">Dismissed</option>
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5">
-              <FaFilter className="text-muted-foreground" size={10} />
+              <Filter className="text-muted-foreground size-2.5" />
             </div>
           </div>
         </div>
@@ -171,8 +171,8 @@ export const ReportsManagement: React.FC = () => {
         </div>
       ) : (
         <div className="bg-cc-card border border-border rounded-2xl p-12 text-center">
-          <div className="w-12 h-12 rounded-2xl bg-cc-ground border border-border flex items-center justify-center text-muted-foreground mx-auto mb-3">
-            <FaFlag size={18} />
+          <div className="size-12 rounded-2xl bg-cc-ground border border-border flex items-center justify-center text-muted-foreground mx-auto mb-3">
+            <Flag className="size-5" />
           </div>
           <h3 className="text-sm font-semibold text-white">No reports found</h3>
           <p className="text-xs text-muted-foreground mt-1">

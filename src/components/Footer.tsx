@@ -45,12 +45,12 @@ function Footer() {
                 className="h-10 w-auto object-contain transition-transform group-hover:scale-105"
               />
               <div className="flex items-center gap-2">
-                <span className="font-bold text-xl tracking-tight text-foreground group-hover:text-cc-red transition-colors">
+                <span className="font-bold text-xl tracking-tight text-foreground group-hover:text-primary transition-colors">
                   ClipSesh
                 </span>
               </div>
               {process.env.NODE_ENV === 'development' && (
-                <span className="hidden sm:inline-block text-[10px] font-bold text-white bg-cc-red shadow-sm shadow-cc-red/30 rounded-md px-1.5 py-0.5 ml-1">
+                <span className="hidden sm:inline-block text-[10px] font-bold text-white bg-primary shadow-sm shadow-primary/30 rounded-md px-1.5 py-0.5 ml-1">
                   DEV
                 </span>
               )}
@@ -70,17 +70,17 @@ function Footer() {
             </div>
             <ul className="flex flex-col space-y-2.5 text-sm">
               <li>
-                <Link href="/" className="text-muted-foreground hover:text-cc-red transition-colors">
+                <Link href="/" className="text-muted-foreground hover:text-primary transition-colors">
                   Home
                 </Link>
               </li>
               <li>
-                <Link href="/clips" className="text-muted-foreground hover:text-cc-red transition-colors">
+                <Link href="/clips" className="text-muted-foreground hover:text-primary transition-colors">
                   Clips
                 </Link>
               </li>
               <li>
-                <Link href="/archive" className="text-muted-foreground hover:text-cc-red transition-colors">
+                <Link href="/archive" className="text-muted-foreground hover:text-primary transition-colors">
                   The ClipVault
                 </Link>
               </li>
@@ -94,7 +94,7 @@ function Footer() {
             </div>
             <ul className="flex flex-col space-y-2.5 text-sm">
               <li>
-                <Link href="/privacystatement" className="text-muted-foreground hover:text-cc-red transition-colors">
+                <Link href="/privacystatement" className="text-muted-foreground hover:text-primary transition-colors">
                   Privacy Policy
                 </Link>
               </li>
@@ -112,7 +112,7 @@ function Footer() {
                   href="https://youtube.com/CubeCommunity"
                   target="_blank"
                   rel="noreferrer"
-                  className="text-muted-foreground hover:text-cc-red transition-colors"
+                  className="text-muted-foreground hover:text-primary transition-colors"
                 >
                   YouTube
                 </a>
@@ -122,7 +122,7 @@ function Footer() {
                   href="https://twitter.com/CubeCommunityVR"
                   target="_blank"
                   rel="noreferrer"
-                  className="text-muted-foreground hover:text-cc-red transition-colors"
+                  className="text-muted-foreground hover:text-primary transition-colors"
                 >
                   Twitter / X
                 </a>
@@ -132,7 +132,7 @@ function Footer() {
                   href="https://twitch.tv/CubeCommunity"
                   target="_blank"
                   rel="noreferrer"
-                  className="text-muted-foreground hover:text-cc-red transition-colors"
+                  className="text-muted-foreground hover:text-primary transition-colors"
                 >
                   Twitch
                 </a>
@@ -142,7 +142,7 @@ function Footer() {
                   href="https://discord.gg/dwe8mbC"
                   target="_blank"
                   rel="noreferrer"
-                  className="text-muted-foreground hover:text-cc-red transition-colors"
+                  className="text-muted-foreground hover:text-primary transition-colors"
                 >
                   Discord
                 </a>

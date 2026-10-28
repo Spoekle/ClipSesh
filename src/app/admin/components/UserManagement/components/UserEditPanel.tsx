@@ -3,23 +3,25 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import {
-  FaTimes,
-  FaDiscord,
-  FaCube,
-  FaCopy,
-  FaUser,
-  FaEnvelope,
-  FaLock,
-  FaEye,
-  FaEyeSlash,
-  FaCheck,
-  FaBan,
-  FaTrashAlt,
-} from 'react-icons/fa';
+  X,
+  Box,
+  Copy,
+  User as UserIcon,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  Check,
+  Ban,
+  Trash2,
+  Loader2,
+} from 'lucide-react';
+import { FaDiscord } from 'react-icons/fa';
 import { User } from '@/types/adminTypes';
 import { getUserAvatarUrl, handleAvatarError } from '@/utils/generateAvatar';
 import { getRoleBadgeClasses } from '../utils/roleBadgeHelper';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 interface UserEditPanelProps {
   user: User;
@@ -107,14 +109,15 @@ export const UserEditPanel: React.FC<UserEditPanelProps> = ({
           </div>
         </div>
 
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon-xs"
           onClick={onClose}
-          className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors cursor-pointer"
           title="Close Editor"
         >
-          <FaTimes size={14} />
-        </button>
+          <X className="size-4" />
+        </Button>
       </div>
 
       {/* ID & Discord Info Strip */}
@@ -130,7 +133,7 @@ export const UserEditPanel: React.FC<UserEditPanelProps> = ({
             className="text-muted-foreground hover:text-foreground ml-1 cursor-pointer"
             title="Copy ID"
           >
-            <FaCopy size={11} />
+            <Copy className="size-3" />
           </button>
           {copiedId && <span className="text-emerald-400 text-[10px]">Copied!</span>}
         </div>
@@ -147,7 +150,7 @@ export const UserEditPanel: React.FC<UserEditPanelProps> = ({
 
           {user.ccId && (
             <div className="flex items-center gap-1.5 text-sky-400" title={`CC ID: ${user.ccId}`}>
-              <FaCube className="text-xs shrink-0" />
+              <Box className="size-3 shrink-0" />
               <span className="truncate max-w-[110px]">
                 {user.ccUsername || 'CC User'}
               </span>
@@ -164,16 +167,16 @@ export const UserEditPanel: React.FC<UserEditPanelProps> = ({
             Username <span className="text-primary">*</span>
           </label>
           <div className="relative">
-            <input
+            <Input
               type="text"
               value={editFormData.username}
               onChange={(e) =>
                 setEditFormData((prev) => ({ ...prev, username: e.target.value }))
               }
               required
-              className="w-full pl-9 pr-3.5 py-2 bg-cc-ground border border-border rounded-xl text-xs text-foreground focus:outline-none focus:border-border/80"
+              className="pl-9 bg-cc-ground border-border text-xs"
             />
-            <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs" />
+            <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-3.5" />
           </div>
         </div>
 
@@ -183,16 +186,16 @@ export const UserEditPanel: React.FC<UserEditPanelProps> = ({
             Email Address
           </label>
           <div className="relative">
-            <input
+            <Input
               type="email"
               value={editFormData.email}
               onChange={(e) =>
                 setEditFormData((prev) => ({ ...prev, email: e.target.value }))
               }
               placeholder="user@example.com"
-              className="w-full pl-9 pr-3.5 py-2 bg-cc-ground border border-border rounded-xl text-xs text-foreground placeholder-muted-foreground/60 focus:outline-none focus:border-border/80"
+              className="pl-9 bg-cc-ground border-border text-xs placeholder:text-muted-foreground/60"
             />
-            <FaEnvelope className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs" />
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-3.5" />
           </div>
         </div>
 
@@ -205,22 +208,22 @@ export const UserEditPanel: React.FC<UserEditPanelProps> = ({
             </span>
           </label>
           <div className="relative">
-            <input
+            <Input
               type={showEditPassword ? 'text' : 'password'}
               value={editFormData.password}
               onChange={(e) =>
                 setEditFormData((prev) => ({ ...prev, password: e.target.value }))
               }
               placeholder="Enter new password..."
-              className="w-full pl-9 pr-10 py-2 bg-cc-ground border border-border rounded-xl text-xs text-foreground placeholder-muted-foreground/60 focus:outline-none focus:border-border/80"
+              className="pl-9 pr-10 bg-cc-ground border-border text-xs placeholder:text-muted-foreground/60"
             />
-            <FaLock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs" />
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-3.5" />
             <button
               type="button"
               onClick={() => setShowEditPassword((prev) => !prev)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
             >
-              {showEditPassword ? <FaEyeSlash size={13} /> : <FaEye size={13} />}
+              {showEditPassword ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
             </button>
           </div>
         </div>
@@ -245,7 +248,7 @@ export const UserEditPanel: React.FC<UserEditPanelProps> = ({
                   }`}
                 >
                   <span>{role}</span>
-                  {isAssigned && <FaCheck className="text-[10px]" />}
+                  {isAssigned && <Check className="size-3" />}
                 </button>
               );
             })}
@@ -259,33 +262,39 @@ export const UserEditPanel: React.FC<UserEditPanelProps> = ({
           </span>
           <div className="grid grid-cols-2 gap-2">
             {isDisabled ? (
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => onEnableUser(user)}
-                className="px-3 py-2 rounded-xl text-xs font-medium bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                className="bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border-emerald-500/30"
               >
-                <FaCheck />
+                <Check className="size-3.5 mr-1.5" />
                 <span>Enable User</span>
-              </button>
+              </Button>
             ) : (
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => onOpenDisableModal(user)}
-                className="px-3 py-2 rounded-xl text-xs font-medium bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                className="bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border-amber-500/30"
               >
-                <FaBan />
+                <Ban className="size-3.5 mr-1.5" />
                 <span>Disable User</span>
-              </button>
+              </Button>
             )}
 
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={() => onOpenDeleteModal(user)}
-              className="px-3 py-2 rounded-xl text-xs font-medium bg-primary/15 hover:bg-primary/25 text-primary border border-primary/30 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              className="bg-primary/15 hover:bg-primary/25 text-primary border-primary/30"
             >
-              <FaTrashAlt />
+              <Trash2 className="size-3.5 mr-1.5" />
               <span>Delete User</span>
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -293,7 +302,7 @@ export const UserEditPanel: React.FC<UserEditPanelProps> = ({
         <div className="flex items-center justify-end gap-2 pt-4 border-t border-border">
           <Button
             type="button"
-            variant="card"
+            variant="outline"
             size="sm"
             onClick={onClose}
           >
@@ -301,12 +310,21 @@ export const UserEditPanel: React.FC<UserEditPanelProps> = ({
           </Button>
           <Button
             type="submit"
-            variant="primary"
             size="sm"
-            isLoading={isSaving}
-            leftIcon={<FaCheck />}
+            disabled={isSaving}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium"
           >
-            Save Changes
+            {isSaving ? (
+              <>
+                <Loader2 className="size-3.5 animate-spin mr-1.5" />
+                Saving Changes...
+              </>
+            ) : (
+              <>
+                <Check className="size-3.5 mr-1.5" />
+                Save Changes
+              </>
+            )}
           </Button>
         </div>
       </form>

@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import '@/lib/chart';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import type { ChartOptions, Chart as ChartJS, TooltipModel } from 'chart.js';
-import { FaChartBar, FaChartPie, FaLayerGroup } from 'react-icons/fa';
+import { BarChart3, PieChart, Layers } from 'lucide-react';
 import { UserRating, PieData } from '@/types/adminTypes';
 
 interface RatingDistributionProps {
@@ -347,7 +347,7 @@ export const RatingDistribution: React.FC<RatingDistributionProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-            <FaLayerGroup className="text-primary" size={16} />
+            <Layers className="text-primary size-4" />
             Rating Tier Distribution
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -366,7 +366,7 @@ export const RatingDistribution: React.FC<RatingDistributionProps> = ({
                   : 'text-muted-foreground hover:text-white'
               }`}
             >
-              <FaChartBar size={12} />
+              <BarChart3 className="size-3.5" />
               <span>By Member</span>
             </button>
             <button
@@ -378,7 +378,7 @@ export const RatingDistribution: React.FC<RatingDistributionProps> = ({
                   : 'text-muted-foreground hover:text-white'
               }`}
             >
-              <FaChartPie size={12} />
+              <PieChart className="size-3.5" />
               <span>Team Totals</span>
             </button>
           </div>

@@ -3,17 +3,18 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import {
-  FaDownload,
-  FaFilter,
-  FaExternalLinkAlt,
-  FaYoutube,
-  FaTwitch,
-  FaVideo,
-  FaFolder,
-  FaUser,
-} from 'react-icons/fa';
+  Download,
+  Filter,
+  ExternalLink,
+  Video,
+  Folder,
+  User,
+  Loader2,
+} from 'lucide-react';
+import { FaYoutube, FaTwitch } from 'react-icons/fa';
 import { ScrapedClipItem, ChannelScanStatusResponse } from '@/services/adminService';
-import { Button } from '@/components/Button';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 interface ScrapedClipsTableProps {
   scanResult: ChannelScanStatusResponse;
@@ -84,7 +85,7 @@ export const ScrapedClipsTable: React.FC<ScrapedClipsTableProps> = ({
       default:
         return (
           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm bg-sky-500/15 text-sky-400 border border-sky-500/25 text-[11px] font-semibold">
-            <FaVideo size={10} />
+            <Video className="size-3" />
             <span>Direct</span>
           </span>
         );
@@ -136,12 +137,12 @@ export const ScrapedClipsTable: React.FC<ScrapedClipsTableProps> = ({
         <div className="flex flex-wrap items-center gap-2">
           {/* Search Bar */}
           <div className="relative">
-            <input
+            <Input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Filter by title, author, url..."
-              className="bg-cc-ground border border-border focus:border-border/80 rounded-lg px-3 py-1.5 text-xs text-white placeholder-muted-foreground/60 outline-none w-48 sm:w-60"
+              className="bg-cc-ground border-border text-xs text-white placeholder-muted-foreground/60 w-48 sm:w-60"
             />
           </div>
 
@@ -149,7 +150,7 @@ export const ScrapedClipsTable: React.FC<ScrapedClipsTableProps> = ({
           <select
             value={originFilter}
             onChange={(e) => setOriginFilter(e.target.value)}
-            className="bg-cc-ground border border-border text-xs text-white rounded-lg px-2.5 py-1.5 outline-none cursor-pointer"
+            className="bg-cc-ground border border-border text-xs text-white rounded-lg px-2.5 py-1.5 outline-none cursor-pointer h-8"
           >
             <option value="all">All Origins</option>
             <option value="twitch">Twitch ({scanResult.stats?.origins.twitch ?? 0})</option>
@@ -163,7 +164,7 @@ export const ScrapedClipsTable: React.FC<ScrapedClipsTableProps> = ({
             <select
               value={seasonFilter}
               onChange={(e) => setSeasonFilter(e.target.value)}
-              className="bg-cc-ground border border-border text-xs text-white rounded-lg px-2.5 py-1.5 outline-none cursor-pointer"
+              className="bg-cc-ground border border-border text-xs text-white rounded-lg px-2.5 py-1.5 outline-none cursor-pointer h-8"
             >
               <option value="all">All Seasons</option>
               {Object.entries(scanResult.stats.seasons).map(([sKey, count]) => (
@@ -178,13 +179,13 @@ export const ScrapedClipsTable: React.FC<ScrapedClipsTableProps> = ({
           <button
             type="button"
             onClick={() => setOnlyNewFilter(!onlyNewFilter)}
-            className={`text-xs px-2.5 py-1.5 rounded-lg border transition-colors cursor-pointer flex items-center gap-1.5 ${
+            className={`text-xs px-2.5 py-1.5 rounded-lg border transition-colors cursor-pointer flex items-center gap-1.5 h-8 ${
               onlyNewFilter
                 ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30 font-semibold'
                 : 'bg-cc-ground text-muted-foreground border-border hover:text-white'
             }`}
           >
-            <FaFilter size={10} />
+            <Filter className="size-3" />
             <span>Only New</span>
           </button>
         </div>
@@ -192,21 +193,21 @@ export const ScrapedClipsTable: React.FC<ScrapedClipsTableProps> = ({
         {/* Bulk Selection and Ingest Button */}
         <div className="flex flex-wrap items-center gap-2 justify-end">
           <Button
-            variant="card"
+            variant="outline"
             size="xs"
             onClick={onSelectAllNew}
           >
             Select New
           </Button>
           <Button
-            variant="card"
+            variant="outline"
             size="xs"
             onClick={onSelectAllFiltered}
           >
             Select All
           </Button>
           <Button
-            variant="card"
+            variant="outline"
             size="xs"
             onClick={onDeselectAll}
           >
@@ -231,15 +232,23 @@ export const ScrapedClipsTable: React.FC<ScrapedClipsTableProps> = ({
           )}
 
           <Button
-            variant="primary"
+            variant="default"
             size="sm"
             onClick={onProceedDownload}
             disabled={selectedIds.size === 0 || isStartingDownload}
-            isLoading={isStartingDownload}
-            leftIcon={<FaDownload size={11} />}
-            className="ml-1"
+            className="gap-1.5 bg-primary text-white hover:bg-primary/90 font-semibold ml-1"
           >
-            Proceed Downloading ({selectedIds.size})
+            {isStartingDownload ? (
+              <>
+                <Loader2 className="size-3.5 animate-spin" />
+                <span>Proceed Downloading ({selectedIds.size})</span>
+              </>
+            ) : (
+              <>
+                <Download className="size-3.5" />
+                <span>Proceed Downloading ({selectedIds.size})</span>
+              </>
+            )}
           </Button>
         </div>
       </div>
@@ -306,7 +315,7 @@ export const ScrapedClipsTable: React.FC<ScrapedClipsTableProps> = ({
                           title={clip.link}
                         >
                           <span>{clip.title}</span>
-                          <FaExternalLinkAlt size={9} className="shrink-0 text-muted-foreground" />
+                          <ExternalLink className="size-2.5 shrink-0 text-muted-foreground" />
                         </a>
                       </div>
                       <span className="text-[11px] text-muted-foreground font-mono block truncate max-w-xs sm:max-w-md">
@@ -319,7 +328,7 @@ export const ScrapedClipsTable: React.FC<ScrapedClipsTableProps> = ({
                   <div className="flex flex-wrap md:flex-nowrap items-center gap-4 text-xs shrink-0">
                     {/* Author */}
                     <div className="w-28 truncate text-muted-foreground flex items-center gap-1.5">
-                      <FaUser size={10} className="text-muted-foreground/60 shrink-0" />
+                      <User className="size-3 text-muted-foreground/60 shrink-0" />
                       <span className="truncate">{clip.author}</span>
                     </div>
 
@@ -344,7 +353,7 @@ export const ScrapedClipsTable: React.FC<ScrapedClipsTableProps> = ({
                     {/* Destination */}
                     <div className="w-44 hidden lg:block">
                       <span className="text-muted-foreground text-[10px] font-mono truncate block flex items-center gap-1">
-                        <FaFolder size={9} className="text-muted-foreground/60 shrink-0" />
+                        <Folder className="size-3 text-muted-foreground/60 shrink-0" />
                         <span className="truncate">{clip.destinationFolder}</span>
                       </span>
                     </div>

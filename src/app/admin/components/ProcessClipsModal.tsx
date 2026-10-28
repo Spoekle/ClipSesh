@@ -1,10 +1,15 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { FaTimes, FaCheck, FaCog } from 'react-icons/fa';
+import { Settings, Check } from 'lucide-react';
 import ConfirmationDialog from '@/components/common/ConfirmationDialog';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { ProcessingStateView } from './process/ProcessingStateView';
 import { forceCompleteProcessJob, cancelProcessingJob } from '@/services/adminService';
 import { Clip, Rating } from '@/types/adminTypes';
@@ -180,136 +185,108 @@ export const ProcessClipsModal: React.FC<ProcessClipsModalProps> = ({
 
   return (
     <>
-      <AnimatePresence>
-        {isOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-4 select-none">
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/75 backdrop-blur-xs"
-              onClick={!processing ? onClose : undefined}
-            />
-
-            {/* Modal */}
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 10 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 10 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-              className="relative bg-cc-card rounded-2xl p-6 shadow-2xl w-full max-w-md border border-border text-foreground z-10"
-            >
-              <div className="flex justify-between items-center mb-5 pb-3 border-b border-border">
-                <h2 className="text-base font-bold text-white flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-primary/15 text-primary flex items-center justify-center">
-                    <FaCog size={14} />
-                  </div>
-                  <span>Process Clips Pipeline</span>
-                </h2>
-                {!processing && (
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="p-1.5 text-muted-foreground hover:text-white rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
-                  >
-                    <FaTimes size={14} />
-                  </button>
-                )}
+      <Dialog open={isOpen} onOpenChange={(open) => !open && !processing && onClose()}>
+        <DialogContent className="max-w-md p-6 bg-card border-border text-foreground">
+          <DialogHeader className="mb-2 pb-3 border-b border-border flex flex-row items-center justify-between space-y-0">
+            <DialogTitle className="text-base font-bold text-foreground flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-primary/15 text-primary flex items-center justify-center">
+                <Settings className="size-4" />
               </div>
+              <span>Process Clips Pipeline</span>
+            </DialogTitle>
+          </DialogHeader>
 
-              <div>
-                {processing ? (
-                  <ProcessingStateView
-                    processJobId={processJobId}
-                    onProcessingComplete={() => {
-                      onProcessingComplete?.();
-                      onClose();
-                    }}
-                    onProcessingError={(err) => setErrorMessage(err)}
-                    clipCount={clipCount}
-                    season={season}
-                    year={year}
-                    progress={progress}
-                    elapsedTime={elapsedTime}
-                    formatTime={formatTime}
-                    errorMessage={errorMessage}
-                    stuckForTooLong={stuckForTooLong}
-                    onForceComplete={() => setShowForceCompleteConfirmation(true)}
-                    retryCount={retryCount}
-                    onCancelPipeline={handleCancelPipeline}
-                  />
-                ) : (
-                  <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            {processing ? (
+              <ProcessingStateView
+                processJobId={processJobId}
+                onProcessingComplete={() => {
+                  onProcessingComplete?.();
+                  onClose();
+                }}
+                onProcessingError={(err) => setErrorMessage(err)}
+                clipCount={clipCount}
+                season={season}
+                year={year}
+                progress={progress}
+                elapsedTime={elapsedTime}
+                formatTime={formatTime}
+                errorMessage={errorMessage}
+                stuckForTooLong={stuckForTooLong}
+                onForceComplete={() => setShowForceCompleteConfirmation(true)}
+                retryCount={retryCount}
+                onCancelPipeline={handleCancelPipeline}
+              />
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <p className="mb-3 text-xs text-muted-foreground leading-relaxed">
+                    You&apos;re about to process <span className="font-semibold text-foreground">{clipCount} clips</span>. Select the target season configuration:
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <p className="mb-3 text-xs text-muted-foreground leading-relaxed">
-                        You&apos;re about to process <span className="font-semibold text-white">{clipCount} clips</span>. Select the target season configuration:
-                      </p>
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                            Season
-                          </label>
-                          <select
-                            value={season}
-                            onChange={(e) => setSeason(e.target.value)}
-                            className="bg-cc-ground border border-border text-foreground rounded-xl w-full px-3 py-2 text-xs focus:border-border/80 focus:outline-none cursor-pointer"
-                            required
-                          >
-                            {seasons.map((s) => (
-                              <option key={s} value={s}>
-                                {s}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                            Year
-                          </label>
-                          <select
-                            value={year}
-                            onChange={(e) => setYear(Number(e.target.value))}
-                            className="bg-cc-ground border border-border text-foreground rounded-xl w-full px-3 py-2 text-xs focus:border-border/80 focus:outline-none cursor-pointer"
-                            required
-                          >
-                            {years.map((y) => (
-                              <option key={y} value={y}>
-                                {y}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
+                      <label className="block mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Season
+                      </label>
+                      <select
+                        value={season}
+                        onChange={(e) => setSeason(e.target.value)}
+                        className="bg-background border border-border text-foreground rounded-xl w-full px-3 py-2 text-xs focus:border-border/80 focus:outline-none cursor-pointer"
+                        required
+                      >
+                        {seasons.map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
-                    <div className="flex justify-end gap-2 pt-3 border-t border-border">
-                      <Button
-                        type="button"
-                        variant="card"
-                        size="sm"
-                        onClick={onClose}
+                    <div>
+                      <label className="block mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Year
+                      </label>
+                      <select
+                        value={year}
+                        onChange={(e) => setYear(Number(e.target.value))}
+                        className="bg-background border border-border text-foreground rounded-xl w-full px-3 py-2 text-xs focus:border-border/80 focus:outline-none cursor-pointer"
+                        required
                       >
-                        Cancel
-                      </Button>
-                      <Button
-                        type="submit"
-                        variant="primary"
-                        size="sm"
-                        leftIcon={<FaCheck size={11} />}
-                      >
-                        Process Clips
-                      </Button>
+                        {years.map((y) => (
+                          <option key={y} value={y}>
+                            {y}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                  </form>
-                )}
-              </div>
-            </motion.div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-3 border-t border-border">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={onClose}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant="default"
+                    size="sm"
+                    className="gap-1.5"
+                  >
+                    <Check className="size-3.5" />
+                    Process Clips
+                  </Button>
+                </div>
+              </form>
+            )}
           </div>
-        )}
-      </AnimatePresence>
+        </DialogContent>
+      </Dialog>
 
       <ConfirmationDialog
         isOpen={showConfirmation}

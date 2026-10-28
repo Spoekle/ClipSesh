@@ -3,15 +3,15 @@
 import React, { useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  FaDownload,
-  FaTimes,
-  FaStop,
-  FaChevronDown,
-  FaChevronUp,
-  FaSyncAlt,
-  FaCheck,
-  FaForward,
-} from 'react-icons/fa';
+  Download,
+  X,
+  Square,
+  ChevronDown,
+  ChevronUp,
+  RefreshCw,
+  Check,
+  FastForward,
+} from 'lucide-react';
 import { ScraperDownloadStatusResponse } from '@/services/adminService';
 
 interface ScraperIngestionWidgetProps {
@@ -66,11 +66,11 @@ export const ScraperIngestionWidget: React.FC<ScraperIngestionWidgetProps> = ({
             <div className="flex items-center justify-between gap-2 mb-2">
               <div className="flex items-center gap-2 min-w-0">
                 {currentJob?.status === 'downloading' ? (
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse shrink-0" />
+                  <span className="size-2.5 rounded-full bg-amber-400 animate-pulse shrink-0" />
                 ) : currentJob?.status === 'completed' ? (
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0" />
+                  <span className="size-2.5 rounded-full bg-emerald-400 shrink-0" />
                 ) : (
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-400 shrink-0" />
+                  <span className="size-2.5 rounded-full bg-rose-400 shrink-0" />
                 )}
                 <span className="text-xs font-bold text-white tracking-wide truncate">
                   Clip Ingestion
@@ -85,7 +85,7 @@ export const ScraperIngestionWidget: React.FC<ScraperIngestionWidgetProps> = ({
               <div className="flex items-center gap-1.5 shrink-0">
                 <div className="flex items-center gap-1 text-muted-foreground group-hover:text-white transition-colors">
                   <span className="text-[11px] font-medium hidden sm:inline">Details</span>
-                  <FaChevronUp size={11} />
+                  <ChevronUp className="size-3" />
                 </div>
                 {visibleJobs.every((j) => j.status !== 'downloading') && (
                   <button
@@ -97,7 +97,7 @@ export const ScraperIngestionWidget: React.FC<ScraperIngestionWidgetProps> = ({
                     title="Dismiss finished tasks"
                     className="p-1 text-muted-foreground hover:text-rose-400 hover:bg-rose-500/15 rounded-md transition-colors cursor-pointer"
                   >
-                    <FaTimes size={11} />
+                    <X className="size-3" />
                   </button>
                 )}
               </div>
@@ -143,7 +143,7 @@ export const ScraperIngestionWidget: React.FC<ScraperIngestionWidgetProps> = ({
                       className="px-2 py-0.5 text-[10px] font-semibold text-rose-400 hover:text-white bg-rose-500/15 hover:bg-rose-500/30 border border-rose-500/30 rounded-md transition-colors cursor-pointer flex items-center gap-1 shrink-0"
                       title="Cancel ingestion"
                     >
-                      <FaStop size={8} />
+                      <Square className="size-2.5" />
                       <span>Cancel</span>
                     </button>
                   </div>
@@ -151,15 +151,15 @@ export const ScraperIngestionWidget: React.FC<ScraperIngestionWidgetProps> = ({
                   <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono pt-0.5">
                     <div className="flex items-center gap-2.5 truncate">
                       <span className="text-emerald-400 flex items-center gap-1">
-                        <FaCheck size={9} />
+                        <Check className="size-2.5" />
                         <span>{currentJob.successCount} saved</span>
                       </span>
                       <span className="text-amber-400 flex items-center gap-1">
-                        <FaForward size={8} />
+                        <FastForward className="size-2.5" />
                         <span>{currentJob.skippedCount} skipped</span>
                       </span>
                       <span className="text-rose-400 flex items-center gap-1">
-                        <FaTimes size={9} />
+                        <X className="size-2.5" />
                         <span>{currentJob.errorCount} failed</span>
                       </span>
                     </div>
@@ -191,8 +191,8 @@ export const ScraperIngestionWidget: React.FC<ScraperIngestionWidgetProps> = ({
             {/* Header */}
             <div className="p-3.5 sm:p-4 border-b border-border bg-cc-ground flex items-center justify-between gap-3">
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-7 h-7 rounded-lg bg-primary/15 text-primary flex items-center justify-center shrink-0">
-                  <FaDownload size={13} />
+                <div className="size-7 rounded-lg bg-primary/15 text-primary flex items-center justify-center shrink-0">
+                  <Download className="size-3.5" />
                 </div>
                 <div>
                   <h3 className="text-xs sm:text-sm font-bold text-white truncate">
@@ -211,7 +211,7 @@ export const ScraperIngestionWidget: React.FC<ScraperIngestionWidgetProps> = ({
                   title="Refresh tasks"
                   className="p-1.5 text-muted-foreground hover:text-white hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
                 >
-                  <FaSyncAlt size={11} />
+                  <RefreshCw className="size-3" />
                 </button>
                 <button
                   type="button"
@@ -219,7 +219,7 @@ export const ScraperIngestionWidget: React.FC<ScraperIngestionWidgetProps> = ({
                   title="Collapse to corner"
                   className="p-1.5 text-muted-foreground hover:text-white hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
                 >
-                  <FaChevronDown size={12} />
+                  <ChevronDown className="size-3" />
                 </button>
                 {visibleJobs.every((j) => j.status !== 'downloading') && (
                   <button
@@ -228,7 +228,7 @@ export const ScraperIngestionWidget: React.FC<ScraperIngestionWidgetProps> = ({
                     title="Dismiss all finished"
                     className="p-1.5 text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
                   >
-                    <FaTimes size={12} />
+                    <X className="size-3" />
                   </button>
                 )}
               </div>
@@ -303,7 +303,7 @@ export const ScraperIngestionWidget: React.FC<ScraperIngestionWidgetProps> = ({
                         className="px-2.5 py-1 bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-400 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
                         title="Cancel download and ingestion"
                       >
-                        <FaStop size={10} />
+                        <Square className="size-2.5" />
                         <span>Cancel Download</span>
                       </button>
                     ) : (
@@ -441,7 +441,7 @@ export const ScraperIngestionWidget: React.FC<ScraperIngestionWidgetProps> = ({
                 onClick={() => setIsWidgetExpanded(false)}
                 className="w-full py-1.5 bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-white text-xs font-medium rounded-xl border border-border transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <FaChevronDown size={10} />
+                <ChevronDown className="size-2.5" />
                 <span>Collapse to Corner</span>
               </button>
             </div>

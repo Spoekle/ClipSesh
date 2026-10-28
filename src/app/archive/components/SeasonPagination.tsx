@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/Button';
 
 interface SeasonPaginationProps {
@@ -27,14 +27,14 @@ export const SeasonPagination: React.FC<SeasonPaginationProps> = ({
           onPageChange(Math.max(1, page - 1));
           window.scrollTo({ top: 180, behavior: 'smooth' });
         }}
-        leftIcon={<FaChevronLeft size={10} />}
+        leftIcon={<ChevronLeft className="size-3.5" />}
       >
         Previous
       </Button>
 
-      <div className="px-4 py-2 rounded-xl bg-cc-ground border border-border text-xs font-mono text-muted-foreground">
-        Page <strong className="text-white">{page}</strong> of{' '}
-        <strong className="text-white">{totalPages}</strong>
+      <div className="px-4 py-2 rounded-xl bg-background border border-border text-xs font-mono text-muted-foreground">
+        Page <strong className="text-foreground">{page}</strong> of{' '}
+        <strong className="text-foreground">{totalPages}</strong>
       </div>
 
       <Button
@@ -45,7 +45,7 @@ export const SeasonPagination: React.FC<SeasonPaginationProps> = ({
           onPageChange(Math.min(totalPages, page + 1));
           window.scrollTo({ top: 180, behavior: 'smooth' });
         }}
-        rightIcon={<FaChevronRight size={10} />}
+        rightIcon={<ChevronRight className="size-3.5" />}
       >
         Next
       </Button>

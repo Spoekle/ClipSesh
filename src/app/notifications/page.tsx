@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { FaRegBell } from 'react-icons/fa';
+import { Bell } from 'lucide-react';
 import { UserNotification } from '@/types/notificationTypes';
 import { useNotification } from '@/context/AlertContext';
 import * as notificationService from '@/services/notificationService';
@@ -17,6 +17,7 @@ import {
 import NotificationHeader from './components/NotificationHeader';
 import NotificationFilters, { NotificationCategory } from './components/NotificationFilters';
 import NotificationRow from './components/NotificationRow';
+import { Card } from '@/components/ui/card';
 
 const NotificationsPage: React.FC = () => {
   const { data: notificationResponse, isLoading: loading, error } = useNotifications();
@@ -146,7 +147,7 @@ const NotificationsPage: React.FC = () => {
   };
 
   return (
-    <div className="relative min-h-[calc(100vh-80px)] bg-cc-ground text-cc-text transition-colors flex flex-col">
+    <div className="relative min-h-[calc(100vh-80px)] bg-background text-foreground transition-colors flex flex-col">
       <NotificationHeader
         unreadCount={counts.unread}
         readCount={counts.all - counts.unread}
@@ -166,25 +167,25 @@ const NotificationsPage: React.FC = () => {
         />
 
         {/* Notifications Container */}
-        <div className="bg-cc-card border border-border rounded-2xl overflow-hidden shadow-xl">
+        <Card className="bg-card border border-border rounded-2xl overflow-hidden shadow-xl p-0">
           {loading ? (
             <div className="p-8 space-y-4">
               {[...Array(5)].map((_, i) => (
                 <div key={i} className="flex items-center gap-4 animate-pulse">
-                  <div className="w-9 h-9 rounded-xl bg-border/40 shrink-0" />
+                  <div className="w-9 h-9 rounded-xl bg-secondary shrink-0" />
                   <div className="flex-1 space-y-2">
-                    <div className="h-4 bg-border/40 rounded w-1/3" />
-                    <div className="h-3 bg-border/40 rounded w-2/3" />
+                    <div className="h-4 bg-secondary rounded w-1/3" />
+                    <div className="h-3 bg-secondary rounded w-2/3" />
                   </div>
                 </div>
               ))}
             </div>
           ) : filteredNotifications.length === 0 ? (
             <div className="py-16 px-4 text-center">
-              <div className="w-16 h-16 rounded-full bg-cc-ground border border-border flex items-center justify-center mx-auto mb-4 text-muted-foreground">
-                <FaRegBell size={26} />
+              <div className="w-16 h-16 rounded-full bg-secondary border border-border flex items-center justify-center mx-auto mb-4 text-muted-foreground">
+                <Bell className="size-6" />
               </div>
-              <h3 className="text-base font-bold text-cc-text mb-1">
+              <h3 className="text-base font-bold text-foreground mb-1">
                 {unreadOnly ? 'No unread notifications' : 'No notifications found'}
               </h3>
               <p className="text-xs text-muted-foreground max-w-sm mx-auto">
@@ -206,7 +207,7 @@ const NotificationsPage: React.FC = () => {
               ))}
             </div>
           )}
-        </div>
+        </Card>
       </div>
     </div>
   );

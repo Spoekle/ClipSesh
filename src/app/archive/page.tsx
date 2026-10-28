@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { FaCalendarAlt, FaExclamationTriangle } from 'react-icons/fa';
+import { Calendar, AlertTriangle } from 'lucide-react';
 import { useArchiveSeasons, useClip } from '@/hooks/useClips';
 import { useCurrentUser } from '@/hooks/useUser';
 import { ArchiveSeasonSection } from '@/types/clipTypes';
@@ -144,7 +144,7 @@ const ArchiveView: React.FC = () => {
               <ArchiveLoadingGrid />
             ) : error ? (
               <div className="text-center py-16 bg-cc-card border border-primary/30 rounded-2xl p-8">
-                <FaExclamationTriangle size={32} className="text-primary mx-auto mb-3" />
+                <AlertTriangle className="size-8 text-primary mx-auto mb-3" />
                 <h3 className="text-lg font-bold text-white mb-1">Failed to Load Archives</h3>
                 <p className="text-xs text-muted-foreground max-w-md mx-auto">
                   There was an error retrieving available seasonal records. Please refresh the page.
@@ -178,7 +178,7 @@ const ArchiveView: React.FC = () => {
               </div>
             ) : (
               <div className="text-center py-20 bg-cc-card border border-border rounded-2xl p-8">
-                <FaCalendarAlt size={28} className="text-muted-foreground mx-auto mb-3" />
+                <Calendar className="size-7 text-muted-foreground mx-auto mb-3" />
                 <h3 className="text-lg font-bold text-white mb-1">No Seasons for this Year</h3>
                 <p className="text-xs text-muted-foreground mb-4">
                   No competitive seasons were found for {selectedYear}.

@@ -1,9 +1,11 @@
+'use client';
+
 import React, { useState, useRef, useEffect } from 'react';
-import { FaCalendarAlt, FaCheck } from 'react-icons/fa';
+import { Calendar, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CalendarMonthView } from './date-range/CalendarMonthView';
 import { QuickRangeSelector } from './date-range/QuickRangeSelector';
-import { Button } from '@/components/Button';
+import { Button } from '@/components/ui/button';
 
 interface DateRangePickerProps {
   startDate: Date | null;
@@ -118,9 +120,9 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
     <div className={`relative ${className}`} ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="bg-cc-ground hover:bg-secondary border border-border rounded-xl text-xs font-medium text-muted-foreground hover:text-foreground flex items-center gap-2 px-3.5 py-2 transition-colors cursor-pointer min-w-0"
+        className="bg-background hover:bg-secondary border border-border rounded-xl text-xs font-medium text-muted-foreground hover:text-foreground flex items-center gap-2 px-3.5 py-2 transition-colors cursor-pointer min-w-0"
       >
-        <FaCalendarAlt className="text-xs shrink-0 text-cc-red" />
+        <Calendar className="size-3.5 shrink-0 text-primary" />
         <span className="truncate">{getDisplayText()}</span>
       </button>
 
@@ -130,7 +132,7 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="absolute top-full left-0 sm:left-auto sm:right-0 mt-2 bg-cc-card border border-border rounded-2xl shadow-2xl z-50 w-screen sm:w-96 max-w-sm sm:max-w-none -mx-4 sm:mx-0 overflow-hidden text-foreground"
+            className="absolute top-full left-0 sm:left-auto sm:right-0 mt-2 bg-card border border-border rounded-2xl shadow-2xl z-50 w-screen sm:w-96 max-w-sm sm:max-w-none -mx-4 sm:mx-0 overflow-hidden text-foreground"
           >
             <div className="p-4 sm:p-5">
               <QuickRangeSelector onSelectRange={handleQuickRange} />
@@ -155,18 +157,19 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
                 </Button>
                 <div className="flex gap-2">
                   <Button
-                    variant="card"
+                    variant="outline"
                     size="sm"
                     onClick={handleCancel}
                   >
                     Cancel
                   </Button>
                   <Button
-                    variant="primary"
+                    variant="default"
                     size="sm"
                     onClick={handleApply}
-                    leftIcon={<FaCheck size={10} />}
+                    className="gap-1.5"
                   >
+                    <Check className="size-3.5" />
                     Apply
                   </Button>
                 </div>

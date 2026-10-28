@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MdHome, MdMovie, MdArchive, MdAdminPanelSettings } from 'react-icons/md';
+import { Home, Film, Archive, Shield } from 'lucide-react';
 import NavLink from './NavLink';
 
 interface NavMobileMenuProps {
@@ -29,7 +29,7 @@ export const NavMobileMenu: React.FC<NavMobileMenuProps> = ({
           animate={{ opacity: 1, height: 'auto' }}
           exit={{ opacity: 0, height: 0 }}
           transition={{ duration: 0.15 }}
-          className="lg:hidden border-t border-border bg-cc-ground overflow-hidden"
+          className="lg:hidden border-t border-border bg-background overflow-hidden"
         >
           <div className="px-4 py-3 space-y-1">
             <NavLink
@@ -39,12 +39,12 @@ export const NavMobileMenu: React.FC<NavMobileMenuProps> = ({
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
                   isActive
-                    ? 'bg-cc-card text-primary font-semibold border-l-2 border-primary'
-                    : 'text-muted-foreground hover:text-white hover:bg-cc-card'
+                    ? 'bg-card text-primary font-semibold border-l-2 border-primary'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-card'
                 }`
               }
             >
-              <MdHome size={18} />
+              <Home className="size-4" />
               <span>Home</span>
             </NavLink>
 
@@ -54,12 +54,12 @@ export const NavMobileMenu: React.FC<NavMobileMenuProps> = ({
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
                   isActive
-                    ? 'bg-cc-card text-primary font-semibold border-l-2 border-primary'
-                    : 'text-muted-foreground hover:text-white hover:bg-cc-card'
+                    ? 'bg-card text-primary font-semibold border-l-2 border-primary'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-card'
                 }`
               }
             >
-              <MdMovie size={18} />
+              <Film className="size-4" />
               <span>Clips</span>
             </NavLink>
 
@@ -69,12 +69,12 @@ export const NavMobileMenu: React.FC<NavMobileMenuProps> = ({
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
                   isActive || pathname.startsWith('/archive')
-                    ? 'bg-cc-card text-primary font-semibold border-l-2 border-primary'
-                    : 'text-muted-foreground hover:text-white hover:bg-cc-card'
+                    ? 'bg-card text-primary font-semibold border-l-2 border-primary'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-card'
                 }`
               }
             >
-              <MdArchive size={18} />
+              <Archive className="size-4" />
               <span>ClipVault</span>
             </NavLink>
 
@@ -85,12 +85,12 @@ export const NavMobileMenu: React.FC<NavMobileMenuProps> = ({
                 className={({ isActive }) =>
                   `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
                     isActive || pathname.startsWith('/admin')
-                      ? 'bg-cc-card text-primary font-semibold border-l-2 border-primary'
-                      : 'text-muted-foreground hover:text-white hover:bg-cc-card'
+                      ? 'bg-card text-primary font-semibold border-l-2 border-primary'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-card'
                   }`
                 }
               >
-                <MdAdminPanelSettings size={18} />
+                <Shield className="size-4" />
                 <span>Admin</span>
               </NavLink>
             )}

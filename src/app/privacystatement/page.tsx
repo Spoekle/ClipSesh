@@ -1,6 +1,15 @@
 import type { Metadata } from 'next';
 import React from 'react';
-import { FaShieldAlt, FaUserShield, FaDatabase, FaServer, FaLock, FaTrash, FaFileContract } from 'react-icons/fa';
+import {
+  FileText,
+  Database,
+  ShieldCheck,
+  Lock,
+  Server,
+  Shield,
+  Trash2,
+  ExternalLink,
+} from 'lucide-react';
 import PageLayout from '@/components/layouts/PageLayout';
 
 export const metadata: Metadata = {
@@ -17,14 +26,14 @@ export default function PrivacyStatementPage() {
     {
       id: 'introduction',
       title: '1. Introduction',
-      icon: <FaFileContract />,
+      icon: <FileText className="size-5" />,
       content:
         'Welcome to ClipSesh! Your privacy is important to us. This Privacy Policy explains how we collect, use, and protect your personal information when you use our website.',
     },
     {
       id: 'collected-info',
       title: '2. Information We Collect',
-      icon: <FaDatabase />,
+      icon: <Database className="size-5" />,
       content: 'We collect the following types of information:',
       list: [
         'Anonymous Voting Cookies: We issue a secure, anonymous cookie token to ensure the integrity of our voting system and prevent duplicate votes without tracking your personal identity or IP address.',
@@ -33,7 +42,7 @@ export default function PrivacyStatementPage() {
     {
       id: 'info-usage',
       title: '3. How We Use Your Information',
-      icon: <FaUserShield />,
+      icon: <ShieldCheck className="size-5" />,
       content: 'We use the information we collect in the following ways:',
       list: [
         'Voting Integrity: To prevent duplicate votes from the same browser session and ensure fair voting.',
@@ -43,7 +52,7 @@ export default function PrivacyStatementPage() {
     {
       id: 'protection',
       title: '4. How We Protect Your Information',
-      icon: <FaLock />,
+      icon: <Lock className="size-5" />,
       content:
         'We implement a variety of security measures to maintain the safety of your personal information when you use our service. This includes:',
       list: [
@@ -55,21 +64,21 @@ export default function PrivacyStatementPage() {
     {
       id: 'retention',
       title: '5. Data Retention',
-      icon: <FaServer />,
+      icon: <Server className="size-5" />,
       content:
         'We retain anonymous voting tokens only for as long as necessary to ensure voting integrity and prevent duplicate votes.',
     },
     {
       id: 'third-party',
       title: '6. Third-Party Disclosure',
-      icon: <FaShieldAlt />,
+      icon: <Shield className="size-5" />,
       content:
         'We do not sell, trade, or otherwise transfer your data or voting identifiers to outside parties in any way. All data is and will only be used and stored on the ClipSesh! servers.',
     },
     {
       id: 'rights',
       title: '7. Your Rights',
-      icon: <FaUserShield />,
+      icon: <ShieldCheck className="size-5" />,
       content:
         'Depending on your location, you may have the following rights regarding your personal information:',
       list: [
@@ -83,7 +92,7 @@ export default function PrivacyStatementPage() {
     {
       id: 'changes',
       title: '8. Changes to This Privacy Policy',
-      icon: <FaTrash />,
+      icon: <Trash2 className="size-5" />,
       content:
         'We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the effective date at the top.',
     },
@@ -140,20 +149,7 @@ export default function PrivacyStatementPage() {
                       rel="noopener noreferrer"
                     >
                       Cube Community Discord Server
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4 ml-1"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                        />
-                      </svg>
+                      <ExternalLink className="size-3.5 ml-1" />
                     </a>
                   )}
                 </p>
