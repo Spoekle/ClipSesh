@@ -1,4 +1,5 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
+import { authRoute } from '@/lib/route';
 import { connectToDatabase } from '@/lib/db';
 import Message from '@/models/messageModel';
 import Clip from '@/models/clipModel';
@@ -26,62 +27,48 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
-  try {
-    await connectToDatabase();
-    const { user: authUser, errorResponse } = requireAuth(req, [
-      'admin',
-      'clipteam',
-      'editor',
-      'uploader',
-    ]);
-    if (errorResponse) return errorResponse;
+export const POST = authRoute(['admin', 'clipteam', 'editor', 'uploader'], async (req, { user: authUser }) => {
+  const { clipId, message, profilePicture } = await req.json();
+  const userId = authUser.id;
+  const username = authUser.username;
 
-    const { clipId, message, profilePicture } = await req.json();
-    const userId = authUser!.id;
-    const username = authUser!.username;
+  const newMessage = new Message({
+    clipId,
+    userId,
+    user: username,
+    message,
+    profilePicture: profilePicture || '',
+    timestamp: new Date(),
+  });
+  await newMessage.save();
 
-    const newMessage = new Message({
-      clipId,
-      userId,
-      user: username,
-      message,
-      profilePicture: profilePicture || '',
-      timestamp: new Date(),
-    });
-    await newMessage.save();
+  // Create notifications for all clipteam members
+  const clipTeamMembers = await User.find({
+    roles: { $in: ['clipteam', 'admin'] },
+    _id: { $ne: userId },
+  }).select('_id').lean();
 
-    // Create notifications for all clipteam members
-    const clipTeamMembers = await User.find({
-      roles: { $in: ['clipteam', 'admin'] },
-      _id: { $ne: userId },
-    }).select('_id').lean();
+  const clipInfo = await Clip.findById(clipId).select('title streamer').lean();
+  const clipTitle = clipInfo ? clipInfo.title : 'a clip';
+  const clipStreamer = clipInfo ? clipInfo.streamer : '';
+  const notificationMessage = `${username} posted a team message on ${clipStreamer}'s clip: "${clipTitle}"`;
 
-    const clipInfo = await Clip.findById(clipId).select('title streamer').lean();
-    const clipTitle = clipInfo ? clipInfo.title : 'a clip';
-    const clipStreamer = clipInfo ? clipInfo.streamer : '';
-    const notificationMessage = `${username} posted a team message on ${clipStreamer}'s clip: "${clipTitle}"`;
+  const notifications = clipTeamMembers.map((member) => ({
+    recipientId: member._id,
+    senderId: userId,
+    senderUsername: username,
+    type: 'team_message',
+    entityId: newMessage._id.toString(),
+    clipId,
+    message: notificationMessage,
+  }));
 
-    const notifications = clipTeamMembers.map((member) => ({
-      recipientId: member._id,
-      senderId: userId,
-      senderUsername: username,
-      type: 'team_message',
-      entityId: newMessage._id.toString(),
-      clipId,
-      message: notificationMessage,
-    }));
-
-    if (notifications.length > 0) {
-      await Notification.insertMany(notifications);
-    }
-
-    const messageObj = newMessage.toObject ? newMessage.toObject() : newMessage;
-    wsManager.emitNewMessage(clipId, messageObj);
-
-    return NextResponse.json(newMessage, { status: 201 });
-  } catch (error: any) {
-    console.error('Error creating message:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  if (notifications.length > 0) {
+    await Notification.insertMany(notifications);
   }
-}
+
+  const messageObj = newMessage.toObject ? newMessage.toObject() : newMessage;
+  wsManager.emitNewMessage(clipId, messageObj);
+
+  return NextResponse.json(newMessage, { status: 201 });
+});

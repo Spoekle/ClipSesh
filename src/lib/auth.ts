@@ -66,10 +66,14 @@ export function getAuthUser(req: Request | NextRequest): DecodedUser | null {
   return verifyAuthToken(token);
 }
 
+export type AuthResult =
+  | { user: DecodedUser; errorResponse: null }
+  | { user: null; errorResponse: NextResponse };
+
 export function requireAuth(
   req: Request | NextRequest,
-  allowedRoles?: string[]
-): { user: DecodedUser | null; errorResponse: NextResponse | null } {
+  allowedRoles?: readonly string[]
+): AuthResult {
   const user = getAuthUser(req);
 
   if (!user) {

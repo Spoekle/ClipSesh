@@ -1,29 +1,18 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
+﻿import { NextResponse } from 'next/server';
+import { authRoute } from '@/lib/route';
 import { forceCompleteJob } from '@/lib/zipProcessing';
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ jobId: string }> }
-) {
-  try {
-    const { errorResponse } = requireAuth(req, ['admin']);
-    if (errorResponse) return errorResponse;
+export const POST = authRoute<{ jobId: string }>(['admin'], async (req, { params }) => {
+  const { jobId } = await params;
+  const job = await forceCompleteJob(jobId);
 
-    const { jobId } = await params;
-    const job = await forceCompleteJob(jobId);
-
-    if (!job) {
-      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: 'Job manually completed',
-      job,
-    });
-  } catch (error: any) {
-    console.error('Error force-completing job:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  if (!job) {
+    return NextResponse.json({ error: 'Job not found' }, { status: 404 });
   }
-}
+
+  return NextResponse.json({
+    success: true,
+    message: 'Job manually completed',
+    job,
+  });
+});

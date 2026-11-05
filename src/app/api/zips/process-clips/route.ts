@@ -1,39 +1,28 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
+﻿import { NextResponse } from 'next/server';
+import { authRoute } from '@/lib/route';
 import { startProcessingJob } from '@/lib/zipProcessing';
 
-export async function POST(req: NextRequest) {
-  try {
-    const { errorResponse } = requireAuth(req, ['admin', 'clipteam']);
-    if (errorResponse) return errorResponse;
+export const POST = authRoute(['admin', 'clipteam'], async (req) => {
+  const body = await req.json().catch(() => ({}));
+  const { season, year, denyThreshold, clips } = body;
 
-    const body = await req.json().catch(() => ({}));
-    const { season, year, denyThreshold, clips } = body;
-
-    if (!season || !year) {
-      return NextResponse.json(
-        { error: 'season and year are required' },
-        { status: 400 }
-      );
-    }
-
-    const jobInfo = await startProcessingJob(
-      season,
-      Number(year),
-      denyThreshold,
-      clips
-    );
-
-    return NextResponse.json({
-      success: true,
-      message: 'Processing started',
-      ...jobInfo,
-    });
-  } catch (error: any) {
-    console.error('Error starting clip processing:', error);
+  if (!season || !year) {
     return NextResponse.json(
-      { error: error?.message || 'Internal Server Error' },
-      { status: 500 }
+      { error: 'season and year are required' },
+      { status: 400 }
     );
   }
-}
+
+  const jobInfo = await startProcessingJob(
+    season,
+    Number(year),
+    denyThreshold,
+    clips
+  );
+
+  return NextResponse.json({
+    success: true,
+    message: 'Processing started',
+    ...jobInfo,
+  });
+}, { exposeErrors: true });

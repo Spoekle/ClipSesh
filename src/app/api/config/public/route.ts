@@ -1,8 +1,8 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
+import { authRoute } from '@/lib/route';
 import { connectToDatabase } from '@/lib/db';
 import { PublicConfig } from '@/models/configModel';
 import Clip from '@/models/clipModel';
-import { requireAuth } from '@/lib/auth';
 
 export async function GET() {
   try {
@@ -27,25 +27,16 @@ export async function GET() {
   }
 }
 
-export async function PUT(req: NextRequest) {
-  try {
-    await connectToDatabase();
-    const { errorResponse } = requireAuth(req, ['admin']);
-    if (errorResponse) return errorResponse;
+export const PUT = authRoute(['admin'], async (req) => {
+  const { latestVideoLink } = await req.json();
 
-    const { latestVideoLink } = await req.json();
-
-    let publicConfig = await PublicConfig.findOne();
-    if (!publicConfig) {
-      publicConfig = new PublicConfig();
-    }
-
-    publicConfig.latestVideoLink = latestVideoLink || '';
-    await publicConfig.save();
-
-    return NextResponse.json(publicConfig);
-  } catch (error: any) {
-    console.error('Error updating public config:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  let publicConfig = await PublicConfig.findOne();
+  if (!publicConfig) {
+    publicConfig = new PublicConfig();
   }
-}
+
+  publicConfig.latestVideoLink = latestVideoLink || '';
+  await publicConfig.save();
+
+  return NextResponse.json(publicConfig);
+});

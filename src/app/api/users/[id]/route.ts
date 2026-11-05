@@ -1,76 +1,45 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/db';
+import { NextResponse } from 'next/server';
+import { apiRoute, authRoute } from '@/lib/route';
 import User from '@/models/userModel';
-import { requireAuth, hashPassword } from '@/lib/auth';
+import { hashPassword } from '@/lib/auth';
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    await connectToDatabase();
-    const { id } = await params;
-    const user = await User.findById(id).select('-password');
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-    return NextResponse.json(user);
-  } catch (error) {
-    console.error('Error fetching user by id:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+export const GET = apiRoute<{ id: string }>(async (req, { params }) => {
+  const { id } = await params;
+  const user = await User.findById(id).select('-password');
+  if (!user) {
+    return NextResponse.json({ error: 'User not found' }, { status: 404 });
   }
-}
+  return NextResponse.json(user);
+});
 
-export async function PUT(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    await connectToDatabase();
-    const { id } = await params;
-    const { user: authUser, errorResponse } = requireAuth(req);
-    if (errorResponse) return errorResponse;
-    if (!authUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    if (authUser.id !== id && !authUser.roles.includes('admin')) {
-      return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
-    }
-
-    const { username, password, discordId, discordUsername, ccId, ccUsername, email } = await req.json();
-
-    const updateData: Record<string, unknown> = {};
-    if (username) updateData.username = username;
-    if (password) updateData.password = await hashPassword(password);
-    if (discordId !== undefined) updateData.discordId = discordId;
-    if (discordUsername !== undefined) updateData.discordUsername = discordUsername;
-    if (ccId !== undefined) updateData.ccId = ccId;
-    if (ccUsername !== undefined) updateData.ccUsername = ccUsername;
-    if (email !== undefined) updateData.email = email;
-
-    await User.findByIdAndUpdate(id, updateData);
-    return NextResponse.json({ message: 'User updated successfully' });
-  } catch (error) {
-    console.error('Error updating user:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+export const PUT = authRoute<{ id: string }>([], async (req, { params, user: authUser }) => {
+  const { id } = await params;
+  if (!authUser) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-}
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    await connectToDatabase();
-    const { id } = await params;
-    const { errorResponse } = requireAuth(req, ['admin']);
-    if (errorResponse) return errorResponse;
-
-    await User.findByIdAndDelete(id);
-    return NextResponse.json({ message: 'User deleted successfully' });
-  } catch (error) {
-    console.error('Error deleting user:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  if (authUser.id !== id && !authUser.roles.includes('admin')) {
+    return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
   }
-}
+
+  const { username, password, discordId, discordUsername, ccId, ccUsername, email } = await req.json();
+
+  const updateData: Record<string, unknown> = {};
+  if (username) updateData.username = username;
+  if (password) updateData.password = await hashPassword(password);
+  if (discordId !== undefined) updateData.discordId = discordId;
+  if (discordUsername !== undefined) updateData.discordUsername = discordUsername;
+  if (ccId !== undefined) updateData.ccId = ccId;
+  if (ccUsername !== undefined) updateData.ccUsername = ccUsername;
+  if (email !== undefined) updateData.email = email;
+
+  await User.findByIdAndUpdate(id, updateData);
+  return NextResponse.json({ message: 'User updated successfully' });
+});
+
+export const DELETE = authRoute<{ id: string }>(['admin'], async (req, { params }) => {
+  const { id } = await params;
+
+  await User.findByIdAndDelete(id);
+  return NextResponse.json({ message: 'User deleted successfully' });
+});
