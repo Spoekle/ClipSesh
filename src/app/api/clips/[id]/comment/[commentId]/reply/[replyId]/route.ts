@@ -1,25 +1,29 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { and, eq } from 'drizzle-orm';
 import { authRoute, ANY_ROLE } from '@/lib/route';
-import Clip from '@/models/clipModel';
+import { db } from '@/lib/db';
+import { clipComments, clipCommentReplies } from '@/db/schema';
+import { getClipWithComments } from '@/db/queries';
 
 export const DELETE = authRoute<{ id: string; commentId: string; replyId: string }>(ANY_ROLE, async (req, { params, user: authUser }) => {
   const { id, commentId, replyId } = await params;
-  const clip = await Clip.findById(id);
-  if (!clip) {
-    return NextResponse.json({ error: 'Clip not found' }, { status: 404 });
-  }
 
-  const comment = (clip.comments as any).id(commentId);
-  if (!comment) {
-    return NextResponse.json({ error: 'Comment not found' }, { status: 404 });
-  }
-
-  const reply = (comment.replies as any).id(replyId);
+  const [reply] = await db
+    .select({ userId: clipCommentReplies.userId })
+    .from(clipCommentReplies)
+    .innerJoin(clipComments, eq(clipComments._id, clipCommentReplies.commentId))
+    .where(
+      and(
+        eq(clipCommentReplies._id, replyId),
+        eq(clipCommentReplies.commentId, commentId),
+        eq(clipComments.clipId, id)
+      )
+    );
   if (!reply) {
     return NextResponse.json({ error: 'Reply not found' }, { status: 404 });
   }
 
-  const isAuthor = reply.userId.toString() === authUser.id;
+  const isAuthor = reply.userId === authUser.id;
   const isAdmin = authUser.roles.includes('admin');
 
   if (!isAuthor && !isAdmin) {
@@ -29,8 +33,7 @@ export const DELETE = authRoute<{ id: string; commentId: string; replyId: string
     );
   }
 
-  (comment.replies as any).pull({ _id: replyId });
-  await clip.save();
+  await db.delete(clipCommentReplies).where(eq(clipCommentReplies._id, replyId));
 
-  return NextResponse.json(clip);
+  return NextResponse.json(await getClipWithComments(id));
 });

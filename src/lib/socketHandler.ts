@@ -1,10 +1,6 @@
 import { Server as SocketIOServer, Socket } from 'socket.io';
 import { verifyAuthToken, DecodedUser } from './auth';
-import { connectToDatabase } from './db';
-import Message from '@/models/messageModel';
-import Clip from '@/models/clipModel';
-import User from '@/models/userModel';
-import Notification from '@/models/notificationModel';
+import { createTeamMessage, deleteTeamMessage } from '@/db/queries';
 
 export function setupSocketHandlers(io: SocketIOServer) {
   io.on('connection', (socket: Socket) => {
@@ -109,51 +105,12 @@ export function setupSocketHandlers(io: SocketIOServer) {
             return;
           }
 
-          await connectToDatabase();
-
-          const newMessage = new Message({
-            clipId,
-            userId: authUser.id,
-            user: authUser.username,
-            message: message.trim(),
+          const messageObj = await createTeamMessage({
+            clipId: String(clipId),
+            message,
             profilePicture: profilePicture || '',
-            timestamp: new Date(),
+            author: authUser,
           });
-
-          await newMessage.save();
-
-          // Create notifications for other clipteam members
-          try {
-            const clipTeamMembers = await User.find({
-              roles: { $in: ['clipteam', 'admin'] },
-              _id: { $ne: authUser.id },
-            })
-              .select('_id')
-              .lean();
-
-            const clipInfo = await Clip.findById(clipId).select('title streamer').lean();
-            const clipTitle = clipInfo ? clipInfo.title : 'a clip';
-            const clipStreamer = clipInfo ? clipInfo.streamer : '';
-            const notificationMessage = `${authUser.username} posted a team message on ${clipStreamer}'s clip: "${clipTitle}"`;
-
-            const notifications = clipTeamMembers.map((member) => ({
-              recipientId: member._id,
-              senderId: authUser.id,
-              senderUsername: authUser.username,
-              type: 'team_message',
-              entityId: newMessage._id.toString(),
-              clipId,
-              message: notificationMessage,
-            }));
-
-            if (notifications.length > 0) {
-              await Notification.insertMany(notifications);
-            }
-          } catch (notifErr) {
-            console.error('[Socket.IO] Error creating notifications for message:', notifErr);
-          }
-
-          const messageObj = newMessage.toObject ? newMessage.toObject() : newMessage;
 
           // Broadcast to everyone in the clip room
           io.to(`clip:${clipId}`).emit('message:new', messageObj);
@@ -204,22 +161,17 @@ export function setupSocketHandlers(io: SocketIOServer) {
             return;
           }
 
-          await connectToDatabase();
-
-          const message = await Message.findById(messageId);
-          if (!message) {
+          const result = await deleteTeamMessage(messageId, authUser);
+          if (result === 'not_found') {
             callback?.({ error: 'Message not found' });
             return;
           }
-
-          const isAdmin = authUser.roles.includes('admin');
-          if (!isAdmin && message.userId.toString() !== authUser.id) {
+          if (result === 'forbidden') {
             callback?.({ error: 'Forbidden: You can only delete your own messages' });
             return;
           }
 
-          const clipId = data.clipId || message.clipId.toString();
-          await message.deleteOne();
+          const clipId = data.clipId || result.clipId;
 
           // Broadcast deletion to everyone in the clip room
           io.to(`clip:${clipId}`).emit('message:deleted', { messageId, clipId });

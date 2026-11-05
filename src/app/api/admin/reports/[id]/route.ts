@@ -1,11 +1,13 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { eq } from 'drizzle-orm';
 import { authRoute } from '@/lib/route';
-import Report from '@/models/reportModel';
-import Notification from '@/models/notificationModel';
+import { db } from '@/lib/db';
+import { REPORT_STATUSES, reports } from '@/db/schema';
+import { createNotifications } from '@/db/queries';
 
 export const GET = authRoute<{ id: string }>(['admin'], async (req, { params }) => {
   const { id } = await params;
-  const report = await Report.findById(id);
+  const [report] = await db.select().from(reports).where(eq(reports._id, id));
   if (!report) {
     return NextResponse.json({ error: 'Report not found' }, { status: 404 });
   }
@@ -14,54 +16,57 @@ export const GET = authRoute<{ id: string }>(['admin'], async (req, { params }) 
 
 export const PATCH = authRoute<{ id: string }>(['admin'], async (req, { params, user: authUser }) => {
   const { id } = await params;
-  const { status, adminNotes } = await req.json();
+  const { status: rawStatus, adminNotes } = await req.json();
   const reviewerUsername = authUser.username;
 
-  const currentReport = await Report.findById(id);
+  const [currentReport] = await db.select().from(reports).where(eq(reports._id, id));
   if (!currentReport) {
     return NextResponse.json({ error: 'Report not found' }, { status: 404 });
   }
 
-  const previousStatus = currentReport.status;
-  const updateData: Record<string, any> = {};
+  const status = REPORT_STATUSES.find((s) => s === rawStatus);
+  if (rawStatus && !status) {
+    return NextResponse.json({ error: 'Invalid report status' }, { status: 400 });
+  }
 
+  const update: Partial<typeof reports.$inferInsert> = {};
   if (status) {
-    updateData.status = status;
+    update.status = status;
     if (status !== 'pending') {
-      updateData.reviewedBy = reviewerUsername;
-      updateData.reviewedAt = new Date();
+      update.reviewedBy = reviewerUsername;
+      update.reviewedAt = new Date();
     } else {
-      updateData.reviewedBy = null;
-      updateData.reviewedAt = null;
+      update.reviewedBy = null;
+      update.reviewedAt = null;
     }
   }
 
   if (adminNotes !== undefined) {
-    updateData.adminNotes = adminNotes;
+    update.adminNotes = String(adminNotes);
   }
 
-  const updatedReport = await Report.findByIdAndUpdate(id, updateData, { new: true });
-  if (!updatedReport) {
-    return NextResponse.json({ error: 'Report not found' }, { status: 404 });
-  }
+  const [updatedReport] =
+    Object.keys(update).length > 0
+      ? await db.update(reports).set(update).where(eq(reports._id, id)).returning()
+      : [currentReport];
 
   if (
     status &&
-    status !== previousStatus &&
+    status !== currentReport.status &&
     (status === 'resolved' || status === 'dismissed')
   ) {
     try {
-      const notification = new Notification({
-        recipientId: updatedReport.reporterId,
-        senderId: authUser.id,
-        senderUsername: reviewerUsername,
-        type: 'report',
-        entityId: id,
-        clipId: updatedReport.clipId,
-        message: `Your report on "${updatedReport.clipTitle}" has been ${status}`,
-        read: false,
-      });
-      await notification.save();
+      await createNotifications([
+        {
+          recipientId: updatedReport.reporterId,
+          senderId: authUser.id,
+          senderUsername: reviewerUsername,
+          type: 'report',
+          entityId: id,
+          clipId: updatedReport.clipId,
+          message: `Your report on "${updatedReport.clipTitle}" has been ${status}`,
+        },
+      ]);
     } catch (notifErr) {
       console.error('Error creating report notification:', notifErr);
     }
@@ -72,9 +77,9 @@ export const PATCH = authRoute<{ id: string }>(['admin'], async (req, { params, 
 
 export const DELETE = authRoute<{ id: string }>(['admin'], async (req, { params }) => {
   const { id } = await params;
-  const deletedReport = await Report.findByIdAndDelete(id);
+  const deleted = await db.delete(reports).where(eq(reports._id, id)).returning({ _id: reports._id });
 
-  if (!deletedReport) {
+  if (deleted.length === 0) {
     return NextResponse.json({ error: 'Report not found' }, { status: 404 });
   }
 

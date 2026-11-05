@@ -1,6 +1,5 @@
 import 'server-only';
 import { NextRequest, NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/db';
 import { requireAuth, type DecodedUser } from '@/lib/auth';
 
 type RouteParams = Record<string, string | string[] | undefined>;
@@ -30,12 +29,11 @@ function toErrorResponse(req: NextRequest, error: unknown, options?: RouteOption
 }
 
 /**
- * Wraps a public API route handler: connects to MongoDB first and turns uncaught
- * errors into a logged 500 JSON response.
+ * Wraps a public API route handler and turns uncaught errors into a logged 500 JSON response.
  *
  * @example
  * export const GET = apiRoute(async (req) => {
- *   const config = await PublicConfig.findOne().lean();
+ *   const config = await getPublicConfig();
  *   return NextResponse.json(config);
  * });
  */
@@ -45,7 +43,6 @@ export function apiRoute<P extends RouteParams = RouteParams>(
 ): RouteHandler<P> {
   return async (req, ctx) => {
     try {
-      await connectToDatabase();
       return await handler(req, ctx);
     } catch (error) {
       return toErrorResponse(req, error, options);
@@ -55,8 +52,8 @@ export function apiRoute<P extends RouteParams = RouteParams>(
 
 /**
  * Like {@link apiRoute}, but rejects requests without a valid token (401) or without
- * one of `roles` (403; an empty list allows any signed-in user) before touching the
- * database, and passes the signed-in user on.
+ * one of `roles` (403; an empty list allows any signed-in user) before running the
+ * handler, and passes the signed-in user on.
  *
  * @example
  * export const PUT = authRoute(['admin'], async (req, { params, user }) => {
@@ -73,7 +70,6 @@ export function authRoute<P extends RouteParams = RouteParams>(
     const auth = requireAuth(req, roles);
     if (auth.errorResponse) return auth.errorResponse;
     try {
-      await connectToDatabase();
       return await handler(req, { ...ctx, user: auth.user });
     } catch (error) {
       return toErrorResponse(req, error, options);

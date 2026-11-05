@@ -1,37 +1,43 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { and, count, desc, eq } from 'drizzle-orm';
 import { authRoute, ANY_ROLE } from '@/lib/route';
-import Notification from '@/models/notificationModel';
+import { db } from '@/lib/db';
+import { notifications } from '@/db/schema';
 
 export const GET = authRoute(ANY_ROLE, async (req, { user: authUser }) => {
-  const [notifications, unreadCount] = await Promise.all([
-    Notification.find({ recipientId: authUser.id })
-      .sort({ createdAt: -1 })
-      .limit(100)
-      .lean(),
-    Notification.countDocuments({
-      recipientId: authUser.id,
-      read: false,
-    }),
+  const [rows, [{ unreadCount }]] = await Promise.all([
+    db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.recipientId, authUser.id))
+      .orderBy(desc(notifications.createdAt))
+      .limit(100),
+    db
+      .select({ unreadCount: count() })
+      .from(notifications)
+      .where(and(eq(notifications.recipientId, authUser.id), eq(notifications.read, false))),
   ]);
 
-  return NextResponse.json({ notifications, unreadCount });
+  return NextResponse.json({ notifications: rows, unreadCount });
 });
 
 export const DELETE = authRoute(ANY_ROLE, async (req, { user: authUser }) => {
-  const { searchParams } = new URL(req.url);
-  const deleteAll = searchParams.get('all') === 'true';
+  const deleteAll = req.nextUrl.searchParams.get('all') === 'true';
 
-  const filter: Record<string, any> = { recipientId: authUser.id };
-  if (!deleteAll) {
-    // Default: delete only read notifications
-    filter.read = true;
-  }
-
-  const result = await Notification.deleteMany(filter);
+  const deleted = await db
+    .delete(notifications)
+    .where(
+      and(
+        eq(notifications.recipientId, authUser.id),
+        // Default: delete only read notifications
+        deleteAll ? undefined : eq(notifications.read, true)
+      )
+    )
+    .returning({ _id: notifications._id });
 
   return NextResponse.json({
     success: true,
-    deletedCount: result.deletedCount,
-    message: `Cleared ${result.deletedCount} notifications`,
+    deletedCount: deleted.length,
+    message: `Cleared ${deleted.length} notifications`,
   });
 });

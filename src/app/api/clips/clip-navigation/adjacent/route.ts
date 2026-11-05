@@ -1,33 +1,36 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { and, asc, desc, eq, gt, lt, notInArray, type SQL } from 'drizzle-orm';
 import { apiRoute } from '@/lib/route';
-import mongoose from 'mongoose';
-import Clip from '@/models/clipModel';
-import Rating from '@/models/ratingModel';
-import { escapeRegExp } from '@/lib/utils';
+import { db } from '@/lib/db';
+import { clipRatings, clips, type ClipRow } from '@/db/schema';
+import { ilikeContains } from '@/db/queries';
+import { isValidId } from '@/lib/ids';
 
-async function getUserRatedClipIds(userId: string) {
-  if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
-    return [];
-  }
-  try {
-    const userObjId = new mongoose.Types.ObjectId(userId);
-    const ratings = await Rating.find(
-      {
-        $or: [
-          { 'ratings.1.userId': userObjId },
-          { 'ratings.2.userId': userObjId },
-          { 'ratings.3.userId': userObjId },
-          { 'ratings.4.userId': userObjId },
-          { 'ratings.deny.userId': userObjId },
-        ],
-      },
-      { clipId: 1 }
-    ).lean();
-    return ratings.map((r: any) => r.clipId);
-  } catch (error) {
-    console.error('Error fetching user ratings:', error);
-    return [];
-  }
+type SortKey = 'newest' | 'oldest' | 'highestUpvotes' | 'highestDownvotes';
+
+const SORT_KEYS: readonly SortKey[] = ['newest', 'oldest', 'highestUpvotes', 'highestDownvotes'];
+
+/**
+ * Conditions and orderings that find the clip shown just before / after `current` in a list
+ * sorted by `sort`.
+ */
+function neighbourQueries(sort: SortKey, current: ClipRow) {
+  const descending = sort !== 'oldest';
+  const [before, after, column] =
+    sort === 'highestUpvotes'
+      ? [gt(clips.upvotes, current.upvotes), lt(clips.upvotes, current.upvotes), clips.upvotes]
+      : sort === 'highestDownvotes'
+        ? [gt(clips.downvotes, current.downvotes), lt(clips.downvotes, current.downvotes), clips.downvotes]
+        : descending
+          ? [gt(clips.createdAt, current.createdAt), lt(clips.createdAt, current.createdAt), clips.createdAt]
+          : [lt(clips.createdAt, current.createdAt), gt(clips.createdAt, current.createdAt), clips.createdAt];
+  return {
+    before,
+    after,
+    // The nearest neighbour on each side: walk away from the current value.
+    beforeOrder: descending ? asc(column) : desc(column),
+    afterOrder: descending ? desc(column) : asc(column),
+  };
 }
 
 export const GET = apiRoute(async (req) => {
@@ -41,73 +44,47 @@ export const GET = apiRoute(async (req) => {
     return NextResponse.json({ error: 'Required parameters missing' }, { status: 400 });
   }
 
-  const currentClip = await Clip.findById(currentClipId).lean();
+  const [currentClip] = await db.select().from(clips).where(eq(clips._id, currentClipId));
   if (!currentClip) {
     return NextResponse.json({ error: 'Current clip not found' }, { status: 404 });
   }
 
-  const baseQuery: Record<string, any> = { archived: { $ne: true } };
+  const baseConditions: SQL[] = [eq(clips.archived, false)];
   if (streamer) {
-    baseQuery.streamer = { $regex: escapeRegExp(streamer), $options: 'i' };
+    baseConditions.push(ilikeContains(clips.streamer, streamer));
+  }
+  if (excludeRatedByUser && isValidId(excludeRatedByUser)) {
+    baseConditions.push(
+      notInArray(
+        clips._id,
+        db
+          .select({ clipId: clipRatings.clipId })
+          .from(clipRatings)
+          .where(eq(clipRatings.userId, excludeRatedByUser))
+      )
+    );
   }
 
-  if (excludeRatedByUser) {
-    const userRatedClipIds = await getUserRatedClipIds(excludeRatedByUser);
-    if (userRatedClipIds.length > 0) {
-      baseQuery._id = { $nin: userRatedClipIds };
-    }
-  }
+  const sortKey = SORT_KEYS.find((k) => k === sort) ?? 'newest';
+  const { before, after, beforeOrder, afterOrder } = neighbourQueries(sortKey, currentClip);
 
-  let sortField = 'createdAt';
-  let sortDirection = -1;
-
-  switch (sort) {
-    case 'oldest':
-      sortField = 'createdAt';
-      sortDirection = 1;
-      break;
-    case 'highestUpvotes':
-      sortField = 'upvotes';
-      sortDirection = -1;
-      break;
-    case 'highestDownvotes':
-      sortField = 'downvotes';
-      sortDirection = -1;
-      break;
-    case 'newest':
-    default:
-      sortField = 'createdAt';
-      sortDirection = -1;
-      break;
-  }
-
-  const prevClipQuery = { ...baseQuery };
-  if (sortDirection === -1) {
-    prevClipQuery[sortField] = { $gt: (currentClip as any)[sortField] };
-  } else {
-    prevClipQuery[sortField] = { $lt: (currentClip as any)[sortField] };
-  }
-
-  const nextClipQuery = { ...baseQuery };
-  if (sortDirection === -1) {
-    nextClipQuery[sortField] = { $lt: (currentClip as any)[sortField] };
-  } else {
-    nextClipQuery[sortField] = { $gt: (currentClip as any)[sortField] };
-  }
-
-  const [prevClip, nextClip] = await Promise.all([
-    Clip.findOne(prevClipQuery)
-      .sort({ [sortField]: -sortDirection as any })
-      .select('-comments')
-      .lean(),
-    Clip.findOne(nextClipQuery)
-      .sort({ [sortField]: sortDirection as any })
-      .select('-comments')
-      .lean(),
+  const [[prevClip], [nextClip]] = await Promise.all([
+    db
+      .select()
+      .from(clips)
+      .where(and(...baseConditions, before))
+      .orderBy(beforeOrder)
+      .limit(1),
+    db
+      .select()
+      .from(clips)
+      .where(and(...baseConditions, after))
+      .orderBy(afterOrder)
+      .limit(1),
   ]);
 
   return NextResponse.json({
-    previous: prevClip,
-    next: nextClip,
+    previous: prevClip ?? null,
+    next: nextClip ?? null,
   });
 });

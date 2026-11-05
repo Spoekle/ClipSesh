@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
+import { and, count, isNotNull, sql } from 'drizzle-orm';
 import { authRoute } from '@/lib/route';
-import { AdminConfig } from '@/models/configModel';
-import Clip from '@/models/clipModel';
-import Zip from '@/models/zipModel';
-import { getSeasonLifecycleStatus, getCurrentSeason } from '@/lib/seasonHelpers';
+import { db } from '@/lib/db';
+import { clips, DEFAULT_SEASON_AUTOMATION, zips } from '@/db/schema';
+import { getAdminConfig } from '@/db/queries';
+import { getSeasonLifecycleStatus, getCurrentSeason, requireSeason } from '@/lib/seasonHelpers';
 import {
   runSeasonDryRun,
   triggerManualSeasonArchive,
@@ -11,73 +12,87 @@ import {
   unarchiveSeason,
 } from '@/lib/seasonScheduler';
 
-export const GET = authRoute(['admin', 'clipteam', 'editor'], async (req) => {
-  const adminConfig = await AdminConfig.findOne().lean();
+interface SeasonZipSummary {
+  name: string;
+  url: string;
+  size: number;
+  clipAmount: number;
+}
+
+interface SeasonOverview {
+  season: string;
+  year: number;
+  totalClips: number;
+  archivedClips: number;
+  activeClips: number;
+  zip: SeasonZipSummary | null;
+  isCurrent: boolean;
+}
+
+export const GET = authRoute(['admin', 'clipteam', 'editor'], async () => {
+  const adminConfig = await getAdminConfig();
 
   const dates = {
-    seasonEndDay: adminConfig?.seasonAutomation?.seasonEndDay ?? 20,
-    newSeasonStartDay: adminConfig?.seasonAutomation?.newSeasonStartDay ?? 21,
-    zipArchiveDay: adminConfig?.seasonAutomation?.zipArchiveDay ?? 25,
+    seasonEndDay: adminConfig.seasonAutomation.seasonEndDay ?? 20,
+    newSeasonStartDay: adminConfig.seasonAutomation.newSeasonStartDay ?? 21,
+    zipArchiveDay: adminConfig.seasonAutomation.zipArchiveDay ?? 25,
   };
 
   const lifecycle = getSeasonLifecycleStatus(new Date(), dates);
 
-  // Fetch seasons overview for admin dashboard
   const currentSeasonInfo = getCurrentSeason();
-  const currentSeasonCap = (
-    currentSeasonInfo.season.charAt(0).toUpperCase() + currentSeasonInfo.season.slice(1)
-  ) as 'Winter' | 'Spring' | 'Summer' | 'Fall';
+  const currentSeasonCap = requireSeason(currentSeasonInfo.season);
   const currentYear = currentSeasonInfo.year;
 
-  const clips = await Clip.find({}, { season: 1, year: 1, archived: 1 }).lean();
-  const zips = await Zip.find({}).lean();
-  const zipMap = new Map<string, any>();
-  zips.forEach((z) => {
-    const key = `${z.season?.toLowerCase()}-${z.year}`;
+  const [seasonCounts, zipRows] = await Promise.all([
+    db
+      .select({
+        season: clips.season,
+        year: clips.year,
+        totalClips: count(),
+        archivedClips: sql<number>`count(*) filter (where ${clips.archived})`.mapWith(Number),
+      })
+      .from(clips)
+      .where(and(isNotNull(clips.season), isNotNull(clips.year)))
+      .groupBy(clips.season, clips.year),
+    db.select().from(zips),
+  ]);
+
+  const zipMap = new Map<string, SeasonZipSummary>();
+  zipRows.forEach((z) => {
+    const key = `${z.season}-${z.year}`;
     if (!zipMap.has(key)) {
       zipMap.set(key, { name: z.name, url: z.url, size: z.size, clipAmount: z.clipAmount });
     }
   });
 
-  const seasonsMap = new Map<string, any>();
-  clips.forEach((c) => {
-    if (!c.season || !c.year) return;
-    const normSeason = (c.season.charAt(0).toUpperCase() + c.season.slice(1).toLowerCase()) as string;
-    const key = `${normSeason}-${c.year}`;
-    let sData = seasonsMap.get(key);
-    if (!sData) {
-      sData = {
-        season: normSeason,
-        year: c.year,
-        totalClips: 0,
-        archivedClips: 0,
-        activeClips: 0,
-        zip: zipMap.get(`${normSeason.toLowerCase()}-${c.year}`) || null,
-        isCurrent: normSeason === currentSeasonCap && c.year === currentYear,
-      };
-      seasonsMap.set(key, sData);
-    }
-    sData.totalClips += 1;
-    if (c.archived) {
-      sData.archivedClips += 1;
-    } else {
-      sData.activeClips += 1;
-    }
+  const seasonsMap = new Map<string, SeasonOverview>();
+  seasonCounts.forEach((row) => {
+    if (!row.season || row.year === null) return;
+    const key = `${row.season}-${row.year}`;
+    seasonsMap.set(key, {
+      season: row.season,
+      year: row.year,
+      totalClips: row.totalClips,
+      archivedClips: row.archivedClips,
+      activeClips: row.totalClips - row.archivedClips,
+      zip: zipMap.get(key) || null,
+      isCurrent: row.season === currentSeasonCap && row.year === currentYear,
+    });
   });
 
   // Also include seasons from Zips that might not have clips anymore
-  zips.forEach((z) => {
-    const normSeason = (z.season.charAt(0).toUpperCase() + z.season.slice(1).toLowerCase()) as string;
-    const key = `${normSeason}-${z.year}`;
+  zipRows.forEach((z) => {
+    const key = `${z.season}-${z.year}`;
     if (!seasonsMap.has(key)) {
       seasonsMap.set(key, {
-        season: normSeason,
+        season: z.season,
         year: z.year,
         totalClips: z.clipAmount || 0,
         archivedClips: z.clipAmount || 0,
         activeClips: 0,
         zip: { name: z.name, url: z.url, size: z.size, clipAmount: z.clipAmount },
-        isCurrent: normSeason === currentSeasonCap && z.year === currentYear,
+        isCurrent: z.season === currentSeasonCap && z.year === currentYear,
       });
     }
   });
@@ -98,13 +113,7 @@ export const GET = authRoute(['admin', 'clipteam', 'editor'], async (req) => {
     success: true,
     lifecycle,
     seasons: seasonList,
-    seasonAutomation: adminConfig?.seasonAutomation || {
-      enabled: true,
-      seasonEndDay: 20,
-      newSeasonStartDay: 21,
-      zipArchiveDay: 25,
-      transitionHistory: [],
-    },
+    seasonAutomation: adminConfig.seasonAutomation ?? DEFAULT_SEASON_AUTOMATION,
   });
 }, { exposeErrors: true });
 

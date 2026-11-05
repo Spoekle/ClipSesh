@@ -1,142 +1,167 @@
 import { NextResponse } from 'next/server';
+import { and, count, desc, isNotNull, isNull, max, or, sql } from 'drizzle-orm';
 import { apiRoute } from '@/lib/route';
-import Clip from '@/models/clipModel';
-import Zip from '@/models/zipModel';
-import { getCurrentSeason } from '@/lib/seasonHelpers';
+import { db } from '@/lib/db';
+import { clips, zips } from '@/db/schema';
+import { getCurrentSeason, requireSeason, type SeasonName } from '@/lib/seasonHelpers';
 import { getAuthUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
+const PREVIEW_THUMBNAILS = 4;
+const TOP_STREAMERS = 3;
+
+interface SeasonData {
+  season: SeasonName;
+  year: number;
+  clipCount: number;
+  archivedClipsCount: number;
+  unarchivedClipsCount: number;
+  totalViews: number;
+  totalUpvotes: number;
+  thumbnails: string[];
+  streamerCounts: Map<string, number>;
+}
+
+function emptySeasonData(season: SeasonName, year: number): SeasonData {
+  return {
+    season,
+    year,
+    clipCount: 0,
+    archivedClipsCount: 0,
+    unarchivedClipsCount: 0,
+    totalViews: 0,
+    totalUpvotes: 0,
+    thumbnails: [],
+    streamerCounts: new Map<string, number>(),
+  };
+}
+
 export const GET = apiRoute(async (req) => {
   const currentSeasonInfo = getCurrentSeason();
-  const currentSeasonCap = (
-    currentSeasonInfo.season.charAt(0).toUpperCase() + currentSeasonInfo.season.slice(1)
-  ) as 'Winter' | 'Spring' | 'Summer' | 'Fall';
+  const currentSeasonCap = requireSeason(currentSeasonInfo.season);
   const currentYear = currentSeasonInfo.year;
 
-  // 1. Fetch all clips with relevant projection to compute season stats
-  // Using lean query for performance
-  const clips = await Clip.find(
-    {},
-    {
-      season: 1,
-      year: 1,
-      createdAt: 1,
-      thumbnail: 1,
-      streamer: 1,
-      views: 1,
-      upvotes: 1,
-      archived: 1
-    }
-  )
-    .sort({ createdAt: -1 })
-    .lean();
+  const hasSeason = and(isNotNull(clips.season), isNotNull(clips.year));
+  const rankedThumbnails = db.$with('ranked_thumbnails').as(
+    db
+      .select({
+        season: clips.season,
+        year: clips.year,
+        thumbnail: clips.thumbnail,
+        rank: sql<number>`row_number() over (partition by ${clips.season}, ${clips.year} order by ${clips.createdAt} desc)`.as('rank'),
+      })
+      .from(clips)
+      .where(and(hasSeason, isNotNull(clips.thumbnail)))
+  );
 
-  // 2. Fetch all season zip archives
-  const zips = await Zip.find({}).sort({ createdAt: -1 }).lean();
-  const zipMap = new Map<string, any>();
-  zips.forEach((z) => {
-    const key = `${z.season?.toLowerCase()}-${z.year}`;
-    if (!zipMap.has(key)) {
-      zipMap.set(key, {
-        name: z.name,
-        url: z.url,
-        size: z.size,
-        clipAmount: z.clipAmount,
-      });
-    }
-  });
+  const [totals, thumbnails, streamers, unseasonedClips, zipRows] = await Promise.all([
+    db
+      .select({
+        season: clips.season,
+        year: clips.year,
+        clipCount: count(),
+        archivedClipsCount: sql<number>`count(*) filter (where ${clips.archived})`.mapWith(Number),
+        totalViews: sql<number>`coalesce(sum(${clips.views}), 0)`.mapWith(Number),
+        totalUpvotes: sql<number>`coalesce(sum(${clips.upvotes}), 0)`.mapWith(Number),
+      })
+      .from(clips)
+      .where(hasSeason)
+      .groupBy(clips.season, clips.year),
+    db
+      .with(rankedThumbnails)
+      .select()
+      .from(rankedThumbnails)
+      .where(sql`${rankedThumbnails.rank} <= ${PREVIEW_THUMBNAILS}`)
+      .orderBy(rankedThumbnails.rank),
+    db
+      .select({
+        season: clips.season,
+        year: clips.year,
+        streamer: clips.streamer,
+        clipCount: count(),
+      })
+      .from(clips)
+      .where(hasSeason)
+      .groupBy(clips.season, clips.year, clips.streamer)
+      .orderBy(desc(count()), desc(max(clips.createdAt))),
+    // Legacy clips saved without season/year get one inferred from their upload date.
+    db
+      .select({
+        createdAt: clips.createdAt,
+        thumbnail: clips.thumbnail,
+        streamer: clips.streamer,
+        views: clips.views,
+        upvotes: clips.upvotes,
+        archived: clips.archived,
+      })
+      .from(clips)
+      .where(or(isNull(clips.season), isNull(clips.year)))
+      .orderBy(desc(clips.createdAt)),
+    db.select().from(zips).orderBy(desc(zips.createdAt)),
+  ]);
 
-  // 3. Group clips by season and year
-  interface TempSeasonData {
-    season: 'Winter' | 'Spring' | 'Summer' | 'Fall';
-    year: number;
-    clipCount: number;
-    archivedClipsCount: number;
-    unarchivedClipsCount: number;
-    totalViews: number;
-    totalUpvotes: number;
-    thumbnails: string[];
-    streamerCounts: Map<string, number>;
-  }
-
-  const sectionsMap = new Map<string, TempSeasonData>();
-
-  clips.forEach((clip) => {
-    let season = clip.season;
-    let year = clip.year;
-
-    if (!season || !year) {
-      const d = clip.createdAt ? new Date(clip.createdAt) : new Date();
-      const seasonInfo = getCurrentSeason(d);
-      season = (seasonInfo.season.charAt(0).toUpperCase() + seasonInfo.season.slice(1)) as
-        | 'Winter'
-        | 'Spring'
-        | 'Summer'
-        | 'Fall';
-      year = seasonInfo.year;
-    }
-
-    // Standardize season casing
-    const normalizedSeason = (
-      season.charAt(0).toUpperCase() + season.slice(1).toLowerCase()
-    ) as 'Winter' | 'Spring' | 'Summer' | 'Fall';
-
-    const key = `${normalizedSeason}-${year}`;
+  const sectionsMap = new Map<string, SeasonData>();
+  const getSection = (season: SeasonName, year: number) => {
+    const key = `${season}-${year}`;
     let data = sectionsMap.get(key);
     if (!data) {
-      data = {
-        season: normalizedSeason,
-        year,
-        clipCount: 0,
-        archivedClipsCount: 0,
-        unarchivedClipsCount: 0,
-        totalViews: 0,
-        totalUpvotes: 0,
-        thumbnails: [],
-        streamerCounts: new Map<string, number>(),
-      };
+      data = emptySeasonData(season, year);
       sectionsMap.set(key, data);
     }
+    return data;
+  };
 
+  let totalClips = 0;
+  for (const row of totals) {
+    if (!row.season || row.year === null) continue;
+    const data = getSection(row.season, row.year);
+    data.clipCount += row.clipCount;
+    data.archivedClipsCount += row.archivedClipsCount;
+    data.unarchivedClipsCount += row.clipCount - row.archivedClipsCount;
+    data.totalViews += row.totalViews;
+    data.totalUpvotes += row.totalUpvotes;
+    totalClips += row.clipCount;
+  }
+  for (const row of thumbnails) {
+    if (!row.season || row.year === null || !row.thumbnail) continue;
+    getSection(row.season, row.year).thumbnails.push(row.thumbnail);
+  }
+  for (const row of streamers) {
+    if (!row.season || row.year === null || !row.streamer) continue;
+    getSection(row.season, row.year).streamerCounts.set(row.streamer, row.clipCount);
+  }
+  for (const clip of unseasonedClips) {
+    const inferred = getCurrentSeason(clip.createdAt);
+    const data = getSection(requireSeason(inferred.season), inferred.year);
     data.clipCount += 1;
     if (clip.archived) {
       data.archivedClipsCount += 1;
     } else {
       data.unarchivedClipsCount += 1;
     }
-    data.totalViews += clip.views || 0;
-    data.totalUpvotes += clip.upvotes || 0;
-
-    if (clip.thumbnail && data.thumbnails.length < 4) {
+    data.totalViews += clip.views;
+    data.totalUpvotes += clip.upvotes;
+    if (clip.thumbnail && data.thumbnails.length < PREVIEW_THUMBNAILS) {
       data.thumbnails.push(clip.thumbnail);
     }
-
     if (clip.streamer) {
-      const count = data.streamerCounts.get(clip.streamer) || 0;
-      data.streamerCounts.set(clip.streamer, count + 1);
+      data.streamerCounts.set(clip.streamer, (data.streamerCounts.get(clip.streamer) || 0) + 1);
     }
-  });
+    totalClips += 1;
+  }
 
-  // 4. Also account for any historical zip records where clips might not be in DB
-  zips.forEach((z) => {
-    const normalizedSeason = (
-      z.season.charAt(0).toUpperCase() + z.season.slice(1).toLowerCase()
-    ) as 'Winter' | 'Spring' | 'Summer' | 'Fall';
-    const key = `${normalizedSeason}-${z.year}`;
-
+  const zipMap = new Map<string, { name: string; url: string; size: number; clipAmount: number }>();
+  zipRows.forEach((z) => {
+    const key = `${z.season}-${z.year}`;
+    if (!zipMap.has(key)) {
+      zipMap.set(key, { name: z.name, url: z.url, size: z.size, clipAmount: z.clipAmount });
+    }
+    // Also account for any historical zip records where clips might not be in DB
     if (!sectionsMap.has(key)) {
-      sectionsMap.set(key, {
-        season: normalizedSeason,
-        year: z.year,
-        clipCount: z.clipAmount || 0,
-        archivedClipsCount: z.clipAmount || 0,
-        unarchivedClipsCount: 0,
-        totalViews: 0,
-        totalUpvotes: 0,
-        thumbnails: [],
-        streamerCounts: new Map<string, number>(),
-      });
+      const data = getSection(z.season, z.year);
+      data.clipCount = z.clipAmount || 0;
+      data.archivedClipsCount = z.clipAmount || 0;
     }
   });
 
@@ -154,10 +179,10 @@ export const GET = apiRoute(async (req) => {
   const sections = Array.from(sectionsMap.values()).map((data) => {
     const topStreamers = Array.from(data.streamerCounts.entries())
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 3)
+      .slice(0, TOP_STREAMERS)
       .map(([name]) => name);
 
-    const zipKey = `${data.season.toLowerCase()}-${data.year}`;
+    const zipKey = `${data.season}-${data.year}`;
     const zip = canAccessZips ? (zipMap.get(zipKey) || null) : null;
 
     const isCurrent = data.season === currentSeasonCap && data.year === currentYear;
@@ -178,7 +203,7 @@ export const GET = apiRoute(async (req) => {
     };
   });
 
-  // Sort in inversed chronological order (newest period first): Summer 2026, Spring 2026, Winter 2025, Fall 2025, Summer 2025, Spring 2025, Winter 2024, Fall 2024
+  // Newest period first: Summer 2026, Spring 2026, Winter 2025, Fall 2025, ...
   sections.sort((a, b) => {
     if (a.year !== b.year) {
       return b.year - a.year;
@@ -188,7 +213,7 @@ export const GET = apiRoute(async (req) => {
 
   return NextResponse.json({
     success: true,
-    totalClips: clips.length,
+    totalClips,
     currentSeason: {
       season: currentSeasonCap,
       year: currentYear,

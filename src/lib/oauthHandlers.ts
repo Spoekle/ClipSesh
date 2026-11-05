@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/db';
-import User from '@/models/userModel';
+import { eq } from 'drizzle-orm';
+import { db } from '@/lib/db';
+import { users, type UserRow } from '@/db/schema';
+import { parseRoles } from '@/db/queries';
 import { signToken, hashPassword } from '@/lib/auth';
 
 export interface OAuthCallbackParams {
@@ -137,8 +139,6 @@ export async function handleCCCallback({
   }
 
   try {
-    await connectToDatabase();
-
     // 1. Exchange authorization code for access token (and ID token)
     // Client is registered for client_secret_basic: credentials must be sent via Authorization header
     const basicAuth = Buffer.from(
@@ -232,128 +232,69 @@ export async function handleCCCallback({
       linkedDiscord?.username ||
       (discordId ? (ccUser.preferred_username || ccUsername) : undefined);
 
-    // 3. Check if user with this ccId already exists
-    const existingUser = await User.findOne({ ccId: ccUser.sub });
-    if (existingUser) {
-      existingUser.ccUsername = ccUsername;
-      if (discordId && !existingUser.discordId) {
-        existingUser.discordId = discordId;
-        if (discordUsername && !existingUser.discordUsername) {
-          existingUser.discordUsername = discordUsername;
-        }
+    // Fields to fill in when a CC login is linked to an existing site user.
+    const linkUpdate = (user: UserRow, linkEmail: boolean): Partial<typeof users.$inferInsert> => {
+      const update: Partial<typeof users.$inferInsert> = { ccId: ccUser.sub, ccUsername };
+      if (discordId && !user.discordId) update.discordId = discordId;
+      if (discordUsername && !user.discordUsername && (user.discordId ?? discordId) === discordId) {
+        update.discordUsername = discordUsername;
       }
-      if (ccUser.picture && (!existingUser.profilePicture || existingUser.profilePicture.includes('placeholder'))) {
-        existingUser.profilePicture = ccUser.picture;
+      if (linkEmail && ccUser.email && !user.email) update.email = ccUser.email.toLowerCase();
+      if (ccUser.picture && (!user.profilePicture || user.profilePicture.includes('placeholder'))) {
+        update.profilePicture = ccUser.picture;
       }
-      await existingUser.save();
+      return update;
+    };
 
-      if (existingUser.status !== 'active') {
+    const signInLinkedUser = async (user: UserRow, linkEmail: boolean) => {
+      const [saved] = await db
+        .update(users)
+        .set(linkUpdate(user, linkEmail))
+        .where(eq(users._id, user._id))
+        .returning();
+      if (saved.status !== 'active') {
         return NextResponse.redirect(`${frontendUrl}?error=inactive`);
       }
-
       const token = signToken({
-        id: existingUser._id.toString(),
-        username: existingUser.username,
-        roles: existingUser.roles,
-        ccId: existingUser.ccId,
-        discordId: existingUser.discordId,
+        id: saved._id,
+        username: saved.username,
+        roles: saved.roles,
+        ccId: saved.ccId ?? undefined,
+        discordId: saved.discordId ?? undefined,
       });
       return NextResponse.redirect(`${frontendUrl}?token=${encodeURIComponent(token)}`);
+    };
+
+    // 3. Check if user with this ccId already exists
+    const [existingUser] = await db.select().from(users).where(eq(users.ccId, ccUser.sub));
+    if (existingUser) {
+      return signInLinkedUser(existingUser, false);
     }
 
     // 4. Link CC account to an existing user if siteUserId was provided
     if (siteUserId && siteUserId !== 'undefined') {
-      const user = await User.findById(siteUserId);
+      const [user] = await db.select().from(users).where(eq(users._id, siteUserId));
       if (user) {
-        user.ccId = ccUser.sub;
-        user.ccUsername = ccUsername;
-        if (discordId && !user.discordId) {
-          user.discordId = discordId;
-          if (discordUsername && !user.discordUsername) {
-            user.discordUsername = discordUsername;
-          }
-        }
-        if (ccUser.email && !user.email) {
-          user.email = ccUser.email.toLowerCase();
-        }
-        if (ccUser.picture && (!user.profilePicture || user.profilePicture.includes('placeholder'))) {
-          user.profilePicture = ccUser.picture;
-        }
-        await user.save();
-
-        if (user.status !== 'active') {
-          return NextResponse.redirect(`${frontendUrl}?error=inactive`);
-        }
-
-        const token = signToken({
-          id: user._id.toString(),
-          username: user.username,
-          roles: user.roles,
-          ccId: user.ccId,
-          discordId: user.discordId,
-        });
-        return NextResponse.redirect(`${frontendUrl}?token=${encodeURIComponent(token)}`);
+        return signInLinkedUser(user, true);
       }
     }
 
     // 5. Match by discordId if user previously registered with Discord
     if (discordId) {
-      const userByDiscord = await User.findOne({ discordId });
+      const [userByDiscord] = await db.select().from(users).where(eq(users.discordId, discordId));
       if (userByDiscord) {
-        userByDiscord.ccId = ccUser.sub;
-        userByDiscord.ccUsername = ccUsername;
-        if (discordUsername && !userByDiscord.discordUsername) {
-          userByDiscord.discordUsername = discordUsername;
-        }
-        if (ccUser.picture && (!userByDiscord.profilePicture || userByDiscord.profilePicture.includes('placeholder'))) {
-          userByDiscord.profilePicture = ccUser.picture;
-        }
-        await userByDiscord.save();
-
-        if (userByDiscord.status !== 'active') {
-          return NextResponse.redirect(`${frontendUrl}?error=inactive`);
-        }
-
-        const token = signToken({
-          id: userByDiscord._id.toString(),
-          username: userByDiscord.username,
-          roles: userByDiscord.roles,
-          ccId: userByDiscord.ccId,
-          discordId: userByDiscord.discordId,
-        });
-        return NextResponse.redirect(`${frontendUrl}?token=${encodeURIComponent(token)}`);
+        return signInLinkedUser(userByDiscord, false);
       }
     }
 
     // 6. Match by verified email if available
     if (ccUser.email) {
-      const userByEmail = await User.findOne({ email: ccUser.email.toLowerCase() });
+      const [userByEmail] = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, ccUser.email.toLowerCase()));
       if (userByEmail) {
-        userByEmail.ccId = ccUser.sub;
-        userByEmail.ccUsername = ccUsername;
-        if (discordId && !userByEmail.discordId) {
-          userByEmail.discordId = discordId;
-          if (discordUsername && !userByEmail.discordUsername) {
-            userByEmail.discordUsername = discordUsername;
-          }
-        }
-        if (ccUser.picture && (!userByEmail.profilePicture || userByEmail.profilePicture.includes('placeholder'))) {
-          userByEmail.profilePicture = ccUser.picture;
-        }
-        await userByEmail.save();
-
-        if (userByEmail.status !== 'active') {
-          return NextResponse.redirect(`${frontendUrl}?error=inactive`);
-        }
-
-        const token = signToken({
-          id: userByEmail._id.toString(),
-          username: userByEmail.username,
-          roles: userByEmail.roles,
-          ccId: userByEmail.ccId,
-          discordId: userByEmail.discordId,
-        });
-        return NextResponse.redirect(`${frontendUrl}?token=${encodeURIComponent(token)}`);
+        return signInLinkedUser(userByEmail, false);
       }
     }
 
@@ -383,32 +324,34 @@ export async function handleCCCallback({
     if (!baseUsername) baseUsername = 'cc_user';
     let username = baseUsername;
     let counter = 1;
-    while (await User.exists({ username })) {
+    while ((await db.select({ _id: users._id }).from(users).where(eq(users.username, username))).length > 0) {
       username = `${baseUsername}_${counter}`;
       counter++;
     }
 
     const hashedPassword = await hashPassword(username + ccUser.sub);
-    const newUser = new User({
-      username,
-      email: ccUser.email ? ccUser.email.toLowerCase() : undefined,
-      password: hashedPassword,
-      ccId: ccUser.sub,
-      ccUsername,
-      discordId: discordId || undefined,
-      discordUsername: discordUsername || undefined,
-      profilePicture: profilePic,
-      status: 'active',
-      roles: assignedRoles,
-    });
-    await newUser.save();
+    const [newUser] = await db
+      .insert(users)
+      .values({
+        username,
+        email: ccUser.email ? ccUser.email.toLowerCase() : null,
+        password: hashedPassword,
+        ccId: ccUser.sub,
+        ccUsername,
+        discordId: discordId || null,
+        discordUsername: discordUsername || null,
+        profilePicture: profilePic,
+        status: 'active',
+        roles: parseRoles(assignedRoles) ?? ['user'],
+      })
+      .returning();
 
     const token = signToken({
-      id: newUser._id.toString(),
+      id: newUser._id,
       username: newUser.username,
       roles: newUser.roles,
-      ccId: newUser.ccId,
-      discordId: newUser.discordId,
+      ccId: newUser.ccId ?? undefined,
+      discordId: newUser.discordId ?? undefined,
     });
     return NextResponse.redirect(`${frontendUrl}?token=${encodeURIComponent(token)}`);
   } catch (error: unknown) {

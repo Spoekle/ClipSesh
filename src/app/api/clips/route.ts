@@ -1,305 +1,162 @@
-import mongoose from 'mongoose';
 import { NextResponse } from 'next/server';
-import { apiRoute, authRoute } from '@/lib/route';
 import path from 'path';
 import fs from 'fs';
 import ffmpeg from 'fluent-ffmpeg';
-import Clip from '@/models/clipModel';
-import Rating from '@/models/ratingModel';
-import { PublicConfig, AdminConfig } from '@/models/configModel';
-import { getCurrentSeason, parseSeason } from '@/lib/seasonHelpers';
+import { and, asc, count, desc, eq, notInArray, or, sql, type AnyColumn, type SQL } from 'drizzle-orm';
+import { apiRoute, authRoute } from '@/lib/route';
+import { db } from '@/lib/db';
+import { clipRatings, clips } from '@/db/schema';
+import {
+  getAdminConfig,
+  getRatingDocs,
+  ilikeContains,
+  refreshClipCount,
+  type RatingDoc,
+} from '@/db/queries';
+import { getCurrentSeason, parseSeason, requireSeason } from '@/lib/seasonHelpers';
 import { getClipPath } from '@/lib/seasonPathHelpers';
-import { escapeRegExp } from '@/lib/utils';
+import { isValidId } from '@/lib/ids';
 
-async function updateClipCount(): Promise<number> {
-  try {
-    const count = await Clip.countDocuments({ archived: { $ne: true } });
-    await PublicConfig.findOneAndUpdate(
-      {},
-      { clipAmount: count },
-      { upsert: true, new: true }
-    );
-    return count;
-  } catch {
-    return 0;
+const ratingCount = sql<number>`(select count(*) from ${clipRatings} where ${clipRatings.clipId} = ${clips._id})`;
+const denyCount = sql<number>`(select count(*) from ${clipRatings} where ${clipRatings.clipId} = ${clips._id} and ${clipRatings.rating} = 'deny')`;
+const averageRating = sql<number>`coalesce((select avg(${clipRatings.rating}::text::int) from ${clipRatings} where ${clipRatings.clipId} = ${clips._id} and ${clipRatings.rating} <> 'deny'), 0)`;
+const upvoteRatio = sql<number>`case when ${clips.upvotes} + ${clips.downvotes} = 0 then 0 else ${clips.upvotes} * 100.0 / (${clips.upvotes} + ${clips.downvotes}) end`;
+
+function buildOrderBy(sortBy: string, ascending: boolean): SQL[] {
+  const dir = (value: SQL | AnyColumn) => (ascending ? asc(value) : desc(value));
+  const newestFirst = desc(clips.createdAt);
+
+  switch (sortBy) {
+    case 'views':
+      return [dir(clips.views), newestFirst];
+    case 'ratio':
+      return [dir(upvoteRatio), newestFirst];
+    case 'ratingCount':
+      return [dir(ratingCount), newestFirst];
+    case 'denyCount':
+      return [dir(denyCount), newestFirst];
+    case 'averageRating':
+      // Rated clips always come before unrated ones, whichever direction is chosen.
+      return [desc(sql`${averageRating} > 0`), dir(averageRating), newestFirst];
+    case 'upvotes':
+      return [dir(clips.upvotes), newestFirst];
+    case 'downvotes':
+      return [dir(clips.downvotes), newestFirst];
+    case 'createdAt':
+      return [dir(clips.createdAt)];
+    default:
+      return [newestFirst];
   }
 }
 
 export const GET = apiRoute(async (req) => {
-  const page = parseInt(req.nextUrl.searchParams.get('page') || '1', 10);
-  const limit = parseInt(req.nextUrl.searchParams.get('limit') || '12', 10);
-  const sortBy = req.nextUrl.searchParams.get('sortBy') || 'createdAt';
-  const sortOrder = req.nextUrl.searchParams.get('sortOrder') || 'desc';
-  const streamer = req.nextUrl.searchParams.get('streamer');
-  const search = req.nextUrl.searchParams.get('search');
-  const season = req.nextUrl.searchParams.get('season');
-  const year = req.nextUrl.searchParams.get('year');
-  const includeRatings = req.nextUrl.searchParams.get('includeRatings') === 'true';
-  const archived = req.nextUrl.searchParams.get('archived');
-  const excludeRatedByUser = req.nextUrl.searchParams.get('excludeRatedByUser');
-  const excludeDeniedClips = req.nextUrl.searchParams.get('excludeDeniedClips') === 'true';
+  const searchParams = req.nextUrl.searchParams;
+  const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+  const limit = Math.max(1, parseInt(searchParams.get('limit') || '12', 10) || 12);
+  const sortBy = searchParams.get('sortBy') || 'createdAt';
+  const sortOrder = searchParams.get('sortOrder') || 'desc';
+  const streamer = searchParams.get('streamer');
+  const search = searchParams.get('search');
+  const season = searchParams.get('season');
+  const year = searchParams.get('year');
+  const includeRatings = searchParams.get('includeRatings') === 'true';
+  const archived = searchParams.get('archived');
+  const excludeRatedByUser = searchParams.get('excludeRatedByUser');
+  const excludeDeniedClips = searchParams.get('excludeDeniedClips') === 'true';
 
-  const filter: Record<string, any> = {};
+  const conditions: Array<SQL | undefined> = [];
 
   if (archived === 'true') {
-    filter.archived = true;
-  } else if (archived === 'false') {
-    filter.archived = { $ne: true };
-  } else if (archived === 'all' || season || year) {
+    conditions.push(eq(clips.archived, true));
+  } else if (archived === 'all' || ((season || year) && archived !== 'false')) {
     // When viewing an archive season/year or requesting 'all', do not restrict by archived
   } else {
-    filter.archived = { $ne: true };
+    conditions.push(eq(clips.archived, false));
   }
 
   if (streamer) {
-    filter.streamer = { $regex: escapeRegExp(streamer), $options: 'i' };
+    conditions.push(ilikeContains(clips.streamer, streamer));
   }
   if (season) {
-    filter.season = parseSeason(season) ?? season;
+    const seasonName = parseSeason(season);
+    // An unknown season matches nothing, like the old exact-match filter.
+    conditions.push(seasonName ? eq(clips.season, seasonName) : sql`false`);
   }
   if (year) {
-    filter.year = parseInt(year, 10);
+    conditions.push(eq(clips.year, parseInt(year, 10)));
   }
   if (search) {
-    const searchRegex = { $regex: escapeRegExp(search), $options: 'i' };
-    filter.$or = [
-      { title: searchRegex },
-      { streamer: searchRegex },
-      { submitter: searchRegex },
-    ];
+    conditions.push(
+      or(
+        ilikeContains(clips.title, search),
+        ilikeContains(clips.streamer, search),
+        ilikeContains(clips.submitter, search)
+      )
+    );
   }
 
   // Exclude clips rated by a specific user (Team "Hide Rated" toggle)
-  if (excludeRatedByUser && mongoose.Types.ObjectId.isValid(excludeRatedByUser)) {
-    const userRatings = await Rating.find({
-      $or: [
-        { 'ratings.1.userId': excludeRatedByUser },
-        { 'ratings.2.userId': excludeRatedByUser },
-        { 'ratings.3.userId': excludeRatedByUser },
-        { 'ratings.4.userId': excludeRatedByUser },
-        { 'ratings.deny.userId': excludeRatedByUser },
-      ]
-    }).select('clipId').lean();
-    const ratedClipIds = userRatings.map((r) => r.clipId);
-    if (ratedClipIds.length > 0) {
-      filter._id = filter._id
-        ? { ...filter._id, $nin: [...(filter._id.$nin || []), ...ratedClipIds] }
-        : { $nin: ratedClipIds };
-    }
+  if (excludeRatedByUser && isValidId(excludeRatedByUser)) {
+    conditions.push(
+      notInArray(
+        clips._id,
+        db
+          .select({ clipId: clipRatings.clipId })
+          .from(clipRatings)
+          .where(eq(clipRatings.userId, excludeRatedByUser))
+      )
+    );
   }
 
   // Exclude clips with deny count >= threshold (Team "Hide Denied" toggle)
   if (excludeDeniedClips) {
-    const adminConfig = await AdminConfig.findOne({}).lean();
-    const denyThreshold = Math.max(1, adminConfig?.denyThreshold || 5);
-    // An element at index threshold-1 exists only when the deny array has >= threshold entries
-    const deniedRatings = await Rating.find({ [`ratings.deny.${denyThreshold - 1}`]: { $exists: true } })
-      .select('clipId')
-      .lean();
-    const deniedClipIds = deniedRatings.map((r) => r.clipId);
-    if (deniedClipIds.length > 0) {
-      filter._id = filter._id
-        ? { ...filter._id, $nin: [...(filter._id.$nin || []), ...deniedClipIds] }
-        : { $nin: deniedClipIds };
-    }
+    const { denyThreshold } = await getAdminConfig();
+    conditions.push(
+      notInArray(
+        clips._id,
+        db
+          .select({ clipId: clipRatings.clipId })
+          .from(clipRatings)
+          .where(eq(clipRatings.rating, 'deny'))
+          .groupBy(clipRatings.clipId)
+          .having(sql`count(*) >= ${Math.max(1, denyThreshold || 5)}`)
+      )
+    );
   }
 
-  const sortDir: 1 | -1 = sortOrder === 'asc' ? 1 : -1;
-  const complexSortFields = ['ratio', 'averageRating', 'ratingCount', 'denyCount', 'views'];
-
-  const skip = (page - 1) * limit;
-  const totalPromise = Clip.countDocuments(filter);
-
-  let clips: any[] = [];
-
-  if (complexSortFields.includes(sortBy)) {
-    const pipeline: any[] = [{ $match: filter }];
-    const addFields: Record<string, any> = {};
-
-    if (sortBy === 'views') {
-      addFields.viewsCount = { $ifNull: ['$views', 0] };
-      pipeline.push({ $addFields: addFields });
-      pipeline.push({ $sort: { viewsCount: sortDir, createdAt: -1 } });
-    } else if (sortBy === 'ratio') {
-      addFields.ratio = {
-        $cond: {
-          if: { $eq: [{ $add: [{ $ifNull: ['$upvotes', 0] }, { $ifNull: ['$downvotes', 0] }] }, 0] },
-          then: 0,
-          else: {
-            $multiply: [
-              { $divide: ['$upvotes', { $add: ['$upvotes', '$downvotes'] }] },
-              100
-            ]
-          }
-        }
-      };
-      pipeline.push({ $addFields: addFields });
-      pipeline.push({ $sort: { ratio: sortDir, createdAt: -1 } });
-    } else {
-      pipeline.push({
-        $lookup: {
-          from: 'ratings',
-          localField: '_id',
-          foreignField: 'clipId',
-          as: 'ratingData'
-        }
-      });
-
-      if (sortBy === 'ratingCount') {
-        addFields.ratingCount = {
-          $cond: {
-            if: { $eq: [{ $size: '$ratingData' }, 0] },
-            then: 0,
-            else: {
-              $let: {
-                vars: { rating: { $arrayElemAt: ['$ratingData', 0] } },
-                in: {
-                  $add: [
-                    { $size: { $ifNull: ['$$rating.ratings.1', []] } },
-                    { $size: { $ifNull: ['$$rating.ratings.2', []] } },
-                    { $size: { $ifNull: ['$$rating.ratings.3', []] } },
-                    { $size: { $ifNull: ['$$rating.ratings.4', []] } },
-                    { $size: { $ifNull: ['$$rating.ratings.deny', []] } }
-                  ]
-                }
-              }
-            }
-          }
-        };
-        pipeline.push({ $addFields: addFields });
-        pipeline.push({ $sort: { ratingCount: sortDir, createdAt: -1 } });
-      } else if (sortBy === 'denyCount') {
-        addFields.denyCount = {
-          $cond: {
-            if: { $eq: [{ $size: '$ratingData' }, 0] },
-            then: 0,
-            else: {
-              $let: {
-                vars: { rating: { $arrayElemAt: ['$ratingData', 0] } },
-                in: { $size: { $ifNull: ['$$rating.ratings.deny', []] } }
-              }
-            }
-          }
-        };
-        pipeline.push({ $addFields: addFields });
-        pipeline.push({ $sort: { denyCount: sortDir, createdAt: -1 } });
-      } else if (sortBy === 'averageRating') {
-        addFields.averageRating = {
-          $cond: {
-            if: { $eq: [{ $size: '$ratingData' }, 0] },
-            then: 0,
-            else: {
-              $let: {
-                vars: { rating: { $arrayElemAt: ['$ratingData', 0] } },
-                in: {
-                  $cond: {
-                    if: { $not: { $ifNull: ['$$rating.ratings', false] } },
-                    then: 0,
-                    else: {
-                      $let: {
-                        vars: {
-                          counts: {
-                            r1: { $size: { $ifNull: ['$$rating.ratings.1', []] } },
-                            r2: { $size: { $ifNull: ['$$rating.ratings.2', []] } },
-                            r3: { $size: { $ifNull: ['$$rating.ratings.3', []] } },
-                            r4: { $size: { $ifNull: ['$$rating.ratings.4', []] } }
-                          }
-                        },
-                        in: {
-                          $let: {
-                            vars: {
-                              total: { $add: ['$$counts.r1', '$$counts.r2', '$$counts.r3', '$$counts.r4'] }
-                            },
-                            in: {
-                              $cond: {
-                                if: { $eq: ['$$total', 0] },
-                                then: 0,
-                                else: {
-                                  $divide: [
-                                    {
-                                      $add: [
-                                        { $multiply: [1, '$$counts.r1'] },
-                                        { $multiply: [2, '$$counts.r2'] },
-                                        { $multiply: [3, '$$counts.r3'] },
-                                        { $multiply: [4, '$$counts.r4'] }
-                                      ]
-                                    },
-                                    '$$total'
-                                  ]
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        };
-        pipeline.push({ $addFields: addFields });
-
-        if (sortDir === -1) {
-          pipeline.push({
-            $addFields: {
-              hasRatings: { $cond: [{ $gt: ['$averageRating', 0] }, 1, 0] }
-            }
-          });
-          pipeline.push({ $sort: { hasRatings: -1, averageRating: -1, createdAt: -1 } });
-        } else {
-          pipeline.push({
-            $addFields: {
-              hasRatings: { $cond: [{ $gt: ['$averageRating', 0] }, 0, 1] }
-            }
-          });
-          pipeline.push({ $sort: { hasRatings: 1, averageRating: 1, createdAt: -1 } });
-        }
-      }
-    }
-
-    pipeline.push({ $project: { comments: 0, ratingData: 0 } });
-    pipeline.push({ $skip: skip }, { $limit: limit });
-    clips = await Clip.aggregate(pipeline);
-  } else {
-    const sortObj: Record<string, any> = {};
-    if (sortBy === 'upvotes' || sortBy === 'downvotes') {
-      sortObj[sortBy] = sortDir;
-      sortObj.createdAt = -1;
-    } else if (sortBy === 'createdAt') {
-      sortObj.createdAt = sortDir;
-    } else {
-      sortObj.createdAt = -1;
-    }
-
-    clips = await Clip.find(filter)
-      .sort(sortObj)
-      .skip(skip)
+  const where = and(...conditions);
+  const [rows, [{ total }]] = await Promise.all([
+    db
+      .select()
+      .from(clips)
+      .where(where)
+      .orderBy(...buildOrderBy(sortBy, sortOrder === 'asc'))
       .limit(limit)
-      .select('-comments')
-      .lean();
-  }
+      .offset((page - 1) * limit),
+    db.select({ total: count() }).from(clips).where(where),
+  ]);
 
-  const total = await totalPromise;
-
-  let ratingsData: Record<string, any> = {};
-  if (includeRatings && clips.length > 0) {
-    const clipIds = clips.map((c) => c._id);
-    const ratings = await Rating.find({ clipId: { $in: clipIds } }).lean();
-    ratings.forEach((r) => {
-      ratingsData[r.clipId.toString()] = r;
-    });
+  const ratingsData: Record<string, RatingDoc> = {};
+  if (includeRatings && rows.length > 0) {
+    const docs = await getRatingDocs(rows.map((c) => c._id));
+    for (const [clipId, doc] of docs) {
+      ratingsData[clipId] = doc;
+    }
   }
 
   return NextResponse.json({
-    clips,
+    clips: rows,
     ratings: ratingsData,
     total,
     page,
     pages: Math.ceil(total / limit),
   });
 });
+
+function formString(formData: FormData, key: string): string {
+  const value = formData.get(key);
+  return typeof value === 'string' ? value : '';
+}
 
 export const POST = authRoute(['uploader', 'admin'], async (req) => {
   const contentType = req.headers.get('content-type') || '';
@@ -319,12 +176,13 @@ export const POST = authRoute(['uploader', 'admin'], async (req) => {
     discordSubmitterId = json.discordSubmitterId;
   } else {
     const formData = await req.formData();
-    streamer = (formData.get('streamer') as string) || '';
-    submitter = (formData.get('submitter') as string) || '';
-    title = (formData.get('title') as string) || '';
-    link = (formData.get('link') as string) || '';
-    discordSubmitterId = (formData.get('discordSubmitterId') as string) || undefined;
-    file = formData.get('clip') as File | null;
+    streamer = formString(formData, 'streamer');
+    submitter = formString(formData, 'submitter');
+    title = formString(formData, 'title');
+    link = formString(formData, 'link');
+    discordSubmitterId = formString(formData, 'discordSubmitterId') || undefined;
+    const clipFile = formData.get('clip');
+    file = clipFile instanceof File ? clipFile : null;
   }
 
   if (!streamer || !submitter || (!file && !link)) {
@@ -378,22 +236,22 @@ export const POST = authRoute(['uploader', 'admin'], async (req) => {
   }
 
   const { season, year } = getCurrentSeason(uploadDate);
-  const capitalizedSeason = (season.charAt(0).toUpperCase() + season.slice(1)) as any;
 
-  const newClip = new Clip({
-    url: fileUrl,
-    thumbnail: thumbnailUrl || undefined,
-    streamer,
-    submitter,
-    title: title || 'Untitled Clip',
-    link: link || undefined,
-    discordSubmitterId,
-    season: capitalizedSeason,
-    year,
-  });
-
-  await newClip.save();
-  await updateClipCount();
+  const [newClip] = await db
+    .insert(clips)
+    .values({
+      url: fileUrl,
+      thumbnail: thumbnailUrl || null,
+      streamer,
+      submitter,
+      title: title || 'Untitled Clip',
+      link: link || null,
+      discordSubmitterId,
+      season: requireSeason(season),
+      year,
+    })
+    .returning();
+  await refreshClipCount();
 
   return NextResponse.json({ success: true, clip: newClip });
 });

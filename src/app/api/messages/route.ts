@@ -1,74 +1,38 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { asc, eq } from 'drizzle-orm';
 import { authRoute } from '@/lib/route';
-import { connectToDatabase } from '@/lib/db';
-import Message from '@/models/messageModel';
-import Clip from '@/models/clipModel';
-import User from '@/models/userModel';
-import Notification from '@/models/notificationModel';
-import { requireAuth } from '@/lib/auth';
+import { db } from '@/lib/db';
+import { messages } from '@/db/schema';
+import { createTeamMessage } from '@/db/queries';
 import { wsManager } from '@/lib/WebSocketManager';
 
-export async function GET(req: NextRequest) {
-  try {
-    await connectToDatabase();
-    const { errorResponse } = requireAuth(req, ['clipteam', 'editor', 'uploader', 'admin']);
-    if (errorResponse) return errorResponse;
-
-    const clipId = req.nextUrl.searchParams.get('clipId');
-    if (!clipId) {
-      return NextResponse.json({ error: 'clipId parameter required' }, { status: 400 });
-    }
-
-    const messages = await Message.find({ clipId }).sort({ timestamp: 1 }).lean();
-    return NextResponse.json(messages);
-  } catch (error: any) {
-    console.error('Failed to fetch messages:', error);
-    return NextResponse.json({ error: 'Failed to fetch messages' }, { status: 500 });
+export const GET = authRoute(['clipteam', 'editor', 'uploader', 'admin'], async (req) => {
+  const clipId = req.nextUrl.searchParams.get('clipId');
+  if (!clipId) {
+    return NextResponse.json({ error: 'clipId parameter required' }, { status: 400 });
   }
-}
+
+  const rows = await db
+    .select()
+    .from(messages)
+    .where(eq(messages.clipId, clipId))
+    .orderBy(asc(messages.timestamp));
+  return NextResponse.json(rows);
+});
 
 export const POST = authRoute(['admin', 'clipteam', 'editor', 'uploader'], async (req, { user: authUser }) => {
   const { clipId, message, profilePicture } = await req.json();
-  const userId = authUser.id;
-  const username = authUser.username;
-
-  const newMessage = new Message({
-    clipId,
-    userId,
-    user: username,
-    message,
-    profilePicture: profilePicture || '',
-    timestamp: new Date(),
-  });
-  await newMessage.save();
-
-  // Create notifications for all clipteam members
-  const clipTeamMembers = await User.find({
-    roles: { $in: ['clipteam', 'admin'] },
-    _id: { $ne: userId },
-  }).select('_id').lean();
-
-  const clipInfo = await Clip.findById(clipId).select('title streamer').lean();
-  const clipTitle = clipInfo ? clipInfo.title : 'a clip';
-  const clipStreamer = clipInfo ? clipInfo.streamer : '';
-  const notificationMessage = `${username} posted a team message on ${clipStreamer}'s clip: "${clipTitle}"`;
-
-  const notifications = clipTeamMembers.map((member) => ({
-    recipientId: member._id,
-    senderId: userId,
-    senderUsername: username,
-    type: 'team_message',
-    entityId: newMessage._id.toString(),
-    clipId,
-    message: notificationMessage,
-  }));
-
-  if (notifications.length > 0) {
-    await Notification.insertMany(notifications);
+  if (!clipId || typeof message !== 'string' || !message.trim()) {
+    return NextResponse.json({ error: 'clipId and message are required' }, { status: 400 });
   }
 
-  const messageObj = newMessage.toObject ? newMessage.toObject() : newMessage;
-  wsManager.emitNewMessage(clipId, messageObj);
+  const newMessage = await createTeamMessage({
+    clipId: String(clipId),
+    message,
+    profilePicture: typeof profilePicture === 'string' ? profilePicture : '',
+    author: authUser,
+  });
 
+  wsManager.emitNewMessage(newMessage.clipId, newMessage);
   return NextResponse.json(newMessage, { status: 201 });
 });

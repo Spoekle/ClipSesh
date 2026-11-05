@@ -19,11 +19,30 @@ If you decide you want to help with the development of ClipSesh, feel free to op
   ```bash
   npm run dev
   ```
-  The app will run on `http://localhost:3000` by default. A MongoDB instance must be reachable at `MONGODB_URI`.
+  The app will run on `http://localhost:3000` by default. A Postgres database must be reachable at `DATABASE_URL`; pending migrations in `drizzle/` are applied automatically on startup.
 - Type-check:
   ```bash
   npm run typecheck
   ```
 
-### ClipSesh is built using Next.js, React, TailwindCSS, Socket.IO, and MongoDB
-[![My Skills](https://skillicons.dev/icons?i=react,tailwind,docker,express,mongodb,typescript,javascript,python)](https://clipsesh.cube.community)
+## Database
+ClipSesh uses Postgres with [Drizzle ORM](https://orm.drizzle.team). The schema lives in `src/db/schema.ts`.
+- After changing the schema, generate a migration (and commit the files in `drizzle/`):
+  ```bash
+  npm run db:generate
+  ```
+- Migrations run automatically when the server starts; `npm run db:migrate` applies them manually.
+
+### Migrating from MongoDB
+`npm run db:migrate-mongo` copies everything from the old MongoDB database (`MONGODB_URI`) into Postgres (`DATABASE_URL`), keeping all ids. It runs in a single transaction and prints a per-table report.
+- Rehearse first; this imports everything and then rolls back:
+  ```bash
+  npm run db:migrate-mongo -- --dry-run
+  ```
+- Run it for real (add `--yes` if Postgres already has data you want replaced):
+  ```bash
+  npm run db:migrate-mongo
+  ```
+
+### ClipSesh is built using Next.js, React, TailwindCSS, Socket.IO, and PostgreSQL
+[![My Skills](https://skillicons.dev/icons?i=react,tailwind,docker,express,postgres,typescript,javascript,python)](https://clipsesh.cube.community)

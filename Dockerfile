@@ -22,6 +22,7 @@ COPY tsconfig.json next.config.ts postcss.config.mjs ./
 COPY public ./public
 COPY server.ts ./
 COPY src ./src
+COPY drizzle ./drizzle
 
 RUN npm run build \
     && rm -rf .next/cache \
@@ -47,6 +48,7 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/src ./src
+COPY --from=builder /app/drizzle ./drizzle
 
 RUN mkdir -p uploads profilePictures download/tmp
 

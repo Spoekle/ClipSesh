@@ -1,6 +1,8 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { apiRoute } from '@/lib/route';
-import User from '@/models/userModel';
+import { eq } from 'drizzle-orm';
+import { db } from '@/lib/db';
+import { users } from '@/db/schema';
 import { verifyAuthToken, hashPassword } from '@/lib/auth';
 
 export const POST = apiRoute(async (req) => {
@@ -21,13 +23,14 @@ export const POST = apiRoute(async (req) => {
     );
   }
 
-  const user = await User.findById(decoded.id);
-  if (!user) {
+  const updated = await db
+    .update(users)
+    .set({ password: await hashPassword(password) })
+    .where(eq(users._id, decoded.id))
+    .returning({ _id: users._id });
+  if (updated.length === 0) {
     return NextResponse.json({ error: 'User not found.' }, { status: 404 });
   }
-
-  user.password = await hashPassword(password);
-  await user.save();
 
   return NextResponse.json({
     success: true,

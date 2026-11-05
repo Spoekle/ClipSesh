@@ -6,10 +6,10 @@ import { pipeline } from 'stream/promises';
 import ffmpeg from 'fluent-ffmpeg';
 import { downloadFromUrl } from '@/lib/videoDownloader';
 import { getClipOrigin } from '@/lib/discordScraper';
-import { connectToDatabase } from '@/lib/db';
-import Clip from '@/models/clipModel';
-import { AdminConfig, PublicConfig } from '@/models/configModel';
-import { getCurrentSeason } from '@/lib/seasonHelpers';
+import { db } from '@/lib/db';
+import { clips } from '@/db/schema';
+import { getAdminConfig, refreshClipCount } from '@/db/queries';
+import { getCurrentSeason, requireSeason } from '@/lib/seasonHelpers';
 import { getClipPath } from '@/lib/seasonPathHelpers';
 
 // Semaphore for limiting concurrent video processing
@@ -61,12 +61,9 @@ async function handleMessage(message: Message): Promise<void> {
   // Ignore messages from bots
   if (message.author.bot) return;
 
-  // Verify database connection
-  await connectToDatabase();
-
   // Fetch admin configuration
-  const adminConfig = await AdminConfig.findOne().lean();
-  const clipChannels = adminConfig?.clipChannelIds || [];
+  const adminConfig = await getAdminConfig();
+  const clipChannels = adminConfig.clipChannelIds;
 
   // Check if channel is monitored
   if (!clipChannels.includes(message.channelId)) {
@@ -74,7 +71,7 @@ async function handleMessage(message: Message): Promise<void> {
   }
 
   // Check if submitter is blacklisted
-  const blacklistedSubmitters = adminConfig?.blacklistedSubmitters || [];
+  const blacklistedSubmitters = adminConfig.blacklistedSubmitters;
   const isSubmitterBlocked = blacklistedSubmitters.some(
     (s) => s.userId && s.userId.trim() === message.author.id
   );
@@ -152,7 +149,7 @@ async function handleMessage(message: Message): Promise<void> {
       }
 
       // Check if streamer is blacklisted
-      const blacklistedStreamers = adminConfig?.blacklistedStreamers || [];
+      const blacklistedStreamers = adminConfig.blacklistedStreamers;
       const isStreamerBlocked = blacklistedStreamers.some(
         (s) => s.trim().toLowerCase() === detectedStreamer.trim().toLowerCase()
       );
@@ -220,30 +217,24 @@ async function handleMessage(message: Message): Promise<void> {
         : undefined;
 
       const { season, year } = getCurrentSeason(uploadDate);
-      const capitalizedSeason = (season.charAt(0).toUpperCase() + season.slice(1)) as any;
 
-      // Save clip document to MongoDB
-      const newClip = new Clip({
-        url: fileUrl,
-        thumbnail: thumbnailUrl,
-        streamer: detectedStreamer,
-        submitter: message.author.displayName || message.author.username,
-        title: detectedTitle,
-        link: clipLink,
-        discordSubmitterId: message.author.id,
-        season: capitalizedSeason,
-        year,
-      });
-
-      await newClip.save();
+      const [newClip] = await db
+        .insert(clips)
+        .values({
+          url: fileUrl,
+          thumbnail: thumbnailUrl ?? null,
+          streamer: detectedStreamer,
+          submitter: message.author.displayName || message.author.username,
+          title: detectedTitle,
+          link: clipLink,
+          discordSubmitterId: message.author.id,
+          season: requireSeason(season),
+          year,
+        })
+        .returning();
 
       // Update public clip amount
-      const count = await Clip.countDocuments({ archived: { $ne: true } });
-      await PublicConfig.findOneAndUpdate(
-        {},
-        { clipAmount: count },
-        { upsert: true, new: true }
-      );
+      await refreshClipCount();
 
       // Emit live notification if Socket.IO is initialized
       if (global.socketIoInstance) {

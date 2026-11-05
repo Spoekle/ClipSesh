@@ -1,9 +1,9 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { and, eq } from 'drizzle-orm';
 import { authRoute } from '@/lib/route';
-import Clip from '@/models/clipModel';
-import Report from '@/models/reportModel';
-import Notification from '@/models/notificationModel';
-import User from '@/models/userModel';
+import { db } from '@/lib/db';
+import { clips, reports } from '@/db/schema';
+import { createNotifications, getUserIdsWithRoles } from '@/db/queries';
 
 export const POST = authRoute<{ id: string }>(['clipteam', 'editor', 'admin'], async (req, { params, user: authUser }) => {
   const { id } = await params;
@@ -13,49 +13,45 @@ export const POST = authRoute<{ id: string }>(['clipteam', 'editor', 'admin'], a
     return NextResponse.json({ error: 'Report reason is required' }, { status: 400 });
   }
 
-  const clip = await Clip.findById(id);
+  const [clip] = await db.select().from(clips).where(eq(clips._id, id));
   if (!clip) {
     return NextResponse.json({ error: 'Clip not found' }, { status: 404 });
   }
 
-  const existingReport = await Report.findOne({
-    clipId: id,
-    reporterId: authUser.id,
-  });
+  const [existingReport] = await db
+    .select({ _id: reports._id })
+    .from(reports)
+    .where(and(eq(reports.clipId, id), eq(reports.reporterId, authUser.id)));
 
   if (existingReport) {
     return NextResponse.json({ error: 'You have already reported this clip' }, { status: 400 });
   }
 
-  const report = new Report({
-    clipId: id,
-    clipTitle: clip.title,
-    clipStreamer: clip.streamer,
-    clipSubmitter: clip.submitter,
-    reporterId: authUser.id,
-    reporterUsername: authUser.username,
-    reason: reason.trim(),
-  });
+  const [report] = await db
+    .insert(reports)
+    .values({
+      clipId: id,
+      clipTitle: clip.title,
+      clipStreamer: clip.streamer,
+      clipSubmitter: clip.submitter,
+      reporterId: authUser.id,
+      reporterUsername: authUser.username,
+      reason: reason.trim(),
+    })
+    .returning();
 
-  await report.save();
-
-  const adminUsers = await User.find({ roles: 'admin' });
-  const notifications = adminUsers.map(
-    (admin) =>
-      new Notification({
-        recipientId: admin._id,
-        senderId: authUser.id,
-        senderUsername: authUser.username,
-        type: 'report',
-        clipId: id,
-        message: `${authUser.username} reported a clip: "${clip.title}" by ${clip.streamer}`,
-        entityId: report._id,
-      })
+  const adminIds = await getUserIdsWithRoles(['admin']);
+  await createNotifications(
+    adminIds.map((recipientId) => ({
+      recipientId,
+      senderId: authUser.id,
+      senderUsername: authUser.username,
+      type: 'report' as const,
+      clipId: id,
+      message: `${authUser.username} reported a clip: "${clip.title}" by ${clip.streamer}`,
+      entityId: report._id,
+    }))
   );
-
-  if (notifications.length > 0) {
-    await Notification.insertMany(notifications);
-  }
 
   return NextResponse.json(
     {

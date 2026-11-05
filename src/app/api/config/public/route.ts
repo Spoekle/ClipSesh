@@ -1,42 +1,29 @@
-﻿import { NextResponse } from 'next/server';
-import { authRoute } from '@/lib/route';
-import { connectToDatabase } from '@/lib/db';
-import { PublicConfig } from '@/models/configModel';
-import Clip from '@/models/clipModel';
+import { NextResponse } from 'next/server';
+import { eq } from 'drizzle-orm';
+import { apiRoute, authRoute } from '@/lib/route';
+import { db } from '@/lib/db';
+import { CONFIG_ROW_ID, publicConfig } from '@/db/schema';
+import { getPublicConfig, refreshClipCount } from '@/db/queries';
 
-export async function GET() {
-  try {
-    await connectToDatabase();
+export const GET = apiRoute(async () => {
+  const config = await getPublicConfig();
 
-    let publicConfig = await PublicConfig.findOne();
-    if (!publicConfig) {
-      publicConfig = new PublicConfig();
-      await publicConfig.save();
-    }
-
-    if (publicConfig.clipAmount === undefined || publicConfig.clipAmount === 0) {
-      const count = await Clip.countDocuments({ archived: { $ne: true } });
-      publicConfig.clipAmount = count;
-      await publicConfig.save();
-    }
-
-    return NextResponse.json(publicConfig);
-  } catch (error: any) {
-    console.error('Error fetching public config:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  if (config.clipAmount === 0) {
+    return NextResponse.json({ ...config, clipAmount: await refreshClipCount() });
   }
-}
+
+  return NextResponse.json(config);
+});
 
 export const PUT = authRoute(['admin'], async (req) => {
   const { latestVideoLink } = await req.json();
 
-  let publicConfig = await PublicConfig.findOne();
-  if (!publicConfig) {
-    publicConfig = new PublicConfig();
-  }
+  await getPublicConfig();
+  const [updated] = await db
+    .update(publicConfig)
+    .set({ latestVideoLink: typeof latestVideoLink === 'string' ? latestVideoLink.trim() : '' })
+    .where(eq(publicConfig._id, CONFIG_ROW_ID))
+    .returning();
 
-  publicConfig.latestVideoLink = latestVideoLink || '';
-  await publicConfig.save();
-
-  return NextResponse.json(publicConfig);
+  return NextResponse.json(updated);
 });

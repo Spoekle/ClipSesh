@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { apiRoute } from '@/lib/route';
-import User from '@/models/userModel';
+import { eq } from 'drizzle-orm';
+import { db } from '@/lib/db';
+import { users } from '@/db/schema';
 import { signToken } from '@/lib/auth';
 import nodemailer from 'nodemailer';
 import {
@@ -15,7 +17,10 @@ export const POST = apiRoute(async (req) => {
     return NextResponse.json({ error: 'Email is required' }, { status: 400 });
   }
 
-  const user = await User.findOne({ email });
+  const [user] = await db
+    .select({ _id: users._id, username: users.username })
+    .from(users)
+    .where(eq(users.email, String(email).trim().toLowerCase()));
   if (!user) {
     return NextResponse.json(
       { error: 'User not found or no email linked' },

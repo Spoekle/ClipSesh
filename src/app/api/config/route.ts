@@ -1,21 +1,9 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { authRoute } from '@/lib/route';
-import { PublicConfig, AdminConfig } from '@/models/configModel';
+import { getAdminConfig, getPublicConfig } from '@/db/queries';
 
-export const GET = authRoute(['admin', 'clipteam', 'editor'], async (req) => {
-  let [publicConfig, adminConfig] = await Promise.all([
-    PublicConfig.findOne(),
-    AdminConfig.findOne(),
-  ]);
-
-  if (!publicConfig) {
-    publicConfig = new PublicConfig();
-    await publicConfig.save();
-  }
-  if (!adminConfig) {
-    adminConfig = new AdminConfig();
-    await adminConfig.save();
-  }
+export const GET = authRoute(['admin', 'clipteam', 'editor'], async () => {
+  const [publicConfig, adminConfig] = await Promise.all([getPublicConfig(), getAdminConfig()]);
 
   return NextResponse.json({
     public: publicConfig,

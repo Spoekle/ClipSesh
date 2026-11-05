@@ -1,54 +1,57 @@
-import mongoose from 'mongoose';
+import path from 'path';
+import postgres from 'postgres';
+import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+import { migrate } from 'drizzle-orm/postgres-js/migrator';
+import * as schema from '@/db/schema';
 
-const MONGODB_URI = process.env.MONGODB_URI;
+export type Database = PostgresJsDatabase<typeof schema>;
 
-interface MongooseCache {
-  conn: typeof mongoose | null;
-  promise: Promise<typeof mongoose> | null;
+interface DbCache {
+  client: postgres.Sql;
+  db: Database;
 }
 
 declare global {
   // eslint-disable-next-line no-var
-  var mongooseCache: MongooseCache | undefined;
+  var pgCache: DbCache | undefined;
 }
 
-const cached: MongooseCache = global.mongooseCache || { conn: null, promise: null };
-if (!global.mongooseCache) {
-  global.mongooseCache = cached;
+function createDb(): DbCache {
+  // postgres.js connects lazily, so creating the pool at import time is safe during `next build`.
+  const client = postgres(process.env.DATABASE_URL ?? '', {
+    max: Number(process.env.DATABASE_POOL_SIZE) || 10,
+    onnotice: () => {},
+  });
+  return { client, db: drizzle(client, { schema }) };
 }
 
-export async function connectToDatabase(): Promise<typeof mongoose> {
-  const uri = process.env.MONGODB_URI || MONGODB_URI;
-  if (!uri) {
-    throw new Error('Please provide a MongoDB URI in process.env.MONGODB_URI');
+// Cached on globalThis so Next.js dev reloads reuse one pool instead of opening new ones.
+const cache: DbCache = global.pgCache ?? (global.pgCache = createDb());
+
+/** Shared Drizzle client for the whole server (API routes, bot, scheduler, Socket.IO). */
+export const db: Database = cache.db;
+
+/**
+ * Verifies the database is reachable and applies pending migrations from `./drizzle`.
+ * Called once by `server.ts` on startup.
+ *
+ * @example
+ * await connectToDatabase();
+ */
+export async function connectToDatabase(): Promise<void> {
+  if (!process.env.DATABASE_URL) {
+    throw new Error('Please provide a Postgres connection string in process.env.DATABASE_URL');
   }
-
-  if (cached.conn) {
-    return cached.conn;
-  }
-
-  if (!cached.promise) {
-    const opts = {
-      bufferCommands: false,
-      serverSelectionTimeoutMS: 30000,
-      socketTimeoutMS: 45000,
-      connectTimeoutMS: 30000,
-    };
-
-    cached.promise = mongoose.connect(uri, opts).then((mongooseInstance) => {
-      console.log('Connected to MongoDB successfully');
-      return mongooseInstance;
-    });
-  }
-
-  try {
-    cached.conn = await cached.promise;
-  } catch (e) {
-    cached.promise = null;
-    throw e;
-  }
-
-  return cached.conn;
+  await migrate(db, { migrationsFolder: path.join(process.cwd(), 'drizzle') });
+  console.log('Connected to Postgres and applied migrations');
 }
 
-export default connectToDatabase;
+/**
+ * Closes the connection pool (graceful shutdown).
+ *
+ * @example
+ * await closeDatabase();
+ */
+export async function closeDatabase(): Promise<void> {
+  await cache.client.end({ timeout: 5 });
+}

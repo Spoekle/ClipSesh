@@ -11,7 +11,7 @@ import path from 'path';
 import fs from 'fs';
 import next from 'next';
 import { Server as SocketIOServer } from 'socket.io';
-import { connectToDatabase } from './src/lib/db';
+import { connectToDatabase, closeDatabase } from './src/lib/db';
 import { createOrUpdateAdminUser } from './src/lib/createAdmin';
 import { startDiscordBot, stopDiscordBot } from './src/bot/discordBot';
 import { setupSocketHandlers } from './src/lib/socketHandler';
@@ -144,7 +144,7 @@ async function serveStaticFile(
 
 async function startServer() {
   try {
-    // Connect to database
+    // Connect to Postgres and apply pending migrations
     await connectToDatabase();
     await createOrUpdateAdminUser();
 
@@ -225,7 +225,8 @@ async function startServer() {
       console.log('Shutting down server and services...');
       stopSeasonScheduler();
       await stopDiscordBot();
-      server.close(() => {
+      server.close(async () => {
+        await closeDatabase().catch(() => {});
         console.log('Server closed.');
         process.exit(0);
       });

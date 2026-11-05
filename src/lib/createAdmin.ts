@@ -1,6 +1,8 @@
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
-import User from '@/models/userModel';
+import { eq } from 'drizzle-orm';
+import { db } from '@/lib/db';
+import { users } from '@/db/schema';
 
 export async function createOrUpdateAdminUser(): Promise<void> {
   const adminUsername = process.env.ADMIN_USERNAME || 'admin';
@@ -12,26 +14,32 @@ export async function createOrUpdateAdminUser(): Promise<void> {
   }
 
   try {
-    const existingAdmin = await User.findOne({ username: adminUsername });
+    const [existingAdmin] = await db
+      .select({ roles: users.roles })
+      .from(users)
+      .where(eq(users.username, adminUsername));
     const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
     if (!existingAdmin) {
-      const adminUser = new User({
+      await db.insert(users).values({
         username: adminUsername,
         password: hashedPassword,
         roles: ['admin', 'user'],
         status: 'active',
         profilePicture: '/profilePictures/profile_placeholder.png',
       });
-      await adminUser.save();
       console.log(`[Admin Setup] Created initial admin user: ${adminUsername}`);
     } else {
-      existingAdmin.password = hashedPassword;
-      if (!existingAdmin.roles.includes('admin')) {
-        existingAdmin.roles.push('admin');
-      }
-      existingAdmin.status = 'active';
-      await existingAdmin.save();
+      await db
+        .update(users)
+        .set({
+          password: hashedPassword,
+          roles: existingAdmin.roles.includes('admin')
+            ? existingAdmin.roles
+            : [...existingAdmin.roles, 'admin'],
+          status: 'active',
+        })
+        .where(eq(users.username, adminUsername));
       console.log(`[Admin Setup] Updated admin user: ${adminUsername}`);
     }
 

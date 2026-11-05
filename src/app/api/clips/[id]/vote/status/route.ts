@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/db';
-import Clip from '@/models/clipModel';
-import Vote from '@/models/voteModel';
+import { and, eq } from 'drizzle-orm';
+import { db } from '@/lib/db';
+import { clips, votes } from '@/db/schema';
 import { getOrCreateVoterToken, attachVoterCookie } from '@/lib/voterToken';
 
 export async function GET(
@@ -9,11 +9,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await connectToDatabase();
     const { voterToken, isNew } = getOrCreateVoterToken(req);
     const { id } = await params;
 
-    const clip = await Clip.findById(id);
+    const [clip] = await db.select({ _id: clips._id }).from(clips).where(eq(clips._id, id));
     if (!clip) {
       return NextResponse.json({ error: 'Clip not found' }, { status: 404 });
     }
@@ -24,7 +23,10 @@ export async function GET(
       return attachVoterCookie(response, voterToken);
     }
 
-    const existingVote = await Vote.findOne({ clipId: id, voterToken }).lean();
+    const [existingVote] = await db
+      .select({ vote: votes.vote })
+      .from(votes)
+      .where(and(eq(votes.clipId, id), eq(votes.voterToken, voterToken)));
 
     const response = NextResponse.json(
       existingVote
@@ -33,7 +35,7 @@ export async function GET(
     );
 
     return attachVoterCookie(response, voterToken);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error checking vote status:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

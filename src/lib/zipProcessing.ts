@@ -19,11 +19,15 @@ function createZipArchive(options: any = {}) {
   }
   throw new Error('Could not initialize Archiver / ZipArchive');
 }
-import { connectToDatabase } from '@/lib/db';
-import Clip from '@/models/clipModel';
-import Rating from '@/models/ratingModel';
-import Zip from '@/models/zipModel';
-import { PublicConfig, AdminConfig } from '@/models/configModel';
+import { and, eq, inArray } from 'drizzle-orm';
+import { db } from '@/lib/db';
+import { clips as clipsTable, zips } from '@/db/schema';
+import {
+  getAdminConfig,
+  getRatingDocs,
+  logSeasonTransition,
+  refreshClipCount,
+} from '@/db/queries';
 import { wsManager } from '@/lib/WebSocketManager';
 import { requireSeason } from '@/lib/seasonHelpers';
 
@@ -65,13 +69,7 @@ function formatBytes(bytes: number, decimals: number = 2): string {
 
 async function updateClipCount(): Promise<number> {
   try {
-    const count = await Clip.countDocuments({ archived: { $ne: true } });
-    await PublicConfig.findOneAndUpdate(
-      {},
-      { clipAmount: count },
-      { upsert: true, new: true }
-    );
-    return count;
+    return await refreshClipCount();
   } catch (error) {
     console.error('Error updating clip count:', error);
     return 0;
@@ -125,35 +123,38 @@ export async function startProcessingJob(
   customDenyThreshold?: number,
   providedClips?: any[]
 ): Promise<{ jobId: string; total: number; supportedEvents: string[] }> {
-  await connectToDatabase();
   cleanupOldJobs();
 
   let denyThreshold = customDenyThreshold;
   if (!denyThreshold) {
-    const adminConfig = await AdminConfig.findOne().lean();
-    denyThreshold = adminConfig?.denyThreshold || 5;
+    const adminConfig = await getAdminConfig();
+    denyThreshold = adminConfig.denyThreshold || 5;
   }
 
-  const yearQuery =
+  const years =
     season.toLowerCase() === 'winter'
-      ? { $in: [Number(year), Number(year) - 1, Number(year) + 1] }
-      : Number(year);
+      ? [Number(year), Number(year) - 1, Number(year) + 1]
+      : [Number(year)];
 
-  const clips = await Clip.find({
-    season: requireSeason(season),
-    year: yearQuery,
-    archived: { $ne: true },
-  }).select('-comments').lean();
+  const clips = await db
+    .select()
+    .from(clipsTable)
+    .where(
+      and(
+        eq(clipsTable.season, requireSeason(season)),
+        inArray(clipsTable.year, years),
+        eq(clipsTable.archived, false)
+      )
+    );
 
   let allowedClips: any[] = [];
   if (Array.isArray(providedClips) && providedClips.length > 0) {
-    const allClipIds = providedClips.map((c) => c._id);
-    const ratings = await Rating.find({ clipId: { $in: allClipIds } }).lean();
-    const ratingsMap = new Map<string, any>(ratings.map((r) => [r.clipId.toString(), r]));
+    const allClipIds = providedClips.map((c) => String(c._id));
+    const ratingsMap = await getRatingDocs(allClipIds);
 
     allowedClips = providedClips
       .map((clip) => {
-        const ratingsDoc = ratingsMap.get(clip._id?.toString());
+        const ratingsDoc = ratingsMap.get(String(clip._id));
         const denyCount = ratingsDoc?.ratings?.deny?.length || 0;
         if (denyCount >= (denyThreshold || 5)) return null;
 
@@ -167,12 +168,10 @@ export async function startProcessingJob(
       })
       .filter((c): c is any => c !== null);
   } else {
-    const clipIds = clips.map((c) => c._id);
-    const ratings = await Rating.find({ clipId: { $in: clipIds } }).lean();
-    const ratingsMap = new Map<string, any>(ratings.map((r) => [r.clipId.toString(), r]));
+    const ratingsMap = await getRatingDocs(clips.map((c) => c._id));
 
     for (const clip of clips) {
-      const ratingsDoc = ratingsMap.get(clip._id.toString());
+      const ratingsDoc = ratingsMap.get(clip._id);
       const denyCount = ratingsDoc?.ratings?.deny?.length || 0;
       if (denyCount < (denyThreshold || 5)) {
         const rating = calculateClipRating(ratingsDoc);
@@ -353,69 +352,57 @@ async function processClipsAsync(
           const stats = fs.statSync(zipPath);
           const size = stats.size;
 
-          const capitalizedSeason = (season.charAt(0).toUpperCase() + season.slice(1).toLowerCase()) as any;
-          const seasonZip = new Zip({
-            url: `/download/${zipFilename}`,
-            season: capitalizedSeason,
-            year: Number(year),
-            name: zipFilename,
-            size,
-            clipAmount: clips.length,
-          });
-
-          await seasonZip.save();
+          const capitalizedSeason = requireSeason(season);
+          const [seasonZip] = await db
+            .insert(zips)
+            .values({
+              url: `/download/${zipFilename}`,
+              season: capitalizedSeason,
+              year: Number(year),
+              name: zipFilename,
+              size,
+              clipAmount: clips.length,
+            })
+            .returning();
 
           // Archive all clips from this season
           const clipsToArchive = allClips && allClips.length > 0 ? allClips : clips;
-          const allClipIds = clipsToArchive.map((c) => c._id);
+          const allClipIds: string[] = clipsToArchive.map((c) => String(c._id));
           if (allClipIds.length > 0) {
-            await Clip.updateMany(
-              { _id: { $in: allClipIds } },
-              {
-                $set: {
-                  archived: true,
-                  archivedAt: new Date(),
-                  season,
-                  year: Number(year),
-                },
-              }
-            );
+            await db
+              .update(clipsTable)
+              .set({
+                archived: true,
+                archivedAt: new Date(),
+                season: capitalizedSeason,
+                year: Number(year),
+              })
+              .where(inArray(clipsTable._id, allClipIds));
           }
 
           await updateClipCount();
 
-          // Update AdminConfig seasonAutomation metadata and audit history
+          // Update season automation metadata and audit history
           try {
-            await AdminConfig.findOneAndUpdate(
-              {},
+            await logSeasonTransition(
               {
-                $set: {
-                  'seasonAutomation.lastArchivedSeason': {
-                    season: capitalizedSeason,
-                    year: Number(year),
-                    jobId,
-                    archivedAt: new Date(),
-                    clipCount: clips.length,
-                    zipUrl: `/download/${zipFilename}`,
-                    status: 'success',
-                  },
+                action: 'auto_zip_completed',
+                season: capitalizedSeason,
+                year: Number(year),
+                details: `Archive generated: ${zipFilename} (${clips.length} clips, ${formatBytes(size)}).`,
+              },
+              (current) => ({
+                ...current,
+                lastArchivedSeason: {
+                  season: capitalizedSeason,
+                  year: Number(year),
+                  jobId,
+                  archivedAt: new Date().toISOString(),
+                  clipCount: clips.length,
+                  zipUrl: `/download/${zipFilename}`,
+                  status: 'success',
                 },
-                $push: {
-                  'seasonAutomation.transitionHistory': {
-                    $each: [
-                      {
-                        timestamp: new Date(),
-                        action: 'auto_zip_completed',
-                        season: capitalizedSeason,
-                        year: Number(year),
-                        details: `Archive generated: ${zipFilename} (${clips.length} clips, ${formatBytes(size)}).`,
-                      },
-                    ],
-                    $position: 0,
-                    $slice: 50,
-                  },
-                },
-              }
+              })
             );
           } catch (configErr) {
             console.warn('[ZipProcessing] Could not update AdminConfig season history:', configErr);
@@ -446,26 +433,12 @@ async function processClipsAsync(
           logAndEmit(`Error in finalize: ${err.message}`, 'error', 'error');
 
           try {
-            await AdminConfig.findOneAndUpdate(
-              {},
-              {
-                $push: {
-                  'seasonAutomation.transitionHistory': {
-                    $each: [
-                      {
-                        timestamp: new Date(),
-                        action: 'auto_zip_failed',
-                        season: (season.charAt(0).toUpperCase() + season.slice(1).toLowerCase()) as any,
-                        year: Number(year),
-                        details: `Archive generation failed: ${err.message}`,
-                      },
-                    ],
-                    $position: 0,
-                    $slice: 50,
-                  },
-                },
-              }
-            );
+            await logSeasonTransition({
+              action: 'auto_zip_failed',
+              season: requireSeason(season),
+              year: Number(year),
+              details: `Archive generation failed: ${err.message}`,
+            });
           } catch {}
           job.status = 'error';
           job.phase = 'error';
@@ -725,16 +698,17 @@ export async function forceCompleteJob(jobId: string): Promise<any> {
   if (!job) return null;
 
   const zipFilename = `manual-processed-${Date.now()}.zip`;
-  const seasonZip = new Zip({
-    url: `/download/${zipFilename}`,
-    season: job.season as any,
-    year: Number(job.year),
-    name: zipFilename,
-    size: 0,
-    clipAmount: job.total,
-  });
-
-  await seasonZip.save();
+  const [seasonZip] = await db
+    .insert(zips)
+    .values({
+      url: `/download/${zipFilename}`,
+      season: requireSeason(job.season),
+      year: Number(job.year),
+      name: zipFilename,
+      size: 0,
+      clipAmount: job.total,
+    })
+    .returning();
 
   job.zipFilename = zipFilename;
   job.zipId = seasonZip._id;

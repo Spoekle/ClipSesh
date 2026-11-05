@@ -1,31 +1,34 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { count, desc, eq } from 'drizzle-orm';
 import { authRoute } from '@/lib/route';
-import Report from '@/models/reportModel';
+import { db } from '@/lib/db';
+import { REPORT_STATUSES, reports } from '@/db/schema';
 
 export const GET = authRoute(['admin'], async (req) => {
-  const status = req.nextUrl.searchParams.get('status');
-  const page = parseInt(req.nextUrl.searchParams.get('page') || '1', 10);
-  const limit = parseInt(req.nextUrl.searchParams.get('limit') || '20', 10);
-  const skip = (page - 1) * limit;
+  const statusParam = req.nextUrl.searchParams.get('status');
+  const page = Math.max(1, parseInt(req.nextUrl.searchParams.get('page') || '1', 10) || 1);
+  const limit = Math.max(1, parseInt(req.nextUrl.searchParams.get('limit') || '20', 10) || 20);
 
-  const query: Record<string, any> = {};
-  if (status && status !== 'all') {
-    query.status = status;
-  }
+  const status = REPORT_STATUSES.find((s) => s === statusParam);
+  const where = status ? eq(reports.status, status) : undefined;
 
-  const [reports, total, pendingCount] = await Promise.all([
-    Report.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
-    Report.countDocuments(query),
-    Report.countDocuments({ status: 'pending' }),
+  const [rows, [{ total }], [{ pendingCount }]] = await Promise.all([
+    db
+      .select()
+      .from(reports)
+      .where(where)
+      .orderBy(desc(reports.createdAt))
+      .limit(limit)
+      .offset((page - 1) * limit),
+    db.select({ total: count() }).from(reports).where(where),
+    db.select({ pendingCount: count() }).from(reports).where(eq(reports.status, 'pending')),
   ]);
 
-  const pages = Math.ceil(total / limit);
-
   return NextResponse.json({
-    reports,
+    reports: rows,
     total,
     page,
-    pages,
+    pages: Math.ceil(total / limit),
     pendingCount,
   });
 });

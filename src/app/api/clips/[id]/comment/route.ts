@@ -1,6 +1,9 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { eq } from 'drizzle-orm';
 import { authRoute, ANY_ROLE } from '@/lib/route';
-import Clip from '@/models/clipModel';
+import { db } from '@/lib/db';
+import { clipComments, clips } from '@/db/schema';
+import { getClipWithComments } from '@/db/queries';
 
 export const POST = authRoute<{ id: string }>(ANY_ROLE, async (req, { params, user: authUser }) => {
   const { id } = await params;
@@ -10,18 +13,17 @@ export const POST = authRoute<{ id: string }>(ANY_ROLE, async (req, { params, us
     return NextResponse.json({ error: 'Comment is required' }, { status: 400 });
   }
 
-  const clip = await Clip.findById(id);
+  const [clip] = await db.select({ _id: clips._id }).from(clips).where(eq(clips._id, id));
   if (!clip) {
     return NextResponse.json({ error: 'Post not found' }, { status: 404 });
   }
 
-  clip.comments.push({
-    userId: authUser.id as any,
+  await db.insert(clipComments).values({
+    clipId: id,
+    userId: authUser.id,
     username: authUser.username,
     comment: comment.trim(),
-  } as any);
+  });
 
-  await clip.save();
-
-  return NextResponse.json(clip);
+  return NextResponse.json(await getClipWithComments(id));
 });

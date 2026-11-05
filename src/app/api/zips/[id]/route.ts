@@ -2,11 +2,13 @@ import path from 'path';
 import fs from 'fs';
 import { NextResponse } from 'next/server';
 import { authRoute } from '@/lib/route';
-import Zip from '@/models/zipModel';
+import { eq } from 'drizzle-orm';
+import { db } from '@/lib/db';
+import { zips } from '@/db/schema';
 
 export const GET = authRoute<{ id: string }>(['clipteam', 'editor', 'admin'], async (req, { params }) => {
   const { id } = await params;
-  const zip = await Zip.findById(id).lean();
+  const [zip] = await db.select().from(zips).where(eq(zips._id, id));
   if (!zip) {
     return NextResponse.json({ error: 'Zip not found' }, { status: 404 });
   }
@@ -32,7 +34,7 @@ export const GET = authRoute<{ id: string }>(['clipteam', 'editor', 'admin'], as
 
 export const DELETE = authRoute<{ id: string }>(['admin'], async (req, { params }) => {
   const { id } = await params;
-  await Zip.findByIdAndDelete(id);
+  await db.delete(zips).where(eq(zips._id, id));
 
   return NextResponse.json({ message: 'Zip deleted successfully' });
 });

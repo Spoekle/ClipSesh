@@ -1,15 +1,18 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { authRoute, ANY_ROLE } from '@/lib/route';
 import path from 'path';
 import fs from 'fs';
-import User from '@/models/userModel';
+import { eq } from 'drizzle-orm';
+import { db } from '@/lib/db';
+import { users } from '@/db/schema';
 
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB limit
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
 export const POST = authRoute(ANY_ROLE, async (req, { user: authUser }) => {
   const formData = await req.formData();
-  const file = formData.get('profilePicture') as File | null;
+  const upload = formData.get('profilePicture');
+  const file = upload instanceof File ? upload : null;
 
   if (!file) {
     return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
@@ -43,7 +46,10 @@ export const POST = authRoute(ANY_ROLE, async (req, { user: authUser }) => {
   await fs.promises.writeFile(filePath, buffer);
 
   const profilePictureUrl = `/profilePictures/${filename}`;
-  const user = await User.findById(authUser.id);
+  const [user] = await db
+    .select({ profilePicture: users.profilePicture })
+    .from(users)
+    .where(eq(users._id, authUser.id));
   if (!user) {
     return NextResponse.json({ error: 'User not found' }, { status: 404 });
   }
@@ -55,8 +61,7 @@ export const POST = authRoute(ANY_ROLE, async (req, { user: authUser }) => {
     } catch {}
   }
 
-  user.profilePicture = profilePictureUrl;
-  await user.save();
+  await db.update(users).set({ profilePicture: profilePictureUrl }).where(eq(users._id, authUser.id));
 
   return NextResponse.json({ success: true, profilePictureUrl });
 });

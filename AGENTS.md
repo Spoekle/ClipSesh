@@ -23,7 +23,7 @@ You are working in a production TypeScript + React / Next.js repository for Clip
 | Package manager | `npm`                                                               |
 | Framework       | Next.js 16 (App Router) + React 19 + TypeScript                     |
 | Server          | Custom Node.js HTTP server (`server.ts` via `tsx`)                  |
-| Database / ODM  | MongoDB + Mongoose 9                                                |
+| Database / ORM  | PostgreSQL + Drizzle ORM (`postgres` driver)                        |
 | Real-time       | Socket.IO (`socket.io` & `socket.io-client`)                        |
 | Client state    | TanStack React Query v5 + `@/lib/apiClient`                         |
 | Styling         | Tailwind CSS v4 (`src/app/globals.css`)                             |
@@ -53,12 +53,14 @@ You are working in a production TypeScript + React / Next.js repository for Clip
 - `src/lib/` — Shared server and client utilities:
   - `apiClient.ts` — Custom fetch client with auth token headers and query parameter serialization.
   - `react-query.ts` — `QueryClient` configuration and centralized `queryKeys`.
-  - `db.ts` — Mongoose database connection with global caching.
+  - `db.ts` — Drizzle client (`db`) over a cached `postgres` pool; `connectToDatabase()` applies migrations on startup.
   - `auth.ts` — JWT token extraction, signing, password hashing, and `requireAuth` route protection.
   - `socketHandler.ts` & `WebSocketManager.ts` — Real-time event handling.
   - `seasonScheduler.ts` & `seasonHelpers.ts` — Automated season lifecycle logic.
   - `zipProcessing.ts` & `videoDownloader.ts` — Video downloading and zip packaging.
-- `src/models/` — Mongoose schemas and models (`clipModel`, `userModel`, `ratingModel`, `configModel`, etc.).
+- `src/db/` — Drizzle schema (`schema.ts`: tables, enums, row types) and shared queries (`queries.ts`: config access, rating docs, notifications, etc.).
+- `drizzle/` — Generated SQL migrations (`npm run db:generate`); commit them with schema changes.
+- `scripts/migrate-mongo-to-postgres.ts` — One-time MongoDB → Postgres data migration (`npm run db:migrate-mongo`).
 - `src/bot/` — Discord bot service for community clip submission and ingestion.
 - `src/context/` — React Context providers (`AlertContext`).
 - `src/types/` — Shared TypeScript type definitions and interfaces.
@@ -81,7 +83,7 @@ You are working in a production TypeScript + React / Next.js repository for Clip
 - No `any`
 - No casts — help the compiler infer correctness through runtime logic. If a third-party type makes this impossible, cast with a comment explaining why. Last resort only.
 - No non-null assertions — prefer type guards and narrowing
-- No duplicate type definitions — reuse exported types from `src/types/`, `src/models/`, hooks, or services
+- No duplicate type definitions — reuse exported types from `src/types/`, `src/db/schema.ts`, hooks, or services
 - Add JSDoc to util functions you create, including at least one example. Add docs to existing util functions you edit that are missing them. Keep types in typescript.
 
 ---
@@ -128,9 +130,9 @@ You are working in a production TypeScript + React / Next.js repository for Clip
 
 ## Backend & Database
 
-- Always call `await connectToDatabase()` in API Route Handlers before interacting with Mongoose models
+- Query through the shared `db` from `@/lib/db` (no per-request connect step); reuse helpers in `src/db/queries.ts` before writing new ones
 - Protect sensitive API routes using `requireAuth(req, allowedRoles)` from `@/lib/auth`
-- Use Mongoose models in `src/models/` for database interactions with typed schemas
+- Change tables only in `src/db/schema.ts`, then run `npm run db:generate` and commit the new migration in `drizzle/`
 - Broadcast real-time notifications and updates through the Socket.IO server (`global.socketIoInstance`)
 
 ---

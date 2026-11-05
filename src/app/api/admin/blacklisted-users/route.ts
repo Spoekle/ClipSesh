@@ -1,22 +1,15 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { authRoute } from '@/lib/route';
-import { AdminConfig } from '@/models/configModel';
+import { getAdminConfig } from '@/db/queries';
 
-export const GET = authRoute(['admin'], async (req) => {
-  const adminConfig = await AdminConfig.findOne();
-  const blacklistedSubmitters = adminConfig?.blacklistedSubmitters || [];
-  const blacklistedStreamers = adminConfig?.blacklistedStreamers || [];
-
-  const blacklistedSubmittersInfo = blacklistedSubmitters.map((submitter: any) => ({
-    id: submitter.userId,
-    username: submitter.username,
-    discriminator: submitter.discriminator,
-    global_name: submitter.global_name,
-    avatar: submitter.avatar,
-  }));
+export const GET = authRoute(['admin'], async () => {
+  const { blacklistedSubmitters, blacklistedStreamers } = await getAdminConfig();
 
   return NextResponse.json({
-    blacklistedSubmitters: blacklistedSubmittersInfo,
+    blacklistedSubmitters: blacklistedSubmitters.map((submitter) => ({
+      id: submitter.userId,
+      username: submitter.username,
+    })),
     blacklistedStreamers,
   });
 });

@@ -1,16 +1,15 @@
 import path from 'path';
 import fs from 'fs';
-import { connectToDatabase } from '@/lib/db';
-import { AdminConfig, PublicConfig, ISeasonTransitionLog } from '@/models/configModel';
-import Clip from '@/models/clipModel';
-import Rating from '@/models/ratingModel';
-import Zip from '@/models/zipModel';
+import { and, count, desc, eq, inArray, lt, sql } from 'drizzle-orm';
+import { db } from '@/lib/db';
+import { clips, clipViews, zips } from '@/db/schema';
 import {
-  getSeasonLifecycleStatus,
-  getSeasonToArchive,
-  SeasonName,
-  requireSeason,
-} from '@/lib/seasonHelpers';
+  getAdminConfig,
+  getRatingDocs,
+  logSeasonTransition,
+  refreshClipCount,
+} from '@/db/queries';
+import { getSeasonLifecycleStatus, getSeasonToArchive, requireSeason } from '@/lib/seasonHelpers';
 import { startProcessingJob, getAllProcessingJobs } from '@/lib/zipProcessing';
 
 let schedulerTimer: NodeJS.Timeout | null = null;
@@ -38,12 +37,11 @@ export async function runSeasonDryRun(
     status: 'approved' | 'denied';
   }>;
 }> {
-  await connectToDatabase();
-  const adminConfig = await AdminConfig.findOne().lean();
+  const adminConfig = await getAdminConfig();
   const denyThreshold =
     customDenyThreshold ??
-    adminConfig?.seasonAutomation?.denyThreshold ??
-    adminConfig?.denyThreshold ??
+    adminConfig.seasonAutomation.denyThreshold ??
+    adminConfig.denyThreshold ??
     5;
 
   let season = seasonName;
@@ -51,37 +49,37 @@ export async function runSeasonDryRun(
 
   if (!season || !year) {
     const lifecycle = getSeasonLifecycleStatus(new Date(), {
-      seasonEndDay: adminConfig?.seasonAutomation?.seasonEndDay ?? 20,
-      newSeasonStartDay: adminConfig?.seasonAutomation?.newSeasonStartDay ?? 21,
-      zipArchiveDay: adminConfig?.seasonAutomation?.zipArchiveDay ?? 25,
+      seasonEndDay: adminConfig.seasonAutomation.seasonEndDay ?? 20,
+      newSeasonStartDay: adminConfig.seasonAutomation.newSeasonStartDay ?? 21,
+      zipArchiveDay: adminConfig.seasonAutomation.zipArchiveDay ?? 25,
     });
     season = lifecycle.closingSeason || lifecycle.currentSeason;
     year = lifecycle.closingYear || lifecycle.currentYear;
   }
 
-  const yearQuery =
+  const years =
     season.toLowerCase() === 'winter'
-      ? { $in: [Number(year), Number(year) - 1, Number(year) + 1] }
-      : Number(year);
+      ? [Number(year), Number(year) - 1, Number(year) + 1]
+      : [Number(year)];
 
-  const clips = await Clip.find({
-    season: requireSeason(season),
-    year: yearQuery,
-    archived: { $ne: true },
-  })
-    .select('title streamer url createdAt')
-    .lean();
+  const seasonClips = await db
+    .select({ _id: clips._id, title: clips.title, streamer: clips.streamer })
+    .from(clips)
+    .where(
+      and(
+        eq(clips.season, requireSeason(season)),
+        inArray(clips.year, years),
+        eq(clips.archived, false)
+      )
+    );
 
-  const clipIds = clips.map((c) => c._id);
-  const ratings = await Rating.find({ clipId: { $in: clipIds } }).lean();
-  const ratingsMap = new Map<string, any>(ratings.map((r) => [r.clipId.toString(), r]));
+  const ratingsMap = await getRatingDocs(seasonClips.map((c) => c._id));
 
-  const clipDetails = clips.map((clip) => {
-    const rDoc = ratingsMap.get(clip._id.toString());
-    const denyCount = rDoc?.ratings?.deny?.length || 0;
+  const clipDetails = seasonClips.map((clip) => {
+    const denyCount = ratingsMap.get(clip._id)?.ratings.deny.length || 0;
     const isDenied = denyCount >= denyThreshold;
     return {
-      _id: clip._id.toString(),
+      _id: clip._id,
       title: clip.title,
       streamer: clip.streamer,
       denyCount,
@@ -95,7 +93,7 @@ export async function runSeasonDryRun(
   return {
     season,
     year: Number(year),
-    totalClips: clips.length,
+    totalClips: seasonClips.length,
     approvedClips,
     deniedClips,
     denyThreshold,
@@ -111,42 +109,30 @@ export async function triggerManualSeasonArchive(
   year: number,
   customDenyThreshold?: number
 ): Promise<{ jobId: string; total: number; message: string }> {
-  await connectToDatabase();
-  const adminConfig = await AdminConfig.findOne();
+  const adminConfig = await getAdminConfig();
   const threshold =
     customDenyThreshold ??
-    adminConfig?.seasonAutomation?.denyThreshold ??
-    adminConfig?.denyThreshold ??
+    adminConfig.seasonAutomation.denyThreshold ??
+    adminConfig.denyThreshold ??
     5;
 
   const job = await startProcessingJob(season, year, threshold);
 
-  if (adminConfig) {
-    const historyEntry: ISeasonTransitionLog = {
-      timestamp: new Date(),
+  const archivedSeason = requireSeason(season);
+  await logSeasonTransition(
+    {
       action: 'auto_zip_started',
-      season: (season.charAt(0).toUpperCase() + season.slice(1).toLowerCase()) as SeasonName,
+      season: archivedSeason,
       year: Number(year),
       details: `Manual seasonal archive triggered (Job: ${job.jobId}, clips: ${job.total}).`,
-    };
-    if (!adminConfig.seasonAutomation) {
-      adminConfig.seasonAutomation = {
-        enabled: true,
-        seasonEndDay: 20,
-        newSeasonStartDay: 21,
-        zipArchiveDay: 25,
-        transitionHistory: [],
-      };
-    }
-    if (!adminConfig.seasonAutomation.transitionHistory) {
-      adminConfig.seasonAutomation.transitionHistory = [];
-    }
-    adminConfig.seasonAutomation.transitionHistory.unshift(historyEntry);
-    if (adminConfig.seasonAutomation.transitionHistory.length > 50) {
-      adminConfig.seasonAutomation.transitionHistory.pop();
-    }
-    await adminConfig.save();
-  }
+    },
+    (current) => ({
+      ...current,
+      autoArchiveSkips: (current.autoArchiveSkips ?? []).filter(
+        (skip) => !(skip.season === archivedSeason && skip.year === Number(year))
+      ),
+    })
+  );
 
   return {
     jobId: job.jobId,
@@ -173,30 +159,30 @@ export async function unarchiveSeason(
   zipDeleted: boolean;
   message: string;
 }> {
-  await connectToDatabase();
-
   const capitalizedSeason = requireSeason(season);
 
   // 1. Unarchive clips matching this season and year
-  const updateResult = await Clip.updateMany(
-    {
-      season: capitalizedSeason,
-      year: Number(year),
-      archived: true,
-    },
-    {
-      $set: { archived: false },
-      $unset: { archivedAt: 1 },
-    }
-  );
+  const restored = await db
+    .update(clips)
+    .set({ archived: false, archivedAt: null })
+    .where(
+      and(
+        eq(clips.season, capitalizedSeason),
+        eq(clips.year, Number(year)),
+        eq(clips.archived, true)
+      )
+    )
+    .returning({ _id: clips._id });
+  const unarchivedClipsCount = restored.length;
 
   // 2. Handle associated Zip archive if requested
   let zipDeleted = false;
   if (options.deleteZip) {
-    const existingZip = await Zip.findOne({
-      season: capitalizedSeason,
-      year: Number(year),
-    });
+    const [existingZip] = await db
+      .select()
+      .from(zips)
+      .where(and(eq(zips.season, capitalizedSeason), eq(zips.year, Number(year))))
+      .limit(1);
 
     if (existingZip) {
       try {
@@ -208,65 +194,45 @@ export async function unarchiveSeason(
       } catch (err) {
         console.warn(`[unarchiveSeason] Could not remove zip file on disk:`, err);
       }
-      await Zip.deleteOne({ _id: existingZip._id });
+      await db.delete(zips).where(eq(zips._id, existingZip._id));
       zipDeleted = true;
     }
   }
 
   // 3. Recalculate and persist active clip count
-  const activeCount = await Clip.countDocuments({ archived: { $ne: true } });
-  await PublicConfig.findOneAndUpdate(
-    {},
-    { clipAmount: activeCount },
-    { upsert: true, new: true }
-  );
+  await refreshClipCount();
 
-  // 4. Update AdminConfig metadata & log transition history
-  const adminConfig = await AdminConfig.findOne();
-  if (adminConfig) {
-    if (!adminConfig.seasonAutomation) {
-      adminConfig.seasonAutomation = {
-        enabled: true,
-        seasonEndDay: 20,
-        newSeasonStartDay: 21,
-        zipArchiveDay: 25,
-        transitionHistory: [],
-      };
-    }
-    if (!adminConfig.seasonAutomation.transitionHistory) {
-      adminConfig.seasonAutomation.transitionHistory = [];
-    }
-
-    // If lastArchivedSeason matches this season & year, clear it
-    if (
-      adminConfig.seasonAutomation.lastArchivedSeason?.season?.toLowerCase() ===
-        season.toLowerCase() &&
-      Number(adminConfig.seasonAutomation.lastArchivedSeason?.year) === Number(year)
-    ) {
-      adminConfig.seasonAutomation.lastArchivedSeason = undefined;
-    }
-
-    const historyEntry: ISeasonTransitionLog = {
-      timestamp: new Date(),
+  // 4. Update season automation metadata & log transition history
+  await logSeasonTransition(
+    {
       action: 'season_unarchived',
       season: capitalizedSeason,
       year: Number(year),
-      details: `Season ${capitalizedSeason} ${year} unarchived (undo archive). Restored ${updateResult.modifiedCount} clips to active pool.${zipDeleted ? ' Associated ZIP archive removed.' : ''}`,
-    };
-
-    adminConfig.seasonAutomation.transitionHistory.unshift(historyEntry);
-    if (adminConfig.seasonAutomation.transitionHistory.length > 50) {
-      adminConfig.seasonAutomation.transitionHistory.pop();
+      details: `Season ${capitalizedSeason} ${year} unarchived (undo archive). Restored ${unarchivedClipsCount} clips to active pool.${zipDeleted ? ' Associated ZIP archive removed.' : ''}`,
+    },
+    (current) => {
+      const next = { ...current };
+      // If lastArchivedSeason matches this season & year, clear it
+      if (
+        next.lastArchivedSeason?.season?.toLowerCase() === season.toLowerCase() &&
+        Number(next.lastArchivedSeason?.year) === Number(year)
+      ) {
+        next.lastArchivedSeason = undefined;
+      }
+      const skips = next.autoArchiveSkips ?? [];
+      if (!skips.some((skip) => skip.season === capitalizedSeason && skip.year === Number(year))) {
+        next.autoArchiveSkips = [...skips, { season: capitalizedSeason, year: Number(year) }];
+      }
+      return next;
     }
-    await adminConfig.save();
-  }
+  );
 
   // 5. Broadcast WebSocket notifications
   if (global.socketIoInstance) {
     global.socketIoInstance.emit('season:unarchived', {
       season: capitalizedSeason,
       year: Number(year),
-      unarchivedClipsCount: updateResult.modifiedCount,
+      unarchivedClipsCount,
       zipDeleted,
     });
     global.socketIoInstance.emit('clips:updated');
@@ -276,9 +242,9 @@ export async function unarchiveSeason(
     success: true,
     season: capitalizedSeason,
     year: Number(year),
-    unarchivedClipsCount: updateResult.modifiedCount,
+    unarchivedClipsCount,
     zipDeleted,
-    message: `Successfully unarchived ${capitalizedSeason} ${year}. Restored ${updateResult.modifiedCount} clips back to the active pool.`,
+    message: `Successfully unarchived ${capitalizedSeason} ${year}. Restored ${unarchivedClipsCount} clips back to the active pool.`,
   };
 }
 
@@ -301,22 +267,15 @@ export async function checkAndTriggerSeasonAutomation(
 
   isEvaluating = true;
   try {
-    await connectToDatabase();
-    const adminConfig = await AdminConfig.findOne();
-
-    if (!adminConfig) {
-      return { triggered: false, reason: 'Admin configuration not found' };
-    }
+    const adminConfig = await getAdminConfig();
 
     const autoConfig = adminConfig.seasonAutomation;
-    if (autoConfig && autoConfig.enabled === false) {
+    if (autoConfig.enabled === false) {
       return { triggered: false, reason: 'Season automation is disabled in admin settings' };
     }
 
-    const seasonEndDay = autoConfig?.seasonEndDay ?? 20;
-    const newSeasonStartDay = autoConfig?.newSeasonStartDay ?? 21;
-    const zipArchiveDay = autoConfig?.zipArchiveDay ?? 25;
-    const denyThreshold = autoConfig?.denyThreshold ?? adminConfig.denyThreshold ?? 5;
+    const zipArchiveDay = autoConfig.zipArchiveDay ?? 25;
+    const denyThreshold = autoConfig.denyThreshold ?? adminConfig.denyThreshold ?? 5;
 
     // Check if today qualifies for seasonal auto-archive
     const target = getSeasonToArchive(evalDate, { zipArchiveDay });
@@ -329,18 +288,37 @@ export async function checkAndTriggerSeasonAutomation(
 
     const { season, year, fallbackYears } = target;
 
+    const isSkipped = (autoConfig.autoArchiveSkips ?? []).some(
+      (skip) => skip.season === season && fallbackYears.includes(Number(skip.year))
+    );
+    if (isSkipped) {
+      return {
+        triggered: false,
+        reason: `${season} ${year} was manually unarchived; auto-archive is paused until it is force-archived`,
+        season,
+        year,
+      };
+    }
+
     // Idempotency Check 1: Check if an archive Zip was already generated for this season & year
-    const existingZip = await Zip.findOne({
-      season,
-      year: { $in: fallbackYears },
-    });
+    const [existingZip] = await db
+      .select({ name: zips.name })
+      .from(zips)
+      .where(and(eq(zips.season, season), inArray(zips.year, fallbackYears)))
+      .orderBy(desc(zips.createdAt))
+      .limit(1);
 
     // Idempotency Check 2: Check if unarchived clips remain for this season
-    const unarchivedCount = await Clip.countDocuments({
-      season,
-      year: { $in: fallbackYears },
-      archived: { $ne: true },
-    });
+    const [{ unarchivedCount }] = await db
+      .select({ unarchivedCount: count() })
+      .from(clips)
+      .where(
+        and(
+          eq(clips.season, season),
+          inArray(clips.year, fallbackYears),
+          eq(clips.archived, false)
+        )
+      );
 
     if (existingZip && unarchivedCount === 0) {
       return {
@@ -373,29 +351,13 @@ export async function checkAndTriggerSeasonAutomation(
       `[SeasonScheduler] Auto-archiving milestone reached for ${season} ${year} (Unarchived clips: ${unarchivedCount})`
     );
 
-    // Record transition event in AdminConfig history
-    const historyEntry: ISeasonTransitionLog = {
-      timestamp: new Date(),
+    // Record transition event in season automation history
+    await logSeasonTransition({
       action: 'auto_zip_started',
       season,
       year,
       details: `Automated seasonal archiving triggered on Day ${evalDate.getDate()} for ${season} ${year}.`,
-    };
-
-    if (!adminConfig.seasonAutomation) {
-      adminConfig.seasonAutomation = {
-        enabled: true,
-        seasonEndDay,
-        newSeasonStartDay,
-        zipArchiveDay,
-        transitionHistory: [],
-      };
-    }
-    if (!adminConfig.seasonAutomation.transitionHistory) {
-      adminConfig.seasonAutomation.transitionHistory = [];
-    }
-    adminConfig.seasonAutomation.transitionHistory.unshift(historyEntry);
-    await adminConfig.save();
+    });
 
     // Start background processing pipeline
     const jobResult = await startProcessingJob(season, year, denyThreshold);
@@ -418,9 +380,9 @@ export async function checkAndTriggerSeasonAutomation(
       year,
       jobId: jobResult.jobId,
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error('[SeasonScheduler] Error during automation evaluation:', error);
-    return { triggered: false, reason: error.message || 'Unknown error' };
+    return { triggered: false, reason: error instanceof Error ? error.message : 'Unknown error' };
   } finally {
     isEvaluating = false;
   }
@@ -438,7 +400,7 @@ export function startSeasonScheduler(): void {
 
   console.log('[SeasonScheduler] Initializing 4-Season automated lifecycle scheduler...');
 
-  // Initial check 8 seconds after boot to allow MongoDB connection to settle
+  // Initial check 8 seconds after boot to allow the database connection to settle
   setTimeout(() => {
     checkAndTriggerSeasonAutomation().catch((err) => {
       console.error('[SeasonScheduler] Startup evaluation error:', err);
@@ -451,7 +413,17 @@ export function startSeasonScheduler(): void {
     checkAndTriggerSeasonAutomation().catch((err) => {
       console.error('[SeasonScheduler] Periodic evaluation error:', err);
     });
+    pruneStaleClipViews().catch((err) => {
+      console.error('[SeasonScheduler] Clip view cleanup error:', err);
+    });
   }, ONE_HOUR_MS);
+}
+
+/**
+ * Deletes view-dedup rows past their 2-hour cooldown (Postgres has no TTL indexes).
+ */
+async function pruneStaleClipViews(): Promise<void> {
+  await db.delete(clipViews).where(lt(clipViews.createdAt, sql`now() - interval '2 hours'`));
 }
 
 /**

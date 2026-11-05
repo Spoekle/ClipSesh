@@ -1,6 +1,8 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { eq } from 'drizzle-orm';
 import { apiRoute } from '@/lib/route';
-import User from '@/models/userModel';
+import { db } from '@/lib/db';
+import { users } from '@/db/schema';
 import { comparePassword, signToken } from '@/lib/auth';
 
 export const POST = apiRoute(async (req) => {
@@ -13,7 +15,7 @@ export const POST = apiRoute(async (req) => {
     );
   }
 
-  const user = await User.findOne({ username });
+  const [user] = await db.select().from(users).where(eq(users.username, username));
   if (!user) {
     return NextResponse.json(
       { error: 'Invalid username or password' },
@@ -25,7 +27,7 @@ export const POST = apiRoute(async (req) => {
     return NextResponse.json({ error: 'Account not active' }, { status: 403 });
   }
 
-  const isPasswordValid = await comparePassword(password, user.password || '');
+  const isPasswordValid = await comparePassword(password, user.password);
   if (!isPasswordValid) {
     return NextResponse.json(
       { error: 'Invalid username or password' },

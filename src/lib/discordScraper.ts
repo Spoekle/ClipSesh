@@ -3,9 +3,10 @@ import path from 'path';
 import { Readable } from 'stream';
 import { pipeline } from 'stream/promises';
 import ffmpeg from 'fluent-ffmpeg';
-import { connectToDatabase } from '@/lib/db';
-import Clip from '@/models/clipModel';
-import { PublicConfig, AdminConfig } from '@/models/configModel';
+import { eq, inArray } from 'drizzle-orm';
+import { db } from '@/lib/db';
+import { clips } from '@/db/schema';
+import { getAdminConfig, refreshClipCount } from '@/db/queries';
 import { getCurrentSeason } from '@/lib/seasonHelpers';
 import { getClipPath, getDailyDirectory } from '@/lib/seasonPathHelpers';
 import { downloadFromUrl } from '@/lib/videoDownloader';
@@ -230,7 +231,6 @@ export function startChannelScan(channelId: string, botToken: string): ChannelSc
   // Run scan in background
   (async () => {
     try {
-      await connectToDatabase();
       const uploadsBaseDir = path.join(process.cwd(), 'uploads');
       const uniqueLinks = new Set<string>();
       const rawRecords: Array<{
@@ -325,12 +325,14 @@ export function startChannelScan(channelId: string, botToken: string): ChannelSc
         await sleep(200);
       }
 
-      // Check existing clips in MongoDB
-      const existingClips = await Clip.find({
-        link: { $in: Array.from(uniqueLinks) },
-      })
-        .select('link')
-        .lean();
+      // Check which clips already exist in the database
+      const existingClips =
+        uniqueLinks.size > 0
+          ? await db
+              .select({ link: clips.link })
+              .from(clips)
+              .where(inArray(clips.link, Array.from(uniqueLinks)))
+          : [];
 
       const existingLinkSet = new Set(existingClips.map((c) => c.link));
 
@@ -478,16 +480,13 @@ export function startScraperDownload(
 
   (async () => {
     try {
-      await connectToDatabase();
       const uploadsBaseDir = path.join(process.cwd(), 'uploads');
       const tmpDir = path.join(process.cwd(), 'download', 'tmp');
       if (!fs.existsSync(tmpDir)) {
         fs.mkdirSync(tmpDir, { recursive: true });
       }
 
-      const adminConfig = await AdminConfig.findOne().lean();
-      const blacklistedStreamers = adminConfig?.blacklistedStreamers || [];
-      const blacklistedSubmitters = adminConfig?.blacklistedSubmitters || [];
+      const { blacklistedStreamers, blacklistedSubmitters } = await getAdminConfig();
 
       const activeClipsMap = new Map<number, string>();
       const processingLinks = new Set<string>();
@@ -565,7 +564,11 @@ export function startScraperDownload(
           }
           processingLinks.add(clip.link);
 
-          const existing = await Clip.findOne({ link: clip.link }).lean();
+          const [existing] = await db
+            .select({ _id: clips._id })
+            .from(clips)
+            .where(eq(clips.link, clip.link))
+            .limit(1);
           if (existing) {
             job.skippedCount++;
             job.logs.push({
@@ -696,9 +699,9 @@ export function startScraperDownload(
             : undefined;
 
           // 5. Save Clip with message timestamp as createdAt
-          const newClip = new Clip({
+          const [newClip] = await db.insert(clips).values({
             url: fileUrl,
-            thumbnail: thumbnailUrl,
+            thumbnail: thumbnailUrl ?? null,
             streamer: detectedStreamer,
             submitter: clip.author,
             title: detectedTitle,
@@ -708,9 +711,7 @@ export function startScraperDownload(
             year: clip.year,
             createdAt: msgDate,
             updatedAt: msgDate,
-          });
-
-          await newClip.save();
+          }).returning();
           job.successCount++;
 
           job.logs.push({
@@ -779,12 +780,7 @@ export function startScraperDownload(
 
       // Update public clip count
       try {
-        const count = await Clip.countDocuments({ archived: { $ne: true } });
-        await PublicConfig.findOneAndUpdate(
-          {},
-          { clipAmount: count },
-          { upsert: true, new: true }
-        );
+        await refreshClipCount();
       } catch {}
 
       if (!isJobStopped()) {

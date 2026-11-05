@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
+import { and, desc, eq } from 'drizzle-orm';
 import { authRoute } from '@/lib/route';
-import Zip from '@/models/zipModel';
+import { db } from '@/lib/db';
+import { zips } from '@/db/schema';
 import { parseSeason } from '@/lib/seasonHelpers';
 
 export const GET = authRoute(['clipteam', 'editor', 'admin'], async (req) => {
@@ -15,10 +17,12 @@ export const GET = authRoute(['clipteam', 'editor', 'admin'], async (req) => {
     );
   }
 
-  const zip = await Zip.findOne({
-    season: seasonName,
-    year: parseInt(year, 10),
-  }).sort({ createdAt: -1 });
+  const [zip] = await db
+    .select()
+    .from(zips)
+    .where(and(eq(zips.season, seasonName), eq(zips.year, parseInt(year, 10))))
+    .orderBy(desc(zips.createdAt))
+    .limit(1);
 
   if (!zip) {
     return NextResponse.json({ error: 'Zip not found for season/year' }, { status: 404 });

@@ -1,41 +1,22 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/db';
-import Message from '@/models/messageModel';
-import { requireAuth } from '@/lib/auth';
+import { NextResponse } from 'next/server';
+import { authRoute } from '@/lib/route';
+import { deleteTeamMessage } from '@/db/queries';
 import { wsManager } from '@/lib/WebSocketManager';
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    await connectToDatabase();
-    const { user: authUser, errorResponse } = requireAuth(req, ['clipteam', 'admin']);
-    if (errorResponse) return errorResponse;
+export const DELETE = authRoute<{ id: string }>(['clipteam', 'admin'], async (req, { params, user: authUser }) => {
+  const { id } = await params;
+  const result = await deleteTeamMessage(id, authUser);
 
-    const { id } = await params;
-    const message = await Message.findById(id);
-
-    if (!message) {
-      return NextResponse.json({ error: 'Message not found' }, { status: 404 });
-    }
-
-    const isAdmin = authUser!.roles.includes('admin');
-    if (isAdmin || message.userId.toString() === authUser!.id) {
-      const clipId = message.clipId?.toString();
-      await message.deleteOne();
-      if (clipId) {
-        wsManager.emitMessageDeleted(clipId, id);
-      }
-      return NextResponse.json({ message: 'Message deleted' });
-    }
-
+  if (result === 'not_found') {
+    return NextResponse.json({ error: 'Message not found' }, { status: 404 });
+  }
+  if (result === 'forbidden') {
     return NextResponse.json(
       { error: 'Unauthorized to delete this message' },
       { status: 403 }
     );
-  } catch (error: any) {
-    console.error('Error deleting message:', error);
-    return NextResponse.json({ error: 'Failed to delete message' }, { status: 500 });
   }
-}
+
+  wsManager.emitMessageDeleted(result.clipId, id);
+  return NextResponse.json({ message: 'Message deleted' });
+});

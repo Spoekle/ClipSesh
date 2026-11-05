@@ -1,11 +1,15 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { desc, eq } from 'drizzle-orm';
 import { authRoute } from '@/lib/route';
-import Report from '@/models/reportModel';
+import { db } from '@/lib/db';
+import { reports } from '@/db/schema';
 
 export const GET = authRoute(['user', 'clipteam', 'editor', 'admin'], async (req, { user: authUser }) => {
-  const reports = await Report.find({ reporterId: authUser.id })
-    .sort({ createdAt: -1 })
-    .lean();
+  const rows = await db
+    .select()
+    .from(reports)
+    .where(eq(reports.reporterId, authUser.id))
+    .orderBy(desc(reports.createdAt));
 
-  return NextResponse.json(reports);
+  return NextResponse.json(rows);
 });

@@ -1,7 +1,10 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { eq } from 'drizzle-orm';
 import { authRoute } from '@/lib/route';
-import User from '@/models/userModel';
+import { db } from '@/lib/db';
+import { users } from '@/db/schema';
 import { hashPassword } from '@/lib/auth';
+import { parseRoles } from '@/db/queries';
 
 export const POST = authRoute(['admin'], async (req) => {
   const { username, password, roles, email } = await req.json();
@@ -13,7 +16,7 @@ export const POST = authRoute(['admin'], async (req) => {
     );
   }
 
-  const existingUser = await User.findOne({ username });
+  const [existingUser] = await db.select({ _id: users._id }).from(users).where(eq(users.username, username));
   if (existingUser) {
     return NextResponse.json(
       { error: 'Username already exists' },
@@ -21,16 +24,12 @@ export const POST = authRoute(['admin'], async (req) => {
     );
   }
 
-  const hashedPassword = await hashPassword(password);
-  const newUser = new User({
+  await db.insert(users).values({
     username,
-    password: hashedPassword,
-    roles: roles || ['user'],
-    email,
+    password: await hashPassword(password),
+    roles: parseRoles(roles) ?? ['user'],
+    email: typeof email === 'string' && email.trim() ? email.trim().toLowerCase() : null,
     status: 'active',
-    createdAt: new Date(),
   });
-
-  await newUser.save();
   return NextResponse.json({ message: 'User created successfully' });
 });

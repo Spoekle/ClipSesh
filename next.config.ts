@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
   ],
   reactStrictMode: false,
   serverExternalPackages: [
-    'mongoose',
+    'postgres',
     'fluent-ffmpeg',
     'archiver',
     '@distube/ytdl-core',

@@ -1,32 +1,16 @@
 import { NextResponse } from 'next/server';
-import { apiRoute, authRoute } from '@/lib/route';
 import path from 'path';
 import fs from 'fs';
-import Clip from '@/models/clipModel';
-import { PublicConfig } from '@/models/configModel';
-
-import Rating from '@/models/ratingModel';
-import Vote from '@/models/voteModel';
-import Message from '@/models/messageModel';
-import Report from '@/models/reportModel';
-
-async function updateClipCount(): Promise<number> {
-  try {
-    const count = await Clip.countDocuments({ archived: { $ne: true } });
-    await PublicConfig.findOneAndUpdate(
-      {},
-      { clipAmount: count },
-      { upsert: true, new: true }
-    );
-    return count;
-  } catch {
-    return 0;
-  }
-}
+import { eq } from 'drizzle-orm';
+import { apiRoute, authRoute } from '@/lib/route';
+import { db } from '@/lib/db';
+import { clipRatings, clips, messages, reports, type NewClipRow } from '@/db/schema';
+import { getClipWithComments, refreshClipCount } from '@/db/queries';
+import { parseSeason } from '@/lib/seasonHelpers';
 
 export const GET = apiRoute<{ id: string }>(async (req, { params }) => {
   const { id } = await params;
-  const clip = await Clip.findById(id).lean();
+  const clip = await getClipWithComments(id);
   if (!clip) {
     return NextResponse.json({ error: 'Clip not found' }, { status: 404 });
   }
@@ -35,7 +19,7 @@ export const GET = apiRoute<{ id: string }>(async (req, { params }) => {
 
 export const PUT = authRoute<{ id: string }>(['uploader', 'admin'], async (req, { params }) => {
   const { id } = await params;
-  const clip = await Clip.findById(id);
+  const [clip] = await db.select().from(clips).where(eq(clips._id, id));
   if (!clip) {
     return NextResponse.json({ error: 'Clip not found' }, { status: 404 });
   }
@@ -43,32 +27,33 @@ export const PUT = authRoute<{ id: string }>(['uploader', 'admin'], async (req, 
   const body = await req.json();
   const { streamer, submitter, title, discordSubmitterId, link, archived, season, year } = body;
 
-  if (streamer !== undefined) clip.streamer = streamer;
-  if (submitter !== undefined) clip.submitter = submitter;
-  if (title !== undefined) clip.title = title;
-  if (discordSubmitterId !== undefined) clip.discordSubmitterId = discordSubmitterId;
-  if (link !== undefined) clip.link = link;
-  if (season !== undefined) clip.season = season;
-  if (year !== undefined) clip.year = year;
+  const update: Partial<NewClipRow> = {};
+  if (streamer !== undefined) update.streamer = streamer;
+  if (submitter !== undefined) update.submitter = submitter;
+  if (title !== undefined) update.title = title;
+  if (discordSubmitterId !== undefined) update.discordSubmitterId = discordSubmitterId;
+  if (link !== undefined) update.link = link;
+  if (season !== undefined) update.season = season ? parseSeason(String(season)) ?? null : null;
+  if (year !== undefined) update.year = year === null || year === '' ? null : Number(year);
 
   if (archived !== undefined) {
-    clip.archived = archived;
+    update.archived = Boolean(archived);
     if (archived && !clip.archivedAt) {
-      clip.archivedAt = new Date();
+      update.archivedAt = new Date();
     } else if (!archived) {
-      clip.archivedAt = undefined;
+      update.archivedAt = null;
     }
   }
 
-  await clip.save();
-  await updateClipCount();
+  const [updated] = await db.update(clips).set(update).where(eq(clips._id, id)).returning();
+  await refreshClipCount();
 
-  return NextResponse.json({ message: 'Clip updated successfully', clip });
+  return NextResponse.json({ message: 'Clip updated successfully', clip: updated });
 });
 
 export const DELETE = authRoute<{ id: string }>(['admin'], async (req, { params }) => {
   const { id } = await params;
-  const clip = await Clip.findById(id);
+  const [clip] = await db.select().from(clips).where(eq(clips._id, id));
   if (!clip) {
     return NextResponse.json({ error: 'Clip not found' }, { status: 404 });
   }
@@ -94,14 +79,14 @@ export const DELETE = authRoute<{ id: string }>(['admin'], async (req, { params 
     console.warn('Error removing clip files:', err);
   }
 
-  await Promise.all([
-    clip.deleteOne(),
-    Rating.deleteMany({ clipId: id }),
-    Vote.deleteMany({ clipId: id }),
-    Message.deleteMany({ clipId: id }),
-    Report.deleteMany({ clipId: id }),
-  ]);
-  await updateClipCount();
+  // Comments, replies, votes and views cascade with the clip row.
+  await db.transaction(async (tx) => {
+    await tx.delete(clipRatings).where(eq(clipRatings.clipId, id));
+    await tx.delete(messages).where(eq(messages.clipId, id));
+    await tx.delete(reports).where(eq(reports.clipId, id));
+    await tx.delete(clips).where(eq(clips._id, id));
+  });
+  await refreshClipCount();
 
   return NextResponse.json({ success: true });
 });

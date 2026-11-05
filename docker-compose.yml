@@ -1,4 +1,25 @@
 services:
+  postgres:
+    image: postgres:18
+    container_name: clipsesh-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=clipsesh
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-clipsesh}
+      - POSTGRES_DB=clipsesh
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clipsesh -d clipsesh"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - clipsesh-network
+
+  # Only needed as the source for the one-time `npm run db:migrate-mongo`.
   mongo:
     image: mongo:latest
     container_name: clipsesh-mongo
@@ -20,12 +41,13 @@ services:
     ports:
       - "${PORT:-3000}:3000"
     depends_on:
-      - mongo
+      postgres:
+        condition: service_healthy
     environment:
       - NODE_ENV=production
       - PORT=3000
       - HOSTNAME=0.0.0.0
-      - MONGODB_URI=mongodb://192.168.1.38:27017/clipsesh
+      - DATABASE_URL=postgres://clipsesh:${POSTGRES_PASSWORD:-clipsesh}@postgres:5432/clipsesh
     env_file:
       - path: .env
         required: false
@@ -37,6 +59,7 @@ services:
       - clipsesh-network
 
 volumes:
+  postgres-data:
   mongo-data:
 
 networks:

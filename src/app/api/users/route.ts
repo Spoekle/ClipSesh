@@ -1,9 +1,15 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { ne } from 'drizzle-orm';
 import { authRoute } from '@/lib/route';
-import User from '@/models/userModel';
+import { db } from '@/lib/db';
+import { users } from '@/db/schema';
+import { publicUserColumns } from '@/db/queries';
 
-export const GET = authRoute(['admin'], async (req) => {
+export const GET = authRoute(['admin'], async () => {
   const adminUsername = process.env.ADMIN_USERNAME || 'admin';
-  const users = await User.find({ username: { $ne: adminUsername } }).select('-password').lean();
-  return NextResponse.json(users);
+  const rows = await db
+    .select(publicUserColumns)
+    .from(users)
+    .where(ne(users.username, adminUsername));
+  return NextResponse.json(rows);
 });
