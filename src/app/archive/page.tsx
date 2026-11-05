@@ -12,6 +12,7 @@ import SeasonClipsView from './components/SeasonClipsView';
 import ArchiveLoadingGrid from './components/ArchiveLoadingGrid';
 import ClipContent from '@/app/clips/components/ClipView/Index';
 import { Button } from '@/components/ui/button';
+import { archiveSeasonCrumb, routeCrumbs } from '@/lib/breadcrumbs';
 
 const ArchiveView: React.FC = () => {
   const searchParams = useSearchParams();
@@ -68,7 +69,7 @@ const ArchiveView: React.FC = () => {
     (section: ArchiveSeasonSection) => {
       setSelectedSeason(section);
       setExpandedClip(null);
-      router.push(`/archive?season=${section.season}&year=${section.year}`);
+      router.push(archiveSeasonCrumb(section.season, section.year).href);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     },
     [router]
@@ -77,7 +78,7 @@ const ArchiveView: React.FC = () => {
   const handleBackToOverview = useCallback(() => {
     setSelectedSeason(null);
     setExpandedClip(null);
-    router.push('/archive');
+    router.push(routeCrumbs.archive.href);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [router]);
 
@@ -95,16 +96,12 @@ const ArchiveView: React.FC = () => {
               clip={currentClip}
               setExpandedClip={setExpandedClip}
               user={user || null}
-              fromContext={{
-                label: selectedSeason
-                  ? `${selectedSeason.season} ${selectedSeason.year}`
-                  : 'ClipVault',
-                path: selectedSeason
-                  ? `/archive?season=${selectedSeason.season}&year=${selectedSeason.year}`
-                  : '/archive',
-                season: selectedSeason?.season,
-                year: selectedSeason?.year,
-              }}
+              parentCrumbs={[
+                { ...routeCrumbs.archive, onClick: () => setExpandedClip(null) },
+                ...(selectedSeason
+                  ? [{ ...archiveSeasonCrumb(selectedSeason.season, selectedSeason.year), onClick: () => setExpandedClip(null) }]
+                  : []),
+              ]}
             />
           ) : (
             <div className="flex flex-col items-center justify-center min-h-[60vh]">

@@ -1,5 +1,6 @@
 import React from 'react';
-import Link from 'next/link';
+import Breadcrumbs from '@/components/common/Breadcrumbs';
+import { routeCrumbs } from '@/lib/breadcrumbs';
 
 interface ArchiveHeroProps {
   totalClips: number;
@@ -21,14 +22,7 @@ const ArchiveHero: React.FC<ArchiveHeroProps> = ({
     <div className="relative w-full overflow-hidden select-none">
       {/* CC Page Header Container (1200px centered) */}
       <div className="max-w-[1200px] mx-auto px-4 sm:px-8 pt-6 pb-4">
-        {/* Breadcrumbs */}
-        <nav className="flex items-center gap-1.5 text-sm text-muted-foreground mb-2">
-          <Link href="/" className="hover:text-foreground transition-colors">
-            Home
-          </Link>
-          <span className="text-muted-foreground/50 select-none">/</span>
-          <span className="text-foreground font-medium">The ClipVault</span>
-        </nav>
+        <Breadcrumbs items={[{ label: routeCrumbs.archive.label }]} className="mb-2" />
 
         {/* Title row with signature CC Red Underline */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">

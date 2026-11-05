@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
+import Breadcrumbs from '@/components/common/Breadcrumbs';
+import { routeCrumbs } from '@/lib/breadcrumbs';
 import { Flag, Loader2 } from 'lucide-react';
 import { useUserReports } from '@/hooks/useReports';
 import { Report } from '@/types/adminTypes';
@@ -42,14 +43,7 @@ function UserReportsPage() {
       {/* CC Page Header Container (1200px centered) */}
       <div className="relative w-full overflow-hidden select-none">
         <div className="max-w-[1200px] mx-auto px-4 sm:px-8 pt-6 pb-4">
-          {/* Breadcrumbs */}
-          <nav className="flex items-center gap-1.5 text-sm text-muted-foreground mb-2">
-            <Link href="/" className="hover:text-white transition-colors">
-              Home
-            </Link>
-            <span className="text-muted-foreground/60 select-none">/</span>
-            <span className="text-white font-medium">My Reports</span>
-          </nav>
+          <Breadcrumbs items={[{ label: routeCrumbs.myReports.label }]} className="mb-2" />
 
           {/* Title row with signature CC Red Underline */}
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">

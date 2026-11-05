@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
-import { ArrowLeft, Download, History, Loader2 } from 'lucide-react';
+import { Download, History, Loader2 } from 'lucide-react';
 import { ArchiveSeasonSection } from '@/types/clipTypes';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import Breadcrumbs from '@/components/common/Breadcrumbs';
+import { routeCrumbs } from '@/lib/breadcrumbs';
 import { downloadWithProgress } from '@/utils/downloadHelpers';
 
 interface SeasonViewHeaderProps {
@@ -14,7 +15,6 @@ interface SeasonViewHeaderProps {
   totalClips: number;
   isAdmin: boolean;
   canDownloadZip?: boolean;
-  onBack: () => void;
   onOpenUnarchive: () => void;
 }
 
@@ -32,7 +32,6 @@ export const SeasonViewHeader: React.FC<SeasonViewHeaderProps> = ({
   totalClips,
   isAdmin,
   canDownloadZip = true,
-  onBack,
   onOpenUnarchive,
 }) => {
   const [isDownloading, setIsDownloading] = useState<boolean>(false);
@@ -62,32 +61,10 @@ export const SeasonViewHeader: React.FC<SeasonViewHeaderProps> = ({
   return (
     <div className="relative w-full overflow-hidden select-none">
       <div className="max-w-[1200px] mx-auto px-4 sm:px-8 pt-6 pb-4">
-        {/* Navigation Breadcrumb / Back button */}
-        <div className="flex items-center gap-2 mb-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onBack}
-            className="gap-1.5"
-          >
-            <ArrowLeft className="size-3.5" />
-            All Seasons
-          </Button>
-          <span className="text-muted-foreground/60 select-none">/</span>
-          <nav className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Link href="/" className="hover:text-foreground transition-colors">
-              Home
-            </Link>
-            <span className="text-muted-foreground/60 select-none">/</span>
-            <Link href="/archive" className="hover:text-foreground transition-colors">
-              Archive
-            </Link>
-            <span className="text-muted-foreground/60 select-none">/</span>
-            <span className="text-foreground font-medium">
-              {section.season} {section.year}
-            </span>
-          </nav>
-        </div>
+        <Breadcrumbs
+          items={[routeCrumbs.archive, { label: `${section.season} ${section.year}` }]}
+          className="mb-2"
+        />
 
         {/* Title row */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">

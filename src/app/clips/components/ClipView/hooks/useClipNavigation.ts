@@ -1,20 +1,17 @@
 'use client';
 
 import { useMemo, useCallback, useEffect } from 'react';
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAdjacentClipsFromCache } from '@/hooks/useClips';
 import { Clip, User } from '@/types/adminTypes';
+import { BreadcrumbItem, routeCrumbs } from '@/lib/breadcrumbs';
 
 interface UseClipNavigationOptions {
   currentClipId: string;
   user: User | null;
   setExpandedClip?: React.Dispatch<React.SetStateAction<string | null>> | ((clipId: string | null) => void);
-  fromContext?: {
-    label: string;
-    path: string;
-    season?: string;
-    year?: number;
-  };
+  /** Trail between "Home" and the clip; the last entry is the back target. Defaults to Clips. */
+  parentCrumbs?: BreadcrumbItem[];
   isClipLoading: boolean;
 }
 
@@ -22,11 +19,10 @@ export function useClipNavigation({
   currentClipId,
   user,
   setExpandedClip,
-  fromContext,
+  parentCrumbs: providedParentCrumbs,
   isClipLoading,
 }: UseClipNavigationOptions) {
   const router = useRouter();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const adjacentClipParams = useMemo(() => {
@@ -112,39 +108,19 @@ export function useClipNavigation({
   const nextClip: Clip | null = adjacentClips?.next || null;
   const prevClip: Clip | null = adjacentClips?.previous || null;
 
-  const from = useMemo(() => {
-    if (fromContext) {
-      return {
-        pathname: fromContext.path.split('?')[0] || '/archive',
-        search: fromContext.path.includes('?') ? `?${fromContext.path.split('?')[1]}` : '',
-        label: fromContext.label,
-        season: fromContext.season,
-        year: fromContext.year,
-      };
-    }
-
-    const curPath = typeof window !== 'undefined' ? window.location.pathname : pathname || '/clips';
-    const curSearch = typeof window !== 'undefined' ? window.location.search : searchParams?.toString() ? `?${searchParams.toString()}` : '';
-
-    let defaultPathname = '/clips';
-    let defaultLabel = 'Clips';
-    if (curPath.includes('archive') || curPath.includes('search')) {
-      defaultPathname = '/archive';
-      defaultLabel = 'Archive';
-    } else if (curPath.includes('admin')) {
-      defaultPathname = '/admin';
-      defaultLabel = 'Admin';
-    }
-
-    const curSp = new URLSearchParams(curSearch);
-    return {
-      pathname: defaultPathname,
-      search: curSearch,
-      label: defaultLabel,
-      season: curSp.get('season') || undefined,
-      year: curSp.get('year') ? parseInt(curSp.get('year')!, 10) : undefined,
-    };
-  }, [fromContext, pathname, searchParams]);
+  const currentSearch = searchParams?.toString() ?? '';
+  const parentCrumbs: BreadcrumbItem[] =
+    providedParentCrumbs && providedParentCrumbs.length > 0
+      ? providedParentCrumbs
+      : [
+          {
+            label: routeCrumbs.clips.label,
+            href: currentSearch ? `${routeCrumbs.clips.href}?${currentSearch}` : routeCrumbs.clips.href,
+            onClick: setExpandedClip ? () => setExpandedClip(null) : undefined,
+          },
+        ];
+  const backCrumb = parentCrumbs.at(-1);
+  const backHref = backCrumb?.href ?? routeCrumbs.clips.href;
 
   const navigateToClip = useCallback(
     (targetClipId: string) => {
@@ -183,10 +159,8 @@ export function useClipNavigation({
       setExpandedClip(null);
       return;
     }
-    const targetPath = from.pathname || '/clips';
-    const searchString = from.search ? (from.search.startsWith('?') ? from.search : `?${from.search}`) : '';
-    router.push(`${targetPath}${searchString}`);
-  }, [setExpandedClip, from, router]);
+    router.push(backHref);
+  }, [setExpandedClip, backHref, router]);
 
   return {
     nextClip,
@@ -194,7 +168,8 @@ export function useClipNavigation({
     loadingAdjacentClips,
     navigateToClip,
     closeExpandedClip,
-    from,
+    parentCrumbs,
+    backLabel: backCrumb?.label ?? routeCrumbs.clips.label,
   };
 }
 

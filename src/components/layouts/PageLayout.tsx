@@ -2,17 +2,14 @@
 
 import React from 'react';
 import { m } from 'framer-motion';
-import Link from 'next/link';
-
-export interface BreadcrumbItem {
-  label: string;
-  path?: string;
-}
+import Breadcrumbs from '@/components/common/Breadcrumbs';
+import { BreadcrumbItem } from '@/lib/breadcrumbs';
 
 interface PageLayoutProps {
   children: React.ReactNode;
   title: string;
   subtitle?: string;
+  /** Trail after "Home"; defaults to just the page title. */
   breadcrumbs?: BreadcrumbItem[];
   backgroundImage?: string | { src?: string } | null;
   metaDescription?: string;
@@ -39,12 +36,7 @@ const PageLayout: React.FC<PageLayoutProps> = ({
       ? backgroundImage
       : '';
 
-  const defaultBreadcrumbs: BreadcrumbItem[] = [
-    { label: 'Home', path: '/' },
-    { label: title },
-  ];
-
-  const activeBreadcrumbs = breadcrumbs && breadcrumbs.length > 0 ? breadcrumbs : defaultBreadcrumbs;
+  const activeBreadcrumbs = breadcrumbs && breadcrumbs.length > 0 ? breadcrumbs : [{ label: title }];
 
   return (
     <div className="relative min-h-[calc(100vh-80px)] flex flex-col bg-background text-foreground transition-colors">
@@ -75,31 +67,7 @@ const PageLayout: React.FC<PageLayoutProps> = ({
         {/* Page Header */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 pb-4">
           <div className="left flex flex-col">
-            {/* Breadcrumbs */}
-            {activeBreadcrumbs.length > 1 && (
-              <nav className="flex items-center flex-wrap gap-1.5 text-sm text-muted-foreground mb-2">
-                {activeBreadcrumbs.map((crumb, index) => {
-                  const isLast = index === activeBreadcrumbs.length - 1;
-                  return (
-                    <React.Fragment key={crumb.path || crumb.label + index}>
-                      {crumb.path && !isLast ? (
-                        <Link
-                          href={crumb.path}
-                          className="hover:text-foreground transition-colors"
-                        >
-                          {crumb.label}
-                        </Link>
-                      ) : (
-                        <span className={isLast ? 'text-foreground font-medium' : 'text-muted-foreground'}>
-                          {crumb.label}
-                        </span>
-                      )}
-                      {!isLast && <span className="text-muted-foreground/60 select-none">/</span>}
-                    </React.Fragment>
-                  );
-                })}
-              </nav>
-            )}
+            <Breadcrumbs items={activeBreadcrumbs} className="mb-2" />
 
             {/* Signature Page Title with Red Underline */}
             <div className="relative pb-3 w-fit">

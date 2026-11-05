@@ -1,5 +1,6 @@
 import React from 'react';
-import Link from 'next/link';
+import Breadcrumbs from '@/components/common/Breadcrumbs';
+import { routeCrumbs } from '@/lib/breadcrumbs';
 
 export type Season = 'Winter' | 'Spring' | 'Summer' | 'Fall';
 
@@ -17,13 +18,7 @@ export const ClipViewerHeader: React.FC<ClipViewerHeaderProps> = ({
   return (
     <div className="relative w-full overflow-hidden select-none">
       <div className="max-w-[1200px] mx-auto px-4 sm:px-8 pt-6 pb-4">
-        <nav className="flex items-center gap-1.5 text-sm text-muted-foreground mb-2">
-          <Link href="/" className="hover:text-foreground transition-colors">
-            Home
-          </Link>
-          <span className="text-muted-foreground/60 select-none">/</span>
-          <span className="text-foreground font-medium">Clips</span>
-        </nav>
+        <Breadcrumbs items={[{ label: routeCrumbs.clips.label }]} className="mb-2" />
 
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>

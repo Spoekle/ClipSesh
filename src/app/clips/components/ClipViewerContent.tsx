@@ -5,6 +5,7 @@ import ClipContent from './ClipView/Index';
 import ClipFilterBar from './ClipGrid/components/ClipFilterBar';
 import ClipGrid from './ClipGrid/Index';
 import Breadcrumbs from '@/components/common/Breadcrumbs';
+import { routeCrumbs } from '@/lib/breadcrumbs';
 import { Search } from 'lucide-react';
 import { Clip, User, Rating } from '@/types/adminTypes';
 import { getClipFilterOptions } from '@/services/clipService';
@@ -179,11 +180,7 @@ const ClipViewerContent: React.FC<ClipViewerContentProps> = ({
           The clip you're looking for may have been deleted or doesn't exist.
         </p>
         <Breadcrumbs
-          items={[
-            { label: 'Home', path: '/' },
-            { label: 'Clips', path: '/clips' },
-            { label: 'Not Found' },
-          ]}
+          items={[routeCrumbs.clips, { label: 'Not Found' }]}
         />
       </div>
     );

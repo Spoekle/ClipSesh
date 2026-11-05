@@ -1,86 +1,103 @@
 import React from 'react';
 import Link from 'next/link';
-
-export interface BreadcrumbItem {
-    label: string;
-    path?: string;
-    icon?: React.ReactNode;
-    onClick?: (e?: React.MouseEvent) => void;
-}
+import { Home } from 'lucide-react';
+import { BreadcrumbItem, routeCrumbs } from '@/lib/breadcrumbs';
 
 interface BreadcrumbsProps {
-    items: BreadcrumbItem[];
-    className?: string;
+  /** Trail after "Home". The last item is always rendered as the current page. */
+  items: BreadcrumbItem[];
+  className?: string;
 }
 
+const Separator = () => (
+  <span className="text-muted-foreground/60 select-none" aria-hidden="true">
+    /
+  </span>
+);
+
+const linkClass =
+  'block truncate max-w-40 sm:max-w-60 text-muted-foreground hover:text-foreground transition-colors';
+
+const Crumb: React.FC<{ item: BreadcrumbItem }> = ({ item }) => {
+  if (item.href) {
+    return (
+      <Link href={item.href} onClick={item.onClick} className={linkClass} title={item.label}>
+        {item.label}
+      </Link>
+    );
+  }
+  if (item.onClick) {
+    return (
+      <button type="button" onClick={item.onClick} className={linkClass} title={item.label}>
+        {item.label}
+      </button>
+    );
+  }
+  return (
+    <span className="block truncate max-w-40 sm:max-w-60" title={item.label}>
+      {item.label}
+    </span>
+  );
+};
+
 /**
- * Breadcrumbs navigation component
- * 
- * Usage:
- * ```tsx
- * <Breadcrumbs items={[
- *   { label: 'Home', path: '/', icon: <FaHome /> },
- *   { label: 'Clips', path: '/clips' },
- *   { label: 'Current Clip' } // No path = current page
- * ]} />
- * ```
+ * Single-line breadcrumb trail. "Home" is always prepended, the last item is
+ * the current page, and on small screens only the direct parent is kept
+ * (earlier levels collapse into an ellipsis).
+ *
+ * @example
+ * <Breadcrumbs items={[routeCrumbs.clips, { label: clip.title }]} />
  */
 const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ items, className = '' }) => {
-    if (items.length === 0) return null;
+  const current = items.at(-1);
+  if (!current) return null;
 
-    return (
-        <nav
-            aria-label="Breadcrumb"
-            className={`flex items-center text-xs sm:text-sm ${className}`}
-        >
-            <ol className="flex items-center flex-wrap gap-1.5">
-                {items.map((item, index) => {
-                    const isLast = index === items.length - 1;
-                    const isFirst = index === 0;
+  const parents = [routeCrumbs.home, ...items.slice(0, -1)];
+  const hasCollapsed = parents.length > 2;
 
-                    return (
-                        <li key={index} className="flex items-center">
-                            {/* CC Slash Separator */}
-                            {!isFirst && (
-                                <span
-                                    className="mx-1.5 text-muted-foreground/60 select-none text-xs font-mono"
-                                    aria-hidden="true"
-                                >
-                                    /
-                                </span>
-                            )}
+  return (
+    <nav aria-label="Breadcrumb" className={`min-w-0 text-sm text-muted-foreground ${className}`}>
+      <ol className="flex items-center gap-1.5 min-w-0">
+        {parents.map((item, index) => {
+          const isHome = index === 0;
+          const isDirectParent = index === parents.length - 1;
+          const hideOnMobile = !isHome && !isDirectParent;
 
-                            {/* Breadcrumb item */}
-                            {isLast || !item.path ? (
-                                // Current page (non-clickable)
-                                <span
-                                    className="flex items-center gap-1.5 text-foreground font-medium truncate max-w-50 sm:max-w-75"
-                                    aria-current="page"
-                                >
-                                    {item.icon && (
-                                        <span className="shrink-0 text-muted-foreground">{item.icon}</span>
-                                    )}
-                                    <span className="truncate">{item.label}</span>
-                                </span>
-                            ) : (
-                                // Clickable link
-                                <Link
-                                    href={item.path}
-                                    onClick={item.onClick}
-                                    className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors duration-150"
-                                >
-                                    {item.icon && (
-                                        <span className="shrink-0 text-muted-foreground">{item.icon}</span>
-                                    )}
-                                    <span className="truncate max-w-37.5 sm:max-w-none">{item.label}</span>
-                                </Link>
-                            )}
-                        </li>
-                    );
-                })}
-            </ol>
-        </nav>
-    );
+          return (
+            <li
+              key={`${index}-${item.label}`}
+              className={`items-center gap-1.5 shrink-0 ${hideOnMobile ? 'hidden sm:flex' : 'flex'}`}
+            >
+              {isHome && item.href ? (
+                <Link
+                  href={item.href}
+                  className="flex items-center text-muted-foreground hover:text-foreground transition-colors"
+                  title={item.label}
+                >
+                  <Home className="size-3.5" aria-hidden="true" />
+                  <span className="sr-only">{item.label}</span>
+                </Link>
+              ) : (
+                <Crumb item={item} />
+              )}
+              <Separator />
+              {isHome && hasCollapsed && (
+                <span className="flex sm:hidden items-center gap-1.5" aria-hidden="true">
+                  <span>…</span>
+                  <Separator />
+                </span>
+              )}
+            </li>
+          );
+        })}
+        <li className="flex min-w-0">
+          <span className="truncate text-foreground font-medium" aria-current="page" title={current.label}>
+            {current.label}
+          </span>
+        </li>
+      </ol>
+    </nav>
+  );
 };
 
 export default Breadcrumbs;

@@ -170,7 +170,6 @@ const SeasonClipsView: React.FC<SeasonClipsViewProps> = ({
             Array.isArray(user.roles) &&
             (user.roles.includes('admin') || user.roles.includes('editor') || user.roles.includes('clipteam'))
         )}
-        onBack={onBack}
         onOpenUnarchive={() => setShowUnarchiveModal(true)}
       />
 

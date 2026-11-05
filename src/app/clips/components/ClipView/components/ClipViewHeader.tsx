@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { ArrowLeft, Share2, Flag, Edit, Trash2 } from 'lucide-react';
-import Breadcrumbs, { BreadcrumbItem } from '@/components/common/Breadcrumbs';
+import Breadcrumbs from '@/components/common/Breadcrumbs';
+import { BreadcrumbItem } from '@/lib/breadcrumbs';
 import { User } from '@/types/adminTypes';
 import { Button } from '@/components/ui/button';
 
@@ -37,13 +38,13 @@ export const ClipViewHeader: React.FC<ClipViewHeaderProps> = ({
     <div className="border-b border-border bg-background/95 py-3 sticky top-0 z-30 backdrop-blur-md">
       <div className="max-w-[1720px] mx-auto px-4 sm:px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         {/* Left: Back button + Breadcrumbs */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           <Button
             variant="outline"
             size="sm"
             onClick={onBack}
             title={backTitle}
-            className="rounded-full gap-1.5"
+            className="rounded-full gap-1.5 shrink-0"
           >
             <ArrowLeft className="size-3.5" />
             Back

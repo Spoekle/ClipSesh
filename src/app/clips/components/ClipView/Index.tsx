@@ -3,14 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { m } from 'framer-motion';
-import { Home } from 'lucide-react';
 import CustomPlayer from './components/CustomPlayer';
 import { useNotification } from '@/context/AlertContext';
 import { Clip, User, Rating } from '@/types/adminTypes';
 import RatingPanel from './components/clipteam/RatingPanel';
 import CommentSection from './components/CommentSection';
 import TeamSidebar from './components/TeamSidebar';
-import { BreadcrumbItem } from '@/components/common/Breadcrumbs';
+import { BreadcrumbItem } from '@/lib/breadcrumbs';
 import ClipViewHeader from './components/ClipViewHeader';
 import ClipAdjacentNav from './components/ClipAdjacentNav';
 import ClipQueueSidebar from './components/ClipQueueSidebar';
@@ -32,12 +31,7 @@ interface ClipContentProps {
   user?: User | null;
   fetchClipsAndRatings?: (user: User | null) => Promise<void>;
   ratings?: Record<string, Rating>;
-  fromContext?: {
-    label: string;
-    path: string;
-    season?: string;
-    year?: number;
-  };
+  parentCrumbs?: BreadcrumbItem[];
 }
 
 const ClipContent: React.FC<ClipContentProps> = ({
@@ -46,7 +40,7 @@ const ClipContent: React.FC<ClipContentProps> = ({
   user = null,
   fetchClipsAndRatings = async () => {},
   ratings = {},
-  fromContext,
+  parentCrumbs: providedParentCrumbs,
 }) => {
   const { clipId } = useParams<{ clipId: string }>();
   const currentClipId = clipId || clip._id;
@@ -60,12 +54,13 @@ const ClipContent: React.FC<ClipContentProps> = ({
     loadingAdjacentClips,
     navigateToClip,
     closeExpandedClip,
-    from,
+    parentCrumbs,
+    backLabel,
   } = useClipNavigation({
     currentClipId,
     user,
     setExpandedClip,
-    fromContext,
+    parentCrumbs: providedParentCrumbs,
     isClipLoading,
   });
 
@@ -134,17 +129,7 @@ const ClipContent: React.FC<ClipContentProps> = ({
   const canReportClip = Boolean(user && (user.roles?.includes('admin') || user.roles?.includes('clipteam') || user.roles?.includes('editor')));
   const isTeamMember = Boolean(user && (user.roles?.includes('admin') || user.roles?.includes('clipteam') || user.roles?.includes('editor') || user.roles?.includes('uploader')));
 
-  const breadcrumbItems: BreadcrumbItem[] = [
-    { label: 'Home', path: '/', icon: <Home className="size-3.5" /> },
-    {
-      label: from.label,
-      path: from.pathname + from.search,
-      onClick: () => {
-        if (setExpandedClip) setExpandedClip(null);
-      },
-    },
-    { label: clipData.title },
-  ];
+  const breadcrumbItems: BreadcrumbItem[] = [...parentCrumbs, { label: clipData.title }];
 
   return (
     <m.div
@@ -156,7 +141,7 @@ const ClipContent: React.FC<ClipContentProps> = ({
     >
       <ClipViewHeader
         onBack={closeExpandedClip}
-        backTitle={from.label === 'Archive' ? 'Back to archive' : 'Back to clips'}
+        backTitle={`Back to ${backLabel}`}
         breadcrumbItems={breadcrumbItems}
         shareUrl={shareUrl}
         onCopyShareLink={() => showSuccess('Share link copied to clipboard!')}
