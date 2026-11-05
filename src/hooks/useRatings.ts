@@ -1,4 +1,5 @@
 import { useAuthToken } from './useAuthToken';
+import { useCurrentUser } from './useUser';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../lib/react-query';
 import * as ratingService from '../services/ratingService';
@@ -23,12 +24,16 @@ export const useRating = (clipId: string) => {
   });
 };
 
-// Hook for fetching bulk ratings
+// Hook for fetching bulk ratings; the endpoint is restricted to the clip team
 export const useBulkRatings = (clipIds: string[]) => {
+  const { data: user } = useCurrentUser();
+  const canViewRatings = Boolean(
+    user?.roles?.includes('admin') || user?.roles?.includes('clipteam')
+  );
   return useQuery({
     queryKey: queryKeys.ratings.bulk(clipIds),
     queryFn: () => ratingService.getBulkRatings(clipIds),
-    enabled: clipIds.length > 0,
+    enabled: canViewRatings && clipIds.length > 0,
   });
 };
 
