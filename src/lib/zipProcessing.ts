@@ -475,7 +475,7 @@ async function processClipsAsync(
         }
       });
 
-      zipStream.on('error', (err) => {
+      zipStream.on('error', (err: Error) => {
         if (isCancelled || (job.status as string) === 'cancelled') return;
         logAndEmit(`Zip stream write error: ${err.message}`, 'error', 'error');
         job.status = 'error';
