@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { Send, Trash2, Loader2 } from 'lucide-react';
 import { format } from 'timeago.js';
 import { Message as MessageType } from '@/services/messageService';
@@ -30,7 +30,7 @@ export const TeamChatTab: React.FC<TeamChatTabProps> = ({
   messagesEndRef,
 }) => {
   return (
-    <motion.div
+    <m.div
       key="chat"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
@@ -139,7 +139,7 @@ export const TeamChatTab: React.FC<TeamChatTabProps> = ({
           </button>
         </div>
       </div>
-    </motion.div>
+    </m.div>
   );
 };
 

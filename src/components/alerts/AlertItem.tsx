@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { CheckCircle2, XCircle, AlertTriangle, Info, X } from 'lucide-react';
 import { Notification } from '@/types/notificationTypes';
 
@@ -98,7 +98,7 @@ export const AlertItem: React.FC<NotificationItemProps> = React.memo(({ notifica
   }, [notification.type]);
 
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0, x: 50, scale: 0.95 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
       exit={{ opacity: 0, x: 50, scale: 0.95 }}
@@ -140,7 +140,7 @@ export const AlertItem: React.FC<NotificationItemProps> = React.memo(({ notifica
           />
         </div>
       )}
-    </motion.div>
+    </m.div>
   );
 });
 

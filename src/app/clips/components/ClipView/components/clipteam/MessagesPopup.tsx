@@ -3,7 +3,7 @@
 import { safeLocalStorage } from '@/utils/storage';
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, X } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { useNotification } from '@/context/AlertContext';
 import { User } from '@/types/adminTypes';
 import { 
@@ -130,7 +130,7 @@ const MessagesPopup: React.FC<MessagesPopupProps> = ({
   );
 
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
@@ -212,7 +212,7 @@ const MessagesPopup: React.FC<MessagesPopupProps> = ({
           </p>
         </div>
       )}
-    </motion.div>
+    </m.div>
   );
 };
 

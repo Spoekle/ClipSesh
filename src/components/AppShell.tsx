@@ -13,6 +13,9 @@ import NotificationContainer from './PopupAlerts';
 import { User } from '../types/adminTypes';
 import { useCurrentUser } from '../hooks/useUser';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { LazyMotion } from 'framer-motion';
+
+const loadMotionFeatures = () => import('@/lib/motionFeatures').then((mod) => mod.default);
 
 function AppShellContent({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -72,9 +75,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <NotificationProvider>
         <TooltipProvider>
-          <Suspense fallback={null}>
-            <AppShellContent>{children}</AppShellContent>
-          </Suspense>
+          <LazyMotion features={loadMotionFeatures} strict>
+            <Suspense fallback={null}>
+              <AppShellContent>{children}</AppShellContent>
+            </Suspense>
+          </LazyMotion>
         </TooltipProvider>
       </NotificationProvider>
     </QueryClientProvider>

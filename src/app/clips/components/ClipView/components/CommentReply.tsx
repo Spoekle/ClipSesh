@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { Reply as ReplyIcon, Trash2, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { format } from 'timeago.js';
 import { useNotification } from '@/context/AlertContext';
@@ -108,7 +108,7 @@ export const CommentReply: React.FC<CommentReplyProps> = ({
       {/* Reply form */}
       <AnimatePresence>
         {showReplyInput && (
-          <motion.form
+          <m.form
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
@@ -158,7 +158,7 @@ export const CommentReply: React.FC<CommentReplyProps> = ({
                 </div>
               </div>
             </div>
-          </motion.form>
+          </m.form>
         )}
       </AnimatePresence>
 
@@ -179,14 +179,14 @@ export const CommentReply: React.FC<CommentReplyProps> = ({
 
           <AnimatePresence>
             {showReplies && (
-              <motion.div
+              <m.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
                 className="mt-2.5 space-y-2.5"
               >
                 {replies.map((reply) => (
-                  <motion.div
+                  <m.div
                     key={reply._id}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -221,9 +221,9 @@ export const CommentReply: React.FC<CommentReplyProps> = ({
                     <p className="text-xs text-foreground/90 mt-1 whitespace-pre-wrap leading-relaxed">
                       {reply.content}
                     </p>
-                  </motion.div>
+                  </m.div>
                 ))}
-              </motion.div>
+              </m.div>
             )}
           </AnimatePresence>
         </div>

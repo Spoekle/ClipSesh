@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import {
   ExternalLink,
   Film,
@@ -62,7 +62,7 @@ export const ReportCardItem: React.FC<ReportCardItemProps> = ({
   };
 
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       className={`bg-cc-card rounded-2xl border p-5 transition-all ${
@@ -218,7 +218,7 @@ export const ReportCardItem: React.FC<ReportCardItemProps> = ({
           </button>
         </div>
       </div>
-    </motion.div>
+    </m.div>
   );
 };
 

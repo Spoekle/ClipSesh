@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { WifiOff } from 'lucide-react';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 
@@ -13,7 +13,7 @@ export const OfflineBanner: React.FC<OfflineBannerProps> = ({ isVisible }) => {
   return (
     <AnimatePresence>
       {isVisible && (
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: -100 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -100 }}
@@ -30,7 +30,7 @@ export const OfflineBanner: React.FC<OfflineBannerProps> = ({ isVisible }) => {
               </div>
             </div>
           </div>
-        </motion.div>
+        </m.div>
       )}
     </AnimatePresence>
   );
@@ -51,7 +51,7 @@ export const OfflineWarning: React.FC<OfflineWarningProps> = ({
   return (
     <AnimatePresence>
       {!isOnline && (
-        <motion.div
+        <m.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
@@ -60,7 +60,7 @@ export const OfflineWarning: React.FC<OfflineWarningProps> = ({
         >
           <WifiOff className="size-4 text-amber-400 shrink-0" />
           <span>{message}</span>
-        </motion.div>
+        </m.div>
       )}
     </AnimatePresence>
   );

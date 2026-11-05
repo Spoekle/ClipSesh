@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { CheckCircle2, AlertCircle, Loader2, Hourglass } from 'lucide-react';
 import useSocket from '@/hooks/useSocket';
 
@@ -208,7 +208,7 @@ export const LiveProcessingView: React.FC<LiveProcessingViewProps> = ({ jobId, o
           <span className="text-muted-foreground font-mono">{processed} / {total} clips</span>
         </div>
         <div className="w-full h-2 bg-background rounded-full overflow-hidden border border-border">
-          <motion.div
+          <m.div
             className="h-full bg-primary rounded-full"
             initial={{ width: 0 }}
             animate={{ width: `${overallProgress}%` }}

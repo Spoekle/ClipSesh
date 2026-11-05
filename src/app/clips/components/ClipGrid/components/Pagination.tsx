@@ -8,7 +8,7 @@ import {
   ChevronsRight,
   MoreHorizontal,
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 
 interface PaginationProps {
   currentPage: number;
@@ -30,7 +30,7 @@ const NavButton: React.FC<NavButtonProps> = ({
   icon,
   label,
 }) => (
-  <motion.button
+  <m.button
     whileTap={{ scale: 0.95 }}
     whileHover={!navDisabled ? { scale: 1.05, y: -1 } : undefined}
     onClick={onClick}
@@ -43,7 +43,7 @@ const NavButton: React.FC<NavButtonProps> = ({
     aria-label={label}
   >
     {icon}
-  </motion.button>
+  </m.button>
 );
 
 export const Pagination: React.FC<PaginationProps> = ({
@@ -71,7 +71,7 @@ export const Pagination: React.FC<PaginationProps> = ({
   }, [currentPage, totalPages, onPageChange]);
 
   const renderPageButton = (page: number) => (
-    <motion.button
+    <m.button
       key={page}
       whileTap={{ scale: 0.95 }}
       whileHover={!disabled ? { scale: 1.05, y: -1 } : undefined}
@@ -86,7 +86,7 @@ export const Pagination: React.FC<PaginationProps> = ({
       aria-current={page === currentPage ? 'page' : undefined}
     >
       {page}
-    </motion.button>
+    </m.button>
   );
 
   const renderPageButtons = () => {

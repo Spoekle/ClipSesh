@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import {
   Download,
   Filter,
@@ -96,7 +96,7 @@ export const ScrapedClipsTable: React.FC<ScrapedClipsTableProps> = ({
     filteredClips.length > 0 && filteredClips.every((c) => selectedIds.has(c.id));
 
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       className="space-y-4"
@@ -377,7 +377,7 @@ export const ScrapedClipsTable: React.FC<ScrapedClipsTableProps> = ({
           </div>
         )}
       </div>
-    </motion.div>
+    </m.div>
   );
 };
 

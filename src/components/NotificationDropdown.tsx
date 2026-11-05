@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { Bell } from 'lucide-react';
 import { safeLocalStorage } from '@/utils/storage';
 import { useUnreadCount } from '../hooks/useNotifications';
@@ -67,7 +67,7 @@ export default function NotificationBadge({ className = '' }: NotificationBadgeP
 
   return (
     <div className={`relative ${className}`} ref={containerRef}>
-      <motion.button
+      <m.button
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         transition={{ duration: 0.15 }}
@@ -96,7 +96,7 @@ export default function NotificationBadge({ className = '' }: NotificationBadgeP
             </span>
           </>
         )}
-      </motion.button>
+      </m.button>
 
       <NotificationDropdownMenu
         isOpen={isOpen}

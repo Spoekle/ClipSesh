@@ -10,7 +10,7 @@ import {
   Minimize2,
   AlertTriangle,
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { Clip } from '@/types/adminTypes';
 import PlayerProgressBar from './player/PlayerProgressBar';
 import PlayerVolumeControl from './player/PlayerVolumeControl';
@@ -330,7 +330,7 @@ export const CustomPlayer = ({ currentClip }: { currentClip: Clip }) => {
 
           {!hasInteracted && !isPlaying && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-              <motion.button
+              <m.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
                 className="bg-primary/90 hover:bg-primary text-white p-6 rounded-full shadow-lg cursor-pointer"
@@ -341,13 +341,13 @@ export const CustomPlayer = ({ currentClip }: { currentClip: Clip }) => {
                 aria-label="Play video"
               >
                 <Play className="size-8 fill-current ml-0.5" />
-              </motion.button>
+              </m.button>
             </div>
           )}
 
           {isVideoEnded && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-              <motion.button
+              <m.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
                 className="bg-primary/90 hover:bg-primary text-white p-6 rounded-full shadow-lg cursor-pointer"
@@ -358,11 +358,11 @@ export const CustomPlayer = ({ currentClip }: { currentClip: Clip }) => {
                 aria-label="Replay video"
               >
                 <RotateCcw className="size-8" />
-              </motion.button>
+              </m.button>
             </div>
           )}
 
-          <motion.div
+          <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: showControls || !isPlaying ? 1 : 0 }}
             transition={{ duration: 0.2 }}
@@ -444,7 +444,7 @@ export const CustomPlayer = ({ currentClip }: { currentClip: Clip }) => {
                 </button>
               </div>
             </div>
-          </motion.div>
+          </m.div>
         </>
       )}
     </div>

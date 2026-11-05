@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { ShieldCheck, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -11,7 +11,7 @@ interface UserEmptyPanelProps {
 
 export const UserEmptyPanel: React.FC<UserEmptyPanelProps> = ({ onStartCreate }) => {
   return (
-    <motion.div
+    <m.div
       key="empty-state"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -35,7 +35,7 @@ export const UserEmptyPanel: React.FC<UserEmptyPanelProps> = ({ onStartCreate })
         <UserPlus className="size-3.5 text-emerald-400 mr-2" />
         <span>Or create a new user</span>
       </Button>
-    </motion.div>
+    </m.div>
   );
 };
 

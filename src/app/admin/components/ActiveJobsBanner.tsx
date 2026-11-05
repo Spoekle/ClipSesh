@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import {
   Archive,
   ChevronUp,
@@ -58,7 +58,7 @@ export const ActiveJobsBanner: React.FC<ActiveJobsBannerProps> = ({
       <AnimatePresence mode="wait">
         {!isProcessWidgetExpanded ? (
           /* Compact Overview Pill / Card */
-          <motion.div
+          <m.div
             key="compact-process-widget"
             initial={{ opacity: 0, y: 15, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -184,10 +184,10 @@ export const ActiveJobsBanner: React.FC<ActiveJobsBannerProps> = ({
                 </div>
               </div>
             )}
-          </motion.div>
+          </m.div>
         ) : (
           /* Expanded Detailed Window */
-          <motion.div
+          <m.div
             key="expanded-process-widget"
             initial={{ opacity: 0, y: 15, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -386,7 +386,7 @@ export const ActiveJobsBanner: React.FC<ActiveJobsBannerProps> = ({
                 )}
               </div>
             )}
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>

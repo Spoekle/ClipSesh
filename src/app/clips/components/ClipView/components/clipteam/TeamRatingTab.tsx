@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { X, AlertTriangle } from 'lucide-react';
 import RatingDistributionGraph from './RatingDistributionGraph';
 import { RatingUser } from '@/types/adminTypes';
@@ -38,7 +38,7 @@ export const TeamRatingTab: React.FC<TeamRatingTabProps> = ({
   };
 
   return (
-    <motion.div
+    <m.div
       key="rate"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
@@ -118,7 +118,7 @@ export const TeamRatingTab: React.FC<TeamRatingTabProps> = ({
           className="pt-2"
         />
       </div>
-    </motion.div>
+    </m.div>
   );
 };
 

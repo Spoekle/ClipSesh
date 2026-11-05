@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 
 interface PlayerFullscreenOverlayProps {
   isFullscreen: boolean;
@@ -33,7 +33,7 @@ export const PlayerFullscreenOverlay: React.FC<PlayerFullscreenOverlayProps> = (
   };
 
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: showControls ? 1 : 0, y: showControls ? 0 : -20 }}
       transition={{ duration: 0.2 }}
@@ -55,7 +55,7 @@ export const PlayerFullscreenOverlay: React.FC<PlayerFullscreenOverlayProps> = (
           </div>
         )}
       </div>
-    </motion.div>
+    </m.div>
   );
 };
 

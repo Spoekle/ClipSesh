@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { Home } from 'lucide-react';
 import CustomPlayer from './components/CustomPlayer';
 import { useNotification } from '@/context/AlertContext';
@@ -147,7 +147,7 @@ const ClipContent: React.FC<ClipContentProps> = ({
   ];
 
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -256,7 +256,7 @@ const ClipContent: React.FC<ClipContentProps> = ({
         highlightedMessageId={highlightedMessageId}
         setHighlightedMessageId={setHighlightedMessageId}
       />
-    </motion.div>
+    </m.div>
   );
 };
 

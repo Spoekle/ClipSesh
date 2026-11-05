@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Calendar, Check } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { CalendarMonthView } from './date-range/CalendarMonthView';
 import { QuickRangeSelector } from './date-range/QuickRangeSelector';
 import { Button } from '@/components/ui/button';
@@ -128,7 +128,7 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
 
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <m.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
@@ -175,7 +175,7 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
                 </div>
               </div>
             </div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>

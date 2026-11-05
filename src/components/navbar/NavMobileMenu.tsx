@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { Home, Film, Archive, Shield } from 'lucide-react';
 import NavLink from './NavLink';
 
@@ -23,7 +23,7 @@ export const NavMobileMenu: React.FC<NavMobileMenuProps> = ({
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div
+        <m.div
           ref={mobileMenuRef}
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
@@ -95,7 +95,7 @@ export const NavMobileMenu: React.FC<NavMobileMenuProps> = ({
               </NavLink>
             )}
           </div>
-        </motion.div>
+        </m.div>
       )}
     </AnimatePresence>
   );

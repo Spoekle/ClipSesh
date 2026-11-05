@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { X, Loader2 } from 'lucide-react';
 import { getRatingById } from '@/services/ratingService';
 import { Clip, Rating, User } from '@/types/adminTypes';
@@ -49,7 +49,7 @@ const RatingsPopup: React.FC<RatingsPopupProps> = ({ clip, ratings, setPopout })
 
   if (isLoading) {
     return (
-      <motion.div
+      <m.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 20 }}
@@ -67,13 +67,13 @@ const RatingsPopup: React.FC<RatingsPopupProps> = ({ clip, ratings, setPopout })
         <div className="p-10 flex justify-center items-center">
           <Loader2 className="animate-spin size-8 text-primary" />
         </div>
-      </motion.div>
+      </m.div>
     );
   }
 
   if (!ratingsData) {
     return (
-      <motion.div
+      <m.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 20 }}
@@ -91,7 +91,7 @@ const RatingsPopup: React.FC<RatingsPopupProps> = ({ clip, ratings, setPopout })
         <div className="p-8 text-center">
           <p className="text-muted-foreground text-sm">No ratings data available for this clip.</p>
         </div>
-      </motion.div>
+      </m.div>
     );
   }
 
@@ -130,7 +130,7 @@ const RatingsPopup: React.FC<RatingsPopupProps> = ({ clip, ratings, setPopout })
     : 'N/A';
 
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
@@ -169,7 +169,7 @@ const RatingsPopup: React.FC<RatingsPopupProps> = ({ clip, ratings, setPopout })
           className="mt-2"
         />
       </div>
-    </motion.div>
+    </m.div>
   );
 };
 

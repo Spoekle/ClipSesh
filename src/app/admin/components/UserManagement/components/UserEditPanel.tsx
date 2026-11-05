@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import {
   X,
   Box,
@@ -74,7 +74,7 @@ export const UserEditPanel: React.FC<UserEditPanelProps> = ({
   const isDisabled = user.status === 'disabled';
 
   return (
-    <motion.div
+    <m.div
       key={`edit-${user._id}`}
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
@@ -328,7 +328,7 @@ export const UserEditPanel: React.FC<UserEditPanelProps> = ({
           </Button>
         </div>
       </form>
-    </motion.div>
+    </m.div>
   );
 };
 

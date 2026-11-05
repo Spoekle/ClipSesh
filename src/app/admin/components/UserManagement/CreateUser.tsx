@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { User, Lock, UserPlus, Shield, Mail, AlertTriangle, Loader2 } from 'lucide-react';
 import { useNotification } from '@/context/AlertContext';
 import { CreateUserFormData, FormErrors } from '@/types/adminTypes';
@@ -141,7 +141,7 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
     };
 
     return (
-        <motion.div
+        <m.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
@@ -311,7 +311,7 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
                     )}
                 </Button>
             </form>
-        </motion.div>
+        </m.div>
     );
 };
 

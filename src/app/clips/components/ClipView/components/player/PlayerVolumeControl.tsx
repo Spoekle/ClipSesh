@@ -2,7 +2,7 @@
 
 import React, { useRef } from 'react';
 import { Volume2, VolumeX } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 
 interface PlayerVolumeControlProps {
   volume: number;
@@ -85,7 +85,7 @@ export const PlayerVolumeControl: React.FC<PlayerVolumeControlProps> = ({
 
       <AnimatePresence>
         {(showVolumeControl || isDraggingVolume) && (
-          <motion.div
+          <m.div
             initial={{ width: 0, opacity: 0 }}
             animate={{ width: 80, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
@@ -109,7 +109,7 @@ export const PlayerVolumeControl: React.FC<PlayerVolumeControlProps> = ({
                 style={{ left: `${currentVolumePercentage}%`, transform: 'translate(-50%, -50%)' }}
               />
             </div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>

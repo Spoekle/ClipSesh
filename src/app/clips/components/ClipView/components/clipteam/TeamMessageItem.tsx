@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { Trash2 } from 'lucide-react';
 import { format } from 'timeago.js';
 import { User } from '@/types/adminTypes';
@@ -30,7 +30,7 @@ export const TeamMessageItem: React.FC<TeamMessageItemProps> = ({
   );
 
   return (
-    <motion.div
+    <m.div
       id={`message-${msg._id}`}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
@@ -75,6 +75,6 @@ export const TeamMessageItem: React.FC<TeamMessageItemProps> = ({
           <p className="whitespace-pre-wrap">{msg.message}</p>
         </div>
       </div>
-    </motion.div>
+    </m.div>
   );
 };

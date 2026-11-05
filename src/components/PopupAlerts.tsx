@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { useNotification } from '../context/AlertContext';
 import AlertItem from './alerts/AlertItem';
 import AlertModal from './alerts/AlertModal';
@@ -17,7 +17,7 @@ export default function NotificationContainer() {
         <div className="fixed top-20 right-4 sm:right-6 z-[9999] flex flex-col items-end space-y-2 pointer-events-none max-w-sm w-full">
           <AnimatePresence mode="popLayout">
             {notifications.map((notification) => (
-              <motion.div
+              <m.div
                 key={notification.id}
                 initial={{ opacity: 0, y: -20, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -30,7 +30,7 @@ export default function NotificationContainer() {
                   notification={notification}
                   onRemove={removeNotification}
                 />
-              </motion.div>
+              </m.div>
             ))}
           </AnimatePresence>
         </div>

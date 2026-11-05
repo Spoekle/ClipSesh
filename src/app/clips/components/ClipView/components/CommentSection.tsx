@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { Trash2, Loader2, MessageSquare } from 'lucide-react';
 import { format } from 'timeago.js';
 import CommentReply from './CommentReply';
@@ -206,7 +206,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
               .slice()
               .reverse()
               .map((comment, index) => (
-                <motion.div
+                <m.div
                   key={comment._id || index}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -263,7 +263,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                       />
                     )}
                   </div>
-                </motion.div>
+                </m.div>
               ))}
           </AnimatePresence>
         ) : (

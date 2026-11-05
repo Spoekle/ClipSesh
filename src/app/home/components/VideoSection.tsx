@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { Play, Film } from 'lucide-react';
 import { YoutubeIcon } from '@/components/BrandIcons';
 import { Card } from '@/components/ui/card';
@@ -20,7 +20,7 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
   thumbnailUrl,
 }) => {
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.15 }}
@@ -77,7 +77,7 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
           </a>
         </div>
       </Card>
-    </motion.div>
+    </m.div>
   );
 };
 

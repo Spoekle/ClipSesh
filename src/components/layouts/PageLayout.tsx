@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import Link from 'next/link';
 
 export interface BreadcrumbItem {
@@ -127,14 +127,14 @@ const PageLayout: React.FC<PageLayoutProps> = ({
         </div>
 
         {/* Page Content Slot */}
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: contentAnimationDelay, duration: 0.15 }}
           className="page-content grow flex flex-col"
         >
           {children}
-        </motion.div>
+        </m.div>
       </div>
     </div>
   );

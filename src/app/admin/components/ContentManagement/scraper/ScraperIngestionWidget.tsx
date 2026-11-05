@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import {
   Download,
   X,
@@ -54,7 +54,7 @@ export const ScraperIngestionWidget: React.FC<ScraperIngestionWidgetProps> = ({
       <AnimatePresence mode="wait">
         {!isWidgetExpanded ? (
           /* Compact Overview Pill */
-          <motion.div
+          <m.div
             key="compact-widget"
             initial={{ opacity: 0, y: 15, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -177,10 +177,10 @@ export const ScraperIngestionWidget: React.FC<ScraperIngestionWidgetProps> = ({
                 )}
               </div>
             )}
-          </motion.div>
+          </m.div>
         ) : (
           /* Expanded Detailed Window */
-          <motion.div
+          <m.div
             key="expanded-widget"
             initial={{ opacity: 0, y: 15, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -445,7 +445,7 @@ export const ScraperIngestionWidget: React.FC<ScraperIngestionWidgetProps> = ({
                 <span>Collapse to Corner</span>
               </button>
             </div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>

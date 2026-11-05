@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { useNotification } from '@/context/AlertContext';
 import { User, Clip, Rating, RatingUser } from '@/types/adminTypes';
 import { getRatingById, submitRating } from '@/services/ratingService';
@@ -162,7 +162,7 @@ const RatingPanel: React.FC<RatingPanelProps> = ({
   const isDisabled = isLoading || isSubmitting || cannotRateOwnClip;
 
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.1 }}
@@ -205,7 +205,7 @@ const RatingPanel: React.FC<RatingPanelProps> = ({
           onRateOrDeny={rateOrDenyClip}
         />
       )}
-    </motion.div>
+    </m.div>
   );
 };
 

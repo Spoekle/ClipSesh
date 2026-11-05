@@ -1,7 +1,7 @@
 'use client';
 
 import { safeLocalStorage } from '@/utils/storage';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import React, { useState, useEffect } from 'react';
 import { Settings } from 'lucide-react';
 import { useUpdateAdminConfig, useUpdatePublicConfig, useBlacklistedUsers } from '@/hooks/useAdmin';
@@ -225,7 +225,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onOpenScraper 
   };
 
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
@@ -276,7 +276,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onOpenScraper 
           />
         </div>
       </form>
-    </motion.div>
+    </m.div>
   );
 };
 

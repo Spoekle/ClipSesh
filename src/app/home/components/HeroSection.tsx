@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import { DiscordIcon, YoutubeIcon } from '@/components/BrandIcons';
 
@@ -24,7 +24,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   totalClips,
 }) => {
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.15 }}
@@ -104,7 +104,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           <div className="text-xs text-muted-foreground mt-0.5">Official Highlight Videos</div>
         </div>
       </div>
-    </motion.div>
+    </m.div>
   );
 };
 

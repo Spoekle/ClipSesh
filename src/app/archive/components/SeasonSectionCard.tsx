@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import {
   Sprout,
   Sun,
@@ -96,7 +96,7 @@ export const SeasonSectionCard: React.FC<SeasonSectionCardProps> = ({ section, o
   const dateRange = getSeasonDateRange(section.season, section.year);
 
   return (
-    <motion.div
+    <m.div
       whileHover={{ y: -2 }}
       transition={{ duration: 0.1 }}
       onClick={() => onSelect(section)}
@@ -187,7 +187,7 @@ export const SeasonSectionCard: React.FC<SeasonSectionCardProps> = ({ section, o
           </div>
         </div>
       </Card>
-    </motion.div>
+    </m.div>
   );
 };
 

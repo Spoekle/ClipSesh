@@ -3,7 +3,7 @@
 import { safeLocalStorage } from '@/utils/storage';
 import React, { Suspense, useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { useNotification } from '@/context/AlertContext';
 
 import ClipViewerContent from './components/ClipViewerContent';
@@ -208,7 +208,7 @@ function ClipViewer() {
   }, [refetchClips]);
 
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.15 }}
@@ -282,7 +282,7 @@ function ClipViewer() {
           sortOption={sortOption}
         />
       </div>
-    </motion.div>
+    </m.div>
   );
 }
 

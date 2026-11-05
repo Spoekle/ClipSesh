@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { Pencil } from 'lucide-react';
 import { DiscordIcon } from '@/components/BrandIcons';
 import { User } from '@/types/adminTypes';
@@ -28,7 +28,7 @@ export const UserCard: React.FC<UserCardProps> = ({ user, isSelected, onSelect }
   const avatarUrl = getUserAvatarUrl(user.username, user.profilePicture, 80);
 
   return (
-    <motion.div
+    <m.div
       layout="position"
       onClick={() => onSelect(user)}
       className={`relative p-3.5 rounded-xl border transition-all cursor-pointer select-none ${
@@ -130,7 +130,7 @@ export const UserCard: React.FC<UserCardProps> = ({ user, isSelected, onSelect }
           </Button>
         </div>
       </div>
-    </motion.div>
+    </m.div>
   );
 };
 
