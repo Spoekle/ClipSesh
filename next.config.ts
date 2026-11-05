@@ -17,18 +17,6 @@ const nextConfig: NextConfig = {
     '@distube/ytdl-core',
     'bcrypt',
   ],
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '**',
-      },
-      {
-        protocol: 'http',
-        hostname: '**',
-      },
-    ],
-  },
 };
 
 export default nextConfig;
