@@ -3,7 +3,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Pencil } from 'lucide-react';
-import { FaDiscord } from 'react-icons/fa';
+import { DiscordIcon } from '@/components/BrandIcons';
 import { User } from '@/types/adminTypes';
 import { getUserAvatarUrl, handleAvatarError } from '@/utils/generateAvatar';
 import { getRoleBadgeClasses } from '../utils/roleBadgeHelper';
@@ -59,7 +59,7 @@ export const UserCard: React.FC<UserCardProps> = ({ user, isSelected, onSelect }
                     : 'bg-cc-ground border-border/80 text-muted-foreground/30'
                 }`}
               >
-                <FaDiscord className="text-[9.5px] shrink-0" />
+                <DiscordIcon className="text-[9.5px] shrink-0" />
               </span>
 
               {/* CC Indicator */}

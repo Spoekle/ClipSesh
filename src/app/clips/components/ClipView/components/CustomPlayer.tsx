@@ -17,7 +17,7 @@ import PlayerVolumeControl from './player/PlayerVolumeControl';
 import PlayerPlaybackRateMenu from './player/PlayerPlaybackRateMenu';
 import PlayerFullscreenOverlay from './player/PlayerFullscreenOverlay';
 import usePlayerShortcuts from './player/usePlayerShortcuts';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
 
 const PLAYBACK_RATES = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2];
 
@@ -293,10 +293,8 @@ export const CustomPlayer = ({ currentClip }: { currentClip: Clip }) => {
           <p className="text-lg mb-2">Video playback error</p>
           <p className="text-sm text-muted-foreground">{error}</p>
           <Button
-            href={currentClip.url}
-            target="_blank"
-            variant="primary"
-            size="sm"
+            nativeButton={false}
+            render={<a href={currentClip.url} target="_blank" rel="noopener noreferrer" />}
             className="mt-4"
             onClick={(e) => e.stopPropagation()}
           >

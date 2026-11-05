@@ -3,7 +3,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Play, Film } from 'lucide-react';
-import { FaYoutube } from 'react-icons/fa';
+import { YoutubeIcon } from '@/components/BrandIcons';
 import { Card } from '@/components/ui/card';
 
 interface VideoSectionProps {
@@ -72,7 +72,7 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
             rel="noopener noreferrer"
             className="bg-background hover:bg-secondary text-foreground text-xs px-3 py-1.5 rounded-full font-medium transition-colors flex items-center gap-1.5 shrink-0 border border-border"
           >
-            <FaYoutube size={13} className="text-primary" />
+            <YoutubeIcon size={13} className="text-primary" />
             <span>Subscribe</span>
           </a>
         </div>

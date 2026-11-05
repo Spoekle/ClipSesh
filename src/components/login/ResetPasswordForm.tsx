@@ -2,9 +2,9 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Mail } from 'lucide-react';
+import { Mail, Loader2 } from 'lucide-react';
 import { requestPasswordReset } from '@/services/userService';
-import { Button } from '@/components/Button';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -103,14 +103,12 @@ export const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({ onBackToLo
 
         <Button
           type="button"
-          variant="primary"
-          size="lg"
-          pill
-          fullWidth
+          size="xl"
+          className="w-full rounded-full"
           onClick={handlePasswordReset}
           disabled={awaitingReset || !email.trim()}
-          isLoading={awaitingReset}
         >
+          {awaitingReset && <Loader2 data-icon="inline-start" className="animate-spin" />}
           {awaitingReset ? 'Processing...' : 'Reset Password'}
         </Button>
       </div>

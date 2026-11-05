@@ -2,8 +2,8 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { CheckCheck, Trash } from 'lucide-react';
-import { Button } from '@/components/Button';
+import { CheckCheck, Trash, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface NotificationHeaderProps {
   unreadCount: number;
@@ -51,29 +51,23 @@ export const NotificationHeader: React.FC<NotificationHeaderProps> = ({
           {/* Top Toolbar Actions */}
           <div className="flex items-center gap-2.5 pb-1 flex-wrap">
             {unreadCount > 0 && (
-              <Button
-                variant="primary"
-                size="sm"
-                pill
-                onClick={onMarkAllAsRead}
-                disabled={isMarkAllPending}
-                isLoading={isMarkAllPending}
-                leftIcon={<CheckCheck className="size-3.5" />}
-              >
+              <Button className="rounded-full" onClick={onMarkAllAsRead} disabled={isMarkAllPending}>
+                {isMarkAllPending ? (
+                  <Loader2 data-icon="inline-start" className="animate-spin" />
+                ) : (
+                  <CheckCheck data-icon="inline-start" className="size-3.5" />
+                )}
                 Mark All Read
               </Button>
             )}
 
             {readCount > 0 && (
-              <Button
-                variant="card"
-                size="sm"
-                pill
-                onClick={onClearRead}
-                disabled={isClearPending}
-                isLoading={isClearPending}
-                leftIcon={<Trash className="size-3.5" />}
-              >
+              <Button variant="card" className="rounded-full" onClick={onClearRead} disabled={isClearPending}>
+                {isClearPending ? (
+                  <Loader2 data-icon="inline-start" className="animate-spin" />
+                ) : (
+                  <Trash data-icon="inline-start" className="size-3.5" />
+                )}
                 Clear Read
               </Button>
             )}

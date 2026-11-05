@@ -35,7 +35,7 @@ export const getPublicConfig = async (): Promise<PublicConfig> => {
  */
 export const getAdminConfig = async (): Promise<Partial<AdminConfig>> => {
   try {
-    const data = await apiClient.get<any>(`/api/admin/config`);
+    const data = await apiClient.get<any>(`/api/config/admin`);
     if (Array.isArray(data)) return data[0] || {};
     if (data?.admin) return { ...data, ...data.admin };
     return data || {};

@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Video, Save } from 'lucide-react';
+import { Video, Save, Loader2 } from 'lucide-react';
 import { useNotification } from '@/context/AlertContext';
 import { Clip } from '@/types/adminTypes';
 import { updateClip } from '@/services/clipService';
 import { EditClipFormFields, EditErrors } from './edit/EditClipFormFields';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -161,19 +161,17 @@ export const EditClipModal: React.FC<EditClipModalProps> = ({
             <Button
               type="button"
               variant="card"
-              size="sm"
               onClick={() => setIsEditModalOpen(false)}
               disabled={isLoading}
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              size="sm"
-              isLoading={isLoading}
-              leftIcon={<Save className="size-3.5" />}
-            >
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? (
+                <Loader2 data-icon="inline-start" className="animate-spin" />
+              ) : (
+                <Save data-icon="inline-start" className="size-3.5" />
+              )}
               Save Changes
             </Button>
           </div>

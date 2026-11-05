@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { Button } from '@/components/Button';
+import { Button } from '@/components/ui/button';
 
 interface SeasonPaginationProps {
   page: number;
@@ -21,14 +21,14 @@ export const SeasonPagination: React.FC<SeasonPaginationProps> = ({
     <div className="mt-12 flex items-center justify-center gap-2 select-none">
       <Button
         variant="card"
-        size="md"
+        size="lg"
         disabled={page <= 1}
         onClick={() => {
           onPageChange(Math.max(1, page - 1));
           window.scrollTo({ top: 180, behavior: 'smooth' });
         }}
-        leftIcon={<ChevronLeft className="size-3.5" />}
       >
+        <ChevronLeft data-icon="inline-start" className="size-3.5" />
         Previous
       </Button>
 
@@ -39,15 +39,15 @@ export const SeasonPagination: React.FC<SeasonPaginationProps> = ({
 
       <Button
         variant="card"
-        size="md"
+        size="lg"
         disabled={page >= totalPages}
         onClick={() => {
           onPageChange(Math.min(totalPages, page + 1));
           window.scrollTo({ top: 180, behavior: 'smooth' });
         }}
-        rightIcon={<ChevronRight className="size-3.5" />}
       >
         Next
+        <ChevronRight data-icon="inline-end" className="size-3.5" />
       </Button>
     </div>
   );

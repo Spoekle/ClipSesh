@@ -2,13 +2,13 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Lock, ArrowLeft } from 'lucide-react';
+import { User, Lock, ArrowLeft, Loader2 } from 'lucide-react';
 import { useLoginUser, useRegisterUser } from '@/hooks/useUser';
 import { setAuthToken, safeLocalStorage } from '@/utils/storage';
 import { authenticateSocket } from '@/hooks/useSocket';
 import { OfflineWarning } from '../common/OfflineBanner';
 import CCAuthButton from './CCAuthButton';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -230,14 +230,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onForgotPasswor
               </div>
             </div>
 
-            <Button
-              type="submit"
-              variant="primary"
-              size="md"
-              pill
-              fullWidth
-              isLoading={isSubmitting}
-            >
+            <Button type="submit" size="lg" className="w-full rounded-full" disabled={isSubmitting}>
+              {isSubmitting && <Loader2 data-icon="inline-start" className="animate-spin" />}
               {isRegister ? 'Create Account' : 'Sign In'}
             </Button>
           </form>

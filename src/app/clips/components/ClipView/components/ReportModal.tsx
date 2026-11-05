@@ -2,10 +2,10 @@
 
 import { safeLocalStorage } from '@/utils/storage';
 import React, { useState } from 'react';
-import { Flag, AlertTriangle } from 'lucide-react';
+import { Flag, AlertTriangle, Loader2 } from 'lucide-react';
 import { useNotification } from '@/context/AlertContext';
 import { Clip } from '@/types/adminTypes';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
@@ -183,20 +183,17 @@ export const ReportModal: React.FC<ReportModalProps> = ({ clip, isOpen, onClose 
             <Button
               type="button"
               variant="card"
-              size="sm"
               onClick={handleClose}
               disabled={isSubmitting}
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              size="sm"
-              disabled={!hasValidReason}
-              isLoading={isSubmitting}
-              leftIcon={<Flag className="size-3.5" />}
-            >
+            <Button type="submit" disabled={!hasValidReason || isSubmitting}>
+              {isSubmitting ? (
+                <Loader2 data-icon="inline-start" className="animate-spin" />
+              ) : (
+                <Flag data-icon="inline-start" className="size-3.5" />
+              )}
               Submit Report
             </Button>
           </div>

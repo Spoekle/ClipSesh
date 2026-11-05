@@ -1,5 +1,5 @@
 import React from 'react';
-import { FaDiscord, FaYoutube, FaTwitter } from 'react-icons/fa';
+import { DiscordIcon, YoutubeIcon, TwitterIcon } from '@/components/BrandIcons';
 
 export const NavSocialLinks: React.FC = () => {
   return (
@@ -11,7 +11,7 @@ export const NavSocialLinks: React.FC = () => {
         title="Discord"
         className="p-2 text-muted-foreground hover:text-[#5865F2] hover:bg-cc-card rounded-full transition-colors"
       >
-        <FaDiscord size={18} />
+        <DiscordIcon size={18} />
       </a>
       <a
         href="https://youtube.com/CubeCommunity"
@@ -20,7 +20,7 @@ export const NavSocialLinks: React.FC = () => {
         title="YouTube"
         className="p-2 text-muted-foreground hover:text-primary hover:bg-cc-card rounded-full transition-colors"
       >
-        <FaYoutube size={18} />
+        <YoutubeIcon size={18} />
       </a>
       <a
         href="https://twitter.com/CubeCommunityVR"
@@ -29,7 +29,7 @@ export const NavSocialLinks: React.FC = () => {
         title="Twitter"
         className="p-2 text-muted-foreground hover:text-[#1DA1F2] hover:bg-cc-card rounded-full transition-colors"
       >
-        <FaTwitter size={17} />
+        <TwitterIcon size={17} />
       </a>
     </div>
   );

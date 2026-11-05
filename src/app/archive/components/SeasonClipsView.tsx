@@ -14,7 +14,7 @@ import UnarchiveSeasonModal from '@/app/admin/components/UnarchiveSeasonModal';
 import SeasonViewHeader from './SeasonViewHeader';
 import SeasonFilterBar from './SeasonFilterBar';
 import SeasonPagination from './SeasonPagination';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
 
 interface SeasonClipsViewProps {
   section: ArchiveSeasonSection;
@@ -245,8 +245,6 @@ const SeasonClipsView: React.FC<SeasonClipsViewProps> = ({
             {(searchTerm || streamerFilter) && (
               <Button
                 type="button"
-                variant="primary"
-                size="sm"
                 onClick={() => {
                   handleClearSearch();
                   setStreamerFilter('');

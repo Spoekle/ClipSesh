@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { format } from 'timeago.js';
 import { Clip } from '@/types/adminTypes';
-import { Button } from '@/components/Button';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 
 interface ClipDetailsProps {
@@ -103,27 +103,26 @@ export const ClipDetails: React.FC<ClipDetailsProps> = ({
           {/* Share Pill */}
           <Button
             variant="card"
-            size="md"
-            pill
+            size="lg"
+            className="rounded-full"
             onClick={() => {
               navigator.clipboard.writeText(shareUrl).then(onCopyShareLink);
             }}
-            leftIcon={<Share2 className="size-3.5 text-muted-foreground" />}
           >
+            <Share2 data-icon="inline-start" className="size-3.5 text-muted-foreground" />
             Share
           </Button>
 
           {/* Source / Link Pill */}
           <Button
+            nativeButton={false}
+            render={<a href={clipData.link} target="_blank" rel="noreferrer" />}
             variant="card"
-            size="md"
-            pill
-            href={clipData.link}
-            target="_blank"
-            rel="noreferrer"
+            size="lg"
+            className="rounded-full"
             title="View original clip source"
-            leftIcon={<Link2 className="size-3.5 text-muted-foreground" />}
           >
+            <Link2 data-icon="inline-start" className="size-3.5 text-muted-foreground" />
             Source
           </Button>
         </div>

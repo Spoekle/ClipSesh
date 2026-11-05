@@ -16,7 +16,7 @@ import {
   Trash2,
   Loader2,
 } from 'lucide-react';
-import { FaDiscord } from 'react-icons/fa';
+import { DiscordIcon } from '@/components/BrandIcons';
 import { User } from '@/types/adminTypes';
 import { getUserAvatarUrl, handleAvatarError } from '@/utils/generateAvatar';
 import { getRoleBadgeClasses } from '../utils/roleBadgeHelper';
@@ -140,7 +140,7 @@ export const UserEditPanel: React.FC<UserEditPanelProps> = ({
 
         <div className="flex items-center gap-3 shrink-0">
           <div className="flex items-center gap-1.5 text-muted-foreground">
-            <FaDiscord
+            <DiscordIcon
               style={{ color: user.discordId ? '#5865F2' : '#717171' }}
             />
             <span className="truncate max-w-[110px]">

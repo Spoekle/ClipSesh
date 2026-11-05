@@ -4,9 +4,9 @@ import React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
-import { FaDiscord, FaYoutube } from 'react-icons/fa';
+import { DiscordIcon, YoutubeIcon } from '@/components/BrandIcons';
 
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
 
 interface HeroSectionProps {
   currentSeason: { season: string; year: number };
@@ -42,35 +42,30 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
       {/* Main Action Buttons */}
       <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 mb-8">
-        <Button
-          href="/clips"
-          variant="primary"
-          size="lg"
-          pill
-          rightIcon={<ArrowRight className="size-4" />}
-        >
+        <Button nativeButton={false} render={<Link href="/clips" />} size="xl" className="rounded-full">
           Browse Clips
+          <ArrowRight data-icon="inline-end" className="size-4" />
         </Button>
 
         <Button
-          href="https://discord.gg/dwe8mbC"
-          target="_blank"
+          nativeButton={false}
+          render={<a href="https://discord.gg/dwe8mbC" target="_blank" rel="noopener noreferrer" />}
           variant="card"
-          size="lg"
-          pill
-          leftIcon={<FaDiscord size={16} className="text-[#5865F2]" />}
+          size="xl"
+          className="rounded-full"
         >
+          <DiscordIcon data-icon="inline-start" size={16} className="text-[#5865F2]" />
           Join Discord
         </Button>
 
         <Button
-          href="https://www.youtube.com/@CubeCommunity"
-          target="_blank"
+          nativeButton={false}
+          render={<a href="https://www.youtube.com/@CubeCommunity" target="_blank" rel="noopener noreferrer" />}
           variant="card"
-          size="lg"
-          pill
-          leftIcon={<FaYoutube size={16} className="text-primary" />}
+          size="xl"
+          className="rounded-full"
         >
+          <YoutubeIcon data-icon="inline-start" size={16} className="text-primary" />
           YouTube
         </Button>
       </div>

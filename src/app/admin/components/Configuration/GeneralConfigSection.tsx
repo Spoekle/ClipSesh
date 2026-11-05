@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { FaDiscord } from 'react-icons/fa';
+import { DiscordIcon } from '@/components/BrandIcons';
 import { Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -95,7 +95,7 @@ export const GeneralConfigSection: React.FC<GeneralConfigSectionProps> = ({
               }}
               className="text-[11px] font-semibold text-[#5865F2] hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer"
             >
-              <FaDiscord size={12} />
+              <DiscordIcon size={12} />
               <span>Open Channel Scraper</span>
             </button>
           )}

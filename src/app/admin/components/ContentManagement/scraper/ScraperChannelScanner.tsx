@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FaDiscord } from 'react-icons/fa';
+import { DiscordIcon } from '@/components/BrandIcons';
 import { Search, Square, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,7 +34,7 @@ export const ScraperChannelScanner: React.FC<ScraperChannelScannerProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-border">
         <div className="flex items-center gap-3.5">
           <div className="size-10 rounded-xl bg-[#5865F2]/15 text-[#5865F2] border border-[#5865F2]/25 flex items-center justify-center shrink-0">
-            <FaDiscord size={20} />
+            <DiscordIcon size={20} />
           </div>
           <div>
             <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">

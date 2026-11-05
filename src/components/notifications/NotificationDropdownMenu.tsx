@@ -14,7 +14,7 @@ import {
   getNotificationClipUrl,
 } from '@/hooks/useNotifications';
 import NotificationItem from './NotificationItem';
-import { Button } from '@/components/Button';
+import { Button } from '@/components/ui/button';
 
 interface NotificationDropdownMenuProps {
   isOpen: boolean;
@@ -223,15 +223,9 @@ export const NotificationDropdownMenu: React.FC<NotificationDropdownMenuProps> =
 
           {/* Footer */}
           <div className="p-2.5 px-4 bg-secondary/30 border-t border-border flex items-center justify-between">
-            <Button
-              variant="card"
-              size="sm"
-              pill
-              fullWidth
-              onClick={handleViewAll}
-              rightIcon={<ChevronRight className="size-3.5 text-primary" />}
-            >
+            <Button variant="card" className="w-full rounded-full" onClick={handleViewAll}>
               View all notifications
+              <ChevronRight data-icon="inline-end" className="size-3.5 text-primary" />
             </Button>
           </div>
         </motion.div>

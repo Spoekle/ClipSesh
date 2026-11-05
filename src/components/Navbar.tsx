@@ -15,7 +15,7 @@ import NavLink from './navbar/NavLink';
 import NavSocialLinks from './navbar/NavSocialLinks';
 import NavUserDropdown from './navbar/NavUserDropdown';
 import NavMobileMenu from './navbar/NavMobileMenu';
-import { Button } from './common/Button';
+import { Button } from '@/components/ui/button';
 
 interface NavbarProps {
   user: User | null;
@@ -204,12 +204,8 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
                 onLogout={handleLogout}
               />
             ) : (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={toggleLoginModal}
-                leftIcon={<LogIn className="size-4" />}
-              >
+              <Button onClick={toggleLoginModal}>
+                <LogIn data-icon="inline-start" />
                 Sign In
               </Button>
             )}

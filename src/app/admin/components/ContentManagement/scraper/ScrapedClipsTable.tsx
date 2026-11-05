@@ -11,7 +11,7 @@ import {
   User,
   Loader2,
 } from 'lucide-react';
-import { FaYoutube, FaTwitch } from 'react-icons/fa';
+import { YoutubeIcon, TwitchIcon } from '@/components/BrandIcons';
 import { ScrapedClipItem, ChannelScanStatusResponse } from '@/services/adminService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -64,14 +64,14 @@ export const ScrapedClipsTable: React.FC<ScrapedClipsTableProps> = ({
       case 'youtube':
         return (
           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm bg-red-500/15 text-red-400 border border-red-500/25 text-[11px] font-semibold">
-            <FaYoutube size={11} />
+            <YoutubeIcon size={11} />
             <span>YouTube</span>
           </span>
         );
       case 'twitch':
         return (
           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm bg-purple-500/15 text-purple-400 border border-purple-500/25 text-[11px] font-semibold">
-            <FaTwitch size={11} />
+            <TwitchIcon size={11} />
             <span>Twitch</span>
           </span>
         );

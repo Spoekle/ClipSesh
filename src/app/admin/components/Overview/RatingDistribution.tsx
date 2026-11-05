@@ -12,14 +12,14 @@ interface RatingDistributionProps {
 }
 
 const TIER_COLORS = {
-  'Rated 4': '#f23030',
+  'Rated 4': '#22c55e',
   'Rated 3': '#f97316',
   'Rated 2': '#eab308',
-  'Rated 1': '#38bdf8',
-  'Rated Deny': '#717171',
+  'Rated 1': '#33cc18',
+  'Rated Deny': '#f23030',
 };
 
-const PIE_COLORS = ['#f23030', '#f97316', '#eab308', '#38bdf8', '#717171'];
+const PIE_COLORS = ['#f23030', '#f97316', '#eab308', '#38bdf8', '#f23030'];
 
 interface TooltipContext<TType extends 'bar' | 'doughnut'> {
   chart: ChartJS<TType>;
@@ -212,6 +212,12 @@ export const RatingDistribution: React.FC<RatingDistributionProps> = ({
       labels: activeUserRatings.map((u) => u.username),
       datasets: [
         {
+          label: 'Rated Deny',
+          data: activeUserRatings.map((u) => u['deny'] || 0),
+          backgroundColor: TIER_COLORS['Rated Deny'],
+          stack: 'ratings',
+        },
+        {
           label: 'Rated 4',
           data: activeUserRatings.map((u) => u['4'] || 0),
           backgroundColor: TIER_COLORS['Rated 4'],
@@ -233,12 +239,6 @@ export const RatingDistribution: React.FC<RatingDistributionProps> = ({
           label: 'Rated 1',
           data: activeUserRatings.map((u) => u['1'] || 0),
           backgroundColor: TIER_COLORS['Rated 1'],
-          stack: 'ratings',
-        },
-        {
-          label: 'Rated Deny',
-          data: activeUserRatings.map((u) => u['deny'] || 0),
-          backgroundColor: TIER_COLORS['Rated Deny'],
           stack: 'ratings',
           borderRadius: { topLeft: 4, topRight: 4 },
         },

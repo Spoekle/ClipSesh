@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Archive, Ban } from 'lucide-react';
-import { FaDiscord } from 'react-icons/fa';
+import { DiscordIcon } from '@/components/BrandIcons';
 import SeasonArchiveManager from './SeasonArchiveManager';
 import DeniedClips from './DeniedClips';
 import DiscordScraper from './DiscordScraper';
@@ -104,7 +104,7 @@ export const ContentTab: React.FC<ContentTabProps> = ({
                 : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
             }`}
           >
-            <FaDiscord
+            <DiscordIcon
               size={13}
               className={activeContentSubTab === 'scraper' ? 'text-primary-foreground' : 'text-[#5865F2]'}
             />

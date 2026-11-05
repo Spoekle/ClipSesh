@@ -11,7 +11,7 @@ import SeasonSectionCard from './components/SeasonSectionCard';
 import SeasonClipsView from './components/SeasonClipsView';
 import ArchiveLoadingGrid from './components/ArchiveLoadingGrid';
 import ClipContent from '@/app/clips/components/ClipView/Index';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
 
 const ArchiveView: React.FC = () => {
   const searchParams = useSearchParams();
@@ -183,11 +183,7 @@ const ArchiveView: React.FC = () => {
                 <p className="text-xs text-muted-foreground mb-4">
                   No competitive seasons were found for {selectedYear}.
                 </p>
-                <Button
-                  onClick={() => setSelectedYear(null)}
-                  variant="primary"
-                  size="sm"
-                >
+                <Button onClick={() => setSelectedYear(null)}>
                   Show All Years
                 </Button>
               </div>

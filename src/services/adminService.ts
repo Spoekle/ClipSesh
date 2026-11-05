@@ -108,7 +108,7 @@ export const getConfig = async (): Promise<ConfigResponse> => {
 // Update configuration
 export const updateConfig = async (config: AdminConfig): Promise<void> => {
   try {
-    await apiClient.put(`/api/admin/config`, config);
+    await apiClient.put(`/api/config/admin`, config);
   } catch (error: any) {
     console.error('Error updating config:', error);
     throw new Error(error.message || 'Failed to update configuration');

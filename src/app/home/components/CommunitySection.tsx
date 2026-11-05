@@ -1,9 +1,10 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { Gamepad2, ThumbsUp, Video, ArrowRight } from 'lucide-react';
-import { FaDiscord } from 'react-icons/fa';
-import { Button } from '@/components/common/Button';
+import { DiscordIcon } from '@/components/BrandIcons';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 
 export const CommunitySection: React.FC = () => {
@@ -87,23 +88,17 @@ export const CommunitySection: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-3 shrink-0">
-              <Button
-                href="/clips"
-                variant="primary"
-                size="sm"
-                pill
-                rightIcon={<ArrowRight className="size-3.5" />}
-              >
+              <Button nativeButton={false} render={<Link href="/clips" />} className="rounded-full">
                 Explore Clips
+                <ArrowRight data-icon="inline-end" className="size-3.5" />
               </Button>
               <Button
-                href="https://discord.gg/dwe8mbC"
-                target="_blank"
+                nativeButton={false}
+                render={<a href="https://discord.gg/dwe8mbC" target="_blank" rel="noopener noreferrer" />}
                 variant="card"
-                size="sm"
-                pill
-                leftIcon={<FaDiscord size={14} className="text-[#5865F2]" />}
+                className="rounded-full"
               >
+                <DiscordIcon data-icon="inline-start" size={14} className="text-[#5865F2]" />
                 Discord
               </Button>
             </div>
