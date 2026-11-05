@@ -7,7 +7,8 @@ import { useArchiveSeasons, useClip } from '@/hooks/useClips';
 import { useCurrentUser } from '@/hooks/useUser';
 import { ArchiveSeasonSection } from '@/types/clipTypes';
 import ArchiveHero from './components/ArchiveHero';
-import SeasonSectionCard from './components/SeasonSectionCard';
+import ArchiveSpotlight from './components/ArchiveSpotlight';
+import ArchiveTimeline from './components/ArchiveTimeline';
 import SeasonClipsView from './components/SeasonClipsView';
 import ArchiveLoadingGrid from './components/ArchiveLoadingGrid';
 import ClipContent from '@/app/clips/components/ClipView/Index';
@@ -136,7 +137,7 @@ const ArchiveView: React.FC = () => {
             onSelectYear={setSelectedYear}
           />
 
-          <div className="max-w-[1200px] mx-auto px-4 sm:px-8 py-6">
+          <div className="max-w-[1200px] mx-auto px-4 sm:px-8 pt-2 pb-20">
             {isLoading ? (
               <ArchiveLoadingGrid />
             ) : error ? (
@@ -148,30 +149,11 @@ const ArchiveView: React.FC = () => {
                 </p>
               </div>
             ) : filteredSections.length > 0 ? (
-              <div>
-                <div className="flex items-center justify-between gap-4 mb-6">
-                  <div>
-                    <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">
-                      {selectedYear ? `${selectedYear} Seasons` : 'All Available Seasons'}
-                    </h2>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Select any season below to explore its clips, view count, and highlight package.
-                    </p>
-                  </div>
-                  <span className="text-xs font-mono text-muted-foreground font-semibold">
-                    {filteredSections.length} {filteredSections.length === 1 ? 'Season' : 'Seasons'}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {filteredSections.map((section) => (
-                    <SeasonSectionCard
-                      key={`${section.season}-${section.year}`}
-                      section={section}
-                      onSelect={handleSelectSeason}
-                    />
-                  ))}
-                </div>
+              <div className="flex flex-col gap-16">
+                {selectedYear === null && (
+                  <ArchiveSpotlight section={filteredSections[0]} onSelect={handleSelectSeason} />
+                )}
+                <ArchiveTimeline sections={filteredSections} onSelect={handleSelectSeason} />
               </div>
             ) : (
               <div className="text-center py-20 bg-cc-card border border-border rounded-2xl p-8">

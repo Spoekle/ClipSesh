@@ -1,6 +1,8 @@
 import React from 'react';
+import { Archive } from 'lucide-react';
 import Breadcrumbs from '@/components/common/Breadcrumbs';
 import { routeCrumbs } from '@/lib/breadcrumbs';
+import { cn } from '@/lib/utils';
 
 interface ArchiveHeroProps {
   totalClips: number;
@@ -14,69 +16,84 @@ interface ArchiveHeroProps {
 const ArchiveHero: React.FC<ArchiveHeroProps> = ({
   totalClips,
   totalSeasons,
+  totalZips,
   availableYears,
   selectedYear,
   onSelectYear,
 }) => {
+  const oldestYear = availableYears.at(-1);
+
+  const stats = [
+    { value: totalClips.toLocaleString(), label: 'Clips saved' },
+    { value: totalSeasons.toLocaleString(), label: 'Seasons' },
+    ...(oldestYear !== undefined ? [{ value: String(oldestYear), label: 'Archiving since' }] : []),
+    ...(totalZips > 0 ? [{ value: totalZips.toLocaleString(), label: 'Highlight packages' }] : []),
+  ];
+
+  const yearOptions: { label: string; value: number | null }[] = [
+    { label: 'All', value: null },
+    ...availableYears.map((year) => ({ label: String(year), value: year })),
+  ];
+
   return (
     <div className="relative w-full overflow-hidden select-none">
-      {/* CC Page Header Container (1200px centered) */}
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-8 pt-6 pb-4">
-        <Breadcrumbs items={[{ label: routeCrumbs.archive.label }]} className="mb-2" />
+      <div className="pointer-events-none absolute -top-40 -left-40 size-[32rem] rounded-full bg-primary/15 blur-[120px]" />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] bg-size-[48px_48px] opacity-40 mask-[radial-gradient(ellipse_at_top_left,black_10%,transparent_65%)]" />
 
-        {/* Title row with signature CC Red Underline */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+      <div className="relative mx-auto max-w-[1200px] px-4 pt-6 pb-8 sm:px-8">
+        <Breadcrumbs items={[{ label: routeCrumbs.archive.label }]} className="mb-6" />
+
+        <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <div className="relative pb-3 w-fit">
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground tracking-tight leading-tight">
-                 THE <span className="text-cc-red">CLIP</span>VAULT
-              </h1>
-              {/* CC Red Bar */}
-              <div className="absolute bottom-0 left-0 w-3/5 h-[2.5px] bg-cc-red rounded-full" />
-            </div>
-            <p className="mt-3 text-sm sm:text-base text-muted-foreground leading-relaxed max-w-xl">
-              Explore ALL Beat Saber clips uploaded to ClipSesh right here, right now.
+            <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[11px] font-bold tracking-[0.2em] text-primary uppercase">
+              <Archive className="size-3" />
+              Seasonal archive
+            </span>
+            <h1 className="mt-4 text-5xl leading-[0.95] font-black tracking-tight text-foreground sm:text-6xl md:text-7xl">
+              THE <span className="text-primary">CLIP</span>
+              <br className="sm:hidden" />
+              VAULT
+            </h1>
+            <p className="mt-4 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+              Every Beat Saber clip ever submitted to ClipSesh, season by season. Dig through the history of the
+              community&apos;s best moments.
             </p>
           </div>
 
-          {/* Seasons count & total clips badge */}
-          <div className="flex items-center gap-2.5 pb-1 flex-wrap">
-            <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-cc-card border border-border text-foreground">
-              {totalSeasons} Seasons
-            </span>
-            <span className="text-xs font-medium px-3 py-1 rounded-sm bg-cc-red/10 border border-cc-red/25 text-cc-red">
-              {totalClips.toLocaleString()} clips saved
-            </span>
-          </div>
+          <dl className="flex flex-wrap gap-px overflow-hidden rounded-2xl border border-border bg-border">
+            {stats.map(({ value, label }) => (
+              <div key={label} className="grow basis-28 bg-card/90 px-5 py-4 backdrop-blur-sm">
+                <dd className="text-2xl font-bold text-foreground tabular-nums">{value}</dd>
+                <dt className="mt-0.5 text-[11px] whitespace-nowrap text-muted-foreground">{label}</dt>
+              </div>
+            ))}
+          </dl>
         </div>
 
-        {/* Year Filter Chips */}
         {availableYears.length > 1 && (
-          <div className="mt-5 pt-4 border-t border-border flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-            <span className="text-xs text-muted-foreground font-medium mr-1 shrink-0">Filter by Year:</span>
-            <button
-              onClick={() => onSelectYear(null)}
-              className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors shrink-0 cursor-pointer ${
-                selectedYear === null
-                  ? 'bg-white text-black font-semibold shadow-xs'
-                  : 'bg-cc-card hover:bg-secondary text-cc-muted hover:text-white border border-border'
-              }`}
-            >
-              All Years
-            </button>
-            {availableYears.map((year) => (
-              <button
-                key={year}
-                onClick={() => onSelectYear(year === selectedYear ? null : year)}
-                className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors shrink-0 cursor-pointer ${
-                  selectedYear === year
-                    ? 'bg-white text-black font-semibold shadow-xs'
-                    : 'bg-cc-card hover:bg-secondary text-cc-muted hover:text-white border border-border'
-                }`}
-              >
-                {year}
-              </button>
-            ))}
+          <div className="mt-10 flex items-center gap-3">
+            <span className="shrink-0 text-xs font-medium text-muted-foreground">Jump to</span>
+            <div className="no-scrollbar flex items-center gap-1 overflow-x-auto rounded-full border border-border bg-card p-1">
+              {yearOptions.map(({ label, value }) => {
+                const isActive = selectedYear === value;
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => onSelectYear(isActive && value !== null ? null : value)}
+                    aria-pressed={isActive}
+                    className={cn(
+                      'shrink-0 rounded-full px-4 py-1.5 text-xs font-semibold transition-colors',
+                      isActive
+                        ? 'bg-foreground text-background shadow-sm'
+                        : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                    )}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
