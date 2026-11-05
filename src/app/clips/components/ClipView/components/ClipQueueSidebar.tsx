@@ -56,20 +56,13 @@ export const ClipQueueSidebar: React.FC<ClipQueueSidebarProps> = ({
             </Badge>
           </div>
 
-          <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
-            <div>
-              <h4 className="text-xs font-semibold text-foreground line-clamp-2 leading-tight group-hover:text-primary transition-colors">
-                {nextClip.title}
-              </h4>
-              <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
-                {nextClip.streamer}
-              </p>
-            </div>
-            <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-              <span>{nextClip.views || 0} views</span>
-              <span>•</span>
-              <span className="text-primary font-medium">{nextClip.upvotes} likes</span>
-            </div>
+          <div className="flex-1 min-w-0 flex flex-col py-0.5">
+            <h4 className="text-xs font-semibold text-foreground line-clamp-2 leading-tight group-hover:text-primary transition-colors">
+              {nextClip.title}
+            </h4>
+            <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
+              {nextClip.streamer}
+            </p>
           </div>
         </div>
       ) : (
