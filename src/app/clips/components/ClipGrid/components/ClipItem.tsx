@@ -7,6 +7,7 @@ import { User, Clip, Rating } from '@/types/adminTypes';
 import { computeClipRatingSummary } from '../utils/clipRatingHelpers';
 import { ClipItemTeamRating } from './ClipItemTeamRating';
 import { Badge } from '@/components/ui/badge';
+import { getDominantColor, RgbColor } from '@/utils/dominantColor';
 
 interface ClipItemProps {
   clip: Clip;
@@ -25,6 +26,7 @@ export const ClipItem: React.FC<ClipItemProps> = ({
   setExpandedClip,
 }) => {
   const [isHovering, setIsHovering] = useState<boolean>(false);
+  const [thumbnailColor, setThumbnailColor] = useState<RgbColor | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const isSwipingRef = useRef<boolean>(false);
@@ -135,6 +137,13 @@ export const ClipItem: React.FC<ClipItemProps> = ({
     }
   };
 
+  // Runs from both the ref (thumbnail already cached before hydration) and onLoad
+  const captureThumbnailColor = (img: HTMLImageElement | null) => {
+    if (!img || thumbnailColor) return;
+    const color = getDominantColor(img);
+    if (color) setThumbnailColor(color);
+  };
+
   const handleCardClick = () => {
     if (justToggledPreviewRef.current) {
       justToggledPreviewRef.current = false;
@@ -159,7 +168,12 @@ export const ClipItem: React.FC<ClipItemProps> = ({
     >
       {/* YouTube-style hover background: scales up on hover while item content stays fixed */}
       <div
-        className={`absolute inset-0 -z-10 rounded-none sm:rounded-2xl bg-secondary/50 border-y sm:border border-border/40 transition-all duration-200 ease-out pointer-events-none ${
+        style={
+          thumbnailColor
+            ? { backgroundColor: `rgb(${thumbnailColor.r} ${thumbnailColor.g} ${thumbnailColor.b} / 0.3)` }
+            : undefined
+        }
+        className={`absolute inset-0 -z-10 rounded-none sm:rounded-2xl ${thumbnailColor ? '' : 'bg-secondary/50'} border-y sm:border border-border/40 transition-all duration-200 ease-out pointer-events-none ${
           isHovering
             ? 'opacity-100 scale-[1.02] sm:scale-105 shadow-md sm:shadow-xl'
             : 'opacity-0 scale-100 group-hover:opacity-100 group-hover:scale-[1.02] sm:group-hover:scale-105 shadow-lg group-hover:shadow-xl'
@@ -188,6 +202,9 @@ export const ClipItem: React.FC<ClipItemProps> = ({
             alt={clip.title}
             className="w-full h-full object-cover rounded-none sm:rounded-xl"
             loading="lazy"
+            crossOrigin="anonymous"
+            ref={captureThumbnailColor}
+            onLoad={(e) => captureThumbnailColor(e.currentTarget)}
             onError={(e) => {
               e.currentTarget.onerror = null;
             }}
