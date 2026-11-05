@@ -12,3 +12,13 @@ import { twMerge } from 'tailwind-merge';
 export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(inputs));
 }
+
+/**
+ * Escapes RegExp metacharacters so user input can be matched literally.
+ *
+ * @example
+ * new RegExp(escapeRegExp('a.b*'), 'i'); // matches the literal text "a.b*"
+ */
+export function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}

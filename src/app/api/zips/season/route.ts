@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import Zip from '@/models/zipModel';
 import { requireAuth } from '@/lib/auth';
+import { parseSeason } from '@/lib/seasonHelpers';
 
 export async function GET(req: NextRequest) {
   try {
@@ -12,15 +13,16 @@ export async function GET(req: NextRequest) {
     const season = req.nextUrl.searchParams.get('season');
     const year = req.nextUrl.searchParams.get('year');
 
-    if (!season || !year) {
+    const seasonName = season ? parseSeason(season) : undefined;
+    if (!seasonName || !year) {
       return NextResponse.json(
-        { error: 'season and year parameters required' },
+        { error: 'valid season and year parameters required' },
         { status: 400 }
       );
     }
 
     const zip = await Zip.findOne({
-      season: { $regex: new RegExp(`^${season}$`, 'i') },
+      season: seasonName,
       year: parseInt(year, 10),
     }).sort({ createdAt: -1 });
 

@@ -9,6 +9,7 @@ import {
   getSeasonLifecycleStatus,
   getSeasonToArchive,
   SeasonName,
+  requireSeason,
 } from '@/lib/seasonHelpers';
 import { startProcessingJob, getAllProcessingJobs } from '@/lib/zipProcessing';
 
@@ -64,7 +65,7 @@ export async function runSeasonDryRun(
       : Number(year);
 
   const clips = await Clip.find({
-    season: { $regex: new RegExp(`^${season}$`, 'i') } as any,
+    season: requireSeason(season),
     year: yearQuery,
     archived: { $ne: true },
   })
@@ -174,15 +175,12 @@ export async function unarchiveSeason(
 }> {
   await connectToDatabase();
 
-  const seasonRegex = new RegExp(`^${season}$`, 'i');
-  const capitalizedSeason = (
-    season.charAt(0).toUpperCase() + season.slice(1).toLowerCase()
-  ) as SeasonName;
+  const capitalizedSeason = requireSeason(season);
 
   // 1. Unarchive clips matching this season and year
   const updateResult = await Clip.updateMany(
     {
-      season: { $regex: seasonRegex },
+      season: capitalizedSeason,
       year: Number(year),
       archived: true,
     },
@@ -196,7 +194,7 @@ export async function unarchiveSeason(
   let zipDeleted = false;
   if (options.deleteZip) {
     const existingZip = await Zip.findOne({
-      season: { $regex: seasonRegex },
+      season: capitalizedSeason,
       year: Number(year),
     });
 
@@ -333,13 +331,13 @@ export async function checkAndTriggerSeasonAutomation(
 
     // Idempotency Check 1: Check if an archive Zip was already generated for this season & year
     const existingZip = await Zip.findOne({
-      season: { $regex: new RegExp(`^${season}$`, 'i') },
+      season,
       year: { $in: fallbackYears },
     });
 
     // Idempotency Check 2: Check if unarchived clips remain for this season
     const unarchivedCount = await Clip.countDocuments({
-      season: { $regex: new RegExp(`^${season}$`, 'i') },
+      season,
       year: { $in: fallbackYears },
       archived: { $ne: true },
     });

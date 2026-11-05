@@ -25,6 +25,7 @@ import Rating from '@/models/ratingModel';
 import Zip from '@/models/zipModel';
 import { PublicConfig, AdminConfig } from '@/models/configModel';
 import { wsManager } from '@/lib/WebSocketManager';
+import { requireSeason } from '@/lib/seasonHelpers';
 
 export interface ProcessingJob {
   jobId?: string;
@@ -139,7 +140,7 @@ export async function startProcessingJob(
       : Number(year);
 
   const clips = await Clip.find({
-    season: { $regex: new RegExp(`^${season}$`, 'i') } as any,
+    season: requireSeason(season),
     year: yearQuery,
     archived: { $ne: true },
   }).select('-comments').lean();

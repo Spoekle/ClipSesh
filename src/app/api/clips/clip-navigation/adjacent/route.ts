@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import { connectToDatabase } from '@/lib/db';
 import Clip from '@/models/clipModel';
 import Rating from '@/models/ratingModel';
+import { escapeRegExp } from '@/lib/utils';
 
 async function getUserRatedClipIds(userId: string) {
   if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
@@ -50,7 +51,7 @@ export async function GET(req: NextRequest) {
 
     const baseQuery: Record<string, any> = { archived: { $ne: true } };
     if (streamer) {
-      baseQuery.streamer = { $regex: new RegExp(streamer, 'i') };
+      baseQuery.streamer = { $regex: escapeRegExp(streamer), $options: 'i' };
     }
 
     if (excludeRatedByUser) {

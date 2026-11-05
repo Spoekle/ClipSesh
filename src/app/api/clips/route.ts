@@ -8,8 +8,9 @@ import Clip from '@/models/clipModel';
 import Rating from '@/models/ratingModel';
 import { PublicConfig, AdminConfig } from '@/models/configModel';
 import { requireAuth } from '@/lib/auth';
-import { getCurrentSeason } from '@/lib/seasonHelpers';
+import { getCurrentSeason, parseSeason } from '@/lib/seasonHelpers';
 import { getClipPath } from '@/lib/seasonPathHelpers';
+import { escapeRegExp } from '@/lib/utils';
 
 async function updateClipCount(): Promise<number> {
   try {
@@ -55,19 +56,20 @@ export async function GET(req: NextRequest) {
     }
 
     if (streamer) {
-      filter.streamer = { $regex: streamer, $options: 'i' };
+      filter.streamer = { $regex: escapeRegExp(streamer), $options: 'i' };
     }
     if (season) {
-      filter.season = { $regex: new RegExp(`^${season}$`, 'i') };
+      filter.season = parseSeason(season) ?? season;
     }
     if (year) {
       filter.year = parseInt(year, 10);
     }
     if (search) {
+      const searchRegex = { $regex: escapeRegExp(search), $options: 'i' };
       filter.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { streamer: { $regex: search, $options: 'i' } },
-        { submitter: { $regex: search, $options: 'i' } },
+        { title: searchRegex },
+        { streamer: searchRegex },
+        { submitter: searchRegex },
       ];
     }
 
@@ -93,11 +95,12 @@ export async function GET(req: NextRequest) {
     // Exclude clips with deny count >= threshold (Team "Hide Denied" toggle)
     if (excludeDeniedClips) {
       const adminConfig = await AdminConfig.findOne({}).lean();
-      const denyThreshold = adminConfig?.denyThreshold || 5;
-      const deniedRatings = await Rating.find({ 'ratings.deny': { $exists: true } }).select('clipId ratings.deny').lean();
-      const deniedClipIds = deniedRatings
-        .filter((r) => Array.isArray(r.ratings?.deny) && r.ratings.deny.length >= denyThreshold)
-        .map((r) => r.clipId);
+      const denyThreshold = Math.max(1, adminConfig?.denyThreshold || 5);
+      // An element at index threshold-1 exists only when the deny array has >= threshold entries
+      const deniedRatings = await Rating.find({ [`ratings.deny.${denyThreshold - 1}`]: { $exists: true } })
+        .select('clipId')
+        .lean();
+      const deniedClipIds = deniedRatings.map((r) => r.clipId);
       if (deniedClipIds.length > 0) {
         filter._id = filter._id
           ? { ...filter._id, $nin: [...(filter._id.$nin || []), ...deniedClipIds] }
@@ -109,7 +112,7 @@ export async function GET(req: NextRequest) {
     const complexSortFields = ['ratio', 'averageRating', 'ratingCount', 'denyCount', 'views'];
 
     const skip = (page - 1) * limit;
-    const total = await Clip.countDocuments(filter);
+    const totalPromise = Clip.countDocuments(filter);
 
     let clips: any[] = [];
 
@@ -255,7 +258,7 @@ export async function GET(req: NextRequest) {
                 hasRatings: { $cond: [{ $gt: ['$averageRating', 0] }, 0, 1] }
               }
             });
-            pipeline.push({ $sort: { hasRatings: 0, averageRating: 1, createdAt: -1 } });
+            pipeline.push({ $sort: { hasRatings: 1, averageRating: 1, createdAt: -1 } });
           }
         }
       }
@@ -281,6 +284,8 @@ export async function GET(req: NextRequest) {
         .select('-comments')
         .lean();
     }
+
+    const total = await totalPromise;
 
     let ratingsData: Record<string, any> = {};
     if (includeRatings && clips.length > 0) {

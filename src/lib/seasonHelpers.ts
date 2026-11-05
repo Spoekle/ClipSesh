@@ -215,6 +215,34 @@ export const SEASON_ORDER: Record<string, number> = {
 
 export type SeasonName = 'Spring' | 'Summer' | 'Fall' | 'Winter';
 
+const SEASON_NAMES: readonly SeasonName[] = ['Spring', 'Summer', 'Fall', 'Winter'];
+
+/**
+ * Case-insensitively resolves user input to the season name stored in the database,
+ * so queries can use exact, index-friendly matches instead of regexes.
+ *
+ * @example
+ * parseSeason('winter'); // 'Winter'
+ * parseSeason('autumn'); // undefined
+ */
+export function parseSeason(season: string): SeasonName | undefined {
+  const normalized = season.toLowerCase();
+  return SEASON_NAMES.find((name) => name.toLowerCase() === normalized);
+}
+
+/**
+ * Like {@link parseSeason}, but throws for unknown input.
+ *
+ * @example
+ * requireSeason('SUMMER'); // 'Summer'
+ * requireSeason('autumn'); // throws Error('Unknown season: autumn')
+ */
+export function requireSeason(season: string): SeasonName {
+  const name = parseSeason(season);
+  if (!name) throw new Error(`Unknown season: ${season}`);
+  return name;
+}
+
 export interface SeasonTransitionDef {
   boundaryMonth: number; // 3 = March, 6 = June, 9 = September, 12 = December
   closingSeason: SeasonName;

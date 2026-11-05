@@ -3,7 +3,7 @@ import { connectToDatabase } from '@/lib/db';
 import Rating from '@/models/ratingModel';
 import Clip from '@/models/clipModel';
 import { requireAuth } from '@/lib/auth';
-import { getCurrentSeason } from '@/lib/seasonHelpers';
+import { getCurrentSeason, parseSeason } from '@/lib/seasonHelpers';
 
 export async function GET(req: NextRequest) {
   try {
@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
     const year = req.nextUrl.searchParams.get('year');
 
     const clipFilter: Record<string, any> = {};
-    if (season) clipFilter.season = { $regex: new RegExp(`^${season}$`, 'i') };
+    if (season) clipFilter.season = parseSeason(season) ?? season;
     if (year) clipFilter.year = parseInt(year, 10);
 
     let clips: any[] = [];
