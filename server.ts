@@ -35,18 +35,6 @@ const tmpChunksDir = path.join(process.cwd(), 'download', 'tmp');
   }
 });
 
-const legacyProfiles = path.join(process.cwd(), 'legacy', 'backend', 'src', 'profilePictures');
-
-if (fs.existsSync(legacyProfiles)) {
-  const defaultPlaceholder = path.join(legacyProfiles, 'profile_placeholder.png');
-  const targetPlaceholder = path.join(profilePicturesDir, 'profile_placeholder.png');
-  if (fs.existsSync(defaultPlaceholder) && !fs.existsSync(targetPlaceholder)) {
-    try {
-      fs.copyFileSync(defaultPlaceholder, targetPlaceholder);
-    } catch {}
-  }
-}
-
 // Helper to stream static media with Range requests, ETag caching, and security checks
 async function serveStaticFile(
   req: http.IncomingMessage,

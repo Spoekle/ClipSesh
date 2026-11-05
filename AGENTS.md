@@ -39,7 +39,7 @@ You are working in a production TypeScript + React / Next.js repository for Clip
 - `npm run build` — build Next.js application for production
 - `npm start` — run production unified server (`NODE_ENV=production tsx server.ts`)
 - `npm run start:next` — start standalone Next.js production server
-- `npm run lint` — run Next.js linter
+- `npm run typecheck` — type-check the project with `tsc`
 
 ---
 

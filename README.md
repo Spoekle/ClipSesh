@@ -3,12 +3,7 @@
 ## About
 ClipSesh is a tool developed by Spoekle that is used by Cube Community Staff to review highlight clips.
 
-This tool has been divided in 3 parts:
-- A Frontend
-- A Backend
-- Discord Bot
-
-The application is built with Next.js, React 19, TailwindCSS, Socket.IO, and MongoDB.
+It runs as a single Node.js server (`server.ts`) that hosts the Next.js app and API, Socket.IO, the Discord bot, and the season scheduler.
 
 ## Contributing
 If you decide you want to help with the development of ClipSesh, feel free to open a pull request. To start developing:
@@ -24,7 +19,11 @@ If you decide you want to help with the development of ClipSesh, feel free to op
   ```bash
   npm run dev
   ```
-  The app will run on `http://localhost:3000` by default.
+  The app will run on `http://localhost:3000` by default. A MongoDB instance must be reachable at `MONGODB_URI`.
+- Type-check:
+  ```bash
+  npm run typecheck
+  ```
 
 ### ClipSesh is built using Next.js, React, TailwindCSS, Socket.IO, and MongoDB
 [![My Skills](https://skillicons.dev/icons?i=react,tailwind,docker,express,mongodb,typescript,javascript,python)](https://clipsesh.cube.community)
