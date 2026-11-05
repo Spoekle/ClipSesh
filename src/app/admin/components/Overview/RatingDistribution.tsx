@@ -6,20 +6,14 @@ import { Bar, Doughnut } from 'react-chartjs-2';
 import type { ChartOptions, Chart as ChartJS, TooltipModel } from 'chart.js';
 import { BarChart3, PieChart, Layers } from 'lucide-react';
 import { UserRating, PieData } from '@/types/adminTypes';
+import { RATING_TIERS } from '@/lib/ratingTiers';
 
 interface RatingDistributionProps {
   userRatings: UserRating[];
 }
 
-const TIER_COLORS = {
-  'Rated 4': '#22c55e',
-  'Rated 3': '#f97316',
-  'Rated 2': '#eab308',
-  'Rated 1': '#33cc18',
-  'Rated Deny': '#f23030',
-};
-
-const PIE_COLORS = ['#f23030', '#f97316', '#eab308', '#38bdf8', '#f23030'];
+// Bottom-to-top stacking order for the bar chart: Denied at the base, Tier 1 on top.
+const STACK_ORDER = [...RATING_TIERS].reverse();
 
 interface TooltipContext<TType extends 'bar' | 'doughnut'> {
   chart: ChartJS<TType>;
@@ -79,26 +73,13 @@ const customBarTooltip = (
         </div>
         <div class="mt-3 pt-2.5 border-t border-border">
           <div class="grid grid-cols-2 gap-2 text-xs">
-            <div class="flex justify-between text-muted-foreground">
-              <span>Rated 4:</span>
-              <span class="font-semibold text-primary">${userData['4'] || 0}</span>
-            </div>
-            <div class="flex justify-between text-muted-foreground">
-              <span>Rated 3:</span>
-              <span class="font-semibold text-amber-500">${userData['3'] || 0}</span>
-            </div>
-            <div class="flex justify-between text-muted-foreground">
-              <span>Rated 2:</span>
-              <span class="font-semibold text-yellow-500">${userData['2'] || 0}</span>
-            </div>
-            <div class="flex justify-between text-muted-foreground">
-              <span>Rated 1:</span>
-              <span class="font-semibold text-sky-400">${userData['1'] || 0}</span>
-            </div>
-            <div class="col-span-2 flex justify-between text-muted-foreground pt-1 border-t border-border/60">
-              <span>Denied:</span>
-              <span class="font-semibold text-muted-foreground">${userData['deny'] || 0}</span>
-            </div>
+            ${RATING_TIERS.map(
+              (tier) => `
+            <div class="flex justify-between text-muted-foreground${tier.key === 'deny' ? ' col-span-2 pt-1 border-t border-border/60' : ''}">
+              <span>${tier.label}:</span>
+              <span class="font-semibold" style="color: ${tier.color}">${userData[tier.key] || 0}</span>
+            </div>`
+            ).join('')}
           </div>
         </div>
       </div>
@@ -184,23 +165,10 @@ export const RatingDistribution: React.FC<RatingDistributionProps> = ({
   }, [userRatings]);
 
   const pieData: PieData[] = useMemo(() => {
-    const counts: Record<string, number> = {
-      'Rated 4': 0,
-      'Rated 3': 0,
-      'Rated 2': 0,
-      'Rated 1': 0,
-      'Rated Deny': 0,
-    };
-
-    userRatings.forEach((user) => {
-      counts['Rated 4'] += user['4'] || 0;
-      counts['Rated 3'] += user['3'] || 0;
-      counts['Rated 2'] += user['2'] || 0;
-      counts['Rated 1'] += user['1'] || 0;
-      counts['Rated Deny'] += user['deny'] || 0;
-    });
-
-    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+    return RATING_TIERS.map((tier) => ({
+      name: tier.label,
+      value: userRatings.reduce((acc, user) => acc + (user[tier.key] || 0), 0),
+    }));
   }, [userRatings]);
 
   const totalReviews = useMemo(() => {
@@ -210,39 +178,13 @@ export const RatingDistribution: React.FC<RatingDistributionProps> = ({
   const barData = useMemo(() => {
     return {
       labels: activeUserRatings.map((u) => u.username),
-      datasets: [
-        {
-          label: 'Rated Deny',
-          data: activeUserRatings.map((u) => u['deny'] || 0),
-          backgroundColor: TIER_COLORS['Rated Deny'],
-          stack: 'ratings',
-        },
-        {
-          label: 'Rated 4',
-          data: activeUserRatings.map((u) => u['4'] || 0),
-          backgroundColor: TIER_COLORS['Rated 4'],
-          stack: 'ratings',
-        },
-        {
-          label: 'Rated 3',
-          data: activeUserRatings.map((u) => u['3'] || 0),
-          backgroundColor: TIER_COLORS['Rated 3'],
-          stack: 'ratings',
-        },
-        {
-          label: 'Rated 2',
-          data: activeUserRatings.map((u) => u['2'] || 0),
-          backgroundColor: TIER_COLORS['Rated 2'],
-          stack: 'ratings',
-        },
-        {
-          label: 'Rated 1',
-          data: activeUserRatings.map((u) => u['1'] || 0),
-          backgroundColor: TIER_COLORS['Rated 1'],
-          stack: 'ratings',
-          borderRadius: { topLeft: 4, topRight: 4 },
-        },
-      ],
+      datasets: STACK_ORDER.map((tier) => ({
+        label: tier.label,
+        data: activeUserRatings.map((u) => u[tier.key] || 0),
+        backgroundColor: tier.color,
+        stack: 'ratings',
+        ...(tier.key === '1' && { borderRadius: { topLeft: 4, topRight: 4 } }),
+      })),
     };
   }, [activeUserRatings]);
 
@@ -314,7 +256,7 @@ export const RatingDistribution: React.FC<RatingDistributionProps> = ({
       datasets: [
         {
           data: pieData.map((d) => d.value),
-          backgroundColor: PIE_COLORS,
+          backgroundColor: RATING_TIERS.map((tier) => tier.color),
           borderColor: '#181818',
           borderWidth: 2,
           spacing: 3,
@@ -406,7 +348,7 @@ export const RatingDistribution: React.FC<RatingDistributionProps> = ({
                   <div className="flex items-center gap-2">
                     <span
                       className="w-3 h-3 rounded-sm"
-                      style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }}
+                      style={{ backgroundColor: RATING_TIERS[index]?.color }}
                     />
                     <span className="text-xs font-medium text-white/90">{item.name}</span>
                   </div>

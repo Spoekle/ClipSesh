@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { RatingUser } from '@/types/adminTypes';
+import { RATING_TIERS, RatingTier } from '@/lib/ratingTiers';
 import { RatingDistributionTooltip } from './RatingDistributionTooltip';
 
 export interface RatingCountItem {
@@ -17,24 +18,11 @@ interface RatingDistributionGraphProps {
   className?: string;
 }
 
-export interface TierInfo {
-  key: string;
-  label: string;
-  shortLabel: string;
-  subtitle: string;
-  color: string;
+export interface TierInfo extends RatingTier {
   count: number;
   percentage: number;
   users: RatingUser[];
 }
-
-const TIER_CONFIG = [
-  { key: '1', label: 'Tier 1', shortLabel: '1', subtitle: 'Top Tier', color: '#38bdf8' },
-  { key: '2', label: 'Tier 2', shortLabel: '2', subtitle: '', color: '#eab308' },
-  { key: '3', label: 'Tier 3', shortLabel: '3', subtitle: '', color: '#f97316' },
-  { key: '4', label: 'Tier 4', shortLabel: '4', subtitle: 'Filler', color: '#f23030' },
-  { key: 'deny', label: 'Denied', shortLabel: 'Deny', subtitle: 'Rejected', color: '#717171' },
-];
 
 interface TooltipState {
   tier: TierInfo;
@@ -54,9 +42,9 @@ const RatingDistributionGraph: React.FC<RatingDistributionGraphProps> = ({
   }, []);
 
   const tierList: TierInfo[] = useMemo(() => {
-    return TIER_CONFIG.map((config) => {
+    return RATING_TIERS.map((config) => {
       const match = ratingCounts.find(
-        (r) => r.rating === config.key || r.rating === config.key.toString()
+        (r) => r.rating === config.key
       );
       const count = match?.count || 0;
       const users = match?.users || [];
