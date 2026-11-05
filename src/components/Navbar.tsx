@@ -50,7 +50,6 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
     window.dispatchEvent(new Event('storage'));
   };
 
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
 
   const toggleLoginModal = (): void => {
@@ -68,13 +67,10 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
     router.push('/');
   };
 
-  // Close menus on click outside
+  // Close mobile menu on click outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as Node;
-      if (dropdownRef.current && !dropdownRef.current.contains(target)) {
-        setIsDropdownOpen(false);
-      }
       if (
         mobileMenuRef.current &&
         !mobileMenuRef.current.contains(target) &&
@@ -197,7 +193,6 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
                 user={user}
                 isOpen={isDropdownOpen}
                 setIsOpen={setIsDropdownOpen}
-                dropdownRef={dropdownRef}
                 isSnowMonth={isSnowMonth}
                 snow={snow}
                 toggleSnow={toggleSnow}
