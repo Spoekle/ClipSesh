@@ -69,13 +69,6 @@ export const SeasonSectionCard: React.FC<SeasonSectionCardProps> = ({ section, o
           </div>
         )}
       </div>
-
-      <span
-        className={cn(
-          'absolute bottom-0 left-0 h-0.5 w-0 transition-[width] duration-300 ease-out group-hover:w-full',
-          theme.solid
-        )}
-      />
     </button>
   );
 };
