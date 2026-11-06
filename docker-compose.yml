@@ -26,7 +26,7 @@ services:
     container_name: clipsesh-app
     restart: unless-stopped
     ports:
-      - "${PORT:-3000}:3000"
+      - "8083:3000"
     depends_on:
       postgres:
         condition: service_healthy
