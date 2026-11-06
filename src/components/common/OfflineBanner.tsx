@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { m, AnimatePresence } from 'framer-motion';
 import { WifiOff } from 'lucide-react';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 
@@ -11,13 +10,9 @@ interface OfflineBannerProps {
 
 export const OfflineBanner: React.FC<OfflineBannerProps> = ({ isVisible }) => {
   return (
-    <AnimatePresence>
+    <>
       {isVisible && (
-        <m.div
-          initial={{ opacity: 0, y: -100 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -100 }}
-          transition={{ duration: 0.3 }}
+        <div
           className="w-full bg-destructive text-destructive-foreground shadow-lg border-b border-destructive/40 relative z-[60]"
         >
           <div className="container mx-auto px-4 py-2.5">
@@ -30,9 +25,9 @@ export const OfflineBanner: React.FC<OfflineBannerProps> = ({ isVisible }) => {
               </div>
             </div>
           </div>
-        </m.div>
+        </div>
       )}
-    </AnimatePresence>
+    </>
   );
 };
 
@@ -49,20 +44,16 @@ export const OfflineWarning: React.FC<OfflineWarningProps> = ({
   const isOnline = useOnlineStatus();
 
   return (
-    <AnimatePresence>
+    <>
       {!isOnline && (
-        <m.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          transition={{ duration: 0.2 }}
+        <div
           className={`flex items-center space-x-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 text-sm ${className}`}
         >
           <WifiOff className="size-4 text-amber-400 shrink-0" />
           <span>{message}</span>
-        </m.div>
+        </div>
       )}
-    </AnimatePresence>
+    </>
   );
 };
 

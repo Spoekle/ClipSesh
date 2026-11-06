@@ -3,7 +3,6 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import ClipItem from './components/ClipItem';
 import Pagination from './components/Pagination';
-import { m, Variants } from 'framer-motion';
 import { Clip, User, Rating } from '@/types/adminTypes';
 import { Film } from 'lucide-react';
 
@@ -26,26 +25,6 @@ interface ClipGridProps {
   fetchNextPage?: () => void;
   useInfiniteScroll?: boolean;
 }
-
-const containerVariants: Variants = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: {
-      duration: 0.1,
-    },
-  },
-};
-
-const itemVariants: Variants = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: {
-      duration: 0.1,
-    },
-  },
-};
 
 const ClipGrid: React.FC<ClipGridProps> = ({
   isLoading,
@@ -121,20 +100,16 @@ const ClipGrid: React.FC<ClipGridProps> = ({
 
   return (
     <div className="clip-grid -mx-4 sm:mx-0">
-      <m.div
+      <div
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2"
-        variants={containerVariants}
-        initial="hidden"
-        animate="show"
       >
         {currentClips.map((clip, index) => {
           const isLastItem = index === currentClips.length - 1;
           const shouldAttachRef = useInfiniteScroll && isLastItem;
 
           return (
-            <m.div
+            <div
               key={clip._id}
-              variants={itemVariants}
               ref={shouldAttachRef ? lastClipElementRef : null}
             >
               <ClipItem
@@ -145,10 +120,10 @@ const ClipGrid: React.FC<ClipGridProps> = ({
                 filterRatedClips={filterRatedClips}
                 setExpandedClip={setExpandedClip}
               />
-            </m.div>
+            </div>
           );
         })}
-      </m.div>
+      </div>
 
       {/* Loading indicator for infinite scroll */}
       {useInfiniteScroll && isFetchingNextPage && (

@@ -1,7 +1,6 @@
 'use client';
 
 import { safeLocalStorage } from '@/utils/storage';
-import { m } from 'framer-motion';
 import React, { useState, useEffect } from 'react';
 import { Settings } from 'lucide-react';
 import { useUpdateAdminConfig, useUpdatePublicConfig, useBlacklistedUsers } from '@/hooks/useAdmin';
@@ -226,10 +225,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onOpenScraper 
   };
 
   return (
-    <m.div
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
+    <div
       className="w-full bg-cc-card border border-border text-white p-6 rounded-2xl space-y-6"
     >
       <div className="flex items-center justify-between pb-4 border-b border-border">
@@ -281,7 +277,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onOpenScraper 
       <div className="pt-6 border-t border-border">
         <SeasonAutomationSection />
       </div>
-    </m.div>
+    </div>
   );
 };
 

@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { m, AnimatePresence } from 'framer-motion';
 import { Trash2, Loader2, MessageSquare } from 'lucide-react';
 import { format } from 'timeago.js';
 import CommentReply from './CommentReply';
@@ -201,17 +200,13 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
       {/* Comments display */}
       <div className="space-y-3.5 max-h-[50vh] overflow-y-auto pr-1">
         {clipComments.length > 0 ? (
-          <AnimatePresence>
+          <>
             {clipComments
               .slice()
               .reverse()
               .map((comment, index) => (
-                <m.div
+                <div
                   key={comment._id || index}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.2 }}
                   className={`p-4 bg-background rounded-xl border transition-all ${
                     comment._id === highlightCommentId
                       ? 'border-primary ring-1 ring-primary/30'
@@ -263,9 +258,9 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                       />
                     )}
                   </div>
-                </m.div>
+                </div>
               ))}
-          </AnimatePresence>
+          </>
         ) : (
           <div className="text-center py-8">
             <MessageSquare className="size-8 text-muted-foreground/30 mx-auto mb-2" />

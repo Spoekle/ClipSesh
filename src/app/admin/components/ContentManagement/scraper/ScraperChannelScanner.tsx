@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { m } from 'framer-motion';
 import { DiscordIcon } from '@/components/BrandIcons';
 import { Search, Square, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -119,9 +118,7 @@ export const ScraperChannelScanner: React.FC<ScraperChannelScannerProps> = ({
       </div>
 
       {isScanning && (
-        <m.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
+        <div
           className="mt-5 p-4 rounded-xl bg-cc-ground border border-border flex items-center justify-between gap-4"
         >
           <div className="flex items-center gap-3">
@@ -153,7 +150,7 @@ export const ScraperChannelScanner: React.FC<ScraperChannelScannerProps> = ({
               <span>Cancel Scan</span>
             </Button>
           </div>
-        </m.div>
+        </div>
       )}
     </div>
   );

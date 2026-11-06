@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { m, AnimatePresence } from 'framer-motion';
 import { Reply as ReplyIcon, Trash2, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { format } from 'timeago.js';
 import { useNotification } from '@/context/AlertContext';
@@ -106,61 +105,56 @@ export const CommentReply: React.FC<CommentReplyProps> = ({
       )}
 
       {/* Reply form */}
-      <AnimatePresence>
-        {showReplyInput && (
-          <m.form
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="mt-3"
-            onSubmit={handleSubmitReply}
-          >
-            <div className="border-l-2 border-border pl-3">
-              <Textarea
-                value={replyContent}
-                onChange={(e) => setReplyContent(e.target.value)}
-                className="w-full text-xs sm:text-sm min-h-[50px] resize-none"
-                placeholder="Write your reply..."
-                rows={2}
-                maxLength={200}
-              />
+      {showReplyInput && (
+        <form
+          className="mt-3"
+          onSubmit={handleSubmitReply}
+        >
+          <div className="border-l-2 border-border pl-3">
+            <Textarea
+              value={replyContent}
+              onChange={(e) => setReplyContent(e.target.value)}
+              className="w-full text-xs sm:text-sm min-h-[50px] resize-none"
+              placeholder="Write your reply..."
+              rows={2}
+              maxLength={200}
+            />
 
-              <div className="flex justify-between items-center mt-2">
-                <span className="text-xs text-muted-foreground">
-                  {replyContent.length}/200
-                </span>
+            <div className="flex justify-between items-center mt-2">
+              <span className="text-xs text-muted-foreground">
+                {replyContent.length}/200
+              </span>
 
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="xs"
-                    onClick={() => setShowReplyInput(false)}
-                  >
-                    Cancel
-                  </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="xs"
+                  onClick={() => setShowReplyInput(false)}
+                >
+                  Cancel
+                </Button>
 
-                  <Button
-                    type="submit"
-                    variant="default"
-                    size="xs"
-                    disabled={!replyContent.trim() || isSubmitting}
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="size-3 animate-spin mr-1" />
-                        Replying...
-                      </>
-                    ) : (
-                      'Reply'
-                    )}
-                  </Button>
-                </div>
+                <Button
+                  type="submit"
+                  variant="default"
+                  size="xs"
+                  disabled={!replyContent.trim() || isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="size-3 animate-spin mr-1" />
+                      Replying...
+                    </>
+                  ) : (
+                    'Reply'
+                  )}
+                </Button>
               </div>
             </div>
-          </m.form>
-        )}
-      </AnimatePresence>
+          </div>
+        </form>
+      )}
 
       {/* Replies section */}
       {replies.length > 0 && (
@@ -177,55 +171,48 @@ export const CommentReply: React.FC<CommentReplyProps> = ({
             </span>
           </button>
 
-          <AnimatePresence>
-            {showReplies && (
-              <m.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="mt-2.5 space-y-2.5"
-              >
-                {replies.map((reply) => (
-                  <m.div
-                    key={reply._id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className={`border-l-2 pl-3 py-1 ${
-                      reply._id === highlightReplyId
-                        ? 'border-primary bg-primary/10 rounded-r-lg'
-                        : 'border-border'
-                    }`}
-                  >
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-xs text-foreground">
-                          @{reply.username}
-                        </span>
-                        <span className="text-[11px] text-muted-foreground">
-                          {format(new Date(reply.createdAt))}
-                        </span>
-                      </div>
-
-                      {(user.username === reply.username || user.roles?.includes('admin')) && (
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteClick(reply._id)}
-                          className="text-muted-foreground hover:text-primary transition p-1 cursor-pointer"
-                          title="Delete reply"
-                        >
-                          <Trash2 className="size-3" />
-                        </button>
-                      )}
+          {showReplies && (
+            <div
+              className="mt-2.5 space-y-2.5"
+            >
+              {replies.map((reply) => (
+                <div
+                  key={reply._id}
+                  className={`border-l-2 pl-3 py-1 ${
+                    reply._id === highlightReplyId
+                      ? 'border-primary bg-primary/10 rounded-r-lg'
+                      : 'border-border'
+                  }`}
+                >
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-xs text-foreground">
+                        @{reply.username}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">
+                        {format(new Date(reply.createdAt))}
+                      </span>
                     </div>
 
-                    <p className="text-xs text-foreground/90 mt-1 whitespace-pre-wrap leading-relaxed">
-                      {reply.content}
-                    </p>
-                  </m.div>
-                ))}
-              </m.div>
-            )}
-          </AnimatePresence>
+                    {(user.username === reply.username || user.roles?.includes('admin')) && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteClick(reply._id)}
+                        className="text-muted-foreground hover:text-primary transition p-1 cursor-pointer"
+                        title="Delete reply"
+                      >
+                        <Trash2 className="size-3" />
+                      </button>
+                    )}
+                  </div>
+
+                  <p className="text-xs text-foreground/90 mt-1 whitespace-pre-wrap leading-relaxed">
+                    {reply.content}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

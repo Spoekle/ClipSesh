@@ -2,7 +2,6 @@
 
 import React, { useRef } from 'react';
 import { Volume2, VolumeX } from 'lucide-react';
-import { m, AnimatePresence } from 'framer-motion';
 
 interface PlayerVolumeControlProps {
   volume: number;
@@ -83,35 +82,29 @@ export const PlayerVolumeControl: React.FC<PlayerVolumeControlProps> = ({
         )}
       </button>
 
-      <AnimatePresence>
-        {(showVolumeControl || isDraggingVolume) && (
-          <m.div
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 80, opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden flex items-center px-2"
+      {(showVolumeControl || isDraggingVolume) && (
+        <div
+          className="w-20 overflow-hidden flex items-center px-2"
+        >
+          <div
+            ref={volumeControlRef}
+            className="w-full h-1 bg-white/30 rounded-full cursor-pointer relative"
+            onClick={handleVolumeClick}
+            onMouseDown={handleVolumeMouseDown}
           >
             <div
-              ref={volumeControlRef}
-              className="w-full h-1 bg-white/30 rounded-full cursor-pointer relative"
-              onClick={handleVolumeClick}
-              onMouseDown={handleVolumeMouseDown}
-            >
-              <div
-                className="h-full bg-primary rounded-full"
-                style={{ width: `${currentVolumePercentage}%` }}
-              />
-              <div
-                className={`absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-md transition-transform duration-100 ${
-                  isDraggingVolume ? 'scale-125' : ''
-                }`}
-                style={{ left: `${currentVolumePercentage}%`, transform: 'translate(-50%, -50%)' }}
-              />
-            </div>
-          </m.div>
-        )}
-      </AnimatePresence>
+              className="h-full bg-primary rounded-full"
+              style={{ width: `${currentVolumePercentage}%` }}
+            />
+            <div
+              className={`absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-md transition-transform duration-100 ${
+                isDraggingVolume ? 'scale-125' : ''
+              }`}
+              style={{ left: `${currentVolumePercentage}%`, transform: 'translate(-50%, -50%)' }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

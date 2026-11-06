@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { m } from 'framer-motion';
 import { X, AlertTriangle } from 'lucide-react';
 import RatingDistributionGraph from './RatingDistributionGraph';
 import { RatingUser } from '@/types/adminTypes';
@@ -38,11 +37,8 @@ export const TeamRatingTab: React.FC<TeamRatingTabProps> = ({
   };
 
   return (
-    <m.div
+    <div
       key="rate"
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8 }}
       className="p-4"
     >
       <div className="flex items-center justify-between mb-4 pb-3 border-b border-border">
@@ -118,7 +114,7 @@ export const TeamRatingTab: React.FC<TeamRatingTabProps> = ({
           className="pt-2"
         />
       </div>
-    </m.div>
+    </div>
   );
 };
 

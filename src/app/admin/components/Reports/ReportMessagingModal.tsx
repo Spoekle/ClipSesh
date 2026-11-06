@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { m } from 'framer-motion';
 import {
   MessageSquare,
   Send,
@@ -136,10 +135,8 @@ export const ReportMessagingModal: React.FC<ReportMessagingModalProps> = ({ repo
               {messages.map((message) => {
                 const isStaff = message.senderRole === 'admin';
                 return (
-                  <m.div
+                  <div
                     key={message._id}
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
                     className={`flex items-start gap-3 ${
                       isStaff ? 'justify-end' : 'justify-start'
                     }`}
@@ -206,7 +203,7 @@ export const ReportMessagingModal: React.FC<ReportMessagingModalProps> = ({ repo
                         <ShieldCheck className="size-4" />
                       </div>
                     )}
-                  </m.div>
+                  </div>
                 );
               })}
               <div ref={messagesEndRef} />

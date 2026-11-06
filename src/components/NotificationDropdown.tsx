@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { m } from 'framer-motion';
 import { Bell } from 'lucide-react';
 import { safeLocalStorage } from '@/utils/storage';
 import { useUnreadCount } from '../hooks/useNotifications';
@@ -67,10 +66,7 @@ export default function NotificationBadge({ className = '' }: NotificationBadgeP
 
   return (
     <div className={`relative ${className}`} ref={containerRef}>
-      <m.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        transition={{ duration: 0.15 }}
+      <button
         onClick={() => setIsOpen((prev) => !prev)}
         aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
         aria-expanded={isOpen}
@@ -96,7 +92,7 @@ export default function NotificationBadge({ className = '' }: NotificationBadgeP
             </span>
           </>
         )}
-      </m.button>
+      </button>
 
       <NotificationDropdownMenu
         isOpen={isOpen}

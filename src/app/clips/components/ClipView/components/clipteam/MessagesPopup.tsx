@@ -3,7 +3,6 @@
 import { safeLocalStorage } from '@/utils/storage';
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, X } from 'lucide-react';
-import { m, AnimatePresence } from 'framer-motion';
 import { useNotification } from '@/context/AlertContext';
 import { User } from '@/types/adminTypes';
 import { 
@@ -130,10 +129,7 @@ const MessagesPopup: React.FC<MessagesPopupProps> = ({
   );
 
   return (
-    <m.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 20 }}
+    <div
       className="fixed bottom-18 right-0 md:right-4 md:bottom-0 w-full md:w-96 z-30 bg-cc-card border border-border text-foreground rounded-t-2xl shadow-2xl overflow-hidden select-none"
     >
       {/* Header */}
@@ -159,7 +155,7 @@ const MessagesPopup: React.FC<MessagesPopupProps> = ({
             <div className="animate-spin rounded-full h-8 w-8 border-2 border-border border-t-primary"></div>
           </div>
         ) : messages.length > 0 ? (
-          <AnimatePresence>
+          <>
             {messages.map((msg) => (
               <TeamMessageItem
                 key={msg._id}
@@ -169,7 +165,7 @@ const MessagesPopup: React.FC<MessagesPopupProps> = ({
                 onDelete={handleDeleteMessage}
               />
             ))}
-          </AnimatePresence>
+          </>
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-xs">
             <p>No messages yet</p>
@@ -212,7 +208,7 @@ const MessagesPopup: React.FC<MessagesPopupProps> = ({
           </p>
         </div>
       )}
-    </m.div>
+    </div>
   );
 };
 

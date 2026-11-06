@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { m } from 'framer-motion';
 import {
   Ban,
   AlertTriangle,
@@ -75,10 +74,7 @@ export const DeniedClips: React.FC<DeniedClipsProps> = ({ clips, ratings, config
   }, [sortedClips, currentPage, clipsPerPage]);
 
   return (
-    <m.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.15 }}
+    <div
       className="space-y-4"
     >
       {/* Header and Controls */}
@@ -174,7 +170,7 @@ export const DeniedClips: React.FC<DeniedClipsProps> = ({ clips, ratings, config
           />
         </>
       )}
-    </m.div>
+    </div>
   );
 };
 

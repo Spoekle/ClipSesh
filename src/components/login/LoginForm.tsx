@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { m, AnimatePresence } from 'framer-motion';
 import { User, Lock, ArrowLeft, Loader2 } from 'lucide-react';
 import { useLoginUser, useRegisterUser } from '@/hooks/useUser';
 import { setAuthToken, safeLocalStorage } from '@/utils/storage';
@@ -83,14 +82,10 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onForgotPasswor
   const isRegister = formMode === 'register';
 
   return (
-    <AnimatePresence mode="wait">
+    <>
       {!showPasswordAuth ? (
-        <m.div
+        <div
           key="oauth-view"
-          initial={{ opacity: 0, y: 4 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -4 }}
-          transition={{ duration: 0.1 }}
         >
           <h2 className="text-2xl font-bold text-foreground mb-2">Sign In</h2>
           <p className="text-sm text-muted-foreground mb-6">
@@ -137,14 +132,10 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onForgotPasswor
               Use password instead
             </button>
           </div>
-        </m.div>
+        </div>
       ) : (
-        <m.div
+        <div
           key="password-view"
-          initial={{ opacity: 0, y: 4 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -4 }}
-          transition={{ duration: 0.1 }}
         >
           <button
             type="button"
@@ -272,9 +263,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onForgotPasswor
               Sign in with CC instead
             </button>
           </div>
-        </m.div>
+        </div>
       )}
-    </AnimatePresence>
+    </>
   );
 };
 

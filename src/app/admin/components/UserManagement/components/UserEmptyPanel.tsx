@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { m } from 'framer-motion';
 import { ShieldCheck, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -11,11 +10,8 @@ interface UserEmptyPanelProps {
 
 export const UserEmptyPanel: React.FC<UserEmptyPanelProps> = ({ onStartCreate }) => {
   return (
-    <m.div
+    <div
       key="empty-state"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
       className="bg-cc-card border border-border p-8 rounded-2xl text-center select-none"
     >
       <div className="w-14 h-14 rounded-2xl bg-cc-ground border border-border flex items-center justify-center text-muted-foreground mx-auto mb-4 text-xl">
@@ -35,7 +31,7 @@ export const UserEmptyPanel: React.FC<UserEmptyPanelProps> = ({ onStartCreate })
         <UserPlus className="size-3.5 text-emerald-400 mr-2" />
         <span>Or create a new user</span>
       </Button>
-    </m.div>
+    </div>
   );
 };
 

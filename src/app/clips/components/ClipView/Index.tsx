@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { m } from 'framer-motion';
 import CustomPlayer from './components/CustomPlayer';
 import { useNotification } from '@/context/AlertContext';
 import { Clip, User, Rating } from '@/types/adminTypes';
@@ -132,11 +131,7 @@ const ClipContent: React.FC<ClipContentProps> = ({
   const breadcrumbItems: BreadcrumbItem[] = [...parentCrumbs, { label: clipData.title }];
 
   return (
-    <m.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.15 }}
+    <div
       className="flex flex-col min-h-screen bg-cc-ground text-cc-text"
     >
       <ClipViewHeader
@@ -241,7 +236,7 @@ const ClipContent: React.FC<ClipContentProps> = ({
         highlightedMessageId={highlightedMessageId}
         setHighlightedMessageId={setHighlightedMessageId}
       />
-    </m.div>
+    </div>
   );
 };
 

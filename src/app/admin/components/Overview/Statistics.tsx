@@ -3,7 +3,6 @@
 import React from 'react';
 import { SummaryStats, RatingDistribution } from './StatisticsWidgets';
 import ActivityTracker from './ActivityTracker';
-import { m } from 'framer-motion';
 import { BarChart3, CalendarCheck } from 'lucide-react';
 import { User, UserRating, SeasonInfo } from '@/types/adminTypes';
 import { Card } from '@/components/ui/card';
@@ -39,10 +38,7 @@ const Statistics: React.FC<StatisticsProps> = ({
   const clipTeamUsernames = clipTeam.map((member) => member.username || '').filter(Boolean);
 
   return (
-    <m.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25 }}
+    <div
       className="w-full space-y-6"
     >
       {/* Top Banner */}
@@ -104,7 +100,7 @@ const Statistics: React.FC<StatisticsProps> = ({
           <ActivityTracker clipTeamUsernames={clipTeamUsernames} />
         </>
       )}
-    </m.div>
+    </div>
   );
 };
 

@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { m } from 'framer-motion';
 import { Shield } from 'lucide-react';
 
 interface PasswordStrengthBarProps {
@@ -51,10 +50,8 @@ export const PasswordStrengthBar: React.FC<PasswordStrengthBarProps> = ({ streng
         </div>
       </div>
       <div className="h-2 w-full bg-cc-ground rounded-full overflow-hidden border border-border">
-        <m.div
-          initial={{ width: 0 }}
-          animate={{ width: `${strength * 25}%` }}
-          transition={{ duration: 0.3 }}
+        <div
+          style={{ width: `${strength * 25}%` }}
           className={`h-full ${getStrengthClass()}`}
         />
       </div>

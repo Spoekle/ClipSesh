@@ -3,7 +3,6 @@
 import { safeLocalStorage } from '@/utils/storage';
 import React, { Suspense, useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { m } from 'framer-motion';
 import { useNotification } from '@/context/AlertContext';
 
 import ClipViewerContent from './components/ClipViewerContent';
@@ -208,10 +207,7 @@ function ClipViewer() {
   }, [refetchClips]);
 
   return (
-    <m.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.15 }}
+    <div
       className="min-h-[calc(100vh-80px)] text-foreground flex flex-col bg-background transition-colors"
     >
       {/* Seasonal header - only show on clips grid list, NOT when viewing an individual clip */}
@@ -282,7 +278,7 @@ function ClipViewer() {
           sortOption={sortOption}
         />
       </div>
-    </m.div>
+    </div>
   );
 }
 

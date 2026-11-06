@@ -10,7 +10,6 @@ import {
   Minimize2,
   AlertTriangle,
 } from 'lucide-react';
-import { m } from 'framer-motion';
 import { Clip } from '@/types/adminTypes';
 import PlayerProgressBar from './player/PlayerProgressBar';
 import PlayerVolumeControl from './player/PlayerVolumeControl';
@@ -330,9 +329,7 @@ export const CustomPlayer = ({ currentClip }: { currentClip: Clip }) => {
 
           {!hasInteracted && !isPlaying && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-              <m.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
+              <button
                 className="bg-primary/90 hover:bg-primary text-white p-6 rounded-full shadow-lg cursor-pointer"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -341,15 +338,13 @@ export const CustomPlayer = ({ currentClip }: { currentClip: Clip }) => {
                 aria-label="Play video"
               >
                 <Play className="size-8 fill-current ml-0.5" />
-              </m.button>
+              </button>
             </div>
           )}
 
           {isVideoEnded && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-              <m.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
+              <button
                 className="bg-primary/90 hover:bg-primary text-white p-6 rounded-full shadow-lg cursor-pointer"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -358,15 +353,12 @@ export const CustomPlayer = ({ currentClip }: { currentClip: Clip }) => {
                 aria-label="Replay video"
               >
                 <RotateCcw className="size-8" />
-              </m.button>
+              </button>
             </div>
           )}
 
-          <m.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: showControls || !isPlaying ? 1 : 0 }}
-            transition={{ duration: 0.2 }}
-            className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent pt-16 pb-4 px-4 pointer-events-none"
+          <div
+            className={`${showControls || !isPlaying ? 'opacity-100' : 'opacity-0'} absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent pt-16 pb-4 px-4 pointer-events-none`}
           >
             <PlayerProgressBar
               duration={duration}
@@ -444,7 +436,7 @@ export const CustomPlayer = ({ currentClip }: { currentClip: Clip }) => {
                 </button>
               </div>
             </div>
-          </m.div>
+          </div>
         </>
       )}
     </div>

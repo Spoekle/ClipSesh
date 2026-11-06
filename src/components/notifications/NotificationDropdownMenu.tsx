@@ -2,7 +2,6 @@
 
 import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { m, AnimatePresence } from 'framer-motion';
 import { CheckCheck, ChevronRight, Bell, Volume2, VolumeX } from 'lucide-react';
 import { UserNotification } from '@/types/notificationTypes';
 import { useNotification } from '@/context/AlertContext';
@@ -93,13 +92,9 @@ export const NotificationDropdownMenu: React.FC<NotificationDropdownMenuProps> =
   };
 
   return (
-    <AnimatePresence>
+    <>
       {isOpen && (
-        <m.div
-          initial={{ opacity: 0, y: -6, scale: 0.96 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -6, scale: 0.96 }}
-          transition={{ duration: 0.15, ease: 'easeOut' }}
+        <div
           className="absolute right-0 mt-2.5 w-84 sm:w-96 bg-card rounded-2xl shadow-2xl border border-border overflow-hidden z-[100] select-none flex flex-col text-foreground"
           style={{ transformOrigin: 'top right' }}
           onClick={(e) => e.stopPropagation()}
@@ -228,9 +223,9 @@ export const NotificationDropdownMenu: React.FC<NotificationDropdownMenuProps> =
               <ChevronRight data-icon="inline-end" className="size-3.5 text-primary" />
             </Button>
           </div>
-        </m.div>
+        </div>
       )}
-    </AnimatePresence>
+    </>
   );
 };
 

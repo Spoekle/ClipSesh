@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { m } from 'framer-motion';
 import { X, Loader2 } from 'lucide-react';
 import { getRatingById } from '@/services/ratingService';
 import { Clip, Rating, User } from '@/types/adminTypes';
@@ -49,10 +48,7 @@ const RatingsPopup: React.FC<RatingsPopupProps> = ({ clip, ratings, setPopout })
 
   if (isLoading) {
     return (
-      <m.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 20 }}
+      <div
         className="fixed bottom-15 right-0 md:right-4 md:bottom-0 w-full md:w-96 z-30 bg-cc-card border border-border text-foreground rounded-t-xl shadow-2xl"
       >
         <div className="flex justify-between items-center p-3.5 border-b border-border">
@@ -67,16 +63,13 @@ const RatingsPopup: React.FC<RatingsPopupProps> = ({ clip, ratings, setPopout })
         <div className="p-10 flex justify-center items-center">
           <Loader2 className="animate-spin size-8 text-primary" />
         </div>
-      </m.div>
+      </div>
     );
   }
 
   if (!ratingsData) {
     return (
-      <m.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 20 }}
+      <div
         className="fixed bottom-18 right-0 md:right-4 md:bottom-0 w-full md:w-96 z-30 bg-cc-card border border-border text-foreground rounded-t-xl shadow-2xl"
       >
         <div className="flex justify-between items-center p-3.5 border-b border-border">
@@ -91,7 +84,7 @@ const RatingsPopup: React.FC<RatingsPopupProps> = ({ clip, ratings, setPopout })
         <div className="p-8 text-center">
           <p className="text-muted-foreground text-sm">No ratings data available for this clip.</p>
         </div>
-      </m.div>
+      </div>
     );
   }
 
@@ -130,10 +123,7 @@ const RatingsPopup: React.FC<RatingsPopupProps> = ({ clip, ratings, setPopout })
     : 'N/A';
 
   return (
-    <m.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 20 }}
+    <div
       className="fixed bottom-18 right-0 md:right-4 md:bottom-0 w-full md:w-96 z-30 bg-cc-card text-foreground border border-border rounded-t-xl shadow-2xl"
     >
       <div className="flex justify-between items-center p-3.5 border-b border-border">
@@ -169,7 +159,7 @@ const RatingsPopup: React.FC<RatingsPopupProps> = ({ clip, ratings, setPopout })
           className="mt-2"
         />
       </div>
-    </m.div>
+    </div>
   );
 };
 

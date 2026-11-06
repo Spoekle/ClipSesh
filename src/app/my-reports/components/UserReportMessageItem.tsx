@@ -1,5 +1,4 @@
 import React from 'react';
-import { m } from 'framer-motion';
 import { User, ShieldAlert, Eye } from 'lucide-react';
 import { ReportMessage } from '@/types/adminTypes';
 
@@ -15,9 +14,7 @@ export const UserReportMessageItem: React.FC<UserReportMessageItemProps> = ({
   const isStaff = message.senderRole === 'admin';
 
   return (
-    <m.div
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
+    <div
       className={`flex items-start gap-3 ${
         isStaff ? 'justify-start' : 'justify-end'
       }`}
@@ -69,6 +66,6 @@ export const UserReportMessageItem: React.FC<UserReportMessageItemProps> = ({
           <User className="size-3.5" />
         </div>
       )}
-    </m.div>
+    </div>
   );
 };

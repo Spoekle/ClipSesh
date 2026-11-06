@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { m, AnimatePresence } from 'framer-motion';
 
 interface PlayerPlaybackRateMenuProps {
   playbackRate: number;
@@ -31,34 +30,29 @@ export const PlayerPlaybackRateMenu: React.FC<PlayerPlaybackRateMenuProps> = ({
         {playbackRate}x
       </button>
 
-      <AnimatePresence>
-        {showPlaybackRateMenu && (
-          <m.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            className="absolute bottom-full right-0 mb-1 bg-cc-card border border-border rounded-lg overflow-hidden shadow-xl z-20"
-          >
-            {playbackRates.map((rate) => (
-              <button
-                key={rate}
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelectRate(rate);
-                }}
-                className={`block w-full text-left px-4 py-1.5 text-xs transition-colors cursor-pointer ${
-                  playbackRate === rate
-                    ? 'bg-primary text-white font-semibold'
-                    : 'text-white/90 hover:bg-border/60'
-                }`}
-              >
-                {rate}x
-              </button>
-            ))}
-          </m.div>
-        )}
-      </AnimatePresence>
+      {showPlaybackRateMenu && (
+        <div
+          className="absolute bottom-full right-0 mb-1 bg-cc-card border border-border rounded-lg overflow-hidden shadow-xl z-20"
+        >
+          {playbackRates.map((rate) => (
+            <button
+              key={rate}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelectRate(rate);
+              }}
+              className={`block w-full text-left px-4 py-1.5 text-xs transition-colors cursor-pointer ${
+                playbackRate === rate
+                  ? 'bg-primary text-white font-semibold'
+                  : 'text-white/90 hover:bg-border/60'
+              }`}
+            >
+              {rate}x
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

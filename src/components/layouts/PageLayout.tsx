@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { m } from 'framer-motion';
 import Breadcrumbs from '@/components/common/Breadcrumbs';
 import { BreadcrumbItem } from '@/lib/breadcrumbs';
 
@@ -95,14 +94,11 @@ const PageLayout: React.FC<PageLayoutProps> = ({
         </div>
 
         {/* Page Content Slot */}
-        <m.div
-          initial={{ opacity: 0, y: 4 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: contentAnimationDelay, duration: 0.15 }}
+        <div
           className="page-content grow flex flex-col"
         >
           {children}
-        </m.div>
+        </div>
       </div>
     </div>
   );

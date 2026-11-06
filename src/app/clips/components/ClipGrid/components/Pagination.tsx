@@ -8,7 +8,6 @@ import {
   ChevronsRight,
   MoreHorizontal,
 } from 'lucide-react';
-import { m } from 'framer-motion';
 
 interface PaginationProps {
   currentPage: number;
@@ -30,9 +29,7 @@ const NavButton: React.FC<NavButtonProps> = ({
   icon,
   label,
 }) => (
-  <m.button
-    whileTap={{ scale: 0.95 }}
-    whileHover={!navDisabled ? { scale: 1.05, y: -1 } : undefined}
+  <button
     onClick={onClick}
     className={`mx-1 h-9 w-9 flex items-center justify-center rounded-lg border border-border text-sm ${
       navDisabled
@@ -43,7 +40,7 @@ const NavButton: React.FC<NavButtonProps> = ({
     aria-label={label}
   >
     {icon}
-  </m.button>
+  </button>
 );
 
 export const Pagination: React.FC<PaginationProps> = ({
@@ -71,10 +68,8 @@ export const Pagination: React.FC<PaginationProps> = ({
   }, [currentPage, totalPages, onPageChange]);
 
   const renderPageButton = (page: number) => (
-    <m.button
+    <button
       key={page}
-      whileTap={{ scale: 0.95 }}
-      whileHover={!disabled ? { scale: 1.05, y: -1 } : undefined}
       onClick={() => !disabled && onPageChange(page)}
       className={`mx-1 min-w-[36px] h-9 px-2 flex items-center justify-center rounded-lg text-sm font-semibold transition-all duration-150 ${
         page === currentPage
@@ -86,7 +81,7 @@ export const Pagination: React.FC<PaginationProps> = ({
       aria-current={page === currentPage ? 'page' : undefined}
     >
       {page}
-    </m.button>
+    </button>
   );
 
   const renderPageButtons = () => {

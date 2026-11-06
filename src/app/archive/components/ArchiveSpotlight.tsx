@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { m } from 'framer-motion';
 import { ArrowRight, Film } from 'lucide-react';
 import { ArchiveSeasonSection } from '@/types/clipTypes';
 import { getSeasonDateRange } from '@/lib/seasonHelpers';
@@ -21,11 +20,8 @@ export const ArchiveSpotlight: React.FC<ArchiveSpotlightProps> = ({ section, onS
   const SeasonIcon = theme.icon;
 
   return (
-    <m.button
+    <button
       type="button"
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25 }}
       onClick={() => onSelect(section)}
       className={cn(
         'group relative grid w-full overflow-hidden rounded-3xl border border-border bg-card text-left shadow-lg transition-[border-color,box-shadow] duration-200 select-none focus-visible:outline-2 focus-visible:outline-ring md:grid-cols-5',
@@ -89,7 +85,7 @@ export const ArchiveSpotlight: React.FC<ArchiveSpotlightProps> = ({ section, onS
           <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
         </span>
       </div>
-    </m.button>
+    </button>
   );
 };
 

@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { m } from 'framer-motion';
 import { Trash2 } from 'lucide-react';
 import { format } from 'timeago.js';
 import { User } from '@/types/adminTypes';
@@ -30,11 +29,8 @@ export const TeamMessageItem: React.FC<TeamMessageItemProps> = ({
   );
 
   return (
-    <m.div
+    <div
       id={`message-${msg._id}`}
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.15 }}
       className={`group flex items-start gap-2.5 hover:bg-secondary/20 p-1.5 rounded-xl transition-colors ${
         isHighlighted ? 'bg-secondary/40 ring-1 ring-border' : ''
       }`}
@@ -75,6 +71,6 @@ export const TeamMessageItem: React.FC<TeamMessageItemProps> = ({
           <p className="whitespace-pre-wrap">{msg.message}</p>
         </div>
       </div>
-    </m.div>
+    </div>
   );
 };

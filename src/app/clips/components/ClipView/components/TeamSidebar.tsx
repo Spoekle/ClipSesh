@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { AnimatePresence } from 'framer-motion';
 import { Star, MessageSquare } from 'lucide-react';
 import { useNotification } from '@/context/AlertContext';
 import { User, Clip, Rating, RatingUser } from '@/types/adminTypes';
@@ -245,33 +244,31 @@ const TeamSidebar: React.FC<TeamSidebarProps> = ({
 
       {/* Tab Content */}
       <div className="overflow-y-auto">
-        <AnimatePresence mode="wait">
-          {activeTab === 'rate' && (
-            <TeamRatingTab
-              userCurrentRating={userCurrentRating}
-              isUserStreamerOrSubmitter={isUserStreamerOrSubmitter}
-              isDisabled={isDisabled}
-              isSubmitting={isSubmitting}
-              rateOrDenyClip={rateOrDenyClip}
-              ratingCounts={ratingCounts}
-              totalRatings={totalRatings}
-              averageRating={averageRating}
-            />
-          )}
+        {activeTab === 'rate' && (
+          <TeamRatingTab
+            userCurrentRating={userCurrentRating}
+            isUserStreamerOrSubmitter={isUserStreamerOrSubmitter}
+            isDisabled={isDisabled}
+            isSubmitting={isSubmitting}
+            rateOrDenyClip={rateOrDenyClip}
+            ratingCounts={ratingCounts}
+            totalRatings={totalRatings}
+            averageRating={averageRating}
+          />
+        )}
 
-          {activeTab === 'chat' && (
-            <TeamChatTab
-              messages={messages}
-              chatLoading={chatLoading}
-              newMessage={newMessage}
-              setNewMessage={setNewMessage}
-              handleSendMessage={handleSendMessage}
-              handleDeleteMessage={handleDeleteMessage}
-              user={user}
-              messagesEndRef={messagesEndRef}
-            />
-          )}
-        </AnimatePresence>
+        {activeTab === 'chat' && (
+          <TeamChatTab
+            messages={messages}
+            chatLoading={chatLoading}
+            newMessage={newMessage}
+            setNewMessage={setNewMessage}
+            handleSendMessage={handleSendMessage}
+            handleDeleteMessage={handleDeleteMessage}
+            user={user}
+            messagesEndRef={messagesEndRef}
+          />
+        )}
       </div>
     </div>
   );

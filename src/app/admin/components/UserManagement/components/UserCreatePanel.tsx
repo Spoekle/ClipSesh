@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { m } from 'framer-motion';
 import {
   UserPlus,
   X,
@@ -44,12 +43,8 @@ export const UserCreatePanel: React.FC<UserCreatePanelProps> = ({
   onClose,
 }) => {
   return (
-    <m.div
+    <div
       key="create-mode"
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -15 }}
-      transition={{ duration: 0.2 }}
       className="bg-cc-card border border-border p-5 sm:p-6 rounded-2xl shadow-xs"
     >
       {/* Header */}
@@ -221,7 +216,7 @@ export const UserCreatePanel: React.FC<UserCreatePanelProps> = ({
           </Button>
         </div>
       </form>
-    </m.div>
+    </div>
   );
 };
 

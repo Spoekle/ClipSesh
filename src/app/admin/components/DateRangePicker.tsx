@@ -2,7 +2,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Calendar, Check } from 'lucide-react';
-import { m, AnimatePresence } from 'framer-motion';
 import { CalendarMonthView } from './date-range/CalendarMonthView';
 import { QuickRangeSelector } from './date-range/QuickRangeSelector';
 import { Button } from '@/components/ui/button';
@@ -126,58 +125,53 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
         <span className="truncate">{getDisplayText()}</span>
       </button>
 
-      <AnimatePresence>
-        {isOpen && (
-          <m.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="absolute top-full left-0 sm:left-auto sm:right-0 mt-2 bg-card border border-border rounded-2xl shadow-2xl z-50 w-screen sm:w-96 max-w-sm sm:max-w-none -mx-4 sm:mx-0 overflow-hidden text-foreground"
-          >
-            <div className="p-4 sm:p-5">
-              <QuickRangeSelector onSelectRange={handleQuickRange} />
+      {isOpen && (
+        <div
+          className="absolute top-full left-0 sm:left-auto sm:right-0 mt-2 bg-card border border-border rounded-2xl shadow-2xl z-50 w-screen sm:w-96 max-w-sm sm:max-w-none -mx-4 sm:mx-0 overflow-hidden text-foreground"
+        >
+          <div className="p-4 sm:p-5">
+            <QuickRangeSelector onSelectRange={handleQuickRange} />
 
-              <CalendarMonthView
-                currentMonth={currentMonth}
-                onNavigateMonth={navigateMonth}
-                selectingStart={selectingStart}
-                tempStartDate={tempStartDate}
-                tempEndDate={tempEndDate}
-                onDateClick={handleDateClick}
-              />
+            <CalendarMonthView
+              currentMonth={currentMonth}
+              onNavigateMonth={navigateMonth}
+              selectingStart={selectingStart}
+              tempStartDate={tempStartDate}
+              tempEndDate={tempEndDate}
+              onDateClick={handleDateClick}
+            />
 
-              {/* Action buttons */}
-              <div className="flex justify-between items-center pt-3 border-t border-border gap-2">
+            {/* Action buttons */}
+            <div className="flex justify-between items-center pt-3 border-t border-border gap-2">
+              <Button
+                variant="ghost"
+                size="xs"
+                onClick={handleClear}
+              >
+                Clear
+              </Button>
+              <div className="flex gap-2">
                 <Button
-                  variant="ghost"
-                  size="xs"
-                  onClick={handleClear}
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCancel}
                 >
-                  Clear
+                  Cancel
                 </Button>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleCancel}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={handleApply}
-                    className="gap-1.5"
-                  >
-                    <Check className="size-3.5" />
-                    Apply
-                  </Button>
-                </div>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={handleApply}
+                  className="gap-1.5"
+                >
+                  <Check className="size-3.5" />
+                  Apply
+                </Button>
               </div>
             </div>
-          </m.div>
-        )}
-      </AnimatePresence>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

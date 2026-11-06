@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
-import { m } from 'framer-motion';
 import { CheckCircle2, XCircle, AlertTriangle, Info, X } from 'lucide-react';
 import { Notification } from '@/types/notificationTypes';
 
@@ -98,11 +97,7 @@ export const AlertItem: React.FC<NotificationItemProps> = React.memo(({ notifica
   }, [notification.type]);
 
   return (
-    <m.div
-      initial={{ opacity: 0, x: 50, scale: 0.95 }}
-      animate={{ opacity: 1, x: 0, scale: 1 }}
-      exit={{ opacity: 0, x: 50, scale: 0.95 }}
-      transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+    <div
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       className={`relative w-80 sm:w-96 bg-card border border-border rounded-xl shadow-2xl overflow-hidden pointer-events-auto backdrop-blur-md ${config.borderClass}`}
@@ -140,7 +135,7 @@ export const AlertItem: React.FC<NotificationItemProps> = React.memo(({ notifica
           />
         </div>
       )}
-    </m.div>
+    </div>
   );
 });
 

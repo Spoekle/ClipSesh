@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { AnimatePresence } from 'framer-motion';
 import {
   ChevronLeft,
   ChevronRight,
@@ -207,46 +206,44 @@ export const UserList: React.FC<UserListProps> = ({ AVAILABLE_ROLES }) => {
 
         {/* RIGHT COLUMN: Dedicated Editor & Creator Panel (5 Columns, Sticky) */}
         <div className="lg:col-span-5 lg:sticky lg:top-6">
-          <AnimatePresence mode="wait">
-            {selectedUser && !isCreateMode ? (
-              <UserEditPanel
-                user={selectedUser}
-                allRoles={allRoles}
-                editFormData={editFormData}
-                setEditFormData={setEditFormData}
-                showEditPassword={showEditPassword}
-                setShowEditPassword={setShowEditPassword}
-                isSaving={isSaving}
-                copiedId={copiedId}
-                onCopyUserId={copyUserId}
-                onClose={handleCloseRightPanel}
-                onSaveEdit={handleSaveEdit}
-                onRoleToggle={handleEditRoleToggle}
-                onEnableUser={handleEnableUser}
-                onOpenDisableModal={(u) =>
-                  setDialogState({ isOpen: true, type: 'disable', targetUser: u })
-                }
-                onOpenDeleteModal={(u) =>
-                  setDialogState({ isOpen: true, type: 'delete', targetUser: u })
-                }
-              />
-            ) : isCreateMode ? (
-              <UserCreatePanel
-                allRoles={allRoles}
-                createFormData={createFormData}
-                setCreateFormData={setCreateFormData}
-                createErrors={createErrors}
-                showCreatePassword={showCreatePassword}
-                setShowCreatePassword={setShowCreatePassword}
-                isCreating={isCreating}
-                onCreateSubmit={handleCreateSubmit}
-                onRoleToggle={handleCreateRoleToggle}
-                onClose={handleCloseRightPanel}
-              />
-            ) : (
-              <UserEmptyPanel onStartCreate={handleStartCreate} />
-            )}
-          </AnimatePresence>
+          {selectedUser && !isCreateMode ? (
+            <UserEditPanel
+              user={selectedUser}
+              allRoles={allRoles}
+              editFormData={editFormData}
+              setEditFormData={setEditFormData}
+              showEditPassword={showEditPassword}
+              setShowEditPassword={setShowEditPassword}
+              isSaving={isSaving}
+              copiedId={copiedId}
+              onCopyUserId={copyUserId}
+              onClose={handleCloseRightPanel}
+              onSaveEdit={handleSaveEdit}
+              onRoleToggle={handleEditRoleToggle}
+              onEnableUser={handleEnableUser}
+              onOpenDisableModal={(u) =>
+                setDialogState({ isOpen: true, type: 'disable', targetUser: u })
+              }
+              onOpenDeleteModal={(u) =>
+                setDialogState({ isOpen: true, type: 'delete', targetUser: u })
+              }
+            />
+          ) : isCreateMode ? (
+            <UserCreatePanel
+              allRoles={allRoles}
+              createFormData={createFormData}
+              setCreateFormData={setCreateFormData}
+              createErrors={createErrors}
+              showCreatePassword={showCreatePassword}
+              setShowCreatePassword={setShowCreatePassword}
+              isCreating={isCreating}
+              onCreateSubmit={handleCreateSubmit}
+              onRoleToggle={handleCreateRoleToggle}
+              onClose={handleCloseRightPanel}
+            />
+          ) : (
+            <UserEmptyPanel onStartCreate={handleStartCreate} />
+          )}
         </div>
       </div>
 

@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { m } from 'framer-motion';
 import { User, Lock, UserPlus, Shield, Mail, AlertTriangle, Loader2 } from 'lucide-react';
 import { useNotification } from '@/context/AlertContext';
 import { CreateUserFormData, FormErrors } from '@/types/adminTypes';
@@ -141,10 +140,7 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
     };
 
     return (
-        <m.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
+        <div
             className="w-full bg-cc-card text-foreground p-6 rounded-2xl border border-border"
         >
             <div className="flex items-center gap-3 mb-6 pb-4 border-b border-border">
@@ -311,7 +307,7 @@ const CreateUser: React.FC<CreateUserProps> = ({ AVAILABLE_ROLES }) => {
                     )}
                 </Button>
             </form>
-        </m.div>
+        </div>
     );
 };
 

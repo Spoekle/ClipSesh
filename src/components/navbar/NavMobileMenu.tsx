@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { m, AnimatePresence } from 'framer-motion';
 import { Home, Film, Archive, Shield } from 'lucide-react';
 import NavLink from './NavLink';
 
@@ -21,14 +20,10 @@ export const NavMobileMenu: React.FC<NavMobileMenuProps> = ({
   isAdmin,
 }) => {
   return (
-    <AnimatePresence>
+    <>
       {isOpen && (
-        <m.div
+        <div
           ref={mobileMenuRef}
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          exit={{ opacity: 0, height: 0 }}
-          transition={{ duration: 0.15 }}
           className="lg:hidden border-t border-border bg-background overflow-hidden"
         >
           <div className="px-4 py-3 space-y-1">
@@ -95,9 +90,9 @@ export const NavMobileMenu: React.FC<NavMobileMenuProps> = ({
               </NavLink>
             )}
           </div>
-        </m.div>
+        </div>
       )}
-    </AnimatePresence>
+    </>
   );
 };
 

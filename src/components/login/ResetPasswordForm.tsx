@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { m } from 'framer-motion';
 import { Mail, Loader2 } from 'lucide-react';
 import { requestPasswordReset } from '@/services/userService';
 import { Button } from '@/components/ui/button';
@@ -53,11 +52,7 @@ export const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({ onBackToLo
   };
 
   return (
-    <m.div
-      initial={{ opacity: 0, y: 4 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.1 }}
-    >
+    <div>
       <h2 className="text-2xl font-bold text-foreground mb-2">Reset Password</h2>
       <p className="mb-6 text-muted-foreground text-sm">
         Enter your email address and we'll send you instructions to reset your password.
@@ -121,7 +116,7 @@ export const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({ onBackToLo
           Back to Sign In
         </button>
       </div>
-    </m.div>
+    </div>
   );
 };
 

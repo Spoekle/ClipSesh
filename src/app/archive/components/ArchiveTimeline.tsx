@@ -1,10 +1,7 @@
 'use client';
 
 import React from 'react';
-import { m } from 'framer-motion';
 import { ArchiveSeasonSection } from '@/types/clipTypes';
-import { cn } from '@/lib/utils';
-import { getSeasonTheme } from '../seasonTheme';
 import SeasonSectionCard from './SeasonSectionCard';
 
 interface ArchiveTimelineProps {
@@ -38,32 +35,18 @@ export const ArchiveTimeline: React.FC<ArchiveTimelineProps> = ({ sections, onSe
                     {year}
                   </h2>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    {yearSections.length} {yearSections.length === 1 ? 'season' : 'seasons'} ·{' '}
                     {clipCount.toLocaleString()} clips
                   </p>
-                  <div className="mt-3 flex gap-1 md:justify-end">
-                    {yearSections.map((s) => (
-                      <span
-                        key={s.season}
-                        title={s.season}
-                        className={cn('h-1 w-5 rounded-full', getSeasonTheme(s.season).solid)}
-                      />
-                    ))}
-                  </div>
                 </div>
               </header>
 
               <div className="grid grid-cols-1 gap-5 pl-8 sm:grid-cols-2 md:pl-8 xl:grid-cols-3">
                 {yearSections.map((section, i) => (
-                  <m.div
+                  <div
                     key={`${section.season}-${section.year}`}
-                    initial={{ opacity: 0, y: 12 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: '-40px' }}
-                    transition={{ duration: 0.3, delay: i * 0.05 }}
                   >
                     <SeasonSectionCard section={section} onSelect={onSelect} />
-                  </m.div>
+                  </div>
                 ))}
               </div>
             </section>

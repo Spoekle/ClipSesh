@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { m } from 'framer-motion';
 import { Lock, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
 import PageLayout from '@/components/layouts/PageLayout';
 import { useNotification } from '@/context/AlertContext';
@@ -86,32 +85,25 @@ const ResetPassword: React.FC = () => {
       metaDescription="Reset your password to regain access to your ClipSesh account"
     >
       <div className="max-w-md mx-auto">
-        <m.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
+        <div
           className="bg-cc-card rounded-xl border border-border p-6 sm:p-8 shadow-xl text-white"
         >
           {message && (
-            <m.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
+            <div
               className="mb-6 p-4 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 rounded-[10px] flex items-center text-sm"
             >
               <CheckCircle className="size-5 mr-2 shrink-0 text-emerald-400" />
               <span>{message}</span>
-            </m.div>
+            </div>
           )}
 
           {error && (
-            <m.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
+            <div
               className="mb-6 p-4 bg-primary/10 border border-primary/30 text-primary rounded-[10px] flex items-center text-sm"
             >
               <AlertTriangle className="size-5 mr-2 shrink-0 text-primary" />
               <span>{error}</span>
-            </m.div>
+            </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -154,13 +146,11 @@ const ResetPassword: React.FC = () => {
                 />
               </div>
               {password && confirmPassword && password !== confirmPassword && (
-                <m.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
+                <p
                   className="mt-1.5 text-xs text-primary flex items-center"
                 >
                   <AlertTriangle className="mr-1 size-3.5" /> Passwords do not match
-                </m.p>
+                </p>
               )}
             </div>
 
@@ -180,7 +170,7 @@ const ResetPassword: React.FC = () => {
               )}
             </Button>
           </form>
-        </m.div>
+        </div>
       </div>
     </PageLayout>
   );
