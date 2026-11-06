@@ -106,26 +106,13 @@ export const ReportsManagement: React.FC = () => {
   const pendingCount = reportsData?.pendingCount || 0;
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="bg-cc-card border border-border p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="size-9 rounded-xl bg-primary/15 text-primary flex items-center justify-center">
-            <Flag className="size-4" />
-          </div>
-          <div>
-            <h2 className="text-base font-bold text-white flex items-center gap-2">
-              <span>Clip Reports</span>
-              {pendingCount > 0 && (
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                  {pendingCount} pending
-                </span>
-              )}
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              Review and take action on user reported submissions
-            </p>
-          </div>
+    <div className="space-y-5">
+      <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold tracking-tight text-foreground">
+            Reports {pendingCount > 0 && <span className="text-muted-foreground tabular-nums">{pendingCount} pending</span>}
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">Clips flagged by users.</p>
         </div>
 
         {/* Filter Dropdown */}

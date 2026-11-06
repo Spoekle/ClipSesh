@@ -1,67 +1,69 @@
 'use client';
 
 import React from 'react';
-import {
-  BarChart3,
-  Users,
-  Film,
-  Settings,
-  Flag,
-} from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
-export type AdminTab = 'overview' | 'users' | 'content' | 'config' | 'reports';
+export const ADMIN_TABS = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'seasons', label: 'Seasons' },
+  { id: 'denied', label: 'Denied' },
+  { id: 'scraper', label: 'Scraper' },
+  { id: 'users', label: 'Users' },
+  { id: 'reports', label: 'Reports' },
+  { id: 'settings', label: 'Settings' },
+] as const;
+
+export type AdminTab = (typeof ADMIN_TABS)[number]['id'];
+
+const LEGACY_TABS: Record<string, AdminTab> = { content: 'seasons', config: 'settings' };
+
+/**
+ * Resolves a `?tab=` query value to a known admin tab, mapping old tab names.
+ *
+ * @example
+ * parseAdminTab('config'); // 'settings'
+ * parseAdminTab('nope');   // 'overview'
+ */
+export function parseAdminTab(value: string | null): AdminTab {
+  if (!value) return 'overview';
+  const match = ADMIN_TABS.find((tab) => tab.id === value);
+  return match?.id ?? LEGACY_TABS[value] ?? 'overview';
+}
 
 interface AdminTabsNavProps {
   activeTab: AdminTab;
   onTabChange: (tab: AdminTab) => void;
-  pendingReportsCount: number;
+  badges: Partial<Record<AdminTab, number>>;
 }
 
-export const AdminTabsNav: React.FC<AdminTabsNavProps> = ({
-  activeTab,
-  onTabChange,
-  pendingReportsCount,
-}) => {
-  const tabs: { id: AdminTab; label: string; icon: React.ReactNode; badge?: number }[] = [
-    { id: 'overview', label: 'Overview', icon: <BarChart3 className="size-3.5" /> },
-    { id: 'users', label: 'Users', icon: <Users className="size-3.5" /> },
-    { id: 'content', label: 'Content Management', icon: <Film className="size-3.5" /> },
-    { id: 'config', label: 'Configuration', icon: <Settings className="size-3.5" /> },
-    {
-      id: 'reports',
-      label: 'Reports',
-      icon: <Flag className="size-3.5" />,
-      badge: pendingReportsCount,
-    },
-  ];
-
-  return (
-    <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-border mb-6">
-      {tabs.map((tab) => (
+export const AdminTabsNav: React.FC<AdminTabsNavProps> = ({ activeTab, onTabChange, badges }) => (
+  <nav className="no-scrollbar flex w-fit max-w-full items-center gap-1 overflow-x-auto rounded-full border border-border bg-card p-1">
+    {ADMIN_TABS.map((tab) => {
+      const isActive = activeTab === tab.id;
+      const badge = badges[tab.id] ?? 0;
+      return (
         <button
           key={tab.id}
+          type="button"
           onClick={() => onTabChange(tab.id)}
-          className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-            activeTab === tab.id
-              ? 'bg-primary text-primary-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground bg-card hover:bg-secondary border border-border'
-          }`}
+          aria-pressed={isActive}
+          className={cn(
+            'flex shrink-0 items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold transition-colors',
+            isActive
+              ? 'bg-foreground text-background shadow-sm'
+              : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
+          )}
         >
-          {tab.icon}
-          <span>{tab.label}</span>
-          {tab.badge !== undefined && tab.badge > 0 && (
-            <Badge
-              variant={activeTab === tab.id ? 'secondary' : 'default'}
-              className="text-[10px] font-bold px-1.5 py-0 h-4 rounded-full"
-            >
-              {tab.badge}
-            </Badge>
+          {tab.label}
+          {badge > 0 && (
+            <span className="rounded-full bg-primary px-1.5 text-[10px] leading-4 font-bold text-primary-foreground tabular-nums">
+              {badge}
+            </span>
           )}
         </button>
-      ))}
-    </div>
-  );
-};
+      );
+    })}
+  </nav>
+);
 
 export default AdminTabsNav;

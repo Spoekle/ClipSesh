@@ -1,267 +1,178 @@
 'use client';
 
-import React from 'react';
-import {
-  ChevronLeft,
-  ChevronRight,
-  ShieldCheck,
-  AlertTriangle,
-  UserPlus,
-  Loader2,
-} from 'lucide-react';
+import React, { useState } from 'react';
+import { ChevronLeft, ChevronRight, Loader2, Search, UserPlus } from 'lucide-react';
+import { DiscordIcon } from '@/components/BrandIcons';
 import { User } from '@/types/adminTypes';
-import ConfirmationDialog from '@/components/common/ConfirmationDialog';
+import { useAllUsers } from '@/hooks/useAdmin';
+import { getUserAvatarUrl, handleAvatarError } from '@/utils/generateAvatar';
 import { Button } from '@/components/ui/button';
-import { UserFilterBar } from './components/UserFilterBar';
-import { UserCard } from './components/UserCard';
-import { UserEditPanel } from './components/UserEditPanel';
-import { UserCreatePanel } from './components/UserCreatePanel';
-import { UserEmptyPanel } from './components/UserEmptyPanel';
-import { useUserManagementState } from './hooks/useUserManagementState';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
+import AdminSection from '../AdminSection';
+import UserFormDialog from './UserFormDialog';
+import { getRoleBadgeClasses } from './utils/roleBadgeHelper';
 
-interface UserListProps {
-  fetchUsers?: () => void;
-  disabledUsers?: User[];
-  setDisabledUsers?: React.Dispatch<React.SetStateAction<User[]>>;
-  AVAILABLE_ROLES: string[];
-}
+const AVAILABLE_ROLES = ['user', 'admin', 'editor', 'uploader', 'clipteam'];
+const PAGE_SIZE = 15;
 
-export const UserList: React.FC<UserListProps> = ({ AVAILABLE_ROLES }) => {
-  const {
-    allUsers,
-    loading,
-    error,
-    search,
-    setSearch,
-    statusFilter,
-    setStatusFilter,
-    roleFilter,
-    currentPage,
-    setCurrentPage,
-    totalPages,
-    currentUsers,
-    selectedUserId,
-    selectedUser,
-    isCreateMode,
-    editFormData,
-    setEditFormData,
-    showEditPassword,
-    setShowEditPassword,
-    isSaving,
-    copiedId,
-    createFormData,
-    setCreateFormData,
-    createErrors,
-    showCreatePassword,
-    setShowCreatePassword,
-    isCreating,
-    dialogState,
-    setDialogState,
-    allRoles,
-    activeCount,
-    disabledCount,
-    handleSelectUser,
-    handleStartCreate,
-    handleCloseRightPanel,
-    toggleRoleFilter,
-    handleEditRoleToggle,
-    handleCreateRoleToggle,
-    handleConfirmDialog,
-    handleEnableUser,
-    handleSaveEdit,
-    handleCreateSubmit,
-    copyUserId,
-  } = useUserManagementState(AVAILABLE_ROLES);
+type StatusFilter = 'all' | 'active' | 'disabled';
+type DialogTarget = { mode: 'create' } | { mode: 'edit'; userId: string } | null;
+
+export const UserList: React.FC = () => {
+  const { data: users = [], isLoading, error } = useAllUsers();
+
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState<StatusFilter>('all');
+  const [role, setRole] = useState('');
+  const [page, setPage] = useState(1);
+  const [dialog, setDialog] = useState<DialogTarget>(null);
+
+  const roles = Array.from(new Set([...AVAILABLE_ROLES, ...users.flatMap((u) => u.roles)])).sort();
+  const disabledCount = users.filter((u) => u.status === 'disabled').length;
+
+  const query = search.trim().toLowerCase();
+  const filtered = users
+    .filter((u) => {
+      const disabled = u.status === 'disabled';
+      if (status === 'active' && disabled) return false;
+      if (status === 'disabled' && !disabled) return false;
+      if (role && !u.roles.includes(role)) return false;
+      if (!query) return true;
+      return [u.username, u.email, u.discordUsername].some((v) => v?.toLowerCase().includes(query));
+    })
+    .sort((a, b) => a.username.localeCompare(b.username));
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageUsers = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  const editingUser = dialog?.mode === 'edit' ? users.find((u) => u._id === dialog.userId) : undefined;
+
+  const statusOptions: { value: StatusFilter; label: string }[] = [
+    { value: 'all', label: `All ${users.length}` },
+    { value: 'active', label: `Active ${users.length - disabledCount}` },
+    { value: 'disabled', label: `Disabled ${disabledCount}` },
+  ];
 
   return (
-    <div className="w-full">
-      {/* Top Header Card */}
-      <div className="bg-cc-card border border-border p-5 sm:p-6 rounded-2xl mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="size-11 rounded-xl bg-primary/15 text-primary flex items-center justify-center">
-            <ShieldCheck className="size-5" />
-          </div>
-          <div>
-            <h1 className="text-lg sm:text-xl font-bold text-foreground tracking-tight flex items-center gap-2">
-              User Management
-            </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground">
-              Manage user accounts, roles, access permissions, and credentials
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <Button
-            type="button"
-            variant="default"
-            size="sm"
-            onClick={handleStartCreate}
-            className={`w-full sm:w-auto gap-1.5 font-semibold ${
-              isCreateMode ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-primary text-white hover:bg-primary/90'
-            }`}
-          >
-            <UserPlus className="size-3.5" />
-            <span>New User</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* Main Split Layout: Left (Master List) | Right (Editor Panel) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* LEFT COLUMN: User Directory & Filters (7 Columns) */}
-        <div className="lg:col-span-7 space-y-4">
-          <UserFilterBar
-            search={search}
-            setSearch={(val) => {
-              setSearch(val);
-              setCurrentPage(1);
-            }}
-            statusFilter={statusFilter}
-            setStatusFilter={(val) => {
-              setStatusFilter(val);
-              setCurrentPage(1);
-            }}
-            roleFilter={roleFilter}
-            toggleRoleFilter={toggleRoleFilter}
-            clearRoleFilter={() => toggleRoleFilter('')}
-            allRoles={allRoles}
-            totalUsersCount={allUsers.length}
-            activeCount={activeCount}
-            disabledCount={disabledCount}
-            filteredCount={allUsers.length}
+    <AdminSection
+      title="Users"
+      description="Accounts, roles and access."
+      actions={
+        <Button size="sm" className="gap-1.5" onClick={() => setDialog({ mode: 'create' })}>
+          <UserPlus className="size-3.5" /> New user
+        </Button>
+      }
+    >
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="relative grow">
+          <Search className="absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            placeholder="Search username, email or Discord"
+            className="pl-9"
           />
-
-          {/* User List Rows */}
-          <div className="grid sm:grid-cols-2 grid-cols-1 gap-2">
-            {loading ? (
-              <div className="bg-cc-card border border-border p-12 rounded-xl flex flex-col items-center justify-center col-span-full">
-                <Loader2 className="size-7 animate-spin text-primary mb-3" />
-                <p className="text-xs text-muted-foreground">Loading users...</p>
-              </div>
-            ) : error ? (
-              <div className="bg-cc-card border border-primary/40 p-6 rounded-xl text-primary flex items-center gap-3 col-span-full">
-                <AlertTriangle className="size-5 shrink-0" />
-                <span className="text-xs">{error instanceof Error ? error.message : 'Failed to load users'}</span>
-              </div>
-            ) : currentUsers.length === 0 ? (
-              <div className="bg-cc-card border border-border p-10 rounded-xl text-center col-span-full">
-                <AlertTriangle className="size-8 text-amber-400 mx-auto mb-3" />
-                <h3 className="text-sm font-semibold text-foreground mb-1">No Users Found</h3>
-                <p className="text-xs text-muted-foreground max-w-sm mx-auto mb-4">
-                  No users matched your current search and role filters.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearch('');
-                    setStatusFilter('all');
-                  }}
-                  className="px-3.5 py-1.5 bg-cc-ground hover:bg-white/5 text-xs font-medium text-foreground rounded-lg transition-colors cursor-pointer"
-                >
-                  Reset Filters
-                </button>
-              </div>
-            ) : (
-              currentUsers.map((user) => (
-                <UserCard
-                  key={user._id}
-                  user={user}
-                  isSelected={selectedUserId === user._id && !isCreateMode}
-                  onSelect={handleSelectUser}
-                />
-              ))
-            )}
-          </div>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="bg-cc-card border border-border p-3 rounded-xl flex items-center justify-between text-xs text-muted-foreground">
-              <button
-                type="button"
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className="px-3 py-1.5 bg-cc-ground hover:bg-white/5 disabled:opacity-30 border border-border rounded-lg transition-colors flex items-center gap-1.5 text-muted-foreground hover:text-foreground cursor-pointer disabled:cursor-not-allowed"
-              >
-                <ChevronLeft className="size-3" />
-                <span>Prev</span>
-              </button>
-
-              <span className="text-muted-foreground">
-                Page {currentPage} of {totalPages}
-              </span>
-
-              <button
-                type="button"
-                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-                className="px-3 py-1.5 bg-cc-ground hover:bg-white/5 disabled:opacity-30 border border-border rounded-lg transition-colors flex items-center gap-1.5 text-muted-foreground hover:text-foreground cursor-pointer disabled:cursor-not-allowed"
-              >
-                <span>Next</span>
-                <ChevronRight className="size-3" />
-              </button>
-            </div>
-          )}
         </div>
-
-        {/* RIGHT COLUMN: Dedicated Editor & Creator Panel (5 Columns, Sticky) */}
-        <div className="lg:col-span-5 lg:sticky lg:top-6">
-          {selectedUser && !isCreateMode ? (
-            <UserEditPanel
-              user={selectedUser}
-              allRoles={allRoles}
-              editFormData={editFormData}
-              setEditFormData={setEditFormData}
-              showEditPassword={showEditPassword}
-              setShowEditPassword={setShowEditPassword}
-              isSaving={isSaving}
-              copiedId={copiedId}
-              onCopyUserId={copyUserId}
-              onClose={handleCloseRightPanel}
-              onSaveEdit={handleSaveEdit}
-              onRoleToggle={handleEditRoleToggle}
-              onEnableUser={handleEnableUser}
-              onOpenDisableModal={(u) =>
-                setDialogState({ isOpen: true, type: 'disable', targetUser: u })
-              }
-              onOpenDeleteModal={(u) =>
-                setDialogState({ isOpen: true, type: 'delete', targetUser: u })
-              }
-            />
-          ) : isCreateMode ? (
-            <UserCreatePanel
-              allRoles={allRoles}
-              createFormData={createFormData}
-              setCreateFormData={setCreateFormData}
-              createErrors={createErrors}
-              showCreatePassword={showCreatePassword}
-              setShowCreatePassword={setShowCreatePassword}
-              isCreating={isCreating}
-              onCreateSubmit={handleCreateSubmit}
-              onRoleToggle={handleCreateRoleToggle}
-              onClose={handleCloseRightPanel}
-            />
-          ) : (
-            <UserEmptyPanel onStartCreate={handleStartCreate} />
-          )}
+        <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1">
+          {statusOptions.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => { setStatus(opt.value); setPage(1); }}
+              className={cn(
+                'rounded-full px-3 py-1 text-xs font-semibold whitespace-nowrap transition-colors',
+                status === opt.value ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {opt.label}
+            </button>
+          ))}
         </div>
+        <select
+          value={role}
+          onChange={(e) => { setRole(e.target.value); setPage(1); }}
+          aria-label="Filter by role"
+          className="h-9 rounded-full border border-border bg-card px-3 text-xs font-semibold text-foreground capitalize"
+        >
+          <option value="">All roles</option>
+          {roles.map((r) => <option key={r} value={r}>{r}</option>)}
+        </select>
       </div>
 
-      {/* Confirmation Dialog for Disable / Delete */}
-      <ConfirmationDialog
-        isOpen={dialogState.isOpen}
-        title={dialogState.type === 'delete' ? 'Delete User' : 'Disable User'}
-        message={
-          dialogState.type === 'delete'
-            ? `Are you sure you want to permanently delete "${dialogState.targetUser?.username}"? This action cannot be undone.`
-            : `Are you sure you want to disable "${dialogState.targetUser?.username}"? They will no longer be able to log in.`
-        }
-        confirmText={dialogState.type === 'delete' ? 'Delete' : 'Disable'}
-        confirmVariant="danger"
-        onConfirm={handleConfirmDialog}
-        onCancel={() => setDialogState({ isOpen: false, type: null, targetUser: null })}
-      />
-    </div>
+      <div className="overflow-hidden rounded-2xl border border-border bg-card">
+        {isLoading ? (
+          <div className="flex items-center justify-center gap-2 p-12 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin text-primary" /> Loading users
+          </div>
+        ) : error ? (
+          <p className="p-6 text-sm text-primary">{error instanceof Error ? error.message : 'Failed to load users'}</p>
+        ) : pageUsers.length === 0 ? (
+          <p className="p-12 text-center text-sm text-muted-foreground">No users match these filters.</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {pageUsers.map((user) => (
+              <UserRow key={user._id} user={user} onSelect={() => setDialog({ mode: 'edit', userId: user._id })} />
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>{filtered.length} users · page {currentPage} of {totalPages}</span>
+          <div className="flex gap-1">
+            <Button variant="outline" size="icon-sm" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)} aria-label="Previous page">
+              <ChevronLeft className="size-3.5" />
+            </Button>
+            <Button variant="outline" size="icon-sm" disabled={currentPage === totalPages} onClick={() => setPage(currentPage + 1)} aria-label="Next page">
+              <ChevronRight className="size-3.5" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {dialog?.mode === 'create' && <UserFormDialog key="new" user={null} roles={roles} onClose={() => setDialog(null)} />}
+      {editingUser && <UserFormDialog key={editingUser._id} user={editingUser} roles={roles} onClose={() => setDialog(null)} />}
+    </AdminSection>
+  );
+};
+
+const UserRow: React.FC<{ user: User; onSelect: () => void }> = ({ user, onSelect }) => {
+  const isDisabled = user.status === 'disabled';
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onSelect}
+        className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-secondary/60"
+      >
+        <img
+          src={getUserAvatarUrl(user.username, user.profilePicture, 64)}
+          alt=""
+          onError={(e) => handleAvatarError(e, user.username, 64)}
+          className={cn('size-8 shrink-0 rounded-full border border-border object-cover', isDisabled && 'opacity-40 grayscale')}
+        />
+        <div className="min-w-0 grow">
+          <div className="flex items-center gap-2">
+            <span className={cn('truncate text-sm font-semibold', isDisabled ? 'text-muted-foreground line-through' : 'text-foreground')}>
+              {user.username}
+            </span>
+            {user.discordId && <DiscordIcon className="shrink-0 text-[#5865F2]" aria-label="Discord linked" />}
+          </div>
+          {user.email && <p className="truncate text-xs text-muted-foreground">{user.email}</p>}
+        </div>
+        <div className="hidden flex-wrap justify-end gap-1 sm:flex">
+          {user.roles.filter((r) => r !== 'user').map((r) => (
+            <span key={r} className={cn('rounded-full px-2 py-0.5 text-[10px] font-medium capitalize', getRoleBadgeClasses(r, true))}>
+              {r}
+            </span>
+          ))}
+        </div>
+        <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+      </button>
+    </li>
   );
 };
 

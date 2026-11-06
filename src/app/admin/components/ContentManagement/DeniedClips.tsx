@@ -2,7 +2,6 @@
 
 import React, { useState, useMemo } from 'react';
 import {
-  Ban,
   AlertTriangle,
   Filter,
   Search,
@@ -10,7 +9,6 @@ import {
 import { Clip, Rating } from '@/types/adminTypes';
 import { DeniedClipCard } from './denied/DeniedClipCard';
 import { DeniedClipPagination } from './denied/DeniedClipPagination';
-import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 
 type SortBy = 'newest' | 'oldest' | 'mostDenied';
@@ -78,19 +76,13 @@ export const DeniedClips: React.FC<DeniedClipsProps> = ({ clips, ratings, config
       className="space-y-4"
     >
       {/* Header and Controls */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-border">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h2 className="text-base font-bold flex items-center gap-2.5 text-foreground">
-            <div className="w-8 h-8 rounded-xl bg-destructive/15 text-destructive flex items-center justify-center">
-              <Ban className="size-4" />
-            </div>
-            <span>Denied Submissions</span>
-            <Badge variant="outline" className="text-xs font-semibold font-mono">
-              {filteredClips.length}
-            </Badge>
+          <h2 className="text-xl font-bold tracking-tight text-foreground">
+            Denied <span className="text-muted-foreground tabular-nums">{filteredClips.length}</span>
           </h2>
-          <p className="text-xs text-muted-foreground mt-1">
-            Clips that have met or exceeded the community rejection threshold ({config.denyThreshold} denial votes) and are excluded from season compilation.
+          <p className="mt-1 text-sm text-muted-foreground">
+            Clips with {config.denyThreshold}+ deny votes. These are left out of the season compilation.
           </p>
         </div>
 

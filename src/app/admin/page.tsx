@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import React, { useState, Suspense } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import UserList from './components/UserManagement/UserList';
 import Statistics from './components/Overview/Statistics';
 import ConfigPanel from './components/Configuration/ConfigPanel';
@@ -9,12 +9,12 @@ import ReportsManagement from './components/Reports/ReportsManagement';
 import { Clip } from '@/types/adminTypes';
 import ProcessClipsModal from './components/ProcessClipsModal';
 import useSocket from '@/hooks/useSocket';
-import ConfirmationDialog from '@/components/common/ConfirmationDialog';
 import RequireAuth from '@/components/RequireAuth';
 import AdminHeader from './components/AdminHeader';
-import ExecutiveSummaryStrip from './components/ExecutiveSummaryStrip';
-import AdminTabsNav, { AdminTab } from './components/AdminTabsNav';
-import ContentTab, { ContentSubTab } from './components/ContentManagement/ContentTab';
+import AdminTabsNav, { AdminTab, parseAdminTab } from './components/AdminTabsNav';
+import SeasonArchiveManager from './components/ContentManagement/SeasonArchiveManager';
+import DeniedClips from './components/ContentManagement/DeniedClips';
+import DiscordScraper from './components/ContentManagement/DiscordScraper';
 import ActiveJobsBanner from './components/ActiveJobsBanner';
 import useProcessJobs from './hooks/useProcessJobs';
 import useAdminMetrics from './hooks/useAdminMetrics';
@@ -27,15 +27,19 @@ import {
   useClipsWithRatings,
   useZips,
   useDeleteZip,
-  useDeleteUser,
   useProcessClips,
   useReports,
 } from '@/hooks/useAdmin';
 import { useNotification } from '@/context/AlertContext';
 
 function AdminDash() {
-  const [activeTab, setActiveTab] = useState<AdminTab>('overview');
-  const [activeContentSubTab, setActiveContentSubTab] = useState<ContentSubTab>('pipeline');
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const activeTab = parseAdminTab(searchParams.get('tab'));
+  const setActiveTab = (tab: AdminTab) => {
+    router.replace(tab === 'overview' ? pathname : `${pathname}?tab=${tab}`, { scroll: false });
+  };
   const [selectedScraperChannel, setSelectedScraperChannel] = useState<string>('');
 
   const { data: allUsers = [], isLoading: usersLoading, refetch: refetchUsers } = useAllUsers();
@@ -47,7 +51,6 @@ function AdminDash() {
   const { showSuccess, showError, showAlertModal } = useNotification();
 
   const deleteZipMutation = useDeleteZip();
-  const deleteUserMutation = useDeleteUser();
   const processClipsMutation = useProcessClips();
 
   const clips = clipsData?.clips || [];
@@ -66,18 +69,8 @@ function AdminDash() {
     blacklistedStreamers: []
   };
 
-  const {
-    admins,
-    clipTeam,
-    disabledUsers,
-    seasonInfo,
-    userRatings,
-    clipStats,
-  } = useAdminMetrics(clips, ratings, allUsers, config.denyThreshold);
-
-  const AVAILABLE_ROLES = ['user', 'admin', 'editor', 'uploader', 'clipteam'];
-  const [userToDelete, setUserToDelete] = useState<string | null>(null);
-  const [showDeleteUserConfirmation, setShowDeleteUserConfirmation] = useState<boolean>(false);
+  const { clipTeam, seasonInfo, userRatings, clipStats } =
+    useAdminMetrics(clips, ratings, allUsers, config.denyThreshold);
 
   const [processModalOpen, setProcessModalOpen] = useState<boolean>(false);
   const [processJobId, setProcessJobId] = useState<string | null>(null);
@@ -101,15 +94,7 @@ function AdminDash() {
   });
 
   const loading = usersLoading || configLoading || statsLoading || clipsLoading || zipsLoading;
-  const searchParams = useSearchParams();
   const { isConnected } = useSocket();
-
-  useEffect(() => {
-    const tabParam = searchParams.get('tab');
-    if (tabParam && ['overview', 'users', 'content', 'config', 'reports'].includes(tabParam)) {
-      setActiveTab(tabParam as AdminTab);
-    }
-  }, [searchParams]);
 
   const handleRefreshAll = () => {
     refetchUsers();
@@ -123,24 +108,6 @@ function AdminDash() {
 
   const deleteZip = async (zipId: string): Promise<void> => {
     await deleteZipMutation.mutateAsync(zipId);
-  };
-
-  const confirmDeleteUser = async (): Promise<void> => {
-    if (!userToDelete) return;
-    setShowDeleteUserConfirmation(false);
-    try {
-      await deleteUserMutation.mutateAsync(userToDelete);
-      showSuccess('User deleted successfully');
-    } catch {
-      showError('Failed to delete user. Please try again.');
-    } finally {
-      setUserToDelete(null);
-    }
-  };
-
-  const cancelDeleteUser = (): void => {
-    setShowDeleteUserConfirmation(false);
-    setUserToDelete(null);
   };
 
   const processClips = async (season: string, year: number): Promise<void> => {
@@ -178,90 +145,68 @@ function AdminDash() {
   };
 
   const pendingReportsCount = pendingReportsData?.pendingCount || pendingReportsData?.total || 0;
-  const reviewedPercent = seasonInfo.clipAmount > 0
-    ? Math.round((clipStats.ratedClips / seasonInfo.clipAmount) * 100)
-    : 0;
+  const openProcessModal = async () => {
+    await refetchClips();
+    setProcessModalOpen(true);
+  };
 
   return (
-    <div className="relative min-h-[calc(100vh-80px)] text-white flex flex-col bg-cc-ground transition-colors">
+    <div className="relative min-h-[calc(100vh-80px)] text-foreground flex flex-col bg-cc-ground">
       <AdminHeader
+        seasonLabel={`${seasonInfo.season} ${seasonInfo.year}`}
         isConnected={isConnected}
-        userCount={allUsers.length}
-        clipCount={clips.length}
         onRefresh={handleRefreshAll}
         loading={loading}
-      />
-
-      <div className="w-full max-w-[1200px] mx-auto px-4 sm:px-8 py-6 grow flex flex-col">
-        <ExecutiveSummaryStrip
-          clipAmount={seasonInfo.clipAmount}
-          reviewedPercent={reviewedPercent}
-          ratedClipsCount={clipStats.ratedClips}
-          reviewTeamCount={clipTeam.length + admins.length}
-          pendingReportsCount={pendingReportsCount}
-        />
-
+      >
         <AdminTabsNav
           activeTab={activeTab}
           onTabChange={setActiveTab}
-          pendingReportsCount={pendingReportsCount}
+          badges={{ reports: pendingReportsCount, denied: clipStats.deniedClips }}
         />
+      </AdminHeader>
 
-        <div className="space-y-6">
-          {activeTab === 'overview' && (
-            <Statistics
-              clipTeam={clipTeam}
-              userRatings={userRatings}
-              seasonInfo={seasonInfo}
-              clipStats={clipStats}
-              loading={loading}
-            />
-          )}
+      <div className="w-full max-w-[1200px] mx-auto px-4 sm:px-8 pt-4 pb-12 grow">
+        {activeTab === 'overview' && (
+          <Statistics
+            clipTeam={clipTeam}
+            userRatings={userRatings}
+            clipStats={clipStats}
+            pendingReportsCount={pendingReportsCount}
+            loading={loading}
+          />
+        )}
 
-          {activeTab === 'users' && (
-            <UserList
-              fetchUsers={refetchUsers}
-              disabledUsers={disabledUsers}
-              setDisabledUsers={() => {}}
-              AVAILABLE_ROLES={AVAILABLE_ROLES}
-            />
-          )}
+        {activeTab === 'seasons' && (
+          <SeasonArchiveManager
+            openProcessModal={openProcessModal}
+            downloading={false}
+            zips={zips}
+            zipsLoading={zipsLoading}
+            deleteZip={deleteZip}
+            seasonInfo={seasonInfo}
+            activeClipsCount={clips.filter((c) => !c.archived).length}
+          />
+        )}
 
-          {activeTab === 'content' && (
-            <ContentTab
-              activeContentSubTab={activeContentSubTab}
-              setActiveContentSubTab={setActiveContentSubTab}
-              zips={zips}
-              clips={clips}
-              ratings={ratings}
-              config={config}
-              seasonInfo={seasonInfo}
-              downloading={false}
-              loading={loading}
-              zipsLoading={zipsLoading}
-              deleteZip={deleteZip}
-              openProcessModal={async () => {
-                await refetchClips();
-                setProcessModalOpen(true);
-              }}
-              selectedScraperChannel={selectedScraperChannel}
-              deniedClipsCount={clipStats.deniedClips}
-            />
-          )}
+        {activeTab === 'denied' && <DeniedClips clips={clips} ratings={ratings} config={config} />}
 
-          {activeTab === 'config' && (
-            <ConfigPanel
-              config={config}
-              onOpenScraper={(chId) => {
-                if (chId) setSelectedScraperChannel(chId);
-                setActiveTab('content');
-                setActiveContentSubTab('scraper');
-              }}
-            />
-          )}
+        {activeTab === 'scraper' && (
+          <DiscordScraper configuredChannels={config.clipChannelIds} initialChannelId={selectedScraperChannel} />
+        )}
 
-          {activeTab === 'reports' && <ReportsManagement />}
-        </div>
+        {activeTab === 'users' && <UserList />}
+
+        {activeTab === 'reports' && <ReportsManagement />}
+
+        {activeTab === 'settings' && (
+          <ConfigPanel
+            config={config}
+            onOpenScraper={(chId) => {
+              if (chId) setSelectedScraperChannel(chId);
+              setActiveTab('scraper');
+            }}
+          />
+        )}
       </div>
 
       <ProcessClipsModal
@@ -294,16 +239,6 @@ function AdminDash() {
         denyThreshold={config.denyThreshold}
       />
 
-      <ConfirmationDialog
-        isOpen={showDeleteUserConfirmation}
-        title="Delete User"
-        message="Are you sure you want to delete this user? This action cannot be undone."
-        confirmText="Delete"
-        confirmVariant="danger"
-        onConfirm={confirmDeleteUser}
-        onCancel={cancelDeleteUser}
-      />
-
       <ActiveJobsBanner
         visibleProcessJobs={visibleProcessJobs}
         currentProcessJob={currentProcessJob}
@@ -317,7 +252,7 @@ function AdminDash() {
         onForceComplete={handleForceCompleteProcess}
         onCancelJob={handleCancelProcessJob}
         processLogsContainerRef={processLogsContainerRef}
-        isScraperTab={activeTab === 'content' && activeContentSubTab === 'scraper'}
+        isScraperTab={activeTab === 'scraper'}
       />
     </div>
   );
@@ -326,7 +261,7 @@ function AdminDash() {
 export default function AdminPage() {
   return (
     <RequireAuth isAdminRequired>
-      <Suspense fallback={<div className="min-h-screen bg-cc-ground text-white flex items-center justify-center">Loading Admin Dashboard...</div>}>
+      <Suspense fallback={<div className="min-h-screen bg-cc-ground text-white flex items-center justify-center">Loading admin…</div>}>
         <AdminDash />
       </Suspense>
     </RequireAuth>

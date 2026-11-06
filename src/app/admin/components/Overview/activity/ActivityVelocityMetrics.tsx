@@ -15,26 +15,20 @@ export const ActivityVelocityMetrics: React.FC<ActivityVelocityMetricsProps> = (
   peakDateFormatted,
   dailyVelocity,
 }) => {
+  const items = [
+    { label: 'ratings', value: totalActivity.toLocaleString() },
+    { label: 'active reviewers', value: activeUserCount.toLocaleString() },
+    { label: 'per day', value: `~${dailyVelocity}` },
+    { label: 'peak', value: peakDateFormatted },
+  ];
+
   return (
-    <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 select-none">
-      <div className="bg-cc-ground p-3 rounded-xl border border-border flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">Total Ratings</span>
-        <span className="text-sm font-bold text-white">{totalActivity}</span>
-      </div>
-      <div className="bg-cc-ground p-3 rounded-xl border border-border flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">Active Reviewers</span>
-        <span className="text-sm font-bold text-white">{activeUserCount}</span>
-      </div>
-      <div className="bg-cc-ground p-3 rounded-xl border border-border flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">Peak Review Day</span>
-        <span className="text-sm font-bold text-primary">{peakDateFormatted}</span>
-      </div>
-      <div className="bg-cc-ground p-3 rounded-xl border border-border flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">Daily Velocity</span>
-        <span className="text-sm font-bold text-emerald-400">
-          ~{dailyVelocity} / day
+    <div className="mt-4 flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground select-none">
+      {items.map((item) => (
+        <span key={item.label}>
+          <span className="font-bold text-foreground tabular-nums">{item.value}</span> {item.label}
         </span>
-      </div>
+      ))}
     </div>
   );
 };

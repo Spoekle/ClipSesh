@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { DiscordIcon } from '@/components/BrandIcons';
 import { Search, Square, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,24 +28,8 @@ export const ScraperChannelScanner: React.FC<ScraperChannelScannerProps> = ({
   onCancelScan,
 }) => {
   return (
-    <div className="bg-cc-card p-5 sm:p-6 rounded-xl border border-border shadow-xs">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-border">
-        <div className="flex items-center gap-3.5">
-          <div className="size-10 rounded-xl bg-[#5865F2]/15 text-[#5865F2] border border-[#5865F2]/25 flex items-center justify-center shrink-0">
-            <DiscordIcon size={20} />
-          </div>
-          <div>
-            <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-              <span>Discord Channel Scraper & Ingestion</span>
-            </h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Scrape historical clip links from Discord channels, preview by season/timestamp, and import into seasonal storage
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-5 space-y-4">
+    <div className="bg-card p-5 sm:p-6 rounded-2xl border border-border">
+      <div className="space-y-4">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <div className="relative flex-1">
             <Input

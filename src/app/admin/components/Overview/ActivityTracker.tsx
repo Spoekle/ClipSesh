@@ -259,20 +259,11 @@ export const ActivityTracker: React.FC<ActivityTrackerProps> = () => {
       : null;
 
   return (
-    <div className="bg-cc-card rounded-xl border border-border shadow-xs overflow-hidden">
+    <div className="bg-card rounded-2xl border border-border overflow-hidden">
       <div className="p-4 sm:p-5 border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-cc-ground border border-border flex items-center justify-center text-primary">
-            <LineChart className="size-4" />
-          </div>
-          <div>
-            <h3 className="text-base font-bold text-white leading-tight">
-              Activity & Review Velocity
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Daily review pace and seasonal voting trends
-            </p>
-          </div>
+        <div>
+          <h3 className="text-sm font-bold text-foreground">Review activity</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Ratings per day</p>
         </div>
 
         <div className="flex items-center flex-wrap gap-2.5">
@@ -281,19 +272,19 @@ export const ActivityTracker: React.FC<ActivityTrackerProps> = () => {
               type="button"
               onClick={() => setShowPerUser(false)}
               className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
-                !showPerUser ? 'bg-border text-white shadow-xs' : 'text-muted-foreground hover:text-white'
+                !showPerUser ? 'bg-foreground text-background shadow-sm' : 'text-muted-foreground hover:text-white'
               }`}
             >
-              Overall Volume
+              Total
             </button>
             <button
               type="button"
               onClick={() => setShowPerUser(true)}
               className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
-                showPerUser ? 'bg-border text-white shadow-xs' : 'text-muted-foreground hover:text-white'
+                showPerUser ? 'bg-foreground text-background shadow-sm' : 'text-muted-foreground hover:text-white'
               }`}
             >
-              Per Member
+              Per member
             </button>
           </div>
 

@@ -2,7 +2,7 @@
 
 import { safeLocalStorage } from '@/utils/storage';
 import React, { useState, useEffect } from 'react';
-import { Settings } from 'lucide-react';
+import AdminSection from '../AdminSection';
 import { useUpdateAdminConfig, useUpdatePublicConfig, useBlacklistedUsers } from '@/hooks/useAdmin';
 import { useNotification } from '@/context/AlertContext';
 import GeneralConfigSection from './GeneralConfigSection';
@@ -225,23 +225,8 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onOpenScraper 
   };
 
   return (
-    <div
-      className="w-full bg-cc-card border border-border text-white p-6 rounded-2xl space-y-6"
-    >
-      <div className="flex items-center justify-between pb-4 border-b border-border">
-        <div className="flex items-center gap-3">
-          <div className="size-8 rounded-xl bg-primary/15 text-primary flex items-center justify-center">
-            <Settings className="size-4" />
-          </div>
-          <div>
-            <h2 className="text-base font-bold text-white">System Configuration</h2>
-            <p className="text-xs text-muted-foreground">
-              Global threshold limits, ingest channels, and blacklists
-            </p>
-          </div>
-        </div>
-      </div>
-
+    <AdminSection title="Settings" description="Review thresholds, ingest channels, blacklists and season automation.">
+      <div className="space-y-6">
       <form onSubmit={submitConfig} className="space-y-6">
         <GeneralConfigSection
           denyThreshold={denyThreshold}
@@ -274,10 +259,10 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onOpenScraper 
         </div>
       </form>
 
-      <div className="pt-6 border-t border-border">
-        <SeasonAutomationSection />
       </div>
-    </div>
+
+      <SeasonAutomationSection />
+    </AdminSection>
   );
 };
 

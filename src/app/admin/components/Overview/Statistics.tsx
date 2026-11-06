@@ -1,106 +1,70 @@
 'use client';
 
 import React from 'react';
-import { SummaryStats, RatingDistribution } from './StatisticsWidgets';
+import { RatingDistribution } from './RatingDistribution';
 import ActivityTracker from './ActivityTracker';
-import { BarChart3, CalendarCheck } from 'lucide-react';
-import { User, UserRating, SeasonInfo } from '@/types/adminTypes';
-import { Card } from '@/components/ui/card';
+import { User, UserRating } from '@/types/adminTypes';
+import AdminSection from '../AdminSection';
 
 interface StatisticsProps {
   clipTeam: User[];
   userRatings: UserRating[];
-  seasonInfo: SeasonInfo;
-  clipStats?: {
+  clipStats: {
     totalClips: number;
     ratedClips: number;
     unratedClips: number;
     deniedClips: number;
   };
+  pendingReportsCount: number;
   loading?: boolean;
 }
 
 const Statistics: React.FC<StatisticsProps> = ({
   clipTeam,
   userRatings,
-  seasonInfo,
   clipStats,
+  pendingReportsCount,
   loading = false,
 }) => {
-  const SkeletonBox = ({ className = '' }: { className?: string }) => (
-    <div className={`animate-pulse bg-secondary rounded-xl ${className}`} />
-  );
-
   const totalRatings = userRatings.reduce((acc, user) => acc + user.total, 0);
-  const averageRatings = userRatings.length > 0 ? totalRatings / userRatings.length : 0;
-  const mostActiveUser = [...userRatings].sort((a, b) => b.total - a.total)[0]?.username || 'None';
+  const reviewedPercent = clipStats.totalClips > 0
+    ? Math.round((clipStats.ratedClips / clipStats.totalClips) * 100)
+    : 0;
 
-  const clipTeamUsernames = clipTeam.map((member) => member.username || '').filter(Boolean);
+  const stats = [
+    { label: 'Clips in pool', value: clipStats.totalClips.toLocaleString() },
+    { label: 'Reviewed', value: `${reviewedPercent}%` },
+    { label: 'Awaiting review', value: clipStats.unratedClips.toLocaleString() },
+    { label: 'Denied', value: clipStats.deniedClips.toLocaleString() },
+    { label: 'Ratings cast', value: totalRatings.toLocaleString() },
+    { label: 'Open reports', value: pendingReportsCount.toLocaleString() },
+  ];
+
+  const clipTeamUsernames = clipTeam.map((member) => member.username).filter(Boolean);
 
   return (
-    <div
-      className="w-full space-y-6"
-    >
-      {/* Top Banner */}
-      <Card className="p-5 sm:p-6 bg-card border-border shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-secondary border border-border flex items-center justify-center text-primary">
-            <BarChart3 className="size-5" />
+    <AdminSection title="Overview" description="How the current season's review is going.">
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-3 lg:grid-cols-6">
+        {stats.map((stat) => (
+          <div key={stat.label} className="bg-card px-4 py-4">
+            {loading ? (
+              <div className="h-8 w-16 animate-pulse rounded-md bg-secondary" />
+            ) : (
+              <div className="text-2xl font-bold tracking-tight text-foreground tabular-nums">{stat.value}</div>
+            )}
+            <div className="mt-1 text-xs text-muted-foreground">{stat.label}</div>
           </div>
-          <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">
-              Review Team Analytics
-            </h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Live submission intake, review quotas, and team performance metrics
-            </p>
-          </div>
-        </div>
-
-        {seasonInfo.season && (
-          <div className="flex items-center gap-2 bg-background border border-border px-3.5 py-2 rounded-full self-start sm:self-auto">
-            <CalendarCheck className="text-primary size-3.5" />
-            <span className="text-xs text-muted-foreground">Active Season:</span>
-            <span className="text-xs font-bold text-foreground capitalize">
-              {seasonInfo.season} {seasonInfo.year || new Date().getFullYear()}
-            </span>
-          </div>
-        )}
-      </Card>
+        ))}
+      </div>
 
       {loading ? (
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map((i) => (
-              <SkeletonBox key={i} className="h-28" />
-            ))}
-          </div>
-          <SkeletonBox className="h-96" />
-          <SkeletonBox className="h-80" />
-        </div>
+        <div className="h-96 animate-pulse rounded-2xl bg-secondary" />
       ) : (
-        <>
-          {/* Summary KPIs */}
-          {clipStats && (
-            <SummaryStats
-              totalRatings={totalRatings}
-              averageRatings={averageRatings}
-              mostActiveUser={mostActiveUser}
-              totalClips={clipStats.totalClips}
-              ratedClips={clipStats.ratedClips}
-              unratedClips={clipStats.unratedClips}
-              deniedClips={clipStats.deniedClips}
-            />
-          )}
-
-          {/* Rating Distribution (Stacked Bars + Donut) */}
-          <RatingDistribution userRatings={userRatings} />
-
-          {/* Timeline Velocity Area Chart */}
-          <ActivityTracker clipTeamUsernames={clipTeamUsernames} />
-        </>
+        <RatingDistribution userRatings={userRatings} />
       )}
-    </div>
+
+      <ActivityTracker clipTeamUsernames={clipTeamUsernames} />
+    </AdminSection>
   );
 };
 

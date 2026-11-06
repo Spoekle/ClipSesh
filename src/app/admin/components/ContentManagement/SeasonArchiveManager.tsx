@@ -2,17 +2,15 @@
 
 import React, { useState, useMemo } from 'react';
 import {
-  Archive,
   Download,
   Upload,
   Loader2,
-  Calendar,
   RefreshCw,
 } from 'lucide-react';
 import ConfirmationDialog from '@/components/common/ConfirmationDialog';
 import { Button } from '@/components/ui/button';
 import UnarchiveSeasonModal from '../UnarchiveSeasonModal';
-import { SeasonArchiveMetrics } from './season/SeasonArchiveMetrics';
+import AdminSection from '../AdminSection';
 import { UploadZipModal } from './season/UploadZipModal';
 import { SeasonLifecycleTable, SeasonStatusItem } from './season/SeasonLifecycleTable';
 import { ZipPackagesTable } from './season/ZipPackagesTable';
@@ -247,92 +245,45 @@ export const SeasonArchiveManager: React.FC<SeasonArchiveManagerProps> = ({
         defaultSeason={seasonInfo.season}
       />
 
-      {/* Main Container */}
-      <div className="space-y-6 select-none">
-        {/* Top Control Bar & KPI Stats Card */}
-        <div className="bg-cc-card p-5 sm:p-6 rounded-2xl border border-border shadow-xs space-y-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h2 className="text-base font-bold text-white flex items-center gap-2.5">
-                <div className="size-8 rounded-xl bg-primary/15 text-primary flex items-center justify-center">
-                  <Archive className="size-4" />
-                </div>
-                <span>Seasons & Distribution Archives</span>
-              </h2>
-              <p className="text-xs text-muted-foreground mt-1">
-                Compile approved submissions into release ZIP packages, manage seasonal lifecycle transitions, and download editor archives.
-              </p>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="flex items-center gap-2 shrink-0">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => refetchSeasonStatus()}
-                title="Refresh season data"
-              >
-                <RefreshCw className="size-3.5" />
-              </Button>
-
-              <Button
-                variant="outline"
-                size="default"
-                onClick={() => setShowUploadModal(true)}
-                className="gap-1.5"
-              >
-                <Upload className="size-3.5 text-emerald-400" />
-                <span>Upload ZIP</span>
-              </Button>
-
-              <Button
-                variant="default"
-                size="default"
-                onClick={() => setShowProcessConfirm(true)}
-                disabled={downloading}
-                className="gap-1.5 bg-primary text-white hover:bg-primary/90 font-semibold"
-              >
-                {downloading ? (
-                  <>
-                    <Loader2 className="size-3.5 animate-spin" />
-                    <span>Compiling...</span>
-                  </>
-                ) : (
-                  <>
-                    <Download className="size-3.5" />
-                    <span>Compile Season ZIP</span>
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-
-          {/* Metric KPIs Strip */}
-          <SeasonArchiveMetrics
-            currentSeasonLabel={metrics.currentSeasonLabel}
-            activeClips={metrics.activeClips}
-            packagesCount={metrics.packagesCount}
-            totalZipSizeFormatted={metrics.totalStorage}
-          />
-        </div>
-
+      <AdminSection
+        title="Seasons"
+        description={
+          <>
+            <span className="capitalize">{metrics.currentSeasonLabel}</span> · {metrics.activeClips} clips in pool · {metrics.packagesCount} packages · {metrics.totalStorage}
+          </>
+        }
+        actions={
+          <>
+            <Button variant="outline" size="icon-sm" onClick={() => refetchSeasonStatus()} title="Refresh season data" aria-label="Refresh season data">
+              <RefreshCw className="size-3.5" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setShowUploadModal(true)} className="gap-1.5">
+              <Upload className="size-3.5" /> Upload ZIP
+            </Button>
+            <Button size="sm" onClick={() => setShowProcessConfirm(true)} disabled={downloading} className="gap-1.5">
+              {downloading ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+              Compile season
+            </Button>
+          </>
+        }
+        className="select-none"
+      >
         {/* View Switcher: Seasons Lifecycle vs All Packages */}
-        <div className="bg-cc-card p-5 sm:p-6 rounded-2xl border border-border shadow-xs space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
-            <div className="flex items-center gap-1.5 p-1 bg-cc-ground border border-border rounded-xl w-fit">
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-1 p-1 bg-card border border-border rounded-full w-fit">
               <button
                 type="button"
                 onClick={() => setActiveView('seasons')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer ${
                   activeView === 'seasons'
-                    ? 'bg-white/10 text-white border border-border'
-                    : 'text-muted-foreground hover:text-white'
+                    ? 'bg-foreground text-background'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                <Calendar className={`size-3.5 ${activeView === 'seasons' ? 'text-primary' : ''}`} />
-                <span>Season Lifecycles</span>
+                <span>Seasons</span>
                 {seasonsList.length > 0 && (
-                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-cc-card text-muted-foreground border border-border">
+                  <span className="text-[10px] tabular-nums opacity-60">
                     {seasonsList.length}
                   </span>
                 )}
@@ -341,25 +292,19 @@ export const SeasonArchiveManager: React.FC<SeasonArchiveManagerProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveView('packages')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer ${
                   activeView === 'packages'
-                    ? 'bg-white/10 text-white border border-border'
-                    : 'text-muted-foreground hover:text-white'
+                    ? 'bg-foreground text-background'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                <Archive className={`size-3.5 ${activeView === 'packages' ? 'text-sky-400' : ''}`} />
-                <span>Compiled Packages</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-cc-card text-muted-foreground border border-border">
+                <span>Packages</span>
+                <span className="text-[10px] tabular-nums opacity-60">
                   {zips.length}
                 </span>
               </button>
             </div>
 
-            <p className="text-xs text-muted-foreground">
-              {activeView === 'seasons'
-                ? 'Manage active review pools and archive transitions per season cycle'
-                : 'Directly download or delete compiled ZIP archives for distribution'}
-            </p>
           </div>
 
           {/* VIEW 1: SEASONS LIFECYCLE */}
@@ -390,7 +335,7 @@ export const SeasonArchiveManager: React.FC<SeasonArchiveManagerProps> = ({
             />
           )}
         </div>
-      </div>
+      </AdminSection>
     </>
   );
 };

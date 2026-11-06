@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import '@/lib/chart';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import type { ChartOptions, Chart as ChartJS, TooltipModel } from 'chart.js';
-import { BarChart3, PieChart, Layers } from 'lucide-react';
+import { BarChart3, PieChart } from 'lucide-react';
 import { UserRating, PieData } from '@/types/adminTypes';
 import { RATING_TIERS } from '@/lib/ratingTiers';
 
@@ -285,43 +285,38 @@ export const RatingDistribution: React.FC<RatingDistributionProps> = ({
   );
 
   return (
-    <div className="bg-cc-card p-5 sm:p-6 rounded-xl border border-border shadow-xs">
+    <div className="bg-card p-5 sm:p-6 rounded-2xl border border-border">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-            <Layers className="text-primary size-4" />
-            Rating Tier Distribution
-          </h3>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Breakdown of scores given across all reviewed clips
-          </p>
+          <h3 className="text-sm font-bold text-foreground">Ratings by tier</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Scores given across all reviewed clips</p>
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="flex items-center bg-cc-ground p-1 rounded-lg border border-border">
+          <div className="flex items-center bg-cc-ground p-1 rounded-full border border-border">
             <button
               type="button"
               onClick={() => setActiveChart('bar')}
-              className={`p-1.5 px-3 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+              className={`py-1 px-3 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
                 activeChart === 'bar'
-                  ? 'bg-primary text-white shadow-xs'
+                  ? 'bg-foreground text-background shadow-sm'
                   : 'text-muted-foreground hover:text-white'
               }`}
             >
               <BarChart3 className="size-3.5" />
-              <span>By Member</span>
+              <span>Per member</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveChart('pie')}
-              className={`p-1.5 px-3 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+              className={`py-1 px-3 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
                 activeChart === 'pie'
-                  ? 'bg-primary text-white shadow-xs'
+                  ? 'bg-foreground text-background shadow-sm'
                   : 'text-muted-foreground hover:text-white'
               }`}
             >
               <PieChart className="size-3.5" />
-              <span>Team Totals</span>
+              <span>Total</span>
             </button>
           </div>
         </div>

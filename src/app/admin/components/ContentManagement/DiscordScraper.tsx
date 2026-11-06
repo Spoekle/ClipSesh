@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import AdminSection from '../AdminSection';
 import {
   startChannelScan,
   getChannelScanStatus,
@@ -213,7 +214,7 @@ export const DiscordScraper: React.FC<DiscordScraperProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <AdminSection title="Scraper" description="Pull old clip links from Discord channels, preview them by season and import them.">
       {/* Confirmation Dialog */}
       <ConfirmationDialog
         isOpen={showConfirmDownload}
@@ -274,7 +275,7 @@ export const DiscordScraper: React.FC<DiscordScraperProps> = ({
         onDismissJob={handleDismissJob}
         onDismissAll={handleDismissAll}
       />
-    </div>
+    </AdminSection>
   );
 };
 
