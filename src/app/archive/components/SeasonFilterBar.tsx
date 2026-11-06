@@ -28,7 +28,7 @@ export const SeasonFilterBar: React.FC<SeasonFilterBarProps> = ({
   onSortChange,
 }) => {
   return (
-    <div className="sticky top-14 z-10 bg-card/95 backdrop-blur-md rounded-2xl border border-border mb-6 p-3 sm:p-3.5 shadow-md select-none">
+    <div className="sticky top-24 z-10 bg-card/95 backdrop-blur-md rounded-2xl border border-border mb-6 p-3 sm:p-3.5 shadow-md select-none">
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         {/* Search Box */}
         <div className="relative flex-1 min-w-[200px] sm:min-w-[240px] max-w-sm">

@@ -59,7 +59,7 @@ export const SeasonViewHeader: React.FC<SeasonViewHeaderProps> = ({
 
   return (
     <div className="relative w-full overflow-hidden select-none">
-      <div className="pointer-events-none absolute inset-0">
+      <div className="pointer-events-none absolute inset-0 mask-t-from-60%">
         <img src={backdrop} alt="" className="size-full scale-110 object-cover opacity-30 blur-2xl" />
         <div className={cn('absolute inset-0 bg-linear-to-br via-transparent to-transparent', theme.from)} />
         <div className="absolute inset-0 bg-linear-to-t from-background via-background/70 to-background/30" />
