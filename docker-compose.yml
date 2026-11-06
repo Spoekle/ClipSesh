@@ -19,19 +19,6 @@ services:
     networks:
       - clipsesh-network
 
-  # Only needed as the source for the one-time `npm run db:migrate-mongo`.
-  mongo:
-    image: mongo:latest
-    container_name: clipsesh-mongo
-    restart: unless-stopped
-    ports:
-      - "27018:27017"
-    volumes:
-      - mongo-data:/data/db
-      - ./mongo:/dump
-    networks:
-      - clipsesh-network
-
   app:
     build:
       context: .
@@ -48,19 +35,32 @@ services:
       - PORT=3000
       - HOSTNAME=0.0.0.0
       - DATABASE_URL=postgres://clipsesh:${POSTGRES_PASSWORD}@postgres:5432/clipsesh
-    env_file:
-      - path: .env
-        required: false
+      - FRONTEND_URL=${FRONTEND_URL}
+      - SECRET_KEY=${SECRET_KEY}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN:-}
+      - CC_CLIENT_ID=${CC_CLIENT_ID:-}
+      - CC_CLIENT_SECRET=${CC_CLIENT_SECRET:-}
+      - CC_BASE_URL=${CC_BASE_URL:-https://cube.community}
+      - MAIL_EMAIL=${MAIL_EMAIL:-}
+      - MAIL_PASSWORD=${MAIL_PASSWORD:-}
+      - MAIL_HOST=${MAIL_HOST:-}
+      - MAIL_PORT=${MAIL_PORT:-}
+      - MAIL_FROM=${MAIL_FROM:-}
     volumes:
-      - ./uploads:/app/uploads
-      - ./profilePictures:/app/profilePictures
-      - ./download:/app/download
+      - uploads:/app/uploads
+      - profile-pictures:/app/profilePictures
+      - download:/app/download
     networks:
       - clipsesh-network
 
 volumes:
   postgres-data:
-  mongo-data:
+  uploads:
+  profile-pictures:
+  download:
 
 networks:
   clipsesh-network:
