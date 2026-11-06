@@ -20,7 +20,7 @@ const STEPS: PipelineStep[] = [
     icon: ThumbsUp,
     title: 'Voting & review queue',
     body: 'Community members can upvote clips, while the Clip Team reviews the quality and makes the final selection.',
-    accent: 'bg-sky-500 text-white shadow-[0_0_30px_-4px_var(--color-sky-500)]',
+    accent: 'bg-primary text-white shadow-[0_0_30px_-4px_var(--primary)]',
   },
   {
     icon: Video,
@@ -53,7 +53,7 @@ export const PipelineSection: React.FC = () => (
         <div className="absolute top-2 bottom-2 left-[19px] w-0.5 rounded-full bg-border sm:left-[27px]" />
         <div
           aria-hidden
-          className="absolute top-2 bottom-2 left-[19px] w-0.5 scroll-fill-y rounded-full bg-linear-to-b from-primary via-sky-400 to-primary shadow-[0_0_14px_var(--primary)] sm:left-[27px]"
+          className="absolute top-2 bottom-2 left-[19px] w-0.5 scroll-fill-y rounded-full bg-primary shadow-[0_0_14px_var(--primary)] sm:left-[27px]"
         />
 
         {STEPS.map(({ icon: Icon, title, body, accent }, i) => (

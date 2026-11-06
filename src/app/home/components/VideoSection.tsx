@@ -40,17 +40,10 @@ export const VideoSection: React.FC<VideoSectionProps> = ({ showVideo, setShowVi
               >
                 <div className="absolute inset-0 flex items-center justify-center bg-black/45 transition-colors group-hover:bg-black/25">
                   <div className="relative flex size-16 items-center justify-center">
-                    <span className="absolute inset-0 rounded-full bg-primary/40 motion-safe:animate-ping" />
                     <span className="relative flex size-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_0_40px_var(--primary)] transition-transform duration-200 group-hover:scale-110">
                       <Play className="ml-0.5 size-6 fill-current" />
                     </span>
                   </div>
-                </div>
-                <div className="absolute right-2.5 bottom-2.5 left-2.5 flex items-center justify-between rounded-lg border border-white/10 bg-black/75 px-3 py-1.5 text-xs text-foreground backdrop-blur-xs">
-                  <span className="flex items-center gap-1.5 font-semibold">
-                    <Film className="size-3.5 text-primary" /> Latest Highlights Video
-                  </span>
-                  <span className="text-[11px] text-neutral-300">Click to play</span>
                 </div>
               </button>
             )}
@@ -58,7 +51,7 @@ export const VideoSection: React.FC<VideoSectionProps> = ({ showVideo, setShowVi
 
           <div className="flex items-center justify-between gap-3 p-3.5">
             <div>
-              <h3 className="text-sm font-semibold text-foreground">Official Season Highlights Video</h3>
+              <h3 className="text-sm font-semibold text-foreground">Latest Season Highlights Video</h3>
               <p className="mt-0.5 text-xs text-muted-foreground">Curated from the highest-rated community clips</p>
             </div>
             <a

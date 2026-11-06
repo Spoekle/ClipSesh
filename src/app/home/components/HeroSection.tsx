@@ -34,12 +34,8 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
       <div className={`${ENTER} fade-in slide-in-from-bottom-2 duration-500`}>
         <Link
           href="/clips"
-          className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[11px] font-bold tracking-[0.2em] text-primary uppercase backdrop-blur-sm transition-colors hover:bg-primary/20"
+          className="inline-flex items-center gap-2 rounded-sm border border-primary/30 bg-primary/10 px-3 py-1 text-[11px] font-bold tracking-[0.2em] text-primary uppercase backdrop-blur-sm transition-colors hover:bg-primary/20"
         >
-          <span className="relative flex size-2">
-            <span className="absolute inline-flex size-full rounded-full bg-primary opacity-75 motion-safe:animate-ping" />
-            <span className="relative inline-flex size-2 rounded-full bg-primary" />
-          </span>
           {currentSeason.season} {currentSeason.year} · {seasonRemaining.daysRemaining}d left
         </Link>
       </div>
@@ -110,7 +106,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           </Button>
         </div>
 
-        <div className="mx-auto mt-10 grid max-w-md grid-cols-3 gap-px overflow-hidden rounded-2xl border border-border bg-border text-left lg:mx-0">
+        <div className="mx-auto mt-10 grid max-w-md grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border bg-border text-left lg:mx-0">
           <Link href="/archive" className="group bg-card/80 px-4 py-3 backdrop-blur-md" title="Explore clip archives">
             <div className="text-xl font-bold text-foreground tabular-nums transition-colors group-hover:text-primary sm:text-2xl">
               {loadingArchive && !totalClips ? (
@@ -129,10 +125,6 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               <span className="font-semibold text-amber-400">{seasonRemaining.daysRemaining}d</span> remaining
             </div>
           </Link>
-          <div className="bg-card/80 px-4 py-3 backdrop-blur-md">
-            <div className="text-xl font-bold text-foreground sm:text-2xl">Official</div>
-            <div className="mt-0.5 text-[11px] text-muted-foreground">Cube Community</div>
-          </div>
         </div>
       </div>
     </div>
