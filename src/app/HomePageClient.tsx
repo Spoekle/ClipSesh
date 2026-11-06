@@ -9,7 +9,8 @@ import { Clip } from '@/types/adminTypes';
 import HeroSection from './home/components/HeroSection';
 import VideoSection from './home/components/VideoSection';
 import LatestClipsSection from './home/components/LatestClipsSection';
-import CommunitySection from './home/components/CommunitySection';
+import PipelineSection from './home/components/PipelineSection';
+import JoinBanner from './home/components/JoinBanner';
 
 interface HomeConfig {
   latestVideoLink?: string;
@@ -89,9 +90,13 @@ export default function HomePageClient({
     const fetchTrending = async () => {
       try {
         setLoadingClips(true);
-        const data = await getClips({ limit: 4, sortBy: 'createdAt', sortOrder: 'desc' });
+        const data = await getClips({
+          limit: 5,
+          sortBy: 'createdAt',
+          sortOrder: 'desc',
+        });
         if (isMounted && data && data.clips) {
-          setLatestClips(data.clips.slice(0, 4));
+          setLatestClips(data.clips.slice(0, 5));
         }
       } catch (error) {
         console.error('Error fetching latest clips:', error);
@@ -116,12 +121,8 @@ export default function HomePageClient({
   };
 
   const videoId = config.latestVideoLink ? getYoutubeId(config.latestVideoLink) : null;
-  const embedUrl = videoId
-    ? `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`
-    : null;
-  const thumbnailUrl = videoId
-    ? `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
-    : null;
+  const embedUrl = videoId ? `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0` : null;
+  const thumbnailUrl = videoId ? `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` : null;
 
   const clipCountDisplay = useMemo(() => {
     if (totalClips !== null && totalClips > 0) {
@@ -134,10 +135,10 @@ export default function HomePageClient({
   }, [totalClips, config.clipAmount]);
 
   return (
-    <div className="min-h-screen bg-cc-ground text-cc-text transition-colors duration-200">
-      {/* Hero & Video Section */}
-      <section className="relative pt-8 pb-14 md:pt-14 md:pb-20 px-4 sm:px-8 max-w-[1200px] mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+    <div className="min-h-screen overflow-x-clip bg-background text-foreground">
+
+      <section>
+        <div className="mx-auto grid max-w-[1200px] grid-cols-1 items-center gap-12 px-4 pt-12 pb-20 sm:px-8 md:pt-20 md:pb-28 lg:grid-cols-12 lg:gap-12">
           <HeroSection
             currentSeason={currentSeason}
             seasonRemaining={seasonRemaining}
@@ -145,7 +146,6 @@ export default function HomePageClient({
             loadingArchive={loadingArchive}
             totalClips={totalClips}
           />
-
           <VideoSection
             showVideo={showVideo}
             setShowVideo={setShowVideo}
@@ -155,11 +155,9 @@ export default function HomePageClient({
         </div>
       </section>
 
-      {/* Trending Community Highlights Grid */}
       <LatestClipsSection latestClips={latestClips} loadingClips={loadingClips} />
-
-      {/* Community Process & Join Section */}
-      <CommunitySection />
+      <PipelineSection />
+      <JoinBanner />
     </div>
   );
 }

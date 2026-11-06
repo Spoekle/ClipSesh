@@ -151,3 +151,111 @@
     box-shadow: 0 0 0 0 transparent;
   }
 }
+
+/* Home page motion. Entrance utilities are gated by the caller with `motion-safe:`;
+   scroll-driven ones gate themselves and degrade to static where `animation-timeline` is unsupported. */
+@utility animate-saber-draw {
+  animation: saber-draw 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.55s both;
+}
+
+/* Rises into place as the element enters the viewport. */
+@utility scroll-reveal {
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (animation-timeline: view()) {
+      animation: reveal-up linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 70%;
+    }
+  }
+}
+
+/* Slides in from the right as the element enters the viewport. */
+@utility scroll-reveal-x {
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (animation-timeline: view()) {
+      animation: reveal-x linear both;
+      animation-timeline: view();
+      animation-range: entry 10% cover 35%;
+    }
+  }
+}
+
+/* Spins and scales up as the element enters the viewport. */
+@utility scroll-pop {
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (animation-timeline: view()) {
+      animation: pop-in linear both;
+      animation-timeline: view();
+      animation-range: entry 20% cover 35%;
+    }
+  }
+}
+
+/* Horizontal scale tracking total page scroll progress. */
+@utility scroll-progress-x {
+  transform-origin: left;
+  transform: scaleX(0);
+  @supports (animation-timeline: scroll()) {
+    animation: grow-x linear both;
+    animation-timeline: scroll(root);
+  }
+  @supports not (animation-timeline: scroll()) {
+    display: none;
+  }
+}
+
+/* Vertical fill tracking the element's own passage through the viewport. */
+@utility scroll-fill-y {
+  transform-origin: top;
+  @supports (animation-timeline: view()) {
+    animation: grow-y linear both;
+    animation-timeline: view();
+    animation-range: cover 15% cover 60%;
+  }
+}
+
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    translate: 0 32px;
+    scale: 0.97;
+  }
+}
+
+@keyframes reveal-x {
+  from {
+    opacity: 0;
+    translate: 48px 0;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    scale: 0;
+    rotate: -45deg;
+  }
+}
+
+@keyframes grow-x {
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes grow-y {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes saber-draw {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}

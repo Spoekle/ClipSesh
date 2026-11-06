@@ -4,7 +4,7 @@ import HomePageClient from './HomePageClient';
 export default async function HomePage() {
   const [initialConfig, initialClips] = await Promise.all([
     getPublicConfigServer(),
-    getLatestClipsServer(4),
+    getLatestClipsServer(5),
   ]);
 
   return (

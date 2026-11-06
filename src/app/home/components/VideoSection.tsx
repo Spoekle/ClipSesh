@@ -1,10 +1,8 @@
 'use client';
 
 import React from 'react';
-import { m } from 'framer-motion';
 import { Play, Film } from 'lucide-react';
 import { YoutubeIcon } from '@/components/BrandIcons';
-import { Card } from '@/components/ui/card';
 
 interface VideoSectionProps {
   showVideo: boolean;
@@ -13,71 +11,69 @@ interface VideoSectionProps {
   thumbnailUrl: string | null;
 }
 
-export const VideoSection: React.FC<VideoSectionProps> = ({
-  showVideo,
-  setShowVideo,
-  embedUrl,
-  thumbnailUrl,
-}) => {
+export const VideoSection: React.FC<VideoSectionProps> = ({ showVideo, setShowVideo, embedUrl, thumbnailUrl }) => {
   return (
-    <m.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.15 }}
-      className="lg:col-span-5"
+    <div
+      className="lg:col-span-5 motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:slide-in-from-bottom-6 motion-safe:fill-mode-both motion-safe:duration-700 motion-safe:ease-out"
+      style={{ animationDelay: '250ms' }}
     >
-      <Card className="rounded-xl border-border shadow-xl p-2.5 overflow-hidden bg-card">
-        <div className="relative aspect-video rounded-lg overflow-hidden bg-background flex items-center justify-center">
-          {showVideo && embedUrl ? (
-            <iframe
-              className="w-full h-full"
-              src={embedUrl}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              title="Latest Highlight Video"
-            />
-          ) : (
-            <div
-              className="w-full h-full bg-cover bg-center relative group cursor-pointer"
-              style={{ backgroundImage: `url(${thumbnailUrl})` }}
-              onClick={() => setShowVideo(true)}
-            >
-              <div className="absolute inset-0 bg-black/45 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-                <div className="w-13 h-13 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform duration-200">
-                  <Play className="size-5 fill-current ml-0.5" />
+      <div className="rounded-2xl bg-primary/70 p-px shadow-[0_30px_80px_-20px_color-mix(in_oklch,var(--primary)_45%,transparent)]">
+        <div className="overflow-hidden rounded-2xl bg-card/95 p-2.5 backdrop-blur-xl">
+          <div className="relative flex aspect-video items-center justify-center overflow-hidden rounded-xl bg-background">
+            {showVideo && embedUrl ? (
+              <iframe
+                className="h-full w-full"
+                src={embedUrl}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                title="Latest Highlight Video"
+              />
+            ) : (
+              <button
+                type="button"
+                className="group relative h-full w-full bg-cover bg-center"
+                style={{
+                  backgroundImage: thumbnailUrl ? `url(${thumbnailUrl})` : undefined,
+                }}
+                onClick={() => setShowVideo(true)}
+                aria-label="Play latest highlights video"
+              >
+                <div className="absolute inset-0 flex items-center justify-center bg-black/45 transition-colors group-hover:bg-black/25">
+                  <div className="relative flex size-16 items-center justify-center">
+                    <span className="absolute inset-0 rounded-full bg-primary/40 motion-safe:animate-ping" />
+                    <span className="relative flex size-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_0_40px_var(--primary)] transition-transform duration-200 group-hover:scale-110">
+                      <Play className="ml-0.5 size-6 fill-current" />
+                    </span>
+                  </div>
                 </div>
-              </div>
-              <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between text-xs text-foreground bg-black/80 backdrop-blur-xs px-3 py-1.5 rounded-md border border-white/10">
-                <span className="font-semibold flex items-center gap-1.5">
-                  <Film className="size-3.5 text-primary" /> Latest Highlights Video
-                </span>
-                <span className="text-neutral-300 text-[11px]">Click to play</span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="p-3.5 flex items-center justify-between gap-3">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">
-              Official Season Highlights Video
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Curated from the highest-rated community clips
-            </p>
+                <div className="absolute right-2.5 bottom-2.5 left-2.5 flex items-center justify-between rounded-lg border border-white/10 bg-black/75 px-3 py-1.5 text-xs text-foreground backdrop-blur-xs">
+                  <span className="flex items-center gap-1.5 font-semibold">
+                    <Film className="size-3.5 text-primary" /> Latest Highlights Video
+                  </span>
+                  <span className="text-[11px] text-neutral-300">Click to play</span>
+                </div>
+              </button>
+            )}
           </div>
-          <a
-            href="https://www.youtube.com/@CubeCommunity"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-background hover:bg-secondary text-foreground text-xs px-3 py-1.5 rounded-full font-medium transition-colors flex items-center gap-1.5 shrink-0 border border-border"
-          >
-            <YoutubeIcon size={13} className="text-primary" />
-            <span>Subscribe</span>
-          </a>
+
+          <div className="flex items-center justify-between gap-3 p-3.5">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Official Season Highlights Video</h3>
+              <p className="mt-0.5 text-xs text-muted-foreground">Curated from the highest-rated community clips</p>
+            </div>
+            <a
+              href="https://www.youtube.com/@CubeCommunity"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
+            >
+              <YoutubeIcon size={13} className="text-primary" />
+              <span>Subscribe</span>
+            </a>
+          </div>
         </div>
-      </Card>
-    </m.div>
+      </div>
+    </div>
   );
 };
 
