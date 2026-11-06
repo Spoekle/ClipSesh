@@ -1,0 +1,177 @@
+'use client';
+
+import React, { useEffect, useRef, useCallback } from 'react';
+import ClipItem from './components/ClipItem';
+import Pagination from './components/Pagination';
+import { Clip, User, Rating } from '@/types/adminTypes';
+import { Film } from 'lucide-react';
+
+interface ClipGridProps {
+  user: User | null;
+  ratings: Record<string, Rating>;
+  config?: { denyThreshold?: number; clipAmount?: number; itemsPerPage?: number } | null;
+  filterRatedClips: boolean;
+  filterDeniedClips?: boolean;
+  setExpandedClip: (clipId: string) => void;
+  isLoading: boolean;
+  filteredClips: Clip[];
+  currentClips: Clip[];
+  currentPage: number;
+  totalPages: number;
+  paginate: (pageNumber: number) => void;
+  itemsPerPage: number;
+  hasNextPage?: boolean;
+  isFetchingNextPage?: boolean;
+  fetchNextPage?: () => void;
+  useInfiniteScroll?: boolean;
+}
+
+const ClipGrid: React.FC<ClipGridProps> = ({
+  isLoading,
+  filteredClips,
+  currentClips,
+  user,
+  ratings,
+  config,
+  filterRatedClips,
+  setExpandedClip,
+  currentPage,
+  totalPages,
+  paginate,
+  hasNextPage,
+  isFetchingNextPage,
+  fetchNextPage,
+  useInfiniteScroll = false,
+}) => {
+  const lastElementRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!useInfiniteScroll || !hasNextPage || isFetchingNextPage || isLoading) return;
+
+    const checkAndLoadMore = () => {
+      if (lastElementRef.current) {
+        const rect = lastElementRef.current.getBoundingClientRect();
+        const isVisible = rect.top < window.innerHeight + 500;
+
+        if (isVisible && hasNextPage && fetchNextPage) {
+          fetchNextPage();
+        }
+      }
+    };
+
+    checkAndLoadMore();
+
+    const handleScroll = () => checkAndLoadMore();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [useInfiniteScroll, hasNextPage, isFetchingNextPage, isLoading, fetchNextPage, currentClips.length]);
+
+  const lastClipElementRef = useCallback((node: HTMLDivElement | null) => {
+    lastElementRef.current = node;
+  }, []);
+
+  if (isLoading && currentClips.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[300px] w-full">
+        <div className="flex flex-col items-center justify-center gap-3">
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-border border-t-primary"></div>
+          <p className="text-sm font-medium text-muted-foreground">Loading clips...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (filteredClips.length === 0 && !isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[300px] bg-cc-card rounded-2xl border border-border p-10 text-center shadow-sm">
+        <div className="w-14 h-14 rounded-2xl bg-secondary border border-border flex items-center justify-center text-muted-foreground mb-4 shadow-inner">
+          <Film className="size-6" />
+        </div>
+        <h2 className="text-lg font-bold text-foreground mb-2">No Clips Found</h2>
+        <p className="text-muted-foreground text-center max-w-md text-xs sm:text-sm leading-relaxed">
+          {filterRatedClips
+            ? "You've rated all available clips. Check back later for new content!"
+            : "No clips match your current filters. Try adjusting your search settings or resetting filters."}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="clip-grid -mx-4 sm:mx-0">
+      <div
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2"
+      >
+        {currentClips.map((clip, index) => {
+          const isLastItem = index === currentClips.length - 1;
+          const shouldAttachRef = useInfiniteScroll && isLastItem;
+
+          return (
+            <div
+              key={clip._id}
+              ref={shouldAttachRef ? lastClipElementRef : null}
+            >
+              <ClipItem
+                clip={clip}
+                user={user}
+                ratings={ratings}
+                config={config}
+                filterRatedClips={filterRatedClips}
+                setExpandedClip={setExpandedClip}
+              />
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Loading indicator for infinite scroll */}
+      {useInfiniteScroll && isFetchingNextPage && (
+        <div className="flex justify-center items-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-4 border-border border-t-primary"></div>
+          <span className="ml-3 text-muted-foreground">Loading more clips...</span>
+        </div>
+      )}
+
+      {/* End of content message for infinite scroll */}
+      {useInfiniteScroll && !hasNextPage && currentClips.length > 0 && (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">You've reached the end of the clips!</p>
+        </div>
+      )}
+
+      {/* Fallback load more button */}
+      {useInfiniteScroll && hasNextPage && !isFetchingNextPage && (
+        <div className="flex justify-center mt-8">
+          <button
+            onClick={fetchNextPage}
+            className="px-5 py-2.5 text-sm font-semibold bg-cc-card hover:bg-secondary text-white border border-border rounded-xl transition-all cursor-pointer shadow-xs"
+          >
+            Load More
+          </button>
+        </div>
+      )}
+
+      {/* Empty placeholders for grid alignment when not full row */}
+      {!useInfiniteScroll && currentClips.length > 0 && currentClips.length % 4 !== 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-6">
+          {[...Array(4 - (currentClips.length % 4))].map((_, i) => (
+            <div key={i} className="hidden xl:block"></div>
+          ))}
+        </div>
+      )}
+
+      {/* Pagination component - only show if not using infinite scroll */}
+      {!useInfiniteScroll && totalPages > 1 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={paginate}
+          disabled={isLoading}
+        />
+      )}
+    </div>
+  );
+};
+
+export default ClipGrid;

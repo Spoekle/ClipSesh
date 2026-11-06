@@ -1,0 +1,303 @@
+// User-related types
+export interface User {
+  _id: string;
+  username: string;
+  email?: string;
+  password?: string;
+  roles: string[];
+  profilePicture?: string;
+  discordId?: string;
+  discordUsername?: string;
+  ccId?: string;
+  ccUsername?: string;
+  status?: string;
+  joinDate?: string;
+  createdAt?: string;
+}
+
+export interface RatingDistributionProps {
+  userRatings: UserRating[];
+  sortBy: 'username' | 'rating' | 'percentage';
+  setSortBy: React.Dispatch<React.SetStateAction<'username' | 'rating' | 'percentage'>>;
+}
+
+export interface CreateUserFormData {
+  username: string;
+  password: string;
+  email: string;
+  roles: string[];
+  status?: string;
+}
+
+export interface FormErrors {
+  username?: string;
+  password?: string;
+  email?: string;
+  roles?: string;
+}
+
+// Clip-related types
+export interface Clip {
+  _id: string;
+  title: string;
+  url: string;
+  thumbnail?: string;
+  streamer: string;
+  submitter: string;
+  discordSubmitterId?: string;
+  link?: string;
+  status?: string;
+  upvotes: number;
+  downvotes: number;
+  views?: number;
+  comments: Comment[];
+  season?: string;
+  year?: number;
+  archived?: boolean;
+  archivedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Reply {
+  _id: string;
+  username: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface Comment {
+  _id: string;
+  userId?: string;
+  username: string;
+  comment: string;
+  createdAt: string;
+  replies?: Reply[];
+}
+
+// Rating-related types
+export interface RatingCount {
+  rating: string;
+  count: number;
+  users: RatingUser[];
+}
+
+// Updated Rating interface to match actual structure
+export interface RatingUser {
+  userId: string;
+  username: string;
+}
+
+export interface Rating {
+  clipId: string;
+  ratingCounts: RatingCount[];
+  totalRatings: number;
+  ratings?: {
+    '1'?: RatingUser[];
+    '2'?: RatingUser[];
+    '3'?: RatingUser[];
+    '4'?: RatingUser[];
+    deny?: RatingUser[];
+  };
+}
+
+export interface UserRating {
+  username: string;
+  '1': number;
+  '2': number;
+  '3': number;
+  '4': number;
+  deny: number;
+  total: number;
+  percentageRated: number;
+}
+
+// Other admin dashboard types
+export interface SeasonInfo {
+  season?: string;
+  year?: number;
+  clipAmount: number;
+}
+
+export interface Zip {
+  _id: string;
+  name: string;
+  url: string;
+  season: string;
+  year: number;
+  clipAmount: number;
+  size: number;
+  createdAt: string;
+}
+
+// Chart data types for statistics
+export interface PieData {
+  name: string;
+  value: number;
+}
+
+export interface SeasonTransitionLog {
+  timestamp: string | Date;
+  action: 'submission_closed' | 'season_started' | 'auto_zip_started' | 'auto_zip_completed' | 'auto_zip_failed' | 'season_unarchived';
+  season: 'Spring' | 'Summer' | 'Fall' | 'Winter';
+  year: number;
+  details: string;
+}
+
+export interface LastArchivedSeason {
+  season: 'Spring' | 'Summer' | 'Fall' | 'Winter';
+  year: number;
+  jobId?: string;
+  archivedAt: string | Date;
+  clipCount: number;
+  zipUrl?: string;
+  status: 'success' | 'failed';
+  error?: string;
+}
+
+export interface SeasonAutomationConfig {
+  enabled: boolean;
+  seasonEndDay: number;
+  newSeasonStartDay: number;
+  zipArchiveDay: number;
+  denyThreshold?: number;
+  lastArchivedSeason?: LastArchivedSeason;
+  transitionHistory?: SeasonTransitionLog[];
+  autoArchiveSkips?: Array<{ season: 'Spring' | 'Summer' | 'Fall' | 'Winter'; year: number }>;
+}
+
+// Admin configuration interfaces
+export interface AdminConfig {
+  denyThreshold: number;
+  latestVideoLink?: string;
+  clipChannelIds?: string[];
+  blacklistedSubmitters?: Array<{username: string; userId: string}>;
+  blacklistedStreamers?: string[];
+  seasonAutomation?: SeasonAutomationConfig;
+}
+
+// Admin statistics interface
+export interface AdminStats {
+  userCount: number;
+  activeUserCount: number;
+  clipCount: number;
+  ratedClipsCount: number;
+  deniedClipsCount: number;
+}
+
+// Config response interface
+export interface ConfigResponse {
+  public?: {
+    latestVideoLink?: string;
+    clipAmount?: number;
+  };
+  admin?: {
+    denyThreshold?: number;
+    clipChannelIds?: string[];
+    blacklistedSubmitters?: Array<{username: string; userId: string}>;
+    blacklistedStreamers?: string[];
+    seasonAutomation?: SeasonAutomationConfig;
+  };
+}
+
+// Process clips request interface
+export interface ProcessClipsRequest {
+  clips: Array<Clip & { rating: string; index: number }>;
+  season: string;
+  year: number;
+}
+
+// Process job status interface
+export interface ProcessJobStatus {
+  jobId?: string;
+  progress: number;
+  status: 'processing' | 'completed' | 'error' | 'cancelled';
+  phase?: string;
+  total?: number;
+  processed?: number;
+  season?: string;
+  year?: number;
+  startTime?: number;
+  endTime?: number | null;
+  zipFilename?: string | null;
+  zipId?: any;
+  error?: string | null;
+  logs?: Array<{ time: number; message: string; level: string }>;
+  message?: string;
+  elapsedTime?: number;
+}
+
+// Blacklisted user interfaces
+export interface BlacklistedDiscordUser {
+  id: string;
+  username: string;
+  discriminator?: string;
+  global_name?: string;
+  avatar?: string;
+}
+
+export interface BlacklistData {
+  blacklistedSubmitters: BlacklistedDiscordUser[];
+  blacklistedStreamers: string[];
+}
+
+// Report-related types
+export interface Report {
+  _id: string;
+  clipId: string;
+  clipTitle: string;
+  clipStreamer: string;
+  clipSubmitter: string;
+  reporterId: string;
+  reporterUsername: string;
+  reason: string;
+  status: 'pending' | 'reviewed' | 'resolved' | 'dismissed';
+  reviewedBy?: string;
+  reviewedAt?: string;
+  adminNotes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReportResponse {
+  reports: Report[];
+  total: number;
+  page: number;
+  pages: number;
+  pendingCount: number;
+}
+
+export interface ReportUpdateRequest {
+  status?: 'pending' | 'reviewed' | 'resolved' | 'dismissed';
+  adminNotes?: string;
+}
+
+// Report message types
+export interface ReportMessageReadBy {
+  userId: string;
+  username: string;
+  readAt: string;
+}
+
+export interface ReportMessage {
+  _id: string;
+  reportId: string;
+  senderId: string;
+  senderUsername: string;
+  senderRole: 'reporter' | 'admin';
+  message: string;
+  isInternal: boolean;
+  readBy: ReportMessageReadBy[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SendMessageRequest {
+  message: string;
+  isInternal?: boolean;
+}
+
+export interface ReportWithMessages extends Report {
+  messages?: ReportMessage[];
+  unreadCount?: number;
+}

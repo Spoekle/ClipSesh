@@ -3,30 +3,46 @@
 ## About
 ClipSesh is a tool developed by Spoekle that is used by Cube Community Staff to review highlight clips.
 
-This tool has been divided in 3 parts:
-- A Frontend
-- A Backend
-- Discord Bot
-
-The frontend is based on a React web application, together with TailwindCSS, this has been styled in a minimalistic way.
+It runs as a single Node.js server (`server.ts`) that hosts the Next.js app and API, Socket.IO, the Discord bot, and the season scheduler.
 
 ## Contributing
-If you decide you want to help with the development with ClipSesh, feel free to open a pull request. To start developing you can follow these steps:
-- Make sure you have npm/nodejs and python installed
-- Fill in all .env and config files with the needed information
+If you decide you want to help with the development of ClipSesh, feel free to open a pull request. To start developing:
+- Make sure you have Node.js and npm installed
+- Copy `.env.example` to `.env` and fill in necessary configuration
   
-## To run the whole stack, follow these steps
-### Running both the frontend and the backend at once?
-- Make sure all `.env` files are filled out.
-- Run the `setup.bat` file and follow the instructions in the terminal.
-### Frontend
-- Fill in the `.env` file withe the backend url.
-- Run `npm run dev` to start the Vite environment, this will run on port `5173` by default, but will show you the port when it starts.
+## Running the Application
+- Install dependencies:
+  ```bash
+  npm install
+  ```
+- Run the development server:
+  ```bash
+  npm run dev
+  ```
+  The app will run on `http://localhost:3000` by default. A Postgres database must be reachable at `DATABASE_URL`; pending migrations in `drizzle/` are applied automatically on startup.
+- Type-check:
+  ```bash
+  npm run typecheck
+  ```
 
-### Backend
-- Fill in the `.env` file with what you need, I still recommend filling in everything.
-- Run `npm run dev` to start the dev environment.
-- Note the admin credentials from the terminal, as these will be needed to login.
+## Database
+ClipSesh uses Postgres with [Drizzle ORM](https://orm.drizzle.team). The schema lives in `src/db/schema.ts`.
+- After changing the schema, generate a migration (and commit the files in `drizzle/`):
+  ```bash
+  npm run db:generate
+  ```
+- Migrations run automatically when the server starts; `npm run db:migrate` applies them manually.
 
-### Clipsesh is built using React.js, TailwindCSS, Docker, Express.js and MongoDB
-[![My Skills](https://skillicons.dev/icons?i=react,tailwind,docker,express,mongodb,typescript,javascript,python)](https://clipsesh.cube.community)
+### Migrating from MongoDB
+`npm run db:migrate-mongo` copies everything from the old MongoDB database (`MONGODB_URI`) into Postgres (`DATABASE_URL`), keeping all ids. It runs in a single transaction and prints a per-table report.
+- Rehearse first; this imports everything and then rolls back:
+  ```bash
+  npm run db:migrate-mongo -- --dry-run
+  ```
+- Run it for real (add `--yes` if Postgres already has data you want replaced):
+  ```bash
+  npm run db:migrate-mongo
+  ```
+
+### ClipSesh is built using Next.js, React, TailwindCSS, Socket.IO, and PostgreSQL
+[![My Skills](https://skillicons.dev/icons?i=react,tailwind,docker,express,postgres,typescript,javascript,python)](https://clipsesh.cube.community)

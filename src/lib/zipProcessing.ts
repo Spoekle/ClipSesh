@@ -1,0 +1,774 @@
+import fs from 'fs';
+import path from 'path';
+import { Readable } from 'stream';
+import * as archiverPkg from 'archiver';
+
+function createZipArchive(options: any = {}) {
+  const pkg: any = archiverPkg;
+  if (typeof pkg.ZipArchive === 'function') {
+    return new pkg.ZipArchive(options);
+  }
+  if (pkg.default && typeof pkg.default.ZipArchive === 'function') {
+    return new pkg.default.ZipArchive(options);
+  }
+  if (typeof pkg.default === 'function') {
+    return pkg.default('zip', options);
+  }
+  if (typeof pkg === 'function') {
+    return pkg('zip', options);
+  }
+  throw new Error('Could not initialize Archiver / ZipArchive');
+}
+import { and, eq, inArray } from 'drizzle-orm';
+import { db } from '@/lib/db';
+import { clips as clipsTable, zips } from '@/db/schema';
+import {
+  getAdminConfig,
+  getRatingDocs,
+  logSeasonTransition,
+  refreshClipCount,
+} from '@/db/queries';
+import { wsManager } from '@/lib/WebSocketManager';
+import { requireSeason } from '@/lib/seasonHelpers';
+
+export interface ProcessingJob {
+  jobId?: string;
+  total: number;
+  processed: number;
+  status: 'processing' | 'completed' | 'error' | 'cancelled';
+  phase: string;
+  zipFilename: string;
+  zipId?: any;
+  season: string;
+  year: number;
+  startTime: number;
+  endTime?: number | null;
+  error?: string | null;
+  clips: any[];
+  logs: Array<{ time: number; message: string; level: string }>;
+}
+
+const activeJobCleanups = new Map<string, () => void>();
+
+declare global {
+  // eslint-disable-next-line no-var
+  var processingJobsStore: Record<string, ProcessingJob> | undefined;
+}
+
+const processingJobs: Record<string, ProcessingJob> =
+  global.processingJobsStore || (global.processingJobsStore = {});
+
+function formatBytes(bytes: number, decimals: number = 2): string {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
+async function updateClipCount(): Promise<number> {
+  try {
+    return await refreshClipCount();
+  } catch (error) {
+    console.error('Error updating clip count:', error);
+    return 0;
+  }
+}
+
+function cleanupOldJobs() {
+  const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  for (const id of Object.keys(processingJobs)) {
+    const job = processingJobs[id];
+    if (job.status !== 'processing' && job.endTime && now - job.endTime > ONE_DAY_MS) {
+      delete processingJobs[id];
+    }
+  }
+}
+
+export function calculateClipRating(ratingsDoc: any): string | undefined {
+  if (!ratingsDoc) return undefined;
+
+  let r1 = 0;
+  let r2 = 0;
+  let r3 = 0;
+  let r4 = 0;
+
+  if (Array.isArray(ratingsDoc.ratingCounts)) {
+    for (const item of ratingsDoc.ratingCounts) {
+      if (item.rating === '1') r1 = item.count || 0;
+      else if (item.rating === '2') r2 = item.count || 0;
+      else if (item.rating === '3') r3 = item.count || 0;
+      else if (item.rating === '4') r4 = item.count || 0;
+    }
+  } else if (ratingsDoc.ratings) {
+    r1 = Array.isArray(ratingsDoc.ratings['1']) ? ratingsDoc.ratings['1'].length : (Number(ratingsDoc.ratings['1']) || 0);
+    r2 = Array.isArray(ratingsDoc.ratings['2']) ? ratingsDoc.ratings['2'].length : (Number(ratingsDoc.ratings['2']) || 0);
+    r3 = Array.isArray(ratingsDoc.ratings['3']) ? ratingsDoc.ratings['3'].length : (Number(ratingsDoc.ratings['3']) || 0);
+    r4 = Array.isArray(ratingsDoc.ratings['4']) ? ratingsDoc.ratings['4'].length : (Number(ratingsDoc.ratings['4']) || 0);
+  }
+
+  const totalVotes = r1 + r2 + r3 + r4;
+  if (totalVotes === 0) return undefined;
+
+  const sum = 1 * r1 + 2 * r2 + 3 * r3 + 4 * r4;
+  const avg = Math.round(sum / totalVotes);
+  return Math.max(1, Math.min(4, avg)).toString();
+}
+
+export async function startProcessingJob(
+  season: string,
+  year: number,
+  customDenyThreshold?: number,
+  providedClips?: any[]
+): Promise<{ jobId: string; total: number; supportedEvents: string[] }> {
+  cleanupOldJobs();
+
+  let denyThreshold = customDenyThreshold;
+  if (!denyThreshold) {
+    const adminConfig = await getAdminConfig();
+    denyThreshold = adminConfig.denyThreshold || 5;
+  }
+
+  const years =
+    season.toLowerCase() === 'winter'
+      ? [Number(year), Number(year) - 1, Number(year) + 1]
+      : [Number(year)];
+
+  const clips = await db
+    .select()
+    .from(clipsTable)
+    .where(
+      and(
+        eq(clipsTable.season, requireSeason(season)),
+        inArray(clipsTable.year, years),
+        eq(clipsTable.archived, false)
+      )
+    );
+
+  let allowedClips: any[] = [];
+  if (Array.isArray(providedClips) && providedClips.length > 0) {
+    const allClipIds = providedClips.map((c) => String(c._id));
+    const ratingsMap = await getRatingDocs(allClipIds);
+
+    allowedClips = providedClips
+      .map((clip) => {
+        const ratingsDoc = ratingsMap.get(String(clip._id));
+        const denyCount = ratingsDoc?.ratings?.deny?.length || 0;
+        if (denyCount >= (denyThreshold || 5)) return null;
+
+        const rating = clip.rating || calculateClipRating(ratingsDoc);
+        if (!rating) return null;
+
+        return {
+          ...clip,
+          rating,
+        };
+      })
+      .filter((c): c is any => c !== null);
+  } else {
+    const ratingsMap = await getRatingDocs(clips.map((c) => c._id));
+
+    for (const clip of clips) {
+      const ratingsDoc = ratingsMap.get(clip._id);
+      const denyCount = ratingsDoc?.ratings?.deny?.length || 0;
+      if (denyCount < (denyThreshold || 5)) {
+        const rating = calculateClipRating(ratingsDoc);
+        if (rating) {
+          allowedClips.push({
+            ...clip,
+            rating,
+          });
+        }
+      }
+    }
+  }
+
+  const jobId = `job-${Date.now()}`;
+  const totalClips = allowedClips.length;
+
+  processingJobs[jobId] = {
+    jobId,
+    total: totalClips,
+    processed: 0,
+    status: 'processing',
+    phase: 'initializing',
+    zipFilename: '',
+    season,
+    year,
+    startTime: Date.now(),
+    clips: allowedClips.map((clip, index) => ({
+      ...clip,
+      index,
+      status: 'pending',
+      startTime: null,
+      endTime: null,
+      error: null,
+    })),
+    logs: [
+      {
+        time: Date.now(),
+        message: 'Job initialization started',
+        level: 'info',
+      },
+    ],
+  };
+
+  const supportedEvents = [
+    `job:started:${jobId}`,
+    `job:clip:processing:${jobId}`,
+    `job:clip:processed:${jobId}`,
+    `job:clip:error:${jobId}`,
+    `job:progress:${jobId}`,
+    `job:phase:${jobId}`,
+    `job:completed:${jobId}`,
+    `job:error:${jobId}`,
+  ];
+
+  wsManager.emitJobStarted(jobId, totalClips, season, year);
+
+  // Run in background without blocking response
+  processClipsAsync(jobId, allowedClips, clips, season, year).catch((err) => {
+    console.error(`Background processing error for ${jobId}:`, err);
+  });
+
+  return { jobId, total: totalClips, supportedEvents };
+}
+
+async function processClipsAsync(
+  jobId: string,
+  clips: any[],
+  allClips: any[],
+  season: string,
+  year: number
+) {
+  const job = processingJobs[jobId];
+  if (!job) return;
+
+  const downloadDir = path.join(process.cwd(), 'download');
+  if (!fs.existsSync(downloadDir)) {
+    fs.mkdirSync(downloadDir, { recursive: true });
+  }
+
+  const zipFilename = `${year}-${season}-processed-${Date.now()}.zip`;
+  const zipPath = path.join(downloadDir, zipFilename);
+
+  let isCancelled = false;
+  let currentDownloadController: AbortController | null = null;
+  let archive: any = null;
+  let zipStream: any = null;
+
+  activeJobCleanups.set(jobId, () => {
+    isCancelled = true;
+    if (currentDownloadController) {
+      try {
+        currentDownloadController.abort();
+      } catch {}
+    }
+    try {
+      if (archive && typeof (archive as any).destroy === 'function') {
+        (archive as any).destroy();
+      }
+      if (zipStream && typeof zipStream.destroy === 'function') {
+        zipStream.destroy();
+      }
+      if (fs.existsSync(zipPath)) {
+        try {
+          fs.unlinkSync(zipPath);
+        } catch {}
+      }
+    } catch (cleanErr) {
+      console.error(`[Job ${jobId}] Error cleaning up cancelled archive:`, cleanErr);
+    }
+  });
+
+  const logAndEmit = (message: string, level: string = 'info', phase: string | null = null) => {
+    job.logs.push({ time: Date.now(), message, level });
+    if (phase && phase !== job.phase) {
+      job.phase = phase;
+      wsManager.emitJobPhaseChange(jobId, phase, message);
+    }
+    console.log(`[Job ${jobId}] ${message}`);
+  };
+
+  try {
+    logAndEmit('Starting clip processing pipeline', 'info', 'starting');
+
+    if (!clips || clips.length === 0) {
+      logAndEmit('No clips to process for this season and year', 'warning', 'completed');
+      job.status = 'completed';
+      job.phase = 'completed';
+      job.endTime = Date.now();
+      job.processed = 0;
+      wsManager.emitJobCompleted(
+        jobId,
+        {
+          zipFilename: '',
+          zipId: null,
+          size: '0 Bytes',
+          url: '',
+        },
+        0
+      );
+      return;
+    }
+
+    zipStream = fs.createWriteStream(zipPath, {
+      highWaterMark: 16 * 1024 * 1024,
+    });
+
+    archive = createZipArchive({
+      zlib: { level: 3 },
+      forceLocalTime: true,
+      highWaterMark: 16 * 1024 * 1024,
+    });
+
+    archive.on('error', (err: any) => {
+      if (isCancelled || (job.status as string) === 'cancelled') return;
+      logAndEmit(`Archive error: ${err.message}`, 'error', 'error');
+      job.status = 'error';
+      job.phase = 'error';
+      job.error = err.message;
+      wsManager.emitJobError(jobId, err.message);
+    });
+
+    archive.on('warning', (err: any) => {
+      if (isCancelled || (job.status as string) === 'cancelled') return;
+      logAndEmit(`Archive warning: ${err.message}`, 'warning');
+    });
+
+    const zipFinalized = new Promise<void>((resolve, reject) => {
+      zipStream.on('close', async () => {
+        if (isCancelled || (job.status as string) === 'cancelled') {
+          try {
+            if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
+          } catch {}
+          return resolve();
+        }
+
+        try {
+          logAndEmit('Zip stream closed. Saving archive metadata...', 'info', 'finalizing');
+          const stats = fs.statSync(zipPath);
+          const size = stats.size;
+
+          const capitalizedSeason = requireSeason(season);
+          const [seasonZip] = await db
+            .insert(zips)
+            .values({
+              url: `/download/${zipFilename}`,
+              season: capitalizedSeason,
+              year: Number(year),
+              name: zipFilename,
+              size,
+              clipAmount: clips.length,
+            })
+            .returning();
+
+          // Archive all clips from this season
+          const clipsToArchive = allClips && allClips.length > 0 ? allClips : clips;
+          const allClipIds: string[] = clipsToArchive.map((c) => String(c._id));
+          if (allClipIds.length > 0) {
+            await db
+              .update(clipsTable)
+              .set({
+                archived: true,
+                archivedAt: new Date(),
+                season: capitalizedSeason,
+                year: Number(year),
+              })
+              .where(inArray(clipsTable._id, allClipIds));
+          }
+
+          await updateClipCount();
+
+          // Update season automation metadata and audit history
+          try {
+            await logSeasonTransition(
+              {
+                action: 'auto_zip_completed',
+                season: capitalizedSeason,
+                year: Number(year),
+                details: `Archive generated: ${zipFilename} (${clips.length} clips, ${formatBytes(size)}).`,
+              },
+              (current) => ({
+                ...current,
+                lastArchivedSeason: {
+                  season: capitalizedSeason,
+                  year: Number(year),
+                  jobId,
+                  archivedAt: new Date().toISOString(),
+                  clipCount: clips.length,
+                  zipUrl: `/download/${zipFilename}`,
+                  status: 'success',
+                },
+              })
+            );
+          } catch (configErr) {
+            console.warn('[ZipProcessing] Could not update AdminConfig season history:', configErr);
+          }
+
+          job.zipFilename = zipFilename;
+          job.zipId = seasonZip._id;
+          job.status = 'completed';
+          job.phase = 'completed';
+          job.endTime = Date.now();
+          job.processed = job.total;
+
+          const totalProcessingTime = job.endTime - job.startTime;
+          logAndEmit(`Archive created successfully: ${zipFilename} (${formatBytes(size)})`, 'info', 'completed');
+          wsManager.emitJobCompleted(
+            jobId,
+            {
+              zipFilename,
+              zipId: seasonZip._id,
+              size: formatBytes(size),
+              url: `/download/${zipFilename}`,
+            },
+            totalProcessingTime
+          );
+
+          resolve();
+        } catch (err: any) {
+          logAndEmit(`Error in finalize: ${err.message}`, 'error', 'error');
+
+          try {
+            await logSeasonTransition({
+              action: 'auto_zip_failed',
+              season: requireSeason(season),
+              year: Number(year),
+              details: `Archive generation failed: ${err.message}`,
+            });
+          } catch {}
+          job.status = 'error';
+          job.phase = 'error';
+          job.error = err.message;
+          wsManager.emitJobError(jobId, err.message);
+          reject(err);
+        }
+      });
+
+      zipStream.on('error', (err: Error) => {
+        if (isCancelled || (job.status as string) === 'cancelled') return;
+        logAndEmit(`Zip stream write error: ${err.message}`, 'error', 'error');
+        job.status = 'error';
+        job.phase = 'error';
+        job.error = err.message;
+        wsManager.emitJobError(jobId, err.message);
+        reject(err);
+      });
+    });
+
+    archive.pipe(zipStream);
+
+    logAndEmit(`Packaging ${clips.length} clips into ZIP archive...`, 'info', 'processing');
+
+    // Process clips sequentially
+    const usedEntryNames = new Map<string, number>();
+
+    for (let i = 0; i < clips.length; i++) {
+      if (isCancelled || (job.status as string) === 'cancelled') {
+        logAndEmit('Processing cancelled by user. Partial archive discarded.', 'warn', 'cancelled');
+        return;
+      }
+
+      const clip = clips[i];
+      const clipStart = Date.now();
+      wsManager.emitClipProcessing(jobId, i, clip, Math.round((i / clips.length) * 100));
+
+      const ratingPart = clip.rating ? `${clip.rating}-` : '';
+      const streamerPart = clip.streamer ? `${clip.streamer}-` : '';
+      const safeTitle = (clip.title || 'clip').replace(/[^a-zA-Z0-9.-]/g, '_');
+      const baseName = `${ratingPart}${streamerPart}${safeTitle}`;
+      const occurrence = (usedEntryNames.get(baseName) || 0) + 1;
+      usedEntryNames.set(baseName, occurrence);
+      const dupSuffix = occurrence > 1 ? `_${occurrence}` : '';
+
+      try {
+        if (clip.url && clip.url.startsWith('http')) {
+          logAndEmit(`[${i + 1}/${clips.length}] Downloading and packing "${clip.title || 'clip'}"...`, 'info', 'processing');
+          const abortController = new AbortController();
+          currentDownloadController = abortController;
+
+          const response = await fetch(clip.url, {
+            signal: abortController.signal,
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            },
+          });
+          currentDownloadController = null;
+
+          if (!response.ok || !response.body) {
+            throw new Error(`Failed to fetch clip: ${response.statusText}`);
+          }
+
+          const stream = Readable.fromWeb(response.body as any);
+
+          if (isCancelled || (job.status as string) === 'cancelled') {
+            try {
+              stream.destroy();
+            } catch {}
+            return;
+          }
+
+          const ext = path.extname(clip.url.split('?')[0]) || '.mp4';
+          const entryName = `${baseName}${dupSuffix}${ext}`;
+
+          await new Promise<void>((resolveEntry, rejectEntry) => {
+            let settled = false;
+            const timeoutTimer = setTimeout(() => {
+              if (!settled) {
+                settled = true;
+                cleanup();
+                rejectEntry(new Error(`Timed out streaming clip "${clip.title}"`));
+              }
+            }, 60000);
+
+            const onEntry = (e: any) => {
+              if (e.name === entryName) {
+                if (!settled) {
+                  settled = true;
+                  cleanup();
+                  resolveEntry();
+                }
+              }
+            };
+            const onError = (err: any) => {
+              if (!settled) {
+                settled = true;
+                cleanup();
+                rejectEntry(err);
+              }
+            };
+            const cleanup = () => {
+              clearTimeout(timeoutTimer);
+              archive.off('entry', onEntry);
+              archive.off('error', onError);
+              stream.off('error', onError);
+            };
+
+            archive.on('entry', onEntry);
+            archive.on('error', onError);
+            stream.on('error', onError);
+            archive.append(stream, { name: entryName });
+          });
+        } else if (clip.url) {
+          // Local file
+          const cleanUrl = clip.url.replace(/^\/?uploads\//, '');
+          let localPath = path.join(process.cwd(), 'uploads', cleanUrl);
+          if (!fs.existsSync(/*turbopackIgnore: true*/ localPath)) {
+            localPath = path.join(/*turbopackIgnore: true*/ process.cwd(), clip.url.replace(/^\//, ''));
+          }
+          if (fs.existsSync(/*turbopackIgnore: true*/ localPath)) {
+            logAndEmit(`[${i + 1}/${clips.length}] Packing local clip "${clip.title || 'clip'}"...`, 'info', 'processing');
+            const ext = path.extname(localPath) || '.mp4';
+            const entryName = `${baseName}${dupSuffix}${ext}`;
+
+            await new Promise<void>((resolveEntry, rejectEntry) => {
+              let settled = false;
+              const timeoutTimer = setTimeout(() => {
+                if (!settled) {
+                  settled = true;
+                  cleanup();
+                  rejectEntry(new Error(`Timed out packing local clip "${clip.title}"`));
+                }
+              }, 30000);
+
+              const onEntry = (e: any) => {
+                if (e.name === entryName) {
+                  if (!settled) {
+                    settled = true;
+                    cleanup();
+                    resolveEntry();
+                  }
+                }
+              };
+              const onError = (err: any) => {
+                if (!settled) {
+                  settled = true;
+                  cleanup();
+                  rejectEntry(err);
+                }
+              };
+              const cleanup = () => {
+                clearTimeout(timeoutTimer);
+                archive.off('entry', onEntry);
+                archive.off('error', onError);
+              };
+
+              archive.on('entry', onEntry);
+              archive.on('error', onError);
+              archive.file(localPath, { name: entryName });
+            });
+          } else {
+            logAndEmit(`Local file not found for ${clip.title}: ${localPath}`, 'warning');
+          }
+        }
+
+        const processingDuration = Date.now() - clipStart;
+        job.processed++;
+        wsManager.emitClipProcessed(jobId, i, clip, processingDuration);
+        wsManager.emitJobProgress(jobId, job.processed, job.total);
+      } catch (clipErr: any) {
+        if (isCancelled || (job.status as string) === 'cancelled') {
+          return;
+        }
+        logAndEmit(`Error packing clip ${clip.title}: ${clipErr.message}`, 'warning');
+        wsManager.emitClipError(jobId, i, clip, clipErr.message);
+        job.processed++;
+        wsManager.emitJobProgress(jobId, job.processed, job.total);
+      }
+    }
+
+    if (isCancelled || (job.status as string) === 'cancelled') {
+      logAndEmit('Processing cancelled by user. Discarding archive...', 'warn', 'cancelled');
+      return;
+    }
+
+    logAndEmit('Finalizing zip archive stream...', 'info', 'archiving');
+    await archive.finalize();
+    await zipFinalized;
+    logAndEmit('Clip processing pipeline fully completed', 'info', 'completed');
+  } catch (error: any) {
+    if (isCancelled || (job.status as string) === 'cancelled') {
+      logAndEmit('Job was cancelled by administrator', 'warn', 'cancelled');
+      return;
+    }
+    logAndEmit(`Fatal job error: ${error.message}`, 'error', 'error');
+    job.status = 'error';
+    job.phase = 'error';
+    job.error = error.message;
+    wsManager.emitJobError(jobId, error.message);
+  } finally {
+    activeJobCleanups.delete(jobId);
+  }
+}
+
+export function getJobStatus(jobId: string): any {
+  const job = processingJobs[jobId];
+  if (!job) return null;
+
+  const progress = job.total > 0 ? Math.round((job.processed / job.total) * 100) : 0;
+  return {
+    jobId: job.jobId || jobId,
+    total: job.total,
+    processed: job.processed,
+    status: job.status,
+    phase: job.phase,
+    progress,
+    season: job.season,
+    year: job.year,
+    startTime: job.startTime,
+    endTime: job.endTime || null,
+    zipFilename: job.zipFilename || null,
+    zipId: job.zipId || null,
+    error: job.error || null,
+    logs: job.logs || [],
+    elapsedTime: Date.now() - job.startTime,
+  };
+}
+
+export function getAllProcessingJobs(): any[] {
+  return Object.entries(processingJobs)
+    .map(([id, job]) => {
+      const progress = job.total > 0 ? Math.round((job.processed / job.total) * 100) : 0;
+      return {
+        jobId: job.jobId || id,
+        total: job.total,
+        processed: job.processed,
+        status: job.status,
+        phase: job.phase,
+        progress,
+        season: job.season,
+        year: job.year,
+        startTime: job.startTime,
+        endTime: job.endTime || null,
+        zipFilename: job.zipFilename || null,
+        zipId: job.zipId || null,
+        error: job.error || null,
+        logs: job.logs || [],
+        elapsedTime: Date.now() - job.startTime,
+      };
+    })
+    .sort((a, b) => b.startTime - a.startTime);
+}
+
+export async function forceCompleteJob(jobId: string): Promise<any> {
+  const job = processingJobs[jobId];
+  if (!job) return null;
+
+  const zipFilename = `manual-processed-${Date.now()}.zip`;
+  const [seasonZip] = await db
+    .insert(zips)
+    .values({
+      url: `/download/${zipFilename}`,
+      season: requireSeason(job.season),
+      year: Number(job.year),
+      name: zipFilename,
+      size: 0,
+      clipAmount: job.total,
+    })
+    .returning();
+
+  job.zipFilename = zipFilename;
+  job.zipId = seasonZip._id;
+  job.status = 'completed';
+  job.phase = 'completed';
+  job.endTime = Date.now();
+  job.processed = job.total;
+
+  wsManager.emitJobCompleted(
+    jobId,
+    {
+      zipFilename,
+      zipId: seasonZip._id,
+      size: '0 Bytes',
+      url: `/download/${zipFilename}`,
+    },
+    Date.now() - job.startTime
+  );
+
+  return job;
+}
+
+export async function cancelProcessingJob(jobId: string): Promise<boolean> {
+  const job = processingJobs[jobId];
+  if (!job) return false;
+
+  if (job.status !== 'processing') {
+    return false;
+  }
+
+  job.status = 'cancelled';
+  job.phase = 'cancelled';
+  job.endTime = Date.now();
+  job.logs.push({
+    time: Date.now(),
+    message: 'Job cancelled by administrator.',
+    level: 'warn',
+  });
+
+  const cleanup = activeJobCleanups.get(jobId);
+  if (cleanup) {
+    cleanup();
+    activeJobCleanups.delete(jobId);
+  }
+
+  wsManager.emitJobCancelled(jobId, 'Job cancelled by administrator');
+
+  return true;
+}
+
+export function dismissProcessingJob(jobId: string): boolean {
+  const job = processingJobs[jobId];
+  if (!job) return false;
+
+  // Only allow dismissing jobs that are not currently running
+  if (job.status !== 'processing') {
+    delete processingJobs[jobId];
+    return true;
+  }
+
+  return false;
+}
+

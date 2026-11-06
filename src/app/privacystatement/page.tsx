@@ -1,0 +1,178 @@
+import type { Metadata } from 'next';
+import React from 'react';
+import {
+  FileText,
+  Database,
+  ShieldCheck,
+  Lock,
+  Server,
+  Shield,
+  Trash2,
+  ExternalLink,
+} from 'lucide-react';
+import PageLayout from '@/components/layouts/PageLayout';
+
+export const metadata: Metadata = {
+  title: 'Privacy Statement • ClipSesh',
+  description: 'Learn how ClipSesh collects, protects, and handles user information and voting integrity data.',
+  openGraph: {
+    title: 'Privacy Statement • ClipSesh',
+    description: 'Learn how ClipSesh collects, protects, and handles user information and voting integrity data.',
+  },
+};
+
+export default function PrivacyStatementPage() {
+  const contentSections = [
+    {
+      id: 'introduction',
+      title: '1. Introduction',
+      icon: <FileText className="size-5" />,
+      content:
+        'Welcome to ClipSesh! Your privacy is important to us. This Privacy Policy explains how we collect, use, and protect your personal information when you use our website.',
+    },
+    {
+      id: 'collected-info',
+      title: '2. Information We Collect',
+      icon: <Database className="size-5" />,
+      content: 'We collect the following types of information:',
+      list: [
+        'Anonymous Voting Cookies: We issue a secure, anonymous cookie token to ensure the integrity of our voting system and prevent duplicate votes without tracking your personal identity or IP address.',
+      ],
+    },
+    {
+      id: 'info-usage',
+      title: '3. How We Use Your Information',
+      icon: <ShieldCheck className="size-5" />,
+      content: 'We use the information we collect in the following ways:',
+      list: [
+        'Voting Integrity: To prevent duplicate votes from the same browser session and ensure fair voting.',
+        'Service Improvement: To understand how our service is used and to improve its functionality and performance.',
+      ],
+    },
+    {
+      id: 'protection',
+      title: '4. How We Protect Your Information',
+      icon: <Lock className="size-5" />,
+      content:
+        'We implement a variety of security measures to maintain the safety of your personal information when you use our service. This includes:',
+      list: [
+        'Secure servers and databases.',
+        "Encryption of local data so even authorized personnel can't read your data.",
+        'Access controls to limit access to your information to authorized personnel only.',
+      ],
+    },
+    {
+      id: 'retention',
+      title: '5. Data Retention',
+      icon: <Server className="size-5" />,
+      content:
+        'We retain anonymous voting tokens only for as long as necessary to ensure voting integrity and prevent duplicate votes.',
+    },
+    {
+      id: 'third-party',
+      title: '6. Third-Party Disclosure',
+      icon: <Shield className="size-5" />,
+      content:
+        'We do not sell, trade, or otherwise transfer your data or voting identifiers to outside parties in any way. All data is and will only be used and stored on the ClipSesh! servers.',
+    },
+    {
+      id: 'rights',
+      title: '7. Your Rights',
+      icon: <ShieldCheck className="size-5" />,
+      content:
+        'Depending on your location, you may have the following rights regarding your personal information:',
+      list: [
+        'Access: The right to access the personal information we hold about you.',
+        'Correction: The right to correct any inaccurate personal information we have about you.',
+        'Deletion: The right to request the deletion of your personal information.',
+      ],
+      extraContent:
+        'To exercise these rights, please contact us via the official Cube Community Discord Server.',
+    },
+    {
+      id: 'changes',
+      title: '8. Changes to This Privacy Policy',
+      icon: <Trash2 className="size-5" />,
+      content:
+        'We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the effective date at the top.',
+    },
+  ];
+
+  return (
+    <PageLayout
+      title="Privacy Statement"
+      subtitle="How we protect your data and maintain your privacy on ClipSesh"
+      metaDescription="ClipSesh privacy statement - Learn how we protect your data and maintain your privacy while using our service."
+    >
+      <div className="bg-cc-card rounded-xl border border-border p-6 sm:p-10 text-foreground shadow-xl transition-all duration-300">
+        <div className="flex items-center justify-between pb-6 mb-8 border-b border-border">
+          <span className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">
+            ClipSesh Privacy Policy
+          </span>
+          <span className="text-xs font-mono text-muted-foreground bg-cc-ground px-3 py-1 rounded-full border border-border">
+            Effective: July 9, 2024
+          </span>
+        </div>
+
+        <div className="space-y-8">
+          {contentSections.map((section) => (
+            <section
+              key={section.id}
+              id={section.id}
+              className="pb-6 border-b border-border/60 last:border-0"
+            >
+              <h2 className="text-lg sm:text-xl font-bold mb-3 flex items-center text-foreground">
+                <span className="mr-3 text-cc-red">{section.icon}</span>
+                {section.title}
+              </h2>
+
+              <p className="mb-3 text-muted-foreground leading-relaxed text-sm sm:text-base">
+                {section.content}
+              </p>
+
+              {section.list && (
+                <ul className="list-disc ml-5 mb-3 space-y-1.5 text-sm sm:text-base text-muted-foreground">
+                  {section.list.map((item, i) => (
+                    <li key={i}>{item}</li>
+                  ))}
+                </ul>
+              )}
+
+              {section.extraContent && (
+                <p className="mt-3 text-muted-foreground leading-relaxed text-sm sm:text-base">
+                  {section.extraContent}
+                  {section.id === 'rights' && (
+                    <a
+                      href="https://discord.gg/dwe8mbC"
+                      className="ml-1 text-cc-red hover:text-cc-red-hover hover:underline font-medium inline-flex items-center"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Cube Community Discord Server
+                      <ExternalLink className="size-3.5 ml-1" />
+                    </a>
+                  )}
+                </p>
+              )}
+            </section>
+          ))}
+        </div>
+
+        <div className="mt-8 p-5 bg-cc-ground rounded-xl border border-border text-center">
+          <p className="text-sm text-muted-foreground">
+            If you have any questions about this Privacy Policy, please contact us via the
+            <a
+              href="https://discord.gg/dwe8mbC"
+              className="mx-1 text-cc-red hover:text-cc-red-hover hover:underline font-medium"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Cube Community Discord
+            </a>
+            server.
+          </p>
+        </div>
+      </div>
+    </PageLayout>
+  );
+}

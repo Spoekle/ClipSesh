@@ -1,0 +1,167 @@
+import { safeLocalStorage } from '@/utils/storage';
+import React, { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
+import { SnowOverlay } from 'react-snow-overlay';
+
+function Footer() {
+  const [isSnowMonth] = useState(() => {
+    const month = new Date().getMonth();
+    return month === 11 || month === 0;
+  });
+
+  const [snow, setSnow] = useState(() => {
+    const savedSnow = safeLocalStorage.getItem('snow');
+    return savedSnow !== 'false';
+  });
+
+  // Listen for storage changes (when navbar toggles snow)
+  const handleStorageChange = useCallback(() => {
+    const savedSnow = safeLocalStorage.getItem('snow');
+    setSnow(savedSnow !== 'false');
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener('storage', handleStorageChange);
+    const interval = setInterval(handleStorageChange, 500);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, [handleStorageChange]);
+
+  return (
+    <footer className="bg-background border-t border-border py-12 text-foreground transition duration-200">
+      {isSnowMonth && snow && <SnowOverlay />}
+
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-8">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-8 lg:gap-12">
+          {/* Brand & Mission Column */}
+          <div className="md:col-span-2 flex flex-col items-start">
+            <Link href="/" className="flex items-center gap-3 mb-4 group">
+              <img
+                src="/img/branding/logo.svg"
+                alt="Cube Community Logo"
+                className="h-10 w-auto object-contain transition-transform group-hover:scale-105"
+              />
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-xl tracking-tight text-foreground group-hover:text-primary transition-colors">
+                  ClipSesh
+                </span>
+              </div>
+              {process.env.NODE_ENV === 'development' && (
+                <span className="hidden sm:inline-block text-[10px] font-bold text-white bg-primary shadow-sm shadow-primary/30 rounded-md px-1.5 py-0.5 ml-1">
+                  DEV
+                </span>
+              )}
+            </Link>
+            <p className="text-sm text-muted-foreground leading-relaxed mb-5 max-w-sm">
+              The official Beat Saber highlight repository for Cube Community. Discover, rate, and submit your clips for the seasonal compilations.
+            </p>
+            <span className="text-xs text-muted-foreground/80 font-semibold uppercase tracking-wider">
+              V{process.env.NEXT_PUBLIC_APP_VERSION || '3.0.0'}
+            </span>
+          </div>
+
+          {/* Column 1: WEBSITE */}
+          <div className="flex flex-col">
+            <div className="text-xs font-bold uppercase tracking-wider text-foreground mb-3.5">
+              Website
+            </div>
+            <ul className="flex flex-col space-y-2.5 text-sm">
+              <li>
+                <Link href="/" className="text-muted-foreground hover:text-primary transition-colors">
+                  Home
+                </Link>
+              </li>
+              <li>
+                <Link href="/clips" className="text-muted-foreground hover:text-primary transition-colors">
+                  Clips
+                </Link>
+              </li>
+              <li>
+                <Link href="/archive" className="text-muted-foreground hover:text-primary transition-colors">
+                  The ClipVault
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Column 2: ABOUT */}
+          <div className="flex flex-col">
+            <div className="text-xs font-bold uppercase tracking-wider text-foreground mb-3.5">
+              About
+            </div>
+            <ul className="flex flex-col space-y-2.5 text-sm">
+              <li>
+                <Link href="/privacystatement" className="text-muted-foreground hover:text-primary transition-colors">
+                  Privacy Policy
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Column 3: SOCIALS */}
+          <div className="flex flex-col">
+            <div className="text-xs font-bold uppercase tracking-wider text-foreground mb-3.5">
+              Socials
+            </div>
+            <ul className="flex flex-col space-y-2.5 text-sm">
+              <li>
+                <a
+                  href="https://youtube.com/CubeCommunity"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-muted-foreground hover:text-primary transition-colors"
+                >
+                  YouTube
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://twitter.com/CubeCommunityVR"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-muted-foreground hover:text-primary transition-colors"
+                >
+                  Twitter / X
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://twitch.tv/CubeCommunity"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-muted-foreground hover:text-primary transition-colors"
+                >
+                  Twitch
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://discord.gg/dwe8mbC"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-muted-foreground hover:text-primary transition-colors"
+                >
+                  Discord
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="border-t border-border mt-10 pt-6 flex flex-col md:flex-row justify-between items-center text-xs text-muted-foreground/80">
+          <p className="text-center md:text-left mb-2 md:mb-0">
+            © {new Date().getFullYear()} Spoekle. All rights reserved.{' '}
+            <a href="https://grabssoftware.com" target="_blank" rel="noreferrer" className="hover:text-foreground transition-colors">
+              Powered by Grabs Software
+            </a>
+          </p>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+export default Footer;
