@@ -163,6 +163,7 @@ export interface SeasonAutomationConfig {
   denyThreshold?: number;
   lastArchivedSeason?: LastArchivedSeason;
   transitionHistory?: SeasonTransitionLog[];
+  autoArchiveSkips?: Array<{ season: 'Spring' | 'Summer' | 'Fall' | 'Winter'; year: number }>;
 }
 
 // Admin configuration interfaces

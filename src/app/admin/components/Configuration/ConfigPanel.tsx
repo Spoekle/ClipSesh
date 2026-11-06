@@ -8,6 +8,7 @@ import { useUpdateAdminConfig, useUpdatePublicConfig, useBlacklistedUsers } from
 import { useNotification } from '@/context/AlertContext';
 import GeneralConfigSection from './GeneralConfigSection';
 import BlacklistManagementSection from './BlacklistManagementSection';
+import SeasonAutomationSection from './SeasonAutomationSection';
 
 interface ConfigPanelProps {
   config: {
@@ -276,6 +277,10 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onOpenScraper 
           />
         </div>
       </form>
+
+      <div className="pt-6 border-t border-border">
+        <SeasonAutomationSection />
+      </div>
     </m.div>
   );
 };

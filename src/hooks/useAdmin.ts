@@ -335,6 +335,19 @@ export const useSeasonStatus = () => {
   });
 };
 
+// Mutation for saving the season automation settings
+export const useUpdateSeasonAutomation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: adminService.updateSeasonAutomation,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'seasons'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.config.all });
+    },
+  });
+};
+
 // Mutation for triggering season actions (dry-run, force-archive, trigger-check, unarchive)
 export const useSeasonAction = () => {
   const queryClient = useQueryClient();

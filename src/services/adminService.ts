@@ -14,7 +14,8 @@ import {
   ReportResponse, 
   ReportUpdateRequest, 
   ReportMessage, 
-  SendMessageRequest 
+  SendMessageRequest,
+  SeasonAutomationConfig
 } from '../types/adminTypes';
 
 /**
@@ -127,6 +128,18 @@ export const updateAdminConfig = async (adminConfig: {
   } catch (error: any) {
     console.error('Error updating admin config:', error);
     throw new Error(error.message || 'Failed to update admin configuration');
+  }
+};
+
+// Update the season automation settings (other admin config fields are left untouched)
+export const updateSeasonAutomation = async (
+  seasonAutomation: Pick<SeasonAutomationConfig, 'enabled' | 'zipArchiveDay'>
+): Promise<void> => {
+  try {
+    await apiClient.put(`/api/config/admin`, { seasonAutomation });
+  } catch (error: any) {
+    console.error('Error updating season automation:', error);
+    throw new Error(error.message || 'Failed to update season automation');
   }
 };
 
@@ -635,7 +648,7 @@ export const getSeasonStatus = async (): Promise<{
   success: boolean;
   lifecycle: any;
   seasons?: any[];
-  seasonAutomation: any;
+  seasonAutomation: SeasonAutomationConfig;
 }> => {
   try {
     return await apiClient.get(`/api/admin/seasons`);
