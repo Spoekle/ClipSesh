@@ -5,7 +5,7 @@ services:
     restart: unless-stopped
     environment:
       - POSTGRES_USER=clipsesh
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-clipsesh}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=clipsesh
     ports:
       - "5433:5432"
@@ -47,7 +47,7 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - HOSTNAME=0.0.0.0
-      - DATABASE_URL=postgres://clipsesh:${POSTGRES_PASSWORD:-clipsesh}@postgres:5432/clipsesh
+      - DATABASE_URL=postgres://clipsesh:${POSTGRES_PASSWORD}@postgres:5432/clipsesh
     env_file:
       - path: .env
         required: false
