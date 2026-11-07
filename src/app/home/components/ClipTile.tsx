@@ -62,13 +62,15 @@ export const ClipTile: React.FC<ClipTileProps> = ({ clip, featured }) => (
           <ThumbsUp className="size-3" />
           {clip.upvotes}
         </span>
-        {clip.comments.length > 0 && (
+        {clip.comments && clip.comments.length > 0 && (
           <span className="flex items-center gap-1">
             <MessageSquare className="size-3" />
             {clip.comments.length}
           </span>
         )}
-        <span className="text-neutral-400">{format(new Date(clip.createdAt))}</span>
+        <span className="text-neutral-400" suppressHydrationWarning>
+          {format(new Date(clip.createdAt))}
+        </span>
       </div>
     </div>
   </Link>
