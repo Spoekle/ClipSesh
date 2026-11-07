@@ -50,7 +50,8 @@ export interface Clip {
   upvotes: number;
   downvotes: number;
   views?: number;
-  comments: Comment[];
+  /** Only present on single-clip responses; list endpoints omit it. */
+  comments?: Comment[];
   season?: string;
   year?: number;
   archived?: boolean;
