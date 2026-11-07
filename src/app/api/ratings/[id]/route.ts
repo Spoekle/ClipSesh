@@ -33,7 +33,7 @@ export const POST = authRoute<{ id: string }>(['clipteam', 'admin'], async (req,
   let target: RatingValue | undefined;
   if (rating !== undefined && rating !== null) {
     const key = String(rating);
-    if (!isRatingValue(key) || key === 'deny') {
+    if (!isRatingValue(key)) {
       return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 });
     }
     target = key;
