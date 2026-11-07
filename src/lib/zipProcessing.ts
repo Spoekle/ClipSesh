@@ -296,7 +296,35 @@ async function processClipsAsync(
     logAndEmit('Starting clip processing pipeline', 'info', 'starting');
 
     if (!clips || clips.length === 0) {
-      logAndEmit('No clips to process for this season and year', 'warning', 'completed');
+      // Older seasons can have no rated clips (e.g. already zipped before ratings were kept),
+      // so there is nothing to package, but the season's active clips still need archiving.
+      const leftoverIds: string[] = (allClips ?? []).map((c) => String(c._id));
+      if (leftoverIds.length > 0) {
+        const capitalizedSeason = requireSeason(season);
+        await db
+          .update(clipsTable)
+          .set({
+            archived: true,
+            archivedAt: new Date(),
+            season: capitalizedSeason,
+            year: Number(year),
+          })
+          .where(inArray(clipsTable._id, leftoverIds));
+        await updateClipCount();
+        await logSeasonTransition({
+          action: 'auto_zip_completed',
+          season: capitalizedSeason,
+          year: Number(year),
+          details: `No rated clips to package; archived ${leftoverIds.length} clips without generating a ZIP.`,
+        });
+        logAndEmit(
+          `No rated clips to package. Archived ${leftoverIds.length} clips without creating a ZIP.`,
+          'warning',
+          'completed'
+        );
+      } else {
+        logAndEmit('No clips to process for this season and year', 'warning', 'completed');
+      }
       job.status = 'completed';
       job.phase = 'completed';
       job.endTime = Date.now();
